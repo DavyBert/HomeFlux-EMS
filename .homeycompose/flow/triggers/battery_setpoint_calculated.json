@@ -1,0 +1,28 @@
+{
+  "title": {
+    "en": "New battery setpoint calculated",
+    "nl": "Nieuw batterij-setpoint berekend"
+  },
+  "hint": {
+    "en": "Fires when HomeFlux EMS calculates a different battery setpoint, before the minimum command interval decides when it may be published.",
+    "nl": "Start wanneer HomeFlux EMS een ander batterij-setpoint berekent, vóór het minimum stuurinterval bepaalt wanneer dit werkelijk gepubliceerd mag worden."
+  },
+  "tokens": [
+    { "name": "battery_count", "type": "number", "title": { "en": "Battery count", "nl": "Aantal batterijen" }, "example": 4 },
+    { "name": "battery1setpoint", "type": "number", "title": { "en": "Battery 1 setpoint (W)", "nl": "Batterij 1 setpoint (W)" }, "example": 250 },
+    { "name": "battery2setpoint", "type": "number", "title": { "en": "Battery 2 setpoint (W)", "nl": "Batterij 2 setpoint (W)" }, "example": 250 },
+    { "name": "battery3setpoint", "type": "number", "title": { "en": "Battery 3 setpoint (W)", "nl": "Batterij 3 setpoint (W)" }, "example": 250 },
+    { "name": "battery4setpoint", "type": "number", "title": { "en": "Battery 4 setpoint (W)", "nl": "Batterij 4 setpoint (W)" }, "example": 250 },
+    { "name": "battery5setpoint", "type": "number", "title": { "en": "Battery 5 setpoint (W)", "nl": "Batterij 5 setpoint (W)" }, "example": 0 },
+    { "name": "battery6setpoint", "type": "number", "title": { "en": "Battery 6 setpoint (W)", "nl": "Batterij 6 setpoint (W)" }, "example": 0 },
+    { "name": "battery7setpoint", "type": "number", "title": { "en": "Battery 7 setpoint (W)", "nl": "Batterij 7 setpoint (W)" }, "example": 0 },
+    { "name": "battery8setpoint", "type": "number", "title": { "en": "Battery 8 setpoint (W)", "nl": "Batterij 8 setpoint (W)" }, "example": 0 },
+    { "name": "total_setpoint", "type": "number", "title": { "en": "Calculated total setpoint (W)", "nl": "Berekend totaal setpoint (W)" }, "example": 1000 },
+    { "name": "output_total", "type": "number", "title": { "en": "Last published total (W)", "nl": "Laatst uitgestuurd totaal (W)" }, "example": 444 },
+    { "name": "difference_total", "type": "number", "title": { "en": "Difference to published output (W)", "nl": "Verschil met uitsturing (W)" }, "example": 556 },
+    { "name": "publish_allowed", "type": "string", "title": { "en": "Publishing allowed", "nl": "Uitsturen toegestaan" }, "example": "Ja" },
+    { "name": "mode", "type": "string", "title": { "en": "EMS mode", "nl": "EMS-modus" }, "example": "Zelfconsumptie" },
+    { "name": "override", "type": "string", "title": { "en": "EMS override", "nl": "EMS-override" }, "example": "Geen" },
+    { "name": "status", "type": "string", "title": { "en": "EMS status", "nl": "EMS-status" }, "example": "Dal · Ontladen 1000 W" }
+  ]
+}

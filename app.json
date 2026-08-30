@@ -1,0 +1,4991 @@
+{
+  "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
+  "id": "com.homeflux.ems",
+  "version": "0.3.9",
+  "compatibility": ">=12.0.0",
+  "sdk": 3,
+  "runtime": "nodejs",
+  "platforms": [
+    "local"
+  ],
+  "permissions": [
+    "homey:manager:api"
+  ],
+  "brandColor": "#4F8A10",
+  "name": {
+    "en": "HomeFlux EMS",
+    "nl": "HomeFlux EMS"
+  },
+  "description": {
+    "en": "Your energy, arranged differently",
+    "nl": "Jouw energie, anders geregeld"
+  },
+  "category": "energy",
+  "tags": {
+    "en": [
+      "energy",
+      "battery",
+      "solar",
+      "EMS",
+      "peak shaving"
+    ],
+    "nl": [
+      "energie",
+      "batterij",
+      "zonnepanelen",
+      "EMS",
+      "peak shaving"
+    ]
+  },
+  "author": {
+    "name": "Davy Bert"
+  },
+  "api": {
+    "getStatus": {
+      "method": "GET",
+      "path": "/status"
+    },
+    "getSettingsSnapshot": {
+      "method": "GET",
+      "path": "/settings-snapshot"
+    },
+    "getPlanning": {
+      "method": "GET",
+      "path": "/planning"
+    },
+    "refreshPlanning": {
+      "method": "POST",
+      "path": "/planning/refresh"
+    },
+    "simulatePlanning": {
+      "method": "POST",
+      "path": "/planning/simulate"
+    },
+    "setInput": {
+      "method": "PUT",
+      "path": "/input"
+    },
+    "refreshHomeyEnergy": {
+      "method": "POST",
+      "path": "/homey-energy/refresh"
+    },
+    "startChargeTest": {
+      "method": "POST",
+      "path": "/charge-test/start"
+    },
+    "confirmChargeTest": {
+      "method": "POST",
+      "path": "/charge-test/confirm"
+    },
+    "testEvOutput": {
+      "method": "POST",
+      "path": "/test/ev-output"
+    },
+    "testHvacOutput": {
+      "method": "POST",
+      "path": "/test/hvac-output"
+    }
+  },
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "flow": {
+    "triggers": [
+      {
+        "title": {
+          "en": "Battery Balance warning",
+          "nl": "Battery Balance waarschuwing"
+        },
+        "hint": {
+          "en": "Fires when battery SoC spread keeps increasing while balancing is actively controlling the batteries.",
+          "nl": "Start wanneer de SoC-spreiding blijft toenemen terwijl Battery Balance de batterijen actief aanstuurt."
+        },
+        "tokens": [
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Warning",
+              "nl": "Waarschuwing"
+            },
+            "example": "Controleer de gekoppelde batterij-SoC's."
+          },
+          {
+            "name": "spread",
+            "type": "number",
+            "title": {
+              "en": "Current spread (%)",
+              "nl": "Huidige spreiding (%)"
+            },
+            "example": 5.2
+          },
+          {
+            "name": "baseline_spread",
+            "type": "number",
+            "title": {
+              "en": "Baseline spread (%)",
+              "nl": "Startspreiding (%)"
+            },
+            "example": 2.1
+          },
+          {
+            "name": "lowest_battery",
+            "type": "number",
+            "title": {
+              "en": "Lowest SoC battery",
+              "nl": "Batterij met laagste SoC"
+            },
+            "example": 1
+          },
+          {
+            "name": "highest_battery",
+            "type": "number",
+            "title": {
+              "en": "Highest SoC battery",
+              "nl": "Batterij met hoogste SoC"
+            },
+            "example": 3
+          }
+        ],
+        "id": "battery_balance_warning"
+      },
+      {
+        "title": {
+          "en": "Battery commands are updated",
+          "nl": "Batterijcommando's zijn bijgewerkt"
+        },
+        "hint": {
+          "en": "Fires when HomeFlux EMS publishes a new set of battery power commands.",
+          "nl": "Start wanneer HomeFlux EMS een nieuwe set batterijvermogens publiceert."
+        },
+        "tokens": [
+          {
+            "name": "battery_count",
+            "type": "number",
+            "title": {
+              "en": "Battery count",
+              "nl": "Aantal batterijen"
+            },
+            "example": 4
+          },
+          {
+            "name": "battery1command",
+            "type": "number",
+            "title": {
+              "en": "Battery 1 command (W)",
+              "nl": "Batterij 1 commando (W)"
+            },
+            "example": -500
+          },
+          {
+            "name": "battery2command",
+            "type": "number",
+            "title": {
+              "en": "Battery 2 command (W)",
+              "nl": "Batterij 2 commando (W)"
+            },
+            "example": -500
+          },
+          {
+            "name": "battery3command",
+            "type": "number",
+            "title": {
+              "en": "Battery 3 command (W)",
+              "nl": "Batterij 3 commando (W)"
+            },
+            "example": -500
+          },
+          {
+            "name": "battery4command",
+            "type": "number",
+            "title": {
+              "en": "Battery 4 command (W)",
+              "nl": "Batterij 4 commando (W)"
+            },
+            "example": -500
+          },
+          {
+            "name": "battery5command",
+            "type": "number",
+            "title": {
+              "en": "Battery 5 command (W)",
+              "nl": "Batterij 5 commando (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "battery6command",
+            "type": "number",
+            "title": {
+              "en": "Battery 6 command (W)",
+              "nl": "Batterij 6 commando (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "battery7command",
+            "type": "number",
+            "title": {
+              "en": "Battery 7 command (W)",
+              "nl": "Batterij 7 commando (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "battery8command",
+            "type": "number",
+            "title": {
+              "en": "Battery 8 command (W)",
+              "nl": "Batterij 8 commando (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "total_command",
+            "type": "number",
+            "title": {
+              "en": "Total command (W)",
+              "nl": "Totaal commando (W)"
+            },
+            "example": -2000
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "EMS mode",
+              "nl": "EMS-modus"
+            },
+            "example": {
+              "en": "Self-consumption",
+              "nl": "Zelfconsumptie"
+            }
+          },
+          {
+            "name": "override",
+            "type": "string",
+            "title": {
+              "en": "EMS override",
+              "nl": "EMS-override"
+            },
+            "example": {
+              "en": "Peak shave 2500 W",
+              "nl": "Peak shave 2500 W"
+            }
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "title": {
+              "en": "EMS status",
+              "nl": "EMS-status"
+            },
+            "example": {
+              "en": "Self-consumption · Cheap tariff in 2h",
+              "nl": "Zelfconsumptie · Dal over 2u"
+            }
+          },
+          {
+            "name": "next_change",
+            "type": "string",
+            "title": {
+              "en": "Next change",
+              "nl": "Volgende wijziging"
+            },
+            "example": {
+              "en": "Cheap tariff in 2h",
+              "nl": "Dal over 2u"
+            }
+          }
+        ],
+        "id": "battery_commands_updated"
+      },
+      {
+        "title": {
+          "en": "New battery setpoint calculated",
+          "nl": "Nieuw batterij-setpoint berekend"
+        },
+        "hint": {
+          "en": "Fires when HomeFlux EMS calculates a different battery setpoint, before the minimum command interval decides when it may be published.",
+          "nl": "Start wanneer HomeFlux EMS een ander batterij-setpoint berekent, vóór het minimum stuurinterval bepaalt wanneer dit werkelijk gepubliceerd mag worden."
+        },
+        "tokens": [
+          {
+            "name": "battery_count",
+            "type": "number",
+            "title": {
+              "en": "Battery count",
+              "nl": "Aantal batterijen"
+            },
+            "example": 4
+          },
+          {
+            "name": "battery1setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 1 setpoint (W)",
+              "nl": "Batterij 1 setpoint (W)"
+            },
+            "example": 250
+          },
+          {
+            "name": "battery2setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 2 setpoint (W)",
+              "nl": "Batterij 2 setpoint (W)"
+            },
+            "example": 250
+          },
+          {
+            "name": "battery3setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 3 setpoint (W)",
+              "nl": "Batterij 3 setpoint (W)"
+            },
+            "example": 250
+          },
+          {
+            "name": "battery4setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 4 setpoint (W)",
+              "nl": "Batterij 4 setpoint (W)"
+            },
+            "example": 250
+          },
+          {
+            "name": "battery5setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 5 setpoint (W)",
+              "nl": "Batterij 5 setpoint (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "battery6setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 6 setpoint (W)",
+              "nl": "Batterij 6 setpoint (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "battery7setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 7 setpoint (W)",
+              "nl": "Batterij 7 setpoint (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "battery8setpoint",
+            "type": "number",
+            "title": {
+              "en": "Battery 8 setpoint (W)",
+              "nl": "Batterij 8 setpoint (W)"
+            },
+            "example": 0
+          },
+          {
+            "name": "total_setpoint",
+            "type": "number",
+            "title": {
+              "en": "Calculated total setpoint (W)",
+              "nl": "Berekend totaal setpoint (W)"
+            },
+            "example": 1000
+          },
+          {
+            "name": "output_total",
+            "type": "number",
+            "title": {
+              "en": "Last published total (W)",
+              "nl": "Laatst uitgestuurd totaal (W)"
+            },
+            "example": 444
+          },
+          {
+            "name": "difference_total",
+            "type": "number",
+            "title": {
+              "en": "Difference to published output (W)",
+              "nl": "Verschil met uitsturing (W)"
+            },
+            "example": 556
+          },
+          {
+            "name": "publish_allowed",
+            "type": "string",
+            "title": {
+              "en": "Publishing allowed",
+              "nl": "Uitsturen toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "EMS mode",
+              "nl": "EMS-modus"
+            },
+            "example": "Zelfconsumptie"
+          },
+          {
+            "name": "override",
+            "type": "string",
+            "title": {
+              "en": "EMS override",
+              "nl": "EMS-override"
+            },
+            "example": "Geen"
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "title": {
+              "en": "EMS status",
+              "nl": "EMS-status"
+            },
+            "example": "Dal · Ontladen 1000 W"
+          }
+        ],
+        "id": "battery_setpoint_calculated"
+      },
+      {
+        "title": {
+          "en": "Boiler power command is updated",
+          "nl": "Boiler aan/uit-opdracht is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the boolean token to switch the boiler or store its current HomeFlux state in a Logic variable.",
+          "nl": "Gebruik de ja/nee-tag om de boiler te schakelen of de actuele HomeFlux-status in een Logica-variabele te bewaren."
+        },
+        "tokens": [
+          {
+            "name": "on",
+            "type": "boolean",
+            "title": {
+              "en": "Boiler on",
+              "nl": "Boiler aan"
+            },
+            "example": true
+          }
+        ],
+        "id": "boiler_power_updated"
+      },
+      {
+        "title": {
+          "en": "Boiler warmed status is updated",
+          "nl": "Boiler opgewarmd-status is bijgewerkt"
+        },
+        "hint": {
+          "en": "The boolean token is Yes while HomeFlux still considers the boiler warmed after a completed heating cycle.",
+          "nl": "De ja/nee-tag is Ja zolang HomeFlux de boiler na een voltooide opwarmcyclus nog als opgewarmd beschouwt."
+        },
+        "tokens": [
+          {
+            "name": "warmed",
+            "type": "boolean",
+            "title": {
+              "en": "Boiler warmed",
+              "nl": "Boiler opgewarmd"
+            },
+            "example": true
+          }
+        ],
+        "id": "boiler_warmed_updated"
+      },
+      {
+        "title": {
+          "en": "Charge plan is updated",
+          "nl": "Laadplan is bijgewerkt"
+        },
+        "titleFormatted": {
+          "en": "Charge plan is updated",
+          "nl": "Laadplan is bijgewerkt"
+        },
+        "hint": {
+          "en": "Fires when HomeFlux decides or changes the overnight charge plan. Use the Charge plan token with Homey's standard Logic action to write it to a text variable.",
+          "nl": "Start wanneer HomeFlux het nachtelijke laadplan beslist of wijzigt. Gebruik de tag Laadplan met de standaard Logic-kaart van Homey om dit naar een tekstvariabele te schrijven."
+        },
+        "tokens": [
+          {
+            "name": "plan",
+            "type": "string",
+            "title": {
+              "en": "Charge plan",
+              "nl": "Laadplan"
+            },
+            "example": {
+              "en": "SoC target 19% · enough battery reserve, no grid charging is planned.",
+              "nl": "SoC-doel 19% · genoeg batterijreserve, er wordt niet geladen."
+            }
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Doel-SoC (%)"
+            },
+            "example": 19
+          },
+          {
+            "name": "current_soc",
+            "type": "number",
+            "title": {
+              "en": "Current SoC (%)",
+              "nl": "Huidige SoC (%)"
+            },
+            "example": 72
+          },
+          {
+            "name": "charge_window",
+            "type": "string",
+            "title": {
+              "en": "Charge window",
+              "nl": "Laaduren"
+            },
+            "example": "01:00–07:00"
+          },
+          {
+            "name": "forecast_energy",
+            "type": "number",
+            "title": {
+              "en": "Planning PV forecast (kWh)",
+              "nl": "PV-voorspelling voor planning (kWh)"
+            },
+            "example": 20.3
+          }
+        ],
+        "id": "charge_plan_updated"
+      },
+      {
+        "title": {
+          "en": "EMS status changed",
+          "nl": "EMS-status is gewijzigd"
+        },
+        "titleFormatted": {
+          "en": "EMS status changed",
+          "nl": "EMS-status is gewijzigd"
+        },
+        "hint": {
+          "en": "Fires when the compact HomeFlux EMS status line changes.",
+          "nl": "Start wanneer de compacte HomeFlux EMS-statusregel wijzigt."
+        },
+        "tokens": [
+          {
+            "name": "status",
+            "type": "string",
+            "title": {
+              "en": "EMS status",
+              "nl": "EMS-status"
+            },
+            "example": {
+              "en": "Normal · Self-consumption · Expensive in 2h",
+              "nl": "Normaal · Zelfconsumptie · Duur over 2u"
+            }
+          },
+          {
+            "name": "tariff",
+            "type": "string",
+            "title": {
+              "en": "Current tariff",
+              "nl": "Huidig tarief"
+            },
+            "example": {
+              "en": "Normal",
+              "nl": "Normaal"
+            }
+          },
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Operation",
+              "nl": "Werking"
+            },
+            "example": {
+              "en": "Self-consumption",
+              "nl": "Zelfconsumptie"
+            }
+          },
+          {
+            "name": "next_change",
+            "type": "string",
+            "title": {
+              "en": "Next tariff",
+              "nl": "Volgend tarief"
+            },
+            "example": {
+              "en": "Expensive in 2h",
+              "nl": "Duur over 2u"
+            }
+          }
+        ],
+        "id": "ems_status_changed"
+      },
+      {
+        "title": {
+          "en": "EV charge current is updated",
+          "nl": "EV-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV charger current. Peak Guard can always reduce it.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV target SoC (%)",
+              "nl": "EV-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "id": "ev_charge_current_updated"
+      },
+      {
+        "title": {
+          "en": "EV charge mode is updated",
+          "nl": "EV-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "id": "ev_charge_mode_updated"
+      },
+      {
+        "title": {
+          "en": "EV charging permission is updated",
+          "nl": "EV laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "id": "ev_charging_allowed_updated"
+      },
+      {
+        "title": {
+          "en": "EV 1 charge current is updated",
+          "nl": "EV 1-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV charger current. Peak Guard can always reduce it.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV target SoC (%)",
+              "nl": "EV-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "id": "ev1_charge_current_updated"
+      },
+      {
+        "title": {
+          "en": "EV 1 charge mode is updated",
+          "nl": "EV 1-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "id": "ev1_charge_mode_updated"
+      },
+      {
+        "title": {
+          "en": "EV 1 charging permission is updated",
+          "nl": "EV 1 laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "id": "ev1_charging_allowed_updated"
+      },
+      {
+        "title": {
+          "en": "EV 2 charge current is updated",
+          "nl": "EV 2-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV 2 charger current. Peak Guard can always reduce it.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV 2-lader te sturen. Peak Guard kan deze altijd verlagen."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV 2 target SoC (%)",
+              "nl": "EV 2-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "id": "ev2_charge_current_updated"
+      },
+      {
+        "title": {
+          "en": "EV 2 charge mode is updated",
+          "nl": "EV 2-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "id": "ev2_charge_mode_updated"
+      },
+      {
+        "title": {
+          "en": "EV 2 charging permission is updated",
+          "nl": "EV 2 laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "id": "ev2_charging_allowed_updated"
+      },
+      {
+        "title": {
+          "en": "EV 3 charge current is updated",
+          "nl": "EV 3-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV 3 charger current. Peak Guard can always reduce it.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV 3-lader te sturen. Peak Guard kan deze altijd verlagen."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV 3 target SoC (%)",
+              "nl": "EV 3-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "id": "ev3_charge_current_updated"
+      },
+      {
+        "title": {
+          "en": "EV 3 charge mode is updated",
+          "nl": "EV 3-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "id": "ev3_charge_mode_updated"
+      },
+      {
+        "title": {
+          "en": "EV 3 charging permission is updated",
+          "nl": "EV 3 laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "id": "ev3_charging_allowed_updated"
+      },
+      {
+        "title": {
+          "en": "EV 4 charge current is updated",
+          "nl": "EV 4-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV 4 charger current. Peak Guard can always reduce it.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV 4-lader te sturen. Peak Guard kan deze altijd verlagen."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV 4 target SoC (%)",
+              "nl": "EV 4-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "id": "ev4_charge_current_updated"
+      },
+      {
+        "title": {
+          "en": "EV 4 charge mode is updated",
+          "nl": "EV 4-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "id": "ev4_charge_mode_updated"
+      },
+      {
+        "title": {
+          "en": "EV 4 charging permission is updated",
+          "nl": "EV 4 laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "id": "ev4_charging_allowed_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC fan command is updated",
+          "nl": "HVAC-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac_fan_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC mode command is updated",
+          "nl": "HVAC-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac_mode_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC power command is updated",
+          "nl": "HVAC aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac_power_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC setpoint command is updated",
+          "nl": "HVAC-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "id": "hvac_setpoint_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 1 fan command is updated",
+          "nl": "HVAC 1-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac1_fan_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 1 mode command is updated",
+          "nl": "HVAC 1-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac1_mode_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 1 power command is updated",
+          "nl": "HVAC 1 aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac1_power_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 1 setpoint command is updated",
+          "nl": "HVAC 1-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "id": "hvac1_setpoint_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 2 fan command is updated",
+          "nl": "HVAC 2-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac2_fan_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 2 mode command is updated",
+          "nl": "HVAC 2-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac2_mode_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 2 power command is updated",
+          "nl": "HVAC 2 aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac2_power_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 2 setpoint command is updated",
+          "nl": "HVAC 2-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "id": "hvac2_setpoint_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 3 fan command is updated",
+          "nl": "HVAC 3-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac3_fan_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 3 mode command is updated",
+          "nl": "HVAC 3-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac3_mode_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 3 power command is updated",
+          "nl": "HVAC 3 aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac3_power_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 3 setpoint command is updated",
+          "nl": "HVAC 3-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "id": "hvac3_setpoint_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 4 fan command is updated",
+          "nl": "HVAC 4-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac4_fan_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 4 mode command is updated",
+          "nl": "HVAC 4-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac4_mode_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 4 power command is updated",
+          "nl": "HVAC 4 aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "id": "hvac4_power_updated"
+      },
+      {
+        "title": {
+          "en": "HVAC 4 setpoint command is updated",
+          "nl": "HVAC 4-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "id": "hvac4_setpoint_updated"
+      },
+      {
+        "title": {
+          "en": "PV power limit is updated",
+          "nl": "PV-vermogenslimiet is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the percentage token to limit PV/inverter output. 100% is unrestricted; HomeFlux never commands below 10%.",
+          "nl": "Gebruik de percentage-tag om het PV-/omvormervermogen te begrenzen. 100% is onbeperkt; HomeFlux stuurt nooit lager dan 10%."
+        },
+        "tokens": [
+          {
+            "name": "limit_percent",
+            "type": "number",
+            "title": {
+              "en": "PV limit (%)",
+              "nl": "PV-limiet (%)"
+            },
+            "example": 75
+          },
+          {
+            "name": "target_power",
+            "type": "number",
+            "title": {
+              "en": "PV target power (W)",
+              "nl": "PV-doelvermogen (W)"
+            },
+            "example": 3750
+          },
+          {
+            "name": "curtailed_power",
+            "type": "number",
+            "title": {
+              "en": "PV curtailed power (W)",
+              "nl": "PV teruggeregeld (W)"
+            },
+            "example": 1250
+          },
+          {
+            "name": "minimum_export",
+            "type": "number",
+            "title": {
+              "en": "Minimum export buffer (W)",
+              "nl": "Minimum exportbuffer (W)"
+            },
+            "example": 50
+          },
+          {
+            "name": "predicted_grid",
+            "type": "number",
+            "title": {
+              "en": "Predicted grid after limit (W)",
+              "nl": "Verwacht net na begrenzing (W)"
+            },
+            "example": -50
+          }
+        ],
+        "id": "pv_power_limit_updated"
+      },
+      {
+        "title": {
+          "en": "Request Battery 1 SoC is needed",
+          "nl": "SoC batterij 1 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 1 SoC is needed",
+          "nl": "SoC batterij 1 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery1_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 2 SoC is needed",
+          "nl": "SoC batterij 2 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 2 SoC is needed",
+          "nl": "SoC batterij 2 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery2_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 3 SoC is needed",
+          "nl": "SoC batterij 3 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 3 SoC is needed",
+          "nl": "SoC batterij 3 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery3_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 4 SoC is needed",
+          "nl": "SoC batterij 4 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 4 SoC is needed",
+          "nl": "SoC batterij 4 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery4_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 5 SoC is needed",
+          "nl": "SoC batterij 5 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 5 SoC is needed",
+          "nl": "SoC batterij 5 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery5_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 6 SoC is needed",
+          "nl": "SoC batterij 6 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 6 SoC is needed",
+          "nl": "SoC batterij 6 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery6_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 7 SoC is needed",
+          "nl": "SoC batterij 7 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 7 SoC is needed",
+          "nl": "SoC batterij 7 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery7_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request Battery 8 SoC is needed",
+          "nl": "SoC batterij 8 is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request Battery 8 SoC is needed",
+          "nl": "SoC batterij 8 is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "id": "request_battery8_soc_needed"
+      },
+      {
+        "title": {
+          "en": "EV SoC is needed",
+          "nl": "EV-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "EV SoC is needed",
+          "nl": "EV-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV SoC support. It stops completely when EV SoC support is disabled.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV-SoC. Deze opvraag stopt volledig wanneer EV-SoC wordt uitgeschakeld."
+        },
+        "id": "request_ev_soc_needed"
+      },
+      {
+        "title": {
+          "en": "EV 1 SoC is needed",
+          "nl": "EV 1-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "EV 1 SoC is needed",
+          "nl": "EV 1-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV SoC support. It stops completely when EV SoC support is disabled.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV-SoC. Deze opvraag stopt volledig wanneer EV-SoC wordt uitgeschakeld."
+        },
+        "id": "request_ev1_soc_needed"
+      },
+      {
+        "title": {
+          "en": "EV 2 SoC is needed",
+          "nl": "EV 2-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "EV 2 SoC is needed",
+          "nl": "EV 2-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV 2 SoC support. It stops completely when EV 2 SoC support is disabled.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 2-SoC. Deze opvraag stopt volledig wanneer EV 2-SoC wordt uitgeschakeld."
+        },
+        "id": "request_ev2_soc_needed"
+      },
+      {
+        "title": {
+          "en": "EV 3 SoC is needed",
+          "nl": "EV 3-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "EV 3 SoC is needed",
+          "nl": "EV 3-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV 3 SoC support. It stops completely when EV 3 SoC support is disabled.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 3-SoC. Deze opvraag stopt volledig wanneer EV 3-SoC wordt uitgeschakeld."
+        },
+        "id": "request_ev3_soc_needed"
+      },
+      {
+        "title": {
+          "en": "EV 4 SoC is needed",
+          "nl": "EV 4-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "EV 4 SoC is needed",
+          "nl": "EV 4-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV 4 SoC support. It stops completely when EV 4 SoC support is disabled.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 4-SoC. Deze opvraag stopt volledig wanneer EV 4-SoC wordt uitgeschakeld."
+        },
+        "id": "request_ev4_soc_needed"
+      },
+      {
+        "title": {
+          "en": "Request forecast is needed",
+          "nl": "PV-forecast is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request forecast is needed",
+          "nl": "PV-forecast is nodig"
+        },
+        "hint": {
+          "en": "Fires every 30 minutes and once at app start. Use it to send the remaining PV forecast to HomeFlux EMS.",
+          "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de resterende PV-forecast naar HomeFlux EMS te sturen."
+        },
+        "id": "request_forecast_needed"
+      },
+      {
+        "title": {
+          "en": "Tomorrow PV forecast is needed",
+          "nl": "PV-voorspelling morgen is nodig"
+        },
+        "titleFormatted": {
+          "en": "Tomorrow PV forecast is needed",
+          "nl": "PV-voorspelling morgen is nodig"
+        },
+        "hint": {
+          "en": "Fires every 30 minutes and once at app start. Use it to send tomorrow's total PV forecast to HomeFlux EMS.",
+          "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de totale PV-voorspelling voor morgen naar HomeFlux EMS te sturen."
+        },
+        "id": "request_forecast_tomorrow_needed"
+      },
+      {
+        "title": {
+          "en": "Request PV power is needed",
+          "nl": "PV-vermogen is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request PV power is needed",
+          "nl": "PV-vermogen is nodig"
+        },
+        "hint": {
+          "en": "Fires every 15 seconds and once at app start. Use it to send the latest PV power to HomeFlux EMS.",
+          "nl": "Start elke 15 seconden en één keer bij appstart. Gebruik deze kaart om het actuele PV-vermogen naar HomeFlux EMS te sturen."
+        },
+        "id": "request_pv_power_needed"
+      },
+      {
+        "title": {
+          "en": "Battery 1: switch to charge mode",
+          "nl": "Batterij 1: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 1 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 1 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery1_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 1: charge power is updated",
+          "nl": "Batterij 1: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 1 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 1. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery1_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 1: switch to discharge mode",
+          "nl": "Batterij 1: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 1 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 1 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery1_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 1: discharge power is updated",
+          "nl": "Batterij 1: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 1 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 1. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery1_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 2: switch to charge mode",
+          "nl": "Batterij 2: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 2 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 2 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery2_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 2: charge power is updated",
+          "nl": "Batterij 2: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 2 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 2. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery2_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 2: switch to discharge mode",
+          "nl": "Batterij 2: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 2 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 2 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery2_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 2: discharge power is updated",
+          "nl": "Batterij 2: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 2 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 2. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery2_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 3: switch to charge mode",
+          "nl": "Batterij 3: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 3 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 3 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery3_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 3: charge power is updated",
+          "nl": "Batterij 3: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 3 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 3. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery3_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 3: switch to discharge mode",
+          "nl": "Batterij 3: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 3 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 3 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery3_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 3: discharge power is updated",
+          "nl": "Batterij 3: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 3 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 3. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery3_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 4: switch to charge mode",
+          "nl": "Batterij 4: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 4 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 4 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery4_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 4: charge power is updated",
+          "nl": "Batterij 4: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 4 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 4. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery4_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 4: switch to discharge mode",
+          "nl": "Batterij 4: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 4 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 4 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery4_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 4: discharge power is updated",
+          "nl": "Batterij 4: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 4 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 4. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery4_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 5: switch to charge mode",
+          "nl": "Batterij 5: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 5 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 5 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery5_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 5: charge power is updated",
+          "nl": "Batterij 5: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 5 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 5. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery5_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 5: switch to discharge mode",
+          "nl": "Batterij 5: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 5 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 5 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery5_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 5: discharge power is updated",
+          "nl": "Batterij 5: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 5 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 5. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery5_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 6: switch to charge mode",
+          "nl": "Batterij 6: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 6 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 6 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery6_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 6: charge power is updated",
+          "nl": "Batterij 6: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 6 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 6. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery6_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 6: switch to discharge mode",
+          "nl": "Batterij 6: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 6 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 6 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery6_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 6: discharge power is updated",
+          "nl": "Batterij 6: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 6 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 6. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery6_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 7: switch to charge mode",
+          "nl": "Batterij 7: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 7 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 7 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery7_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 7: charge power is updated",
+          "nl": "Batterij 7: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 7 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 7. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery7_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 7: switch to discharge mode",
+          "nl": "Batterij 7: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 7 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 7 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery7_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 7: discharge power is updated",
+          "nl": "Batterij 7: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 7 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 7. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery7_discharge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 8: switch to charge mode",
+          "nl": "Batterij 8: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 8 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 8 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery8_charge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 8: charge power is updated",
+          "nl": "Batterij 8: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 8 charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van batterij 8. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery8_charge_power"
+      },
+      {
+        "title": {
+          "en": "Battery 8: switch to discharge mode",
+          "nl": "Batterij 8: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for battery 8 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor batterij 8 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "id": "split_command_battery8_discharge_mode"
+      },
+      {
+        "title": {
+          "en": "Battery 8: discharge power is updated",
+          "nl": "Batterij 8: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for battery 8 discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 8. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "id": "split_command_battery8_discharge_power"
+      }
+    ],
+    "conditions": [
+      {
+        "title": {
+          "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
+          "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
+        },
+        "args": [
+          {
+            "name": "hours",
+            "type": "number",
+            "title": {
+              "en": "Hours",
+              "nl": "Uren"
+            },
+            "min": 0.25,
+            "max": 12,
+            "step": 0.25
+          }
+        ],
+        "titleFormatted": {
+          "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
+          "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
+        },
+        "id": "homey_energy_cheapest_block_now"
+      },
+      {
+        "title": {
+          "en": "Current Homey Energy price is among the [[hours]] cheapest hours today",
+          "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag"
+        },
+        "args": [
+          {
+            "name": "hours",
+            "type": "number",
+            "title": {
+              "en": "Hours",
+              "nl": "Uren"
+            },
+            "min": 0.25,
+            "max": 12,
+            "step": 0.25
+          }
+        ],
+        "titleFormatted": {
+          "en": "Current Homey Energy price is among the [[hours]] cheapest hours today",
+          "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag"
+        },
+        "id": "homey_energy_cheapest_now"
+      },
+      {
+        "title": {
+          "en": "Current Homey Energy price is among the [[hours]] most expensive hours today",
+          "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag"
+        },
+        "args": [
+          {
+            "name": "hours",
+            "type": "number",
+            "title": {
+              "en": "Hours",
+              "nl": "Uren"
+            },
+            "min": 0.25,
+            "max": 12,
+            "step": 0.25
+          }
+        ],
+        "titleFormatted": {
+          "en": "Current Homey Energy price is among the [[hours]] most expensive hours today",
+          "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag"
+        },
+        "id": "homey_energy_expensive_now"
+      }
+    ],
+    "actions": [
+      {
+        "title": {
+          "en": "Get EMS status",
+          "nl": "Haal EMS-status op"
+        },
+        "titleFormatted": {
+          "en": "Get current HomeFlux EMS status",
+          "nl": "Haal actuele HomeFlux EMS-status op"
+        },
+        "hint": {
+          "en": "Returns the current EMS status as tokens. Connect the status token to Homey's own Logic card to write it to a text variable.",
+          "nl": "Geeft de actuele EMS-status als tokens terug. Verbind de status-tag met Homey's eigen Logic-kaart om hem naar een tekstvariabele te schrijven."
+        },
+        "tokens": [
+          {
+            "name": "status",
+            "type": "string",
+            "title": {
+              "en": "EMS status",
+              "nl": "EMS-status"
+            }
+          },
+          {
+            "name": "tariff",
+            "type": "string",
+            "title": {
+              "en": "Current tariff",
+              "nl": "Huidig tarief"
+            }
+          },
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Operating mode",
+              "nl": "Werkingsmodus"
+            }
+          },
+          {
+            "name": "next_change",
+            "type": "string",
+            "title": {
+              "en": "Next tariff",
+              "nl": "Volgend tarief"
+            }
+          }
+        ],
+        "id": "get_ems_status"
+      },
+      {
+        "title": {
+          "en": "Recalculate EMS now",
+          "nl": "Bereken EMS nu opnieuw"
+        },
+        "id": "recalculate_now"
+      },
+      {
+        "title": {
+          "en": "Refresh Homey Energy prices",
+          "nl": "Vernieuw Homey Energy prijzen"
+        },
+        "hint": {
+          "en": "Refreshes Homey's own dynamic electricity price data for monitoring.",
+          "nl": "Leest Homey's eigen dynamische elektriciteitsprijzen opnieuw in voor monitoring."
+        },
+        "id": "refresh_homey_energy_prices"
+      },
+      {
+        "title": {
+          "en": "Set battery SoC",
+          "nl": "Stel batterij-SoC in"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "Battery 1",
+                  "nl": "Batterij 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "Battery 2",
+                  "nl": "Batterij 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "Battery 3",
+                  "nl": "Batterij 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "Battery 4",
+                  "nl": "Batterij 4"
+                }
+              },
+              {
+                "id": "5",
+                "title": {
+                  "en": "Battery 5",
+                  "nl": "Batterij 5"
+                }
+              },
+              {
+                "id": "6",
+                "title": {
+                  "en": "Battery 6",
+                  "nl": "Batterij 6"
+                }
+              },
+              {
+                "id": "7",
+                "title": {
+                  "en": "Battery 7",
+                  "nl": "Batterij 7"
+                }
+              },
+              {
+                "id": "8",
+                "title": {
+                  "en": "Battery 8",
+                  "nl": "Batterij 8"
+                }
+              }
+            ]
+          },
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SoC (%)",
+              "nl": "SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[battery]] SoC to [[soc]]%",
+          "nl": "Stel [[battery]] SoC in op [[soc]]%"
+        },
+        "id": "set_battery_soc"
+      },
+      {
+        "title": {
+          "en": "Override EV mode for one charging session",
+          "nl": "Override EV-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected EV operating mode for one connection session. If the EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV mode is never overwritten.",
+          "nl": "Gebruik tijdelijk de gekozen EV-werkingsmodus voor één verbindingssessie. Is de EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV-modus wordt nooit overschreven."
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV operating mode",
+              "nl": "EV-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV override for one session: [[mode]]",
+          "nl": "EV-override voor één laadbeurt: [[mode]]"
+        },
+        "id": "set_ev_session_override"
+      },
+      {
+        "title": {
+          "en": "Set EV SoC",
+          "nl": "Stel EV-SoC in"
+        },
+        "hint": {
+          "en": "Push the current EV state of charge to HomeFlux. Only used when EV SoC support is enabled in settings.",
+          "nl": "Stuur de actuele EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV-SoC in de instellingen is ingeschakeld."
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV SoC (%)",
+              "nl": "EV SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV SoC to [[soc]]%",
+          "nl": "Stel EV-SoC in op [[soc]]%"
+        },
+        "id": "set_ev_soc"
+      },
+      {
+        "title": {
+          "en": "Set EV status",
+          "nl": "Stel EV-status in"
+        },
+        "hint": {
+          "en": "Push EV availability and actual charging current to HomeFlux. EV SoC has its own Flow card.",
+          "nl": "Stuur EV-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV-SoC heeft een aparte Flow-kaart."
+        },
+        "args": [
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV available",
+              "nl": "EV beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV: [[connected]], [[charge_current]] A",
+          "nl": "Stel EV in: [[connected]], [[charge_current]] A"
+        },
+        "id": "set_ev_status"
+      },
+      {
+        "title": {
+          "en": "Override EV 1 mode for one charging session",
+          "nl": "Override EV 1-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected EV 1 operating mode for one connection session. If the EV 1 is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV 1 mode is never overwritten.",
+          "nl": "Gebruik tijdelijk de gekozen EV 1-werkingsmodus voor één verbindingssessie. Is de EV 1 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 1-modus wordt nooit overschreven."
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 1 operating mode",
+              "nl": "EV 1-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 1 override for one session: [[mode]]",
+          "nl": "EV 1-override voor één laadbeurt: [[mode]]"
+        },
+        "id": "set_ev1_session_override"
+      },
+      {
+        "title": {
+          "en": "Set EV 1 SoC",
+          "nl": "Stel EV 1-SoC in"
+        },
+        "hint": {
+          "en": "Push the current EV 1 state of charge to HomeFlux. Only used when EV 1 SoC support is enabled in settings.",
+          "nl": "Stuur de actuele EV 1-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 1-SoC in de instellingen is ingeschakeld."
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV 1 SoC (%)",
+              "nl": "EV 1 SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 1 SoC to [[soc]]%",
+          "nl": "Stel EV 1-SoC in op [[soc]]%"
+        },
+        "id": "set_ev1_soc"
+      },
+      {
+        "title": {
+          "en": "Set EV 1 status",
+          "nl": "Stel EV 1-status in"
+        },
+        "hint": {
+          "en": "Push EV 1 availability and actual charging current to HomeFlux. EV 1 SoC has its own Flow card.",
+          "nl": "Stuur EV 1-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 1-SoC heeft een aparte Flow-kaart."
+        },
+        "args": [
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 1 available",
+              "nl": "EV 1 beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 1: [[connected]], [[charge_current]] A",
+          "nl": "Stel EV 1 in: [[connected]], [[charge_current]] A"
+        },
+        "id": "set_ev1_status"
+      },
+      {
+        "title": {
+          "en": "Override EV 2 mode for one charging session",
+          "nl": "Override EV 2-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected EV 2 operating mode for one connection session. If the EV 2 is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV 2 mode is never overwritten.",
+          "nl": "Gebruik tijdelijk de gekozen EV 2-werkingsmodus voor één verbindingssessie. Is de EV 2 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 2-modus wordt nooit overschreven."
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 2 operating mode",
+              "nl": "EV 2-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 2 override for one session: [[mode]]",
+          "nl": "EV 2-override voor één laadbeurt: [[mode]]"
+        },
+        "id": "set_ev2_session_override"
+      },
+      {
+        "title": {
+          "en": "Set EV 2 SoC",
+          "nl": "Stel EV 2-SoC in"
+        },
+        "hint": {
+          "en": "Push the current EV 2 state of charge to HomeFlux. Only used when EV 2 SoC support is enabled in settings.",
+          "nl": "Stuur de actuele EV 2-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 2-SoC in de instellingen is ingeschakeld."
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV 2 SoC (%)",
+              "nl": "EV 2 SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 2 SoC to [[soc]]%",
+          "nl": "Stel EV 2-SoC in op [[soc]]%"
+        },
+        "id": "set_ev2_soc"
+      },
+      {
+        "title": {
+          "en": "Set EV 2 status",
+          "nl": "Stel EV 2-status in"
+        },
+        "hint": {
+          "en": "Push EV 2 availability and actual charging current to HomeFlux. EV 2 SoC has its own Flow card.",
+          "nl": "Stuur EV 2-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 2-SoC heeft een aparte Flow-kaart."
+        },
+        "args": [
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 2 available",
+              "nl": "EV 2 beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 2: [[connected]], [[charge_current]] A",
+          "nl": "Stel EV 2 in: [[connected]], [[charge_current]] A"
+        },
+        "id": "set_ev2_status"
+      },
+      {
+        "title": {
+          "en": "Override EV 3 mode for one charging session",
+          "nl": "Override EV 3-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected EV 3 operating mode for one connection session. If the EV 3 is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV 3 mode is never overwritten.",
+          "nl": "Gebruik tijdelijk de gekozen EV 3-werkingsmodus voor één verbindingssessie. Is de EV 3 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 3-modus wordt nooit overschreven."
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 3 operating mode",
+              "nl": "EV 3-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 3 override for one session: [[mode]]",
+          "nl": "EV 3-override voor één laadbeurt: [[mode]]"
+        },
+        "id": "set_ev3_session_override"
+      },
+      {
+        "title": {
+          "en": "Set EV 3 SoC",
+          "nl": "Stel EV 3-SoC in"
+        },
+        "hint": {
+          "en": "Push the current EV 3 state of charge to HomeFlux. Only used when EV 3 SoC support is enabled in settings.",
+          "nl": "Stuur de actuele EV 3-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 3-SoC in de instellingen is ingeschakeld."
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV 3 SoC (%)",
+              "nl": "EV 3 SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 3 SoC to [[soc]]%",
+          "nl": "Stel EV 3-SoC in op [[soc]]%"
+        },
+        "id": "set_ev3_soc"
+      },
+      {
+        "title": {
+          "en": "Set EV 3 status",
+          "nl": "Stel EV 3-status in"
+        },
+        "hint": {
+          "en": "Push EV 3 availability and actual charging current to HomeFlux. EV 3 SoC has its own Flow card.",
+          "nl": "Stuur EV 3-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 3-SoC heeft een aparte Flow-kaart."
+        },
+        "args": [
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 3 available",
+              "nl": "EV 3 beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 3: [[connected]], [[charge_current]] A",
+          "nl": "Stel EV 3 in: [[connected]], [[charge_current]] A"
+        },
+        "id": "set_ev3_status"
+      },
+      {
+        "title": {
+          "en": "Override EV 4 mode for one charging session",
+          "nl": "Override EV 4-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected EV 4 operating mode for one connection session. If the EV 4 is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV 4 mode is never overwritten.",
+          "nl": "Gebruik tijdelijk de gekozen EV 4-werkingsmodus voor één verbindingssessie. Is de EV 4 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 4-modus wordt nooit overschreven."
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 4 operating mode",
+              "nl": "EV 4-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 4 override for one session: [[mode]]",
+          "nl": "EV 4-override voor één laadbeurt: [[mode]]"
+        },
+        "id": "set_ev4_session_override"
+      },
+      {
+        "title": {
+          "en": "Set EV 4 SoC",
+          "nl": "Stel EV 4-SoC in"
+        },
+        "hint": {
+          "en": "Push the current EV 4 state of charge to HomeFlux. Only used when EV 4 SoC support is enabled in settings.",
+          "nl": "Stuur de actuele EV 4-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 4-SoC in de instellingen is ingeschakeld."
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV 4 SoC (%)",
+              "nl": "EV 4 SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 4 SoC to [[soc]]%",
+          "nl": "Stel EV 4-SoC in op [[soc]]%"
+        },
+        "id": "set_ev4_soc"
+      },
+      {
+        "title": {
+          "en": "Set EV 4 status",
+          "nl": "Stel EV 4-status in"
+        },
+        "hint": {
+          "en": "Push EV 4 availability and actual charging current to HomeFlux. EV 4 SoC has its own Flow card.",
+          "nl": "Stuur EV 4-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 4-SoC heeft een aparte Flow-kaart."
+        },
+        "args": [
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 4 available",
+              "nl": "EV 4 beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV 4: [[connected]], [[charge_current]] A",
+          "nl": "Stel EV 4 in: [[connected]], [[charge_current]] A"
+        },
+        "id": "set_ev4_status"
+      },
+      {
+        "title": {
+          "en": "Set EMS mode",
+          "nl": "Stel EMS-modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Automatic",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "self_consumption",
+                "title": {
+                  "en": "Self consumption",
+                  "nl": "Zelfconsumptie"
+                }
+              },
+              {
+                "id": "solar_capture",
+                "title": {
+                  "en": "Battery save",
+                  "nl": "Batterij sparen"
+                }
+              },
+              {
+                "id": "avoid_import",
+                "title": {
+                  "en": "Avoid grid import",
+                  "nl": "Netimport vermijden"
+                }
+              },
+              {
+                "id": "manual_charge",
+                "title": {
+                  "en": "Forced charge",
+                  "nl": "Geforceerd laden"
+                }
+              },
+              {
+                "id": "standby",
+                "title": {
+                  "en": "Standby",
+                  "nl": "Stand-by"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EMS mode to [[mode]]",
+          "nl": "Stel EMS-modus in op [[mode]]"
+        },
+        "id": "set_forced_mode"
+      },
+      {
+        "title": {
+          "en": "Set remaining PV forecast",
+          "nl": "Stel resterende PV-voorspelling in"
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Remaining PV (kWh)",
+              "nl": "Resterende PV (kWh)"
+            },
+            "min": 0,
+            "max": 200,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set remaining PV forecast to [[energy]] kWh",
+          "nl": "Stel resterende PV-voorspelling in op [[energy]] kWh"
+        },
+        "id": "set_forecast_remaining"
+      },
+      {
+        "title": {
+          "en": "Set tomorrow PV forecast",
+          "nl": "Stel PV-voorspelling morgen in"
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Tomorrow PV (kWh)",
+              "nl": "PV morgen (kWh)"
+            },
+            "min": 0,
+            "max": 200,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set tomorrow PV forecast to [[energy]] kWh",
+          "nl": "Stel PV-voorspelling morgen in op [[energy]] kWh"
+        },
+        "id": "set_forecast_tomorrow"
+      },
+      {
+        "title": {
+          "en": "Set grid power",
+          "nl": "Stel netvermogen in"
+        },
+        "hint": {
+          "en": "Positive is grid import, negative is export.",
+          "nl": "Positief is netafname, negatief is injectie."
+        },
+        "args": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Grid power (W)",
+              "nl": "Netvermogen (W)"
+            },
+            "min": -50000,
+            "max": 50000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set grid power to [[power]] W",
+          "nl": "Stel netvermogen in op [[power]] W"
+        },
+        "id": "set_grid_power"
+      },
+      {
+        "title": {
+          "en": "Set HVAC automatic control",
+          "nl": "Stel HVAC automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC automatic control to [[enabled]]",
+          "nl": "Stel HVAC automatische sturing in op [[enabled]]"
+        },
+        "deprecated": true,
+        "id": "set_hvac_automatic_control"
+      },
+      {
+        "title": {
+          "en": "Set HVAC fan speed",
+          "nl": "Stel HVAC-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC fan speed to [[speed]]",
+          "nl": "Stel HVAC-ventilatorsnelheid in op [[speed]]"
+        },
+        "deprecated": true,
+        "id": "set_hvac_fan_speed"
+      },
+      {
+        "title": {
+          "en": "Set HVAC mode",
+          "nl": "Stel HVAC-modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC mode to [[mode]]",
+          "nl": "Stel HVAC-modus in op [[mode]]"
+        },
+        "deprecated": true,
+        "id": "set_hvac_mode"
+      },
+      {
+        "title": {
+          "en": "Set HVAC outdoor temperature",
+          "nl": "Stel HVAC buitentemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Outdoor temperature for all HVACs (C)",
+              "nl": "Buitentemperatuur voor alle HVACs (C)"
+            },
+            "min": -50,
+            "max": 70,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC outdoor temperature to [[temperature]] C",
+          "nl": "Stel HVAC buitentemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac_outdoor_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC room temperature",
+          "nl": "Stel HVAC ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC room temperature to [[temperature]] C",
+          "nl": "Stel HVAC ruimtetemperatuur in op [[temperature]] C"
+        },
+        "deprecated": true,
+        "id": "set_hvac_room_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC setpoint",
+          "nl": "Stel HVAC-setpoint in"
+        },
+        "args": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC setpoint to [[setpoint]] C",
+          "nl": "Stel HVAC-setpoint in op [[setpoint]] C"
+        },
+        "deprecated": true,
+        "id": "set_hvac_setpoint"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 1 automatic control",
+          "nl": "Stel HVAC 1 automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 1 automatic control to [[enabled]]",
+          "nl": "Stel HVAC 1 automatische sturing in op [[enabled]]"
+        },
+        "id": "set_hvac1_automatic_control"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 1 fan speed",
+          "nl": "Stel HVAC 1-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 1 fan speed to [[speed]]",
+          "nl": "Stel HVAC 1-ventilatorsnelheid in op [[speed]]"
+        },
+        "id": "set_hvac1_fan_speed"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 1 mode",
+          "nl": "Stel HVAC 1-modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 1 mode to [[mode]]",
+          "nl": "Stel HVAC 1-modus in op [[mode]]"
+        },
+        "id": "set_hvac1_mode"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 1 room temperature",
+          "nl": "Stel HVAC 1 ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 1 room temperature to [[temperature]] C",
+          "nl": "Stel HVAC 1 ruimtetemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac1_room_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 1 setpoint",
+          "nl": "Stel HVAC 1-setpoint in"
+        },
+        "args": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 1 setpoint to [[setpoint]] C",
+          "nl": "Stel HVAC 1-setpoint in op [[setpoint]] C"
+        },
+        "id": "set_hvac1_setpoint"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 2 automatic control",
+          "nl": "Stel HVAC 2 automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 2 automatic control to [[enabled]]",
+          "nl": "Stel HVAC 2 automatische sturing in op [[enabled]]"
+        },
+        "id": "set_hvac2_automatic_control"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 2 fan speed",
+          "nl": "Stel HVAC 2-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 2 fan speed to [[speed]]",
+          "nl": "Stel HVAC 2-ventilatorsnelheid in op [[speed]]"
+        },
+        "id": "set_hvac2_fan_speed"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 2 mode",
+          "nl": "Stel HVAC 2-modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 2 mode to [[mode]]",
+          "nl": "Stel HVAC 2-modus in op [[mode]]"
+        },
+        "id": "set_hvac2_mode"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 2 outdoor temperature",
+          "nl": "Stel HVAC 2 buitentemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Outdoor temperature (C)",
+              "nl": "Buitentemperatuur (C)"
+            },
+            "min": -50,
+            "max": 70,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 2 outdoor temperature to [[temperature]] C",
+          "nl": "Stel HVAC 2 buitentemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac2_outdoor_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 2 room temperature",
+          "nl": "Stel HVAC 2 ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 2 room temperature to [[temperature]] C",
+          "nl": "Stel HVAC 2 ruimtetemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac2_room_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 2 setpoint",
+          "nl": "Stel HVAC 2-setpoint in"
+        },
+        "args": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 2 setpoint to [[setpoint]] C",
+          "nl": "Stel HVAC 2-setpoint in op [[setpoint]] C"
+        },
+        "id": "set_hvac2_setpoint"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 3 automatic control",
+          "nl": "Stel HVAC 3 automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 3 automatic control to [[enabled]]",
+          "nl": "Stel HVAC 3 automatische sturing in op [[enabled]]"
+        },
+        "id": "set_hvac3_automatic_control"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 3 fan speed",
+          "nl": "Stel HVAC 3-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 3 fan speed to [[speed]]",
+          "nl": "Stel HVAC 3-ventilatorsnelheid in op [[speed]]"
+        },
+        "id": "set_hvac3_fan_speed"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 3 mode",
+          "nl": "Stel HVAC 3-modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 3 mode to [[mode]]",
+          "nl": "Stel HVAC 3-modus in op [[mode]]"
+        },
+        "id": "set_hvac3_mode"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 3 outdoor temperature",
+          "nl": "Stel HVAC 3 buitentemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Outdoor temperature (C)",
+              "nl": "Buitentemperatuur (C)"
+            },
+            "min": -50,
+            "max": 70,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 3 outdoor temperature to [[temperature]] C",
+          "nl": "Stel HVAC 3 buitentemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac3_outdoor_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 3 room temperature",
+          "nl": "Stel HVAC 3 ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 3 room temperature to [[temperature]] C",
+          "nl": "Stel HVAC 3 ruimtetemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac3_room_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 3 setpoint",
+          "nl": "Stel HVAC 3-setpoint in"
+        },
+        "args": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 3 setpoint to [[setpoint]] C",
+          "nl": "Stel HVAC 3-setpoint in op [[setpoint]] C"
+        },
+        "id": "set_hvac3_setpoint"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 4 automatic control",
+          "nl": "Stel HVAC 4 automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 4 automatic control to [[enabled]]",
+          "nl": "Stel HVAC 4 automatische sturing in op [[enabled]]"
+        },
+        "id": "set_hvac4_automatic_control"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 4 fan speed",
+          "nl": "Stel HVAC 4-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 4 fan speed to [[speed]]",
+          "nl": "Stel HVAC 4-ventilatorsnelheid in op [[speed]]"
+        },
+        "id": "set_hvac4_fan_speed"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 4 mode",
+          "nl": "Stel HVAC 4-modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 4 mode to [[mode]]",
+          "nl": "Stel HVAC 4-modus in op [[mode]]"
+        },
+        "id": "set_hvac4_mode"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 4 outdoor temperature",
+          "nl": "Stel HVAC 4 buitentemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Outdoor temperature (C)",
+              "nl": "Buitentemperatuur (C)"
+            },
+            "min": -50,
+            "max": 70,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 4 outdoor temperature to [[temperature]] C",
+          "nl": "Stel HVAC 4 buitentemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac4_outdoor_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 4 room temperature",
+          "nl": "Stel HVAC 4 ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 4 room temperature to [[temperature]] C",
+          "nl": "Stel HVAC 4 ruimtetemperatuur in op [[temperature]] C"
+        },
+        "id": "set_hvac4_room_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC 4 setpoint",
+          "nl": "Stel HVAC 4-setpoint in"
+        },
+        "args": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set HVAC 4 setpoint to [[setpoint]] C",
+          "nl": "Stel HVAC 4-setpoint in op [[setpoint]] C"
+        },
+        "id": "set_hvac4_setpoint"
+      },
+      {
+        "title": {
+          "en": "Set PV power",
+          "nl": "Stel PV-vermogen in"
+        },
+        "args": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "PV power (W)",
+              "nl": "PV-vermogen (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set PV power to [[power]] W",
+          "nl": "Stel PV-vermogen in op [[power]] W"
+        },
+        "id": "set_pv_power"
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "name": {
+        "en": "HomeFlux EMS",
+        "nl": "HomeFlux EMS"
+      },
+      "class": "other",
+      "platforms": [
+        "local"
+      ],
+      "capabilities": [
+        "ems_control_mode",
+        "ems_status",
+        "ems_tariff",
+        "ems_action",
+        "ems_battery_command",
+        "ems_charge_plan",
+        "ems_ev_status",
+        "ems_ev_override",
+        "ems_hvac_status",
+        "ems_override_active",
+        "alarm_ems_input",
+        "alarm_ems_balance"
+      ],
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          },
+          "options": {
+            "singular": true
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "images": {
+        "small": "/drivers/ems/assets/images/small.png",
+        "large": "/drivers/ems/assets/images/large.png",
+        "xlarge": "/drivers/ems/assets/images/xlarge.png"
+      },
+      "id": "ems"
+    }
+  ],
+  "capabilities": {
+    "alarm_ems_balance": {
+      "type": "boolean",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Battery Balance fault",
+        "nl": "Battery Balance fout"
+      },
+      "getable": true,
+      "setable": false,
+      "insights": false,
+      "insightsTitleTrue": {
+        "en": "Battery Balance fault detected",
+        "nl": "Battery Balance fout gedetecteerd"
+      },
+      "insightsTitleFalse": {
+        "en": "Battery Balance is OK",
+        "nl": "Battery Balance is OK"
+      },
+      "icon": "/assets/capabilities/balance.svg"
+    },
+    "alarm_ems_input": {
+      "type": "boolean",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Missing EMS input",
+        "nl": "EMS-invoer ontbreekt"
+      },
+      "getable": true,
+      "setable": false,
+      "insights": false,
+      "insightsTitleTrue": {
+        "en": "Required EMS input is missing",
+        "nl": "Vereiste EMS-invoer ontbreekt"
+      },
+      "insightsTitleFalse": {
+        "en": "All required EMS input is available",
+        "nl": "Alle vereiste EMS-invoer is beschikbaar"
+      },
+      "icon": "/assets/capabilities/input-warning.svg"
+    },
+    "ems_action": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Operation",
+        "nl": "Werking"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/action.svg"
+    },
+    "ems_battery_command": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Battery command",
+        "nl": "Batterijcommando"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/battery-command.svg"
+    },
+    "ems_charge_plan": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Next charge plan",
+        "nl": "Volgend laadplan"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/charge-plan.svg"
+    },
+    "ems_control_mode": {
+      "type": "enum",
+      "uiComponent": "picker",
+      "title": {
+        "en": "EMS mode",
+        "nl": "EMS-modus"
+      },
+      "getable": true,
+      "setable": true,
+      "values": [
+        {
+          "id": "auto",
+          "title": {
+            "en": "Automatic",
+            "nl": "Automatisch"
+          }
+        },
+        {
+          "id": "self_consumption",
+          "title": {
+            "en": "Self consumption",
+            "nl": "Zelfconsumptie"
+          }
+        },
+        {
+          "id": "solar_capture",
+          "title": {
+            "en": "Battery save",
+            "nl": "Batterij sparen"
+          }
+        },
+        {
+          "id": "avoid_import",
+          "title": {
+            "en": "Avoid import",
+            "nl": "Net vermijden"
+          }
+        },
+        {
+          "id": "manual_charge",
+          "title": {
+            "en": "Forced charge",
+            "nl": "Geforceerd laden"
+          }
+        },
+        {
+          "id": "standby",
+          "title": {
+            "en": "Standby",
+            "nl": "Stand-by"
+          }
+        }
+      ],
+      "icon": "/assets/capabilities/mode.svg"
+    },
+    "ems_ev_override": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "EV override",
+        "nl": "EV-override"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/ev-override.svg"
+    },
+    "ems_ev_status": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "EV status",
+        "nl": "EV-status"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/ev.svg"
+    },
+    "ems_hvac_status": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "HVAC status",
+        "nl": "HVAC-status"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/hvac.svg"
+    },
+    "ems_override_active": {
+      "type": "boolean",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Manual override",
+        "nl": "Handmatige override"
+      },
+      "getable": true,
+      "setable": false,
+      "insights": false,
+      "insightsTitleTrue": {
+        "en": "Manual EMS override active",
+        "nl": "Handmatige EMS-override actief"
+      },
+      "insightsTitleFalse": {
+        "en": "EMS is automatic",
+        "nl": "EMS staat op automatisch"
+      },
+      "icon": "/assets/capabilities/override.svg"
+    },
+    "ems_status": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "EMS status",
+        "nl": "EMS-status"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/status.svg"
+    },
+    "ems_tariff": {
+      "type": "string",
+      "uiComponent": "sensor",
+      "title": {
+        "en": "Current tariff",
+        "nl": "Huidig tarief"
+      },
+      "getable": true,
+      "setable": false,
+      "icon": "/assets/capabilities/tariff.svg"
+    }
+  }
+}

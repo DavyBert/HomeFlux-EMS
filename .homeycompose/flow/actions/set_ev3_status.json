@@ -1,0 +1,51 @@
+{
+  "title": {
+    "en": "Set EV 3 status",
+    "nl": "Stel EV 3-status in"
+  },
+  "hint": {
+    "en": "Push EV 3 availability and actual charging current to HomeFlux. EV 3 SoC has its own Flow card.",
+    "nl": "Stuur EV 3-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 3-SoC heeft een aparte Flow-kaart."
+  },
+  "args": [
+    {
+      "name": "connected",
+      "type": "dropdown",
+      "title": {
+        "en": "EV 3 available",
+        "nl": "EV 3 beschikbaar/aangesloten"
+      },
+      "values": [
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        },
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        }
+      ]
+    },
+    {
+      "name": "charge_current",
+      "type": "number",
+      "title": {
+        "en": "Actual charge current (A)",
+        "nl": "Actuele laadstroom (A)"
+      },
+      "min": 0,
+      "max": 64,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set EV 3: [[connected]], [[charge_current]] A",
+    "nl": "Stel EV 3 in: [[connected]], [[charge_current]] A"
+  }
+}

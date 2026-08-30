@@ -1,0 +1,26 @@
+{
+  "title": {
+    "en": "HVAC 3 setpoint command is updated",
+    "nl": "HVAC 3-setpoint is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "setpoint",
+      "type": "number",
+      "title": {
+        "en": "Setpoint (C)",
+        "nl": "Setpoint (C)"
+      },
+      "example": 21.5
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "PV-overschot weg - setpoint geleidelijk terug"
+    }
+  ]
+}

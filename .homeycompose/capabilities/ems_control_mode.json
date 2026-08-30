@@ -1,0 +1,55 @@
+{
+  "type": "enum",
+  "uiComponent": "picker",
+  "title": {
+    "en": "EMS mode",
+    "nl": "EMS-modus"
+  },
+  "getable": true,
+  "setable": true,
+  "values": [
+    {
+      "id": "auto",
+      "title": {
+        "en": "Automatic",
+        "nl": "Automatisch"
+      }
+    },
+    {
+      "id": "self_consumption",
+      "title": {
+        "en": "Self consumption",
+        "nl": "Zelfconsumptie"
+      }
+    },
+    {
+      "id": "solar_capture",
+      "title": {
+        "en": "Battery save",
+        "nl": "Batterij sparen"
+      }
+    },
+    {
+      "id": "avoid_import",
+      "title": {
+        "en": "Avoid import",
+        "nl": "Net vermijden"
+      }
+    },
+    {
+      "id": "manual_charge",
+      "title": {
+        "en": "Forced charge",
+        "nl": "Geforceerd laden"
+      }
+    },
+    {
+      "id": "standby",
+      "title": {
+        "en": "Standby",
+        "nl": "Stand-by"
+      }
+    }
+  ],
+  "icon": "/assets/capabilities/mode.svg"
+}

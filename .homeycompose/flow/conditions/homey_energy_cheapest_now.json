@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Current Homey Energy price is among the [[hours]] cheapest hours today",
+    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag"
+  },
+  "args": [
+    {
+      "name": "hours",
+      "type": "number",
+      "title": {
+        "en": "Hours",
+        "nl": "Uren"
+      },
+      "min": 0.25,
+      "max": 12,
+      "step": 0.25
+    }
+  ],
+  "titleFormatted": {
+    "en": "Current Homey Energy price is among the [[hours]] cheapest hours today",
+    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag"
+  }
+}

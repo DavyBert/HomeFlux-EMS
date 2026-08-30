@@ -1,0 +1,8 @@
+{
+  "title":{"en":"EV charging permission is updated","nl":"EV laden toegestaan is bijgewerkt"},
+  "tokens":[
+    {"name":"allowed","type":"string","title":{"en":"Charging allowed","nl":"Laden toegestaan"},"example":"Ja"},
+    {"name":"allowed_value","type":"number","title":{"en":"Allowed (1/0)","nl":"Toegestaan (1/0)"},"example":1},
+    {"name":"reason","type":"string","title":{"en":"Reason","nl":"Reden"},"example":"Laden met PV-overschot"}
+  ]
+}

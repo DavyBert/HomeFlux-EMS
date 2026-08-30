@@ -1,0 +1,21 @@
+{
+  "title": {
+    "en": "Battery 3: discharge power is updated",
+    "nl": "Batterij 3: ontlaadvermogen is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the power token for battery 3 discharge power. After a discharge-mode switch this fires 1 second later.",
+    "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 3. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+  },
+  "tokens": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Discharge power (W)",
+        "nl": "Ontlaadvermogen (W)"
+      },
+      "example": 1000
+    }
+  ]
+}

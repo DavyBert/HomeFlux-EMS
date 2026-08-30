@@ -1,0 +1,17 @@
+{
+  "name": "com.homeflux.ems",
+  "version": "0.3.9",
+  "description": "HomeFlux EMS — Your energy, arranged differently",
+  "main": "app.js",
+  "private": true,
+  "scripts": {
+    "test": "node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/settings-startup.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js",
+    "check": "node --check app.js && node --check api.js && node --check lib/ems-engine.js && node --check lib/homey-energy.js && node --check lib/flexible-loads.js && node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/settings-startup.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "homey-api": "3.19.2"
+  }
+}

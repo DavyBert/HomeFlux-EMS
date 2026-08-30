@@ -1,0 +1,30 @@
+{
+  "title": {
+    "en": "EV charge mode is updated",
+    "nl": "EV-laadmodus is bijgewerkt"
+  },
+  "hint": {
+    "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+    "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+  },
+  "tokens": [
+    {
+      "name": "charge_mode",
+      "type": "string",
+      "title": {
+        "en": "Charge mode",
+        "nl": "Laadmodus"
+      },
+      "example": "smart"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Slim laden toegestaan"
+    }
+  ]
+}

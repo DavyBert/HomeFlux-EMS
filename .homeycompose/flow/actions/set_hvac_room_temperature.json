@@ -1,0 +1,24 @@
+{
+  "title": {
+    "en": "Set HVAC room temperature",
+    "nl": "Stel HVAC ruimtetemperatuur in"
+  },
+  "args": [
+    {
+      "name": "temperature",
+      "type": "number",
+      "title": {
+        "en": "Room temperature (C)",
+        "nl": "Ruimtetemperatuur (C)"
+      },
+      "min": -20,
+      "max": 60,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set HVAC room temperature to [[temperature]] C",
+    "nl": "Stel HVAC ruimtetemperatuur in op [[temperature]] C"
+  },
+  "deprecated": true
+}

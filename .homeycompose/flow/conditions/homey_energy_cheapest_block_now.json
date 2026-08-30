@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
+    "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
+  },
+  "args": [
+    {
+      "name": "hours",
+      "type": "number",
+      "title": {
+        "en": "Hours",
+        "nl": "Uren"
+      },
+      "min": 0.25,
+      "max": 12,
+      "step": 0.25
+    }
+  ],
+  "titleFormatted": {
+    "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
+    "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
+  }
+}

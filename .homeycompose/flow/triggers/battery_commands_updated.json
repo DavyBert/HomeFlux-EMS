@@ -1,0 +1,150 @@
+{
+  "title": {
+    "en": "Battery commands are updated",
+    "nl": "Batterijcommando's zijn bijgewerkt"
+  },
+  "hint": {
+    "en": "Fires when HomeFlux EMS publishes a new set of battery power commands.",
+    "nl": "Start wanneer HomeFlux EMS een nieuwe set batterijvermogens publiceert."
+  },
+  "tokens": [
+    {
+      "name": "battery_count",
+      "type": "number",
+      "title": {
+        "en": "Battery count",
+        "nl": "Aantal batterijen"
+      },
+      "example": 4
+    },
+    {
+      "name": "battery1command",
+      "type": "number",
+      "title": {
+        "en": "Battery 1 command (W)",
+        "nl": "Batterij 1 commando (W)"
+      },
+      "example": -500
+    },
+    {
+      "name": "battery2command",
+      "type": "number",
+      "title": {
+        "en": "Battery 2 command (W)",
+        "nl": "Batterij 2 commando (W)"
+      },
+      "example": -500
+    },
+    {
+      "name": "battery3command",
+      "type": "number",
+      "title": {
+        "en": "Battery 3 command (W)",
+        "nl": "Batterij 3 commando (W)"
+      },
+      "example": -500
+    },
+    {
+      "name": "battery4command",
+      "type": "number",
+      "title": {
+        "en": "Battery 4 command (W)",
+        "nl": "Batterij 4 commando (W)"
+      },
+      "example": -500
+    },
+    {
+      "name": "battery5command",
+      "type": "number",
+      "title": {
+        "en": "Battery 5 command (W)",
+        "nl": "Batterij 5 commando (W)"
+      },
+      "example": 0
+    },
+    {
+      "name": "battery6command",
+      "type": "number",
+      "title": {
+        "en": "Battery 6 command (W)",
+        "nl": "Batterij 6 commando (W)"
+      },
+      "example": 0
+    },
+    {
+      "name": "battery7command",
+      "type": "number",
+      "title": {
+        "en": "Battery 7 command (W)",
+        "nl": "Batterij 7 commando (W)"
+      },
+      "example": 0
+    },
+    {
+      "name": "battery8command",
+      "type": "number",
+      "title": {
+        "en": "Battery 8 command (W)",
+        "nl": "Batterij 8 commando (W)"
+      },
+      "example": 0
+    },
+    {
+      "name": "total_command",
+      "type": "number",
+      "title": {
+        "en": "Total command (W)",
+        "nl": "Totaal commando (W)"
+      },
+      "example": -2000
+    },
+    {
+      "name": "mode",
+      "type": "string",
+      "title": {
+        "en": "EMS mode",
+        "nl": "EMS-modus"
+      },
+      "example": {
+        "en": "Self-consumption",
+        "nl": "Zelfconsumptie"
+      }
+    },
+    {
+      "name": "override",
+      "type": "string",
+      "title": {
+        "en": "EMS override",
+        "nl": "EMS-override"
+      },
+      "example": {
+        "en": "Peak shave 2500 W",
+        "nl": "Peak shave 2500 W"
+      }
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "title": {
+        "en": "EMS status",
+        "nl": "EMS-status"
+      },
+      "example": {
+        "en": "Self-consumption · Cheap tariff in 2h",
+        "nl": "Zelfconsumptie · Dal over 2u"
+      }
+    },
+    {
+      "name": "next_change",
+      "type": "string",
+      "title": {
+        "en": "Next change",
+        "nl": "Volgende wijziging"
+      },
+      "example": {
+        "en": "Cheap tariff in 2h",
+        "nl": "Dal over 2u"
+      }
+    }
+  ]
+}

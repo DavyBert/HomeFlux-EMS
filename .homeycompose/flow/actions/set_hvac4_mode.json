@@ -1,0 +1,57 @@
+{
+  "title": {
+    "en": "Set HVAC 4 mode",
+    "nl": "Stel HVAC 4-modus in"
+  },
+  "args": [
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "values": [
+        {
+          "id": "off",
+          "title": {
+            "en": "Off",
+            "nl": "Uit"
+          }
+        },
+        {
+          "id": "cool",
+          "title": {
+            "en": "Cooling",
+            "nl": "Koelen"
+          }
+        },
+        {
+          "id": "heat",
+          "title": {
+            "en": "Heating",
+            "nl": "Verwarmen"
+          }
+        },
+        {
+          "id": "auto",
+          "title": {
+            "en": "Auto",
+            "nl": "Automatisch"
+          }
+        },
+        {
+          "id": "fan",
+          "title": {
+            "en": "Fan only",
+            "nl": "Alleen ventilatie"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set HVAC 4 mode to [[mode]]",
+    "nl": "Stel HVAC 4-modus in op [[mode]]"
+  }
+}

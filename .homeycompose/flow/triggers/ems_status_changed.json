@@ -1,0 +1,64 @@
+{
+  "title": {
+    "en": "EMS status changed",
+    "nl": "EMS-status is gewijzigd"
+  },
+  "titleFormatted": {
+    "en": "EMS status changed",
+    "nl": "EMS-status is gewijzigd"
+  },
+  "hint": {
+    "en": "Fires when the compact HomeFlux EMS status line changes.",
+    "nl": "Start wanneer de compacte HomeFlux EMS-statusregel wijzigt."
+  },
+  "tokens": [
+    {
+      "name": "status",
+      "type": "string",
+      "title": {
+        "en": "EMS status",
+        "nl": "EMS-status"
+      },
+      "example": {
+        "en": "Normal · Self-consumption · Expensive in 2h",
+        "nl": "Normaal · Zelfconsumptie · Duur over 2u"
+      }
+    },
+    {
+      "name": "tariff",
+      "type": "string",
+      "title": {
+        "en": "Current tariff",
+        "nl": "Huidig tarief"
+      },
+      "example": {
+        "en": "Normal",
+        "nl": "Normaal"
+      }
+    },
+    {
+      "name": "action",
+      "type": "string",
+      "title": {
+        "en": "Operation",
+        "nl": "Werking"
+      },
+      "example": {
+        "en": "Self-consumption",
+        "nl": "Zelfconsumptie"
+      }
+    },
+    {
+      "name": "next_change",
+      "type": "string",
+      "title": {
+        "en": "Next tariff",
+        "nl": "Volgend tarief"
+      },
+      "example": {
+        "en": "Expensive in 2h",
+        "nl": "Duur over 2u"
+      }
+    }
+  ]
+}

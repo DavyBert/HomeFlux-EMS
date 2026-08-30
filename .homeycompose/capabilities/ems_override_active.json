@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Manual override",
+    "nl": "Handmatige override"
+  },
+  "getable": true,
+  "setable": false,
+  "insights": false,
+  "insightsTitleTrue": {
+    "en": "Manual EMS override active",
+    "nl": "Handmatige EMS-override actief"
+  },
+  "insightsTitleFalse": {
+    "en": "EMS is automatic",
+    "nl": "EMS staat op automatisch"
+  },
+  "icon": "/assets/capabilities/override.svg"
+}

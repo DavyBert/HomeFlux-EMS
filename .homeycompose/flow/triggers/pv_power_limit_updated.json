@@ -1,0 +1,57 @@
+{
+  "title": {
+    "en": "PV power limit is updated",
+    "nl": "PV-vermogenslimiet is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the percentage token to limit PV/inverter output. 100% is unrestricted; HomeFlux never commands below 10%.",
+    "nl": "Gebruik de percentage-tag om het PV-/omvormervermogen te begrenzen. 100% is onbeperkt; HomeFlux stuurt nooit lager dan 10%."
+  },
+  "tokens": [
+    {
+      "name": "limit_percent",
+      "type": "number",
+      "title": {
+        "en": "PV limit (%)",
+        "nl": "PV-limiet (%)"
+      },
+      "example": 75
+    },
+    {
+      "name": "target_power",
+      "type": "number",
+      "title": {
+        "en": "PV target power (W)",
+        "nl": "PV-doelvermogen (W)"
+      },
+      "example": 3750
+    },
+    {
+      "name": "curtailed_power",
+      "type": "number",
+      "title": {
+        "en": "PV curtailed power (W)",
+        "nl": "PV teruggeregeld (W)"
+      },
+      "example": 1250
+    },
+    {
+      "name": "minimum_export",
+      "type": "number",
+      "title": {
+        "en": "Minimum export buffer (W)",
+        "nl": "Minimum exportbuffer (W)"
+      },
+      "example": 50
+    },
+    {
+      "name": "predicted_grid",
+      "type": "number",
+      "title": {
+        "en": "Predicted grid after limit (W)",
+        "nl": "Verwacht net na begrenzing (W)"
+      },
+      "example": -50
+    }
+  ]
+}

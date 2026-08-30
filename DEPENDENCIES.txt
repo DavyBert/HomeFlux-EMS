@@ -1,0 +1,9 @@
+HomeFlux EMS v0.3.57 - dependency policy
+
+Compatibility build
+- homey-api: 3.19.2
+- No socket.io-client override
+- No engine.io-client override
+
+Reason:
+Homey Pro 2016 showed instability with the forced modern Socket.IO/Engine.IO dependency overrides. HomeFlux therefore lets the official homey-api package select its own compatible dependency chain. npm audit may report moderate transitive findings; runtime compatibility takes priority.

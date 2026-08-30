@@ -1,0 +1,45 @@
+{
+  "name": {
+    "en": "HomeFlux EMS",
+    "nl": "HomeFlux EMS"
+  },
+  "class": "other",
+  "platforms": [
+    "local"
+  ],
+  "capabilities": [
+    "ems_control_mode",
+    "ems_status",
+    "ems_tariff",
+    "ems_action",
+    "ems_battery_command",
+    "ems_charge_plan",
+    "ems_ev_status",
+    "ems_ev_override",
+    "ems_hvac_status",
+    "ems_override_active",
+    "alarm_ems_input",
+    "alarm_ems_balance"
+  ],
+  "pair": [
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": {
+        "next": "add_devices"
+      },
+      "options": {
+        "singular": true
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ],
+  "images": {
+    "small": "/drivers/ems/assets/images/small.png",
+    "large": "/drivers/ems/assets/images/large.png",
+    "xlarge": "/drivers/ems/assets/images/xlarge.png"
+  }
+}

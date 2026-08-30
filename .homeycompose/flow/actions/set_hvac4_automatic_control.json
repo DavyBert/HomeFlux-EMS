@@ -1,0 +1,36 @@
+{
+  "title": {
+    "en": "Set HVAC 4 automatic control",
+    "nl": "Stel HVAC 4 automatische sturing in"
+  },
+  "args": [
+    {
+      "name": "enabled",
+      "type": "dropdown",
+      "title": {
+        "en": "Automatic control",
+        "nl": "Automatische sturing"
+      },
+      "values": [
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        },
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set HVAC 4 automatic control to [[enabled]]",
+    "nl": "Stel HVAC 4 automatische sturing in op [[enabled]]"
+  }
+}

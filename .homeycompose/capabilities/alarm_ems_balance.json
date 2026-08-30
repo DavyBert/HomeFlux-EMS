@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Battery Balance fault",
+    "nl": "Battery Balance fout"
+  },
+  "getable": true,
+  "setable": false,
+  "insights": false,
+  "insightsTitleTrue": {
+    "en": "Battery Balance fault detected",
+    "nl": "Battery Balance fout gedetecteerd"
+  },
+  "insightsTitleFalse": {
+    "en": "Battery Balance is OK",
+    "nl": "Battery Balance is OK"
+  },
+  "icon": "/assets/capabilities/balance.svg"
+}

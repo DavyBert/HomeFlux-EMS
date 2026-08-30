@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "HVAC status",
+    "nl": "HVAC-status"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/hvac.svg"
+}

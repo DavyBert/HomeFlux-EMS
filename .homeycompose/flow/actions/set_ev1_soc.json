@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set EV 1 SoC",
+    "nl": "Stel EV 1-SoC in"
+  },
+  "hint": {
+    "en": "Push the current EV 1 state of charge to HomeFlux. Only used when EV 1 SoC support is enabled in settings.",
+    "nl": "Stuur de actuele EV 1-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 1-SoC in de instellingen is ingeschakeld."
+  },
+  "args": [
+    {
+      "name": "soc",
+      "type": "number",
+      "title": {
+        "en": "EV 1 SoC (%)",
+        "nl": "EV 1 SoC (%)"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set EV 1 SoC to [[soc]]%",
+    "nl": "Stel EV 1-SoC in op [[soc]]%"
+  }
+}

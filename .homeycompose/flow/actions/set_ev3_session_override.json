@@ -1,0 +1,47 @@
+{
+  "title": {
+    "en": "Override EV 3 mode for one charging session",
+    "nl": "Override EV 3-modus voor één laadbeurt"
+  },
+  "hint": {
+    "en": "Temporarily use the selected EV 3 operating mode for one connection session. If the EV 3 is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV 3 mode is never overwritten.",
+    "nl": "Gebruik tijdelijk de gekozen EV 3-werkingsmodus voor één verbindingssessie. Is de EV 3 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 3-modus wordt nooit overschreven."
+  },
+  "args": [
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "EV 3 operating mode",
+        "nl": "EV 3-werkingsmodus"
+      },
+      "values": [
+        {
+          "id": "smart",
+          "title": {
+            "en": "Smart",
+            "nl": "Slim"
+          }
+        },
+        {
+          "id": "soc_target",
+          "title": {
+            "en": "SoC target",
+            "nl": "Op SoC-doel"
+          }
+        },
+        {
+          "id": "emergency",
+          "title": {
+            "en": "Emergency charge",
+            "nl": "Emergency charge"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "EV 3 override for one session: [[mode]]",
+    "nl": "EV 3-override voor één laadbeurt: [[mode]]"
+  }
+}

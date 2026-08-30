@@ -1,0 +1,26 @@
+{
+  "title": {
+    "en": "HVAC 4 mode command is updated",
+    "nl": "HVAC 4-modusopdracht is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "mode",
+      "type": "string",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "example": "cool"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Koelen met PV-overschot"
+    }
+  ]
+}

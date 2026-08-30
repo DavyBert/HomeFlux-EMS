@@ -1,0 +1,89 @@
+{
+  "title": {
+    "en": "Set battery SoC",
+    "nl": "Stel batterij-SoC in"
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "dropdown",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "Battery 1",
+            "nl": "Batterij 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "Battery 2",
+            "nl": "Batterij 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "Battery 3",
+            "nl": "Batterij 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "Battery 4",
+            "nl": "Batterij 4"
+          }
+        },
+        {
+          "id": "5",
+          "title": {
+            "en": "Battery 5",
+            "nl": "Batterij 5"
+          }
+        },
+        {
+          "id": "6",
+          "title": {
+            "en": "Battery 6",
+            "nl": "Batterij 6"
+          }
+        },
+        {
+          "id": "7",
+          "title": {
+            "en": "Battery 7",
+            "nl": "Batterij 7"
+          }
+        },
+        {
+          "id": "8",
+          "title": {
+            "en": "Battery 8",
+            "nl": "Batterij 8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "soc",
+      "type": "number",
+      "title": {
+        "en": "SoC (%)",
+        "nl": "SoC (%)"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[battery]] SoC to [[soc]]%",
+    "nl": "Stel [[battery]] SoC in op [[soc]]%"
+  }
+}

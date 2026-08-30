@@ -1,0 +1,51 @@
+{
+  "title": {
+    "en": "Set EV 2 status",
+    "nl": "Stel EV 2-status in"
+  },
+  "hint": {
+    "en": "Push EV 2 availability and actual charging current to HomeFlux. EV 2 SoC has its own Flow card.",
+    "nl": "Stuur EV 2-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 2-SoC heeft een aparte Flow-kaart."
+  },
+  "args": [
+    {
+      "name": "connected",
+      "type": "dropdown",
+      "title": {
+        "en": "EV 2 available",
+        "nl": "EV 2 beschikbaar/aangesloten"
+      },
+      "values": [
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        },
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        }
+      ]
+    },
+    {
+      "name": "charge_current",
+      "type": "number",
+      "title": {
+        "en": "Actual charge current (A)",
+        "nl": "Actuele laadstroom (A)"
+      },
+      "min": 0,
+      "max": 64,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set EV 2: [[connected]], [[charge_current]] A",
+    "nl": "Stel EV 2 in: [[connected]], [[charge_current]] A"
+  }
+}

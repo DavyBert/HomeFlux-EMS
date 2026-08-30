@@ -1,0 +1,21 @@
+{
+  "title": {
+    "en": "Boiler power command is updated",
+    "nl": "Boiler aan/uit-opdracht is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the boolean token to switch the boiler or store its current HomeFlux state in a Logic variable.",
+    "nl": "Gebruik de ja/nee-tag om de boiler te schakelen of de actuele HomeFlux-status in een Logica-variabele te bewaren."
+  },
+  "tokens": [
+    {
+      "name": "on",
+      "type": "boolean",
+      "title": {
+        "en": "Boiler on",
+        "nl": "Boiler aan"
+      },
+      "example": true
+    }
+  ]
+}

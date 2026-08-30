@@ -1,0 +1,10 @@
+{
+  "title": {
+    "en": "Battery 4: switch to charge mode",
+    "nl": "Batterij 4: schakel naar laadmodus"
+  },
+  "hint": {
+    "en": "Only fires when split command is enabled for battery 4 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+    "nl": "Start alleen wanneer split command voor batterij 4 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+  }
+}

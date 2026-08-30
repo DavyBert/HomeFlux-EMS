@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set grid power",
+    "nl": "Stel netvermogen in"
+  },
+  "hint": {
+    "en": "Positive is grid import, negative is export.",
+    "nl": "Positief is netafname, negatief is injectie."
+  },
+  "args": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Grid power (W)",
+        "nl": "Netvermogen (W)"
+      },
+      "min": -50000,
+      "max": 50000,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set grid power to [[power]] W",
+    "nl": "Stel netvermogen in op [[power]] W"
+  }
+}

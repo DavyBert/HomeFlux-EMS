@@ -1,0 +1,10 @@
+{
+  "title": {
+    "en": "Battery 5: switch to discharge mode",
+    "nl": "Batterij 5: schakel naar ontlaadmodus"
+  },
+  "hint": {
+    "en": "Only fires when split command is enabled for battery 5 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+    "nl": "Start alleen wanneer split command voor batterij 5 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+  }
+}

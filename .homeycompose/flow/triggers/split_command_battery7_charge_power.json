@@ -1,0 +1,21 @@
+{
+  "title": {
+    "en": "Battery 7: charge power is updated",
+    "nl": "Batterij 7: laadvermogen is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the power token for battery 7 charge power. After a charge-mode switch this fires 1 second later.",
+    "nl": "Gebruik de power-tag voor het laadvermogen van batterij 7. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+  },
+  "tokens": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Charge power (W)",
+        "nl": "Laadvermogen (W)"
+      },
+      "example": 1000
+    }
+  ]
+}

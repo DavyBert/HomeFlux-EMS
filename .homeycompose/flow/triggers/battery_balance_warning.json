@@ -1,0 +1,57 @@
+{
+  "title": {
+    "en": "Battery Balance warning",
+    "nl": "Battery Balance waarschuwing"
+  },
+  "hint": {
+    "en": "Fires when battery SoC spread keeps increasing while balancing is actively controlling the batteries.",
+    "nl": "Start wanneer de SoC-spreiding blijft toenemen terwijl Battery Balance de batterijen actief aanstuurt."
+  },
+  "tokens": [
+    {
+      "name": "message",
+      "type": "string",
+      "title": {
+        "en": "Warning",
+        "nl": "Waarschuwing"
+      },
+      "example": "Controleer de gekoppelde batterij-SoC's."
+    },
+    {
+      "name": "spread",
+      "type": "number",
+      "title": {
+        "en": "Current spread (%)",
+        "nl": "Huidige spreiding (%)"
+      },
+      "example": 5.2
+    },
+    {
+      "name": "baseline_spread",
+      "type": "number",
+      "title": {
+        "en": "Baseline spread (%)",
+        "nl": "Startspreiding (%)"
+      },
+      "example": 2.1
+    },
+    {
+      "name": "lowest_battery",
+      "type": "number",
+      "title": {
+        "en": "Lowest SoC battery",
+        "nl": "Batterij met laagste SoC"
+      },
+      "example": 1
+    },
+    {
+      "name": "highest_battery",
+      "type": "number",
+      "title": {
+        "en": "Highest SoC battery",
+        "nl": "Batterij met hoogste SoC"
+      },
+      "example": 3
+    }
+  ]
+}

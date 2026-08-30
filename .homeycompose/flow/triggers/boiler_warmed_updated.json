@@ -1,0 +1,21 @@
+{
+  "title": {
+    "en": "Boiler warmed status is updated",
+    "nl": "Boiler opgewarmd-status is bijgewerkt"
+  },
+  "hint": {
+    "en": "The boolean token is Yes while HomeFlux still considers the boiler warmed after a completed heating cycle.",
+    "nl": "De ja/nee-tag is Ja zolang HomeFlux de boiler na een voltooide opwarmcyclus nog als opgewarmd beschouwt."
+  },
+  "tokens": [
+    {
+      "name": "warmed",
+      "type": "boolean",
+      "title": {
+        "en": "Boiler warmed",
+        "nl": "Boiler opgewarmd"
+      },
+      "example": true
+    }
+  ]
+}

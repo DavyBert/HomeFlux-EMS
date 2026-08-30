@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Set remaining PV forecast",
+    "nl": "Stel resterende PV-voorspelling in"
+  },
+  "args": [
+    {
+      "name": "energy",
+      "type": "number",
+      "title": {
+        "en": "Remaining PV (kWh)",
+        "nl": "Resterende PV (kWh)"
+      },
+      "min": 0,
+      "max": 200,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set remaining PV forecast to [[energy]] kWh",
+    "nl": "Stel resterende PV-voorspelling in op [[energy]] kWh"
+  }
+}

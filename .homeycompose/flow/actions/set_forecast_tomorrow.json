@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Set tomorrow PV forecast",
+    "nl": "Stel PV-voorspelling morgen in"
+  },
+  "args": [
+    {
+      "name": "energy",
+      "type": "number",
+      "title": {
+        "en": "Tomorrow PV (kWh)",
+        "nl": "PV morgen (kWh)"
+      },
+      "min": 0,
+      "max": 200,
+      "step": 0.1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set tomorrow PV forecast to [[energy]] kWh",
+    "nl": "Stel PV-voorspelling morgen in op [[energy]] kWh"
+  }
+}

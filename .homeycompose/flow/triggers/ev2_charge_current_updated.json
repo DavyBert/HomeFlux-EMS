@@ -1,0 +1,57 @@
+{
+  "title": {
+    "en": "EV 2 charge current is updated",
+    "nl": "EV 2-laadstroom is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use this output to set the EV 2 charger current. Peak Guard can always reduce it.",
+    "nl": "Gebruik deze uitgang om de laadstroom van de EV 2-lader te sturen. Peak Guard kan deze altijd verlagen."
+  },
+  "tokens": [
+    {
+      "name": "charge_current",
+      "type": "number",
+      "title": {
+        "en": "Charge current (A)",
+        "nl": "Laadstroom (A)"
+      },
+      "example": 10
+    },
+    {
+      "name": "charge_power",
+      "type": "number",
+      "title": {
+        "en": "Estimated charge power (W)",
+        "nl": "Geschat laadvermogen (W)"
+      },
+      "example": 6900
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "title": {
+        "en": "Source",
+        "nl": "Bron"
+      },
+      "example": "pv"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Laden met PV-overschot"
+    },
+    {
+      "name": "target_soc",
+      "type": "number",
+      "title": {
+        "en": "EV 2 target SoC (%)",
+        "nl": "EV 2-doel SoC (%)"
+      },
+      "example": 80
+    }
+  ]
+}

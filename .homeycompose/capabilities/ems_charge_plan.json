@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Next charge plan",
+    "nl": "Volgend laadplan"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/charge-plan.svg"
+}

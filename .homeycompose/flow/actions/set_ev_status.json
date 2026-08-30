@@ -1,0 +1,12 @@
+{
+  "title": {"en":"Set EV status","nl":"Stel EV-status in"},
+  "hint": {"en":"Push EV availability and actual charging current to HomeFlux. EV SoC has its own Flow card.","nl":"Stuur EV-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV-SoC heeft een aparte Flow-kaart."},
+  "args": [
+    {"name":"connected","type":"dropdown","title":{"en":"EV available","nl":"EV beschikbaar/aangesloten"},"values":[
+      {"id":"yes","title":{"en":"Yes","nl":"Ja"}},
+      {"id":"no","title":{"en":"No","nl":"Nee"}}
+    ]},
+    {"name":"charge_current","type":"number","title":{"en":"Actual charge current (A)","nl":"Actuele laadstroom (A)"},"min":0,"max":64,"step":0.1}
+  ],
+  "titleFormatted": {"en":"Set EV: [[connected]], [[charge_current]] A","nl":"Stel EV in: [[connected]], [[charge_current]] A"}
+}

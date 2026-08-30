@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Set PV power",
+    "nl": "Stel PV-vermogen in"
+  },
+  "args": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "PV power (W)",
+        "nl": "PV-vermogen (W)"
+      },
+      "min": 0,
+      "max": 100000,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set PV power to [[power]] W",
+    "nl": "Stel PV-vermogen in op [[power]] W"
+  }
+}

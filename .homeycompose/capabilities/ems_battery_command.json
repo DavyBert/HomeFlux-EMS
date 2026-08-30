@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Battery command",
+    "nl": "Batterijcommando"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/battery-command.svg"
+}

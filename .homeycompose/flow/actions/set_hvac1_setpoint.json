@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Set HVAC 1 setpoint",
+    "nl": "Stel HVAC 1-setpoint in"
+  },
+  "args": [
+    {
+      "name": "setpoint",
+      "type": "number",
+      "title": {
+        "en": "Setpoint (C)",
+        "nl": "Setpoint (C)"
+      },
+      "min": 5,
+      "max": 35,
+      "step": 0.5
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set HVAC 1 setpoint to [[setpoint]] C",
+    "nl": "Stel HVAC 1-setpoint in op [[setpoint]] C"
+  }
+}
