@@ -10,5 +10,8 @@
   },
   "0.3.9": {
     "en": "Better feature explanation."
+  },
+  "0.4.2": {
+    "en": "Added: convert low-pv day in a sun day. Updated: improved scheduling."
   }
 }
