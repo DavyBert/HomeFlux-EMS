@@ -4,7 +4,7 @@ const assert = require('assert');
 const html = fs.readFileSync(path.join(__dirname, '..', 'settings', 'index.html'), 'utf8');
 const prefix = '  const FLOW_HELP_CATALOG = ';
 const start = html.indexOf(prefix);
-const end = html.indexOf(';\n  const UI_EXACT_EN', start);
+const end = html.indexOf(';\n  let uiLanguage', start);
 assert(start >= 0 && end > start, 'Help catalog JSON must be embedded in settings');
 const catalog = JSON.parse(html.slice(start + prefix.length, end));
 for (const kind of ['actions','triggers','conditions']) {

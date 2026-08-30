@@ -3,21 +3,49 @@
 **Your energy, arranged differently**  
 **Jouw energie, anders geregeld**
 
-HomeFlux EMS is a hardware-independent energy management app for Homey Pro. It combines battery control, PV forecasting, tariff-aware charging, Peak Guard, up to four optional EV chargers, up to four optional HVAC devices and an optional boiler through Homey Flows.
-
 ## English
 
-HomeFlux monitors the grid meter and controls your energy system according to your own limits and energy contract. Battery, PV, EV, HVAC and boiler integrations remain hardware-independent through Flow cards, while Peak Guard always keeps priority.
+HomeFlux EMS brings your home’s energy together in one smart system. It decides when to charge or use your home battery, when to make the most of solar power, and when flexible loads such as EV charging, heating, cooling or hot water can run most efficiently.
+
+Instead of being tied to one brand or one type of installation, HomeFlux works around the devices you already have and the energy contract you use. It supports both dynamic energy contracts and fixed contracts with different tariff periods, such as peak, off-peak or multi-rate schedules.
+
+It continuously balances comfort, self-consumption, battery reserve, electricity prices and grid limits, while Peak Guard keeps peak consumption under control.
+
+The result is simple: **use more of your own energy, buy from the grid at better moments, avoid unnecessary peaks and let HomeFlux coordinate everything automatically.**
 
 ## Nederlands
 
-HomeFlux bewaakt de netmeter en stuurt je energie-installatie volgens je eigen grenzen en energiecontract. Batterijen, PV, EV, HVAC en boiler blijven optionele modules; Peak Guard heeft altijd de hoogste prioriteit.
+HomeFlux EMS brengt de energie in je woning samen in één slim systeem. Het bepaalt wanneer je thuisbatterij wordt geladen of gebruikt, wanneer zonne-energie het best wordt benut en wanneer flexibele verbruikers zoals EV-laden, verwarming, koeling of warm water het efficiëntst kunnen draaien.
+
+In plaats van gebonden te zijn aan één merk of één type installatie, werkt HomeFlux rond de toestellen die je al hebt en het energiecontract dat je gebruikt. Het ondersteunt zowel dynamische energiecontracten als vaste contracten met verschillende tariefperiodes, zoals piek-, dal- of meervoudige uurtarieven.
+
+HomeFlux brengt comfort, zelfverbruik, batterijreserve, elektriciteitsprijzen en netlimieten voortdurend in balans, terwijl Peak Guard het piekverbruik onder controle houdt.
+
+Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op betere momenten, vermijd onnodige pieken en laat HomeFlux alles automatisch coördineren.**
 
 ## Homey API permission
 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.4.2
+- Split charge planning into two explicit configurable target times: a **night-planning morning target** (default 07:00) and a **day-planning daytime target** (default 17:00).
+- Night planning now only considers allowed charging windows from the previous daytime target up to the configured morning target. It no longer plans through the following afternoon/evening.
+- Day planning starts from the morning planning boundary and only plans up to the configured daytime target. Both production control and the Planning/simulation views use the same phase boundaries.
+- Added a regression case for the common TOU pattern **Superdal 01:00–07:00 → morning peak 07:00–11:00 → daytime/evening periods** so the overnight Superdal block remains available to the night plan.
+- No extra polling loop or repeating timer was added.
+
+### v0.4.1
+- Moved the large settings-page EN translation dictionaries out of `settings/index.html` into dedicated translation assets under `settings/translations/`.
+- The settings page now loads only the selected language bundle before rendering. Existing Dutch-source UI translation behaviour remains unchanged, while new dynamic UI text can use keyed translations through the shared `t()` helper.
+- Reduced `settings/index.html` by roughly 97 kB without changing EMS control, planning, polling or API behaviour.
+
+### v0.4.0
+- Added an optional **low-PV day → sunny day** promotion. When the average home-battery SoC remains at or above a configurable threshold for the configured number of minutes during the active solar day, HomeFlux stops applying low-PV Battery Save for the rest of that solar day.
+- The promotion is one-way for the current solar day, resets for the next day/night plan, and never changes the PV forecast itself. If SoC drops below the threshold before the timer completes, the timer restarts.
+- The feature is disabled by default and reuses the existing one-minute context heartbeat; no new polling loop, repeating timer or Homey API traffic was added.
+- Updated the EN/NL product text and added the GitHub homepage and issue tracker as Homey metadata.
+
 ### v0.3.9
 - Removed the incorrect 100 kWh upper limit from **Minimum hoeveelheid zon voor zelfconsumptie (kWh)**. The field now accepts any finite value of 0 kWh or higher; percentage/SoC fields remain limited to 0–100%.
 - No EMS logic, timers, polling or API behaviour changed.

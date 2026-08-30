@@ -1,5 +1,9 @@
 HomeFlux EMS — Jouw energie, anders geregeld
 
-HomeFlux EMS is een merkonafhankelijk energiemanagementsysteem voor Homey Pro. Het stemt thuisbatterijen, zonneproductie, maximaal vier EV-laders, maximaal vier HVAC-toestellen en een optionele boiler af op je energiecontract, zonnevoorspelling en netlimieten, waarbij Peak Guard voorrang houdt.
+HomeFlux EMS brengt de energie in je woning samen in één slim systeem. Het bepaalt wanneer je thuisbatterij wordt geladen of gebruikt, wanneer zonne-energie het best wordt benut en wanneer flexibele verbruikers zoals EV-laden, verwarming, koeling of warm water het efficiëntst kunnen draaien.
 
-Integraties gebruiken tweetalige Homey Flow-kaarten, zodat HomeFlux met verschillende merken kan werken. Flexibele thermische verbruikers starten volgens een instelbare, rustige prioriteitenlijst; EV’s behouden hun eigen PV-, tarief- en laadbeurtlogica.
+In plaats van gebonden te zijn aan één merk of één type installatie, werkt HomeFlux rond de toestellen die je al hebt en het energiecontract dat je gebruikt. Het ondersteunt zowel dynamische energiecontracten als vaste contracten met verschillende tariefperiodes, zoals piek-, dal- of meervoudige uurtarieven.
+
+HomeFlux brengt comfort, zelfverbruik, batterijreserve, elektriciteitsprijzen en netlimieten voortdurend in balans, terwijl Peak Guard het piekverbruik onder controle houdt.
+
+Het resultaat is eenvoudig: gebruik meer van je eigen energie, koop stroom op betere momenten, vermijd onnodige pieken en laat HomeFlux alles automatisch coördineren.

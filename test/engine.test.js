@@ -156,7 +156,7 @@ function state(overrides = {}) {
     ],
   });
   const result = evaluate(
-    state({ gridPowerW: 500, forecastRemainingKwh: 2, batterySoc: [25, 25, 25, 25] }),
+    state({ gridPowerW: 500, forecastRemainingKwh: 2, batterySoc: [25, 25, 25, 25], nightPlanningActive: true }),
     settings,
     new Date('2026-08-22T02:00:00+02:00'),
   );
@@ -497,6 +497,42 @@ function state(overrides = {}) {
   assert.equal(enough.baseMode, 'self_consumption');
   assert.equal(enough.lowForecastBatterySaveActive, false);
   assert.ok(Math.abs(enough.totalCommandW - 900) <= 4);
+}
+
+// v0.4.0: once the app promotes the current low-PV solar day to a sunny
+// day, Battery Save is released without altering the forecast. The same latch
+// may never suppress tomorrow's night-plan classification.
+{
+  const settings = baseSettings({
+    forcedMode: 'auto',
+    contractType: 'tou',
+    forecastDataReady: true,
+    forecastDailyDataReady: true,
+    forecastTomorrowDataReady: true,
+    lowForecastSelfConsumptionMinKwh: 5,
+    batterySaveDischargeAboveSoc: 100,
+    expectedEnergyNeedKwh: 0,
+    touRates: [{ id: 'dal', name: 'Dal', importPrice: 0.25, feedInPrice: 0.03, lowForecastBatterySave: true }],
+    touSchedule: [{ rateId: 'dal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+  });
+  const promoted = evaluate(
+    state({ gridPowerW: 900, forecastDailyMaxKwh: 4, forecastTomorrowKwh: 3, batterySoc: [95,95,95,95], lowForecastSunnyOverrideActive: true }),
+    settings,
+    new Date('2026-08-22T12:00:00+02:00'),
+  );
+  assert.equal(promoted.lowForecastReferenceKwh, 4);
+  assert.equal(promoted.lowForecastSunnyOverrideActive, true);
+  assert.equal(promoted.lowForecastBatterySaveActive, false);
+  assert.equal(promoted.baseMode, 'self_consumption');
+
+  const tomorrow = evaluate(
+    state({ gridPowerW: 900, planningForecastDay: 'tomorrow', nightPlanningActive: true, forecastDailyMaxKwh: 4, forecastTomorrowKwh: 3, batterySoc: [95,95,95,95], lowForecastSunnyOverrideActive: true }),
+    settings,
+    new Date('2026-08-22T21:00:00+02:00'),
+  );
+  assert.equal(tomorrow.lowForecastReferenceDay, 'tomorrow');
+  assert.equal(tomorrow.lowForecastBatterySaveActive, true);
+  assert.equal(tomorrow.lowForecastSunnyOverrideActive, false);
 }
 
 // v0.2.20: a single TOU category can independently enable low-forecast Battery Save.
@@ -954,7 +990,7 @@ console.log('HomeFlux EMS engine tests: OK');
 // v0.2.21: planning exposes the SoC target at the end of the next configured cheap window.
 {
   const plan = buildSocPlan(
-    state({ forecastRemainingKwh: 2, forecastDailyMaxKwh: 5, forecastTomorrowKwh: 2, planningForecastDay: 'tomorrow', batterySoc: [25,25,25,25] }),
+    state({ forecastRemainingKwh: 2, forecastDailyMaxKwh: 5, forecastTomorrowKwh: 2, planningForecastDay: 'tomorrow', nightPlanningActive: true, batterySoc: [25,25,25,25] }),
     baseSettings({
       forcedMode: 'auto',
       contractType: 'tou',
@@ -1004,7 +1040,7 @@ console.log('HomeFlux EMS engine tests: OK');
     }),
     new Date('2026-08-22T20:00:00+02:00'),
   );
-  assert.equal(plan.scopeLabel, 'Resterende dynamische prijsdata vandaag');
+  assert.equal(plan.scopeLabel, 'Dagplanning tot ingesteld dagdoel');
   assert.equal(plan.rows.length, 0);
   assert.equal(plan.nextNetChargeAt, null);
 }
@@ -1946,10 +1982,9 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.ok(result.targetSoc > 80);
 }
 
-// v0.3.81: fixed/TOU planning is anchored to the complete charge-to-peak
-// cycle instead of a rolling 24-hour horizon. A 14:50 night simulation must
-// therefore show tomorrow's 11:00-17:00 block in full, not truncate it at
-// tomorrow 14:50.
+// v0.4.2: night and day planning use separate configured target times. The
+// night plan only bridges to the morning target; it must never include a cheap
+// block from the following daytime period merely because the day target is 17:00.
 {
   const cycleSettings = baseSettings({
     forcedMode: 'auto',
@@ -1957,20 +1992,27 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
     forecastDataReady: true,
     forecastDailyDataReady: true,
     forecastTomorrowDataReady: true,
+    nightTargetTime: '07:00',
     solarTargetTime: '17:00',
     touRates: [
-      { id: 'superdal', name: 'Superdal', importPrice: 0.10, feedInPrice: 0.03 },
-      { id: 'dal', name: 'Dal', importPrice: 0.20, feedInPrice: 0.03 },
-      { id: 'piek', name: 'Piek', importPrice: 0.40, feedInPrice: 0.03 },
+      { id: 'superdal', name: 'Superdal', importPrice: 0.10, feedInPrice: 0.03, weekdayChargeMode: 'always', weekendChargeMode: 'always' },
+      { id: 'dal', name: 'Dal', importPrice: 0.20, feedInPrice: 0.03, weekdayChargeMode: 'never', weekendChargeMode: 'never' },
+      { id: 'piek', name: 'Piek', importPrice: 0.40, feedInPrice: 0.03, weekdayChargeMode: 'never', weekendChargeMode: 'never', avoidGridImport: true },
     ],
     touSchedule: [
       { rateId: 'superdal', start: '01:00', end: '07:00', days: [1,2,3,4,5,6,7] },
-      { rateId: 'dal', start: '07:00', end: '11:00', days: [1,2,3,4,5,6,7] },
+      { rateId: 'piek', start: '07:00', end: '11:00', days: [1,2,3,4,5] },
+      { rateId: 'dal', start: '07:00', end: '11:00', days: [6,7] },
       { rateId: 'superdal', start: '11:00', end: '17:00', days: [1,2,3,4,5,6,7] },
-      { rateId: 'piek', start: '17:00', end: '22:00', days: [1,2,3,4,5,6,7] },
+      { rateId: 'piek', start: '17:00', end: '22:00', days: [1,2,3,4,5] },
+      { rateId: 'dal', start: '17:00', end: '22:00', days: [6,7] },
       { rateId: 'dal', start: '22:00', end: '01:00', days: [1,2,3,4,5,6,7] },
     ],
   });
+
+  // Friday afternoon, simulating the already selected night plan for Saturday:
+  // only Saturday 01:00-07:00 belongs to that night phase. Saturday 11:00-17:00
+  // must not be pulled into the overnight calculation.
   const now = new Date('2026-08-28T14:50:00+02:00');
   const nightPlan = buildSocPlan(
     state({
@@ -1983,16 +2025,15 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
     cycleSettings,
     now,
   );
-  assert.equal(nightPlan.rows.length, 2);
+  assert.equal(nightPlan.planningPhase, 'night');
+  assert.equal(nightPlan.rows.length, 1);
   assert.equal(nightPlan.rows[0].windowState, 'future');
-  assert.equal(nightPlan.rows[1].windowState, 'future');
-  assert.equal(nightPlan.rows[1].endAt - nightPlan.rows[1].startAt, 6 * 60 * 60 * 1000);
-  assert.ok(nightPlan.rows[1].endAt - now.getTime() > 24 * 60 * 60 * 1000);
-  assert.equal(nightPlan.planningPeakEndAt - nightPlan.planningPeakStartAt, 5 * 60 * 60 * 1000);
+  assert.equal(nightPlan.rows[0].endAt - nightPlan.rows[0].startAt, 6 * 60 * 60 * 1000);
+  assert.equal(nightPlan.planningPeakEndAt, nightPlan.planningPeakStartAt);
+  assert.equal(new Date(nightPlan.planningChargeDeadlineAt).toLocaleString('sv-SE', { timeZone: 'Europe/Brussels', hour12: false }).slice(0,16), '2026-08-29 07:00');
 
-  // The same shared cycle drives production. Past time stays visible but is not
-  // counted as available; the remaining 130 minutes determine the real charge
-  // power as well as the displayed plan power.
+  // During the solar day, only the daytime phase (07:00 -> 17:00) is relevant.
+  // At 14:50 the 11:00-17:00 Superdal block is active and has 130 minutes left.
   const dayState = state({
     planningForecastDay: 'today',
     nightPlanningActive: false,
@@ -2004,34 +2045,19 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
     controlGridPowerW: 0,
   });
   const dayPlan = buildSocPlan(dayState, cycleSettings, now);
-  assert.equal(dayPlan.rows[0].windowState, 'past');
-  assert.equal(dayPlan.rows[0].availableMinutes, 0);
-  assert.equal(dayPlan.rows[1].windowState, 'active');
-  assert.equal(dayPlan.rows[1].availableMinutes, 130);
-  assert.ok(dayPlan.rows[1].plannedChargeW > 7000);
+  assert.equal(dayPlan.planningPhase, 'day');
+  assert.equal(dayPlan.rows.length, 1);
+  assert.equal(dayPlan.rows[0].windowState, 'active');
+  assert.equal(dayPlan.rows[0].availableMinutes, 130);
+  assert.ok(dayPlan.rows[0].plannedChargeW > 7000);
 
   const production = evaluate(dayState, cycleSettings, now);
   assert.equal(production.baseMode, 'charge');
   assert.equal(production.tariff.selectedChargeMinutes, 130);
-  assert.equal(production.plannedChargeW, dayPlan.rows[1].plannedChargeW);
+  assert.equal(production.plannedChargeW, dayPlan.rows[0].plannedChargeW);
 
-  // At the beginning of the first usable tariff, production must spread the
-  // target over both remaining cheap windows up to the peak, not just over the
-  // currently active block. This is the production counterpart of the full
-  // cycle displayed in both Planning tabs.
-  const cycleStart = new Date('2026-08-28T01:00:00+02:00');
-  const startPlan = buildSocPlan(dayState, cycleSettings, cycleStart);
-  const startProduction = evaluate(dayState, cycleSettings, cycleStart);
-  assert.equal(startPlan.rows[0].windowState, 'active');
-  assert.equal(startPlan.rows[1].windowState, 'future');
-  assert.equal(startPlan.rows[0].availableMinutes + startPlan.rows[1].availableMinutes, 720);
-  assert.equal(startProduction.tariff.selectedChargeMinutes, 720);
-  assert.equal(startProduction.plannedChargeW, startPlan.rows[0].plannedChargeW);
-  assert.equal(startPlan.planningScopeStartAt, startPlan.rows[0].startAt);
-  assert.equal(startPlan.planningScopeEndAt, startPlan.planningPeakEndAt);
-
-  // A cheap tariff that occurs before tomorrow's selected planning cycle must
-  // not accidentally start production charging for tomorrow's plan.
+  // Before the night phase begins, a cheap daytime tariff cannot accidentally
+  // start charging for tomorrow's night plan.
   const beforeTomorrowCycle = evaluate(
     { ...dayState, planningForecastDay: 'tomorrow', nightPlanningActive: true },
     cycleSettings,
@@ -2040,6 +2066,50 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(beforeTomorrowCycle.tariff.planningWindowEligibleNow, false);
   assert.equal(beforeTomorrowCycle.tariff.selectedChargeMinutes, 0);
   assert.notEqual(beforeTomorrowCycle.baseMode, 'charge');
+}
+
+// Regression for the exact Sunday-evening TOU case that motivated v0.4.2:
+// Superdal 01:00-07:00 must be found even though Monday also has morning and
+// evening peak blocks. The separate 17:00 day target is irrelevant at night.
+{
+  const settings = baseSettings({
+    forcedMode: 'auto',
+    contractType: 'tou',
+    peakShaveEnabled: false,
+    nightTargetTime: '07:00',
+    solarTargetTime: '17:00',
+    forecastTomorrowDataReady: true,
+    touRates: [
+      { id: 'superdal', name: 'SUPERDAL', importPrice: 0.10, feedInPrice: 0.03, weekdayChargeMode: 'always', weekendChargeMode: 'always' },
+      { id: 'dal', name: 'DAL', importPrice: 0.20, feedInPrice: 0.03, weekdayChargeMode: 'never', weekendChargeMode: 'never' },
+      { id: 'piek', name: 'PIEK', importPrice: 0.40, feedInPrice: 0.03, weekdayChargeMode: 'never', weekendChargeMode: 'never', avoidGridImport: true },
+    ],
+    touSchedule: [
+      { rateId: 'superdal', start: '01:00', end: '07:00', days: [1,2,3,4,5,6,7] },
+      { rateId: 'piek', start: '07:00', end: '11:00', days: [1,2,3,4,5] },
+      { rateId: 'dal', start: '11:00', end: '17:00', days: [1,2,3,4,5,6,7] },
+      { rateId: 'piek', start: '17:00', end: '22:00', days: [1,2,3,4,5] },
+      { rateId: 'dal', start: '22:00', end: '01:00', days: [1,2,3,4,5,6,7] },
+    ],
+  });
+  const plan = buildSocPlan(
+    state({
+      planningForecastDay: 'tomorrow',
+      nightPlanningActive: true,
+      forecastTomorrowKwh: 0,
+      targetSocOverride: 80,
+      batterySoc: [20,20,20,20],
+    }),
+    settings,
+    new Date('2026-08-30T21:30:00+02:00'),
+  );
+  assert.equal(plan.planningPhase, 'night');
+  assert.equal(plan.rows.length, 1);
+  assert.equal(plan.rows[0].tariffLabel, 'SUPERDAL');
+  assert.equal(plan.rows[0].availableMinutes, 360);
+  assert.equal(new Date(plan.rows[0].startAt).toLocaleString('sv-SE', { timeZone: 'Europe/Brussels', hour12: false }).slice(0,16), '2026-08-31 01:00');
+  assert.equal(new Date(plan.rows[0].endAt).toLocaleString('sv-SE', { timeZone: 'Europe/Brussels', hour12: false }).slice(0,16), '2026-08-31 07:00');
+  assert.equal(new Date(plan.planningChargeDeadlineAt).toLocaleString('sv-SE', { timeZone: 'Europe/Brussels', hour12: false }).slice(0,16), '2026-08-31 07:00');
 }
 
 // v0.3.85: TOU day and night charging policies are independent. A normal-price

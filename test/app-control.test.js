@@ -1835,7 +1835,10 @@ function bareApp() {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 45);
+  assert.equal(stored.settingsSchemaVersion, 47);
+  assert.equal(stored.lowForecastAutoSunnyEnabled, false);
+  assert.equal(stored.lowForecastAutoSunnySoc, 90);
+  assert.equal(stored.lowForecastAutoSunnyMinutes, 10);
 }
 
 // v0.3.80: planning simulation is a pure calculation. It uses the entered SoC,
@@ -1868,7 +1871,7 @@ function bareApp() {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.3.9');
+  assert.equal(simulation.version, '0.4.2');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -1911,3 +1914,70 @@ function bareApp() {
   assert.equal(JSON.stringify(app.homeyEnergyResampleCache), cacheBefore);
 }
 
+
+
+// v0.4.0: an unexpectedly strong low-PV day can be released after the
+// average configured battery SoC stays continuously above the chosen limit.
+// A dip resets the timer and the completed promotion is persisted once/day.
+{
+  const app = bareApp();
+  const stored = {};
+  app.homey.settings = {
+    get: key => Object.prototype.hasOwnProperty.call(stored, key) ? stored[key] : null,
+    set: (key, value) => { stored[key] = value; },
+  };
+  app.getForecastDateKey = () => '2026-08-30';
+  app.isNightPlanningPhase = () => false;
+  app.state.forecastDailyMaxKwh = 4;
+  app.state.batterySoc = [91, 91, 91, 91, null, null, null, null];
+  app.inputSeen.batterySoc = [true, true, true, true, false, false, false, false];
+  app.lowForecastSunnyRuntime = { date: '', aboveSince: 0 };
+  app.lowForecastSunnyOverrideDate = '';
+  const settings = {
+    batteryCount: 4,
+    forcedMode: 'auto',
+    lowForecastAutoSunnyEnabled: true,
+    lowForecastAutoSunnySoc: 90,
+    lowForecastAutoSunnyMinutes: 10,
+    lowForecastSelfConsumptionMinKwh: 5,
+  };
+
+  assert.equal(app.updateLowForecastSunnyPromotion(1_000_000, settings), false);
+  assert.equal(app.lowForecastSunnyRuntime.aboveSince, 1_000_000);
+  assert.equal(app.updateLowForecastSunnyPromotion(1_540_000, settings), false);
+
+  app.state.batterySoc = [80, 91, 91, 91, null, null, null, null];
+  assert.equal(app.updateLowForecastSunnyPromotion(1_550_000, settings), false);
+  assert.equal(app.lowForecastSunnyRuntime.aboveSince, 0);
+
+  app.state.batterySoc = [91, 91, 91, 91, null, null, null, null];
+  assert.equal(app.updateLowForecastSunnyPromotion(2_000_000, settings), false);
+  assert.equal(app.updateLowForecastSunnyPromotion(2_599_999, settings), false);
+  assert.equal(app.updateLowForecastSunnyPromotion(2_600_000, settings), true);
+  assert.equal(app.lowForecastSunnyOverrideDate, '2026-08-30');
+  assert.equal(stored._lowForecastSunnyOverrideDate, '2026-08-30');
+  assert.equal(app.isLowForecastSunnyOverrideActive(settings, 2_600_000), true);
+  assert.equal(app.updateLowForecastSunnyPromotion(3_300_000, settings), false);
+}
+
+// The promotion timer must never run while the night plan is authoritative,
+// even if SoC and forecast would otherwise satisfy the promotion conditions.
+{
+  const app = bareApp();
+  app.getForecastDateKey = () => '2026-08-30';
+  app.isNightPlanningPhase = () => true;
+  app.state.forecastDailyMaxKwh = 4;
+  app.state.batterySoc = [95, 95, 95, 95, null, null, null, null];
+  app.lowForecastSunnyRuntime = { date: '', aboveSince: 0 };
+  app.lowForecastSunnyOverrideDate = '';
+  const settings = {
+    batteryCount: 4,
+    forcedMode: 'auto',
+    lowForecastAutoSunnyEnabled: true,
+    lowForecastAutoSunnySoc: 90,
+    lowForecastAutoSunnyMinutes: 5,
+    lowForecastSelfConsumptionMinKwh: 5,
+  };
+  assert.equal(app.updateLowForecastSunnyPromotion(1_000_000, settings), false);
+  assert.equal(app.lowForecastSunnyRuntime.aboveSince, 0);
+}

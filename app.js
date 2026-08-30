@@ -99,6 +99,11 @@ class HomeFluxEmsApp extends Homey.App {
     this.flexibleLoadsDirty = true;
     this.lastFlexibleLoadEvaluationAt = 0;
     this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
+    // v0.4.0: lightweight low-PV -> sunny-day promotion state. The completed
+    // day latch is persisted once so an app restart cannot re-enable Battery
+    // Save during the same solar day; the running timer itself stays in RAM.
+    this.lowForecastSunnyRuntime = { date: '', aboveSince: 0 };
+    this.lowForecastSunnyOverrideDate = '';
     this.lastQueuedStatusSignature = '';
     // Frequent P1 values first pass through a tiny signal gate. A full battery
     // evaluation is only scheduled when the control zone or effective meter
@@ -269,6 +274,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     this.restoreForecastState();
+    this.restoreLowForecastSunnyState();
     await this.syncTokens();
     this.registerFlowCards();
     this.setupInputRequestSchedule();
@@ -298,7 +304,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || String(key).startsWith('_boiler')) return;
+        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache();
         this.markFlexibleLoadsDirty();
@@ -306,6 +312,16 @@ class HomeFluxEmsApp extends Homey.App {
         // Peak Guard headroom. Never let the fast loop reuse an EV allocation
         // that was calculated for the previous battery mode.
         if (key === 'forcedMode') this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
+        if (key === 'lowForecastAutoSunnyEnabled') {
+          this.lowForecastSunnyRuntime.aboveSince = 0;
+          if (!Boolean(this.getSettings().lowForecastAutoSunnyEnabled)) {
+            this.lowForecastSunnyOverrideDate = '';
+            this.setSetting('_lowForecastSunnyOverrideDate', '');
+          }
+        }
+        if (key === 'lowForecastAutoSunnySoc' || key === 'lowForecastAutoSunnyMinutes' || key === 'lowForecastSelfConsumptionMinKwh') {
+          this.lowForecastSunnyRuntime.aboveSince = 0;
+        }
         if (key === 'batteryCount' || key === 'evCount' || key === 'hvacCount') await this.syncTokens();
         if (key === 'priorityEvaluationMinutes' || key === 'flexibleLoadPriorityOrder' || key === 'boilerEnabled' || key === 'boilerCount' || key === 'hvacCount' || /^hvac[2-4]?Enabled$/.test(String(key))) this.flexiblePriorityState.nextEvaluationAt = 0;
         if (key === 'evEnabled' || key === 'evSocEnabled' || key === 'evCount' || /^ev[2-4](Enabled|SocEnabled)$/.test(String(key))) this.syncEvSocRequestSchedule();
@@ -408,7 +424,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS test v0.3.9 input validation fix initialized');
+    this.log('HomeFlux EMS v0.4.2 initialized');
   }
 
   refreshSettingsCache() {
@@ -636,6 +652,15 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     const activated = this.checkNightPlanningFallback(now);
     if (activated) return;
+
+    // Reuse the existing one-minute heartbeat for the low-PV -> sunny-day
+    // timer. Until the deadline this is only a few comparisons; a full EMS
+    // context pass is requested exactly once when the day is promoted.
+    if (this.updateLowForecastSunnyPromotion(now, settings)) {
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(true, 'low_forecast_promoted_to_sunny');
+      return;
+    }
 
     // Grid freshness is a hard battery-safety condition. The ordinary fast loop
     // is meter-driven, so a stopped meter cannot trigger its own failsafe. This
@@ -1469,7 +1494,23 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    this.setSetting('settingsSchemaVersion', 45);
+    if (schema < 46) {
+      // v0.4.0: optional low-PV day promotion. Disabled on every upgrade so
+      // existing Battery Save behaviour cannot change without user action.
+      if (this.homey.settings.get('lowForecastAutoSunnyEnabled') === null) this.setSetting('lowForecastAutoSunnyEnabled', false);
+      if (this.homey.settings.get('lowForecastAutoSunnySoc') === null) this.setSetting('lowForecastAutoSunnySoc', 90);
+      if (this.homey.settings.get('lowForecastAutoSunnyMinutes') === null) this.setSetting('lowForecastAutoSunnyMinutes', 10);
+    }
+
+    if (schema < 47) {
+      // v0.4.2: split the former single planning horizon into a configurable
+      // morning target for night planning and a configurable daytime target.
+      // Existing users keep the familiar 07:00 / 17:00 defaults.
+      if (this.homey.settings.get('nightTargetTime') === null) this.setSetting('nightTargetTime', '07:00');
+      if (this.homey.settings.get('solarTargetTime') === null) this.setSetting('solarTargetTime', '17:00');
+    }
+
+    this.setSetting('settingsSchemaVersion', 47);
   }
 
   async ensureDefaults() {
@@ -3380,6 +3421,84 @@ class HomeFluxEmsApp extends Homey.App {
       }));
   }
 
+  restoreLowForecastSunnyState(at = Date.now()) {
+    const stored = String(this.homey.settings.get('_lowForecastSunnyOverrideDate') || '');
+    const today = this.getForecastDateKey(at);
+    this.lowForecastSunnyOverrideDate = stored === today ? stored : '';
+    this.lowForecastSunnyRuntime = { date: today, aboveSince: 0 };
+  }
+
+  getAverageBatterySocForLowForecastPromotion(settings = this.getSettings()) {
+    const count = Math.max(1, Math.min(8, Math.round(Number(settings.batteryCount) || 1)));
+    const values = [];
+    for (let index = 0; index < count; index += 1) {
+      if (!this.inputSeen.batterySoc[index]) continue;
+      const value = Number(this.state.batterySoc[index]);
+      if (Number.isFinite(value)) values.push(value);
+    }
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  getTodayStrategyForecastKwh() {
+    const full = Number(this.state.forecastDailyMaxKwh);
+    if (Number.isFinite(full) && full >= 0) return full;
+    if (Boolean(this.inputSeen.forecast)) {
+      const remaining = Number(this.state.forecastRemainingKwh);
+      if (Number.isFinite(remaining) && remaining >= 0) return remaining;
+    }
+    return null;
+  }
+
+  isLowForecastSunnyOverrideActive(settings = this.getSettings(), at = Date.now()) {
+    if (!Boolean(settings.lowForecastAutoSunnyEnabled)) return false;
+    if (this.isNightPlanningPhase(at)) return false;
+    const today = this.getForecastDateKey(at);
+    return String(this.lowForecastSunnyOverrideDate || '') === today;
+  }
+
+  updateLowForecastSunnyPromotion(at = Date.now(), settings = this.getSettings()) {
+    const runtime = this.lowForecastSunnyRuntime || (this.lowForecastSunnyRuntime = { date: '', aboveSince: 0 });
+    const today = this.getForecastDateKey(at);
+    if (runtime.date !== today) {
+      runtime.date = today;
+      runtime.aboveSince = 0;
+      if (String(this.lowForecastSunnyOverrideDate || '') !== today) this.lowForecastSunnyOverrideDate = '';
+    }
+
+    if (!Boolean(settings.lowForecastAutoSunnyEnabled)
+      || String(settings.forcedMode || 'auto') !== 'auto'
+      || this.isNightPlanningPhase(at)
+      || String(this.lowForecastSunnyOverrideDate || '') === today) {
+      runtime.aboveSince = 0;
+      return false;
+    }
+
+    const lowPvThresholdKwh = Math.max(0, Number(settings.lowForecastSelfConsumptionMinKwh) || 0);
+    const forecastKwh = this.getTodayStrategyForecastKwh();
+    if (lowPvThresholdKwh <= 0 || forecastKwh === null || forecastKwh >= lowPvThresholdKwh) {
+      runtime.aboveSince = 0;
+      return false;
+    }
+
+    const avgSoc = this.getAverageBatterySocForLowForecastPromotion(settings);
+    const thresholdSoc = Math.max(0, Math.min(100, Number(settings.lowForecastAutoSunnySoc) || 0));
+    if (avgSoc === null || avgSoc < thresholdSoc) {
+      runtime.aboveSince = 0;
+      return false;
+    }
+
+    if (!runtime.aboveSince) runtime.aboveSince = Number(at) || Date.now();
+    const minutes = Math.max(1, Number(settings.lowForecastAutoSunnyMinutes) || 10);
+    const dueAt = runtime.aboveSince + (minutes * 60000);
+    if ((Number(at) || Date.now()) < dueAt) return false;
+
+    this.lowForecastSunnyOverrideDate = today;
+    runtime.aboveSince = 0;
+    this.setSetting('_lowForecastSunnyOverrideDate', today);
+    return true;
+  }
+
   getForecastDateKey(at = Date.now()) {
     const settings = this.getSettings();
     const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
@@ -3713,6 +3832,7 @@ class HomeFluxEmsApp extends Homey.App {
       planningForecastDay: this.getPlanningForecastDay(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || '',
       nightPlanningActive: this.isNightPlanningPhase(now),
+      lowForecastSunnyOverrideActive: this.isLowForecastSunnyOverrideActive(settings, now),
     };
   }
 
@@ -6840,7 +6960,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.3.9',
+      version: '0.4.2',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -6907,7 +7027,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.3.9',
+      version: '0.4.2',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -7111,7 +7231,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.3.9',
+      version: '0.4.2',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),
@@ -7127,6 +7247,9 @@ class HomeFluxEmsApp extends Homey.App {
         batterySaveDischargeAboveSoc: storedSettings.batterySaveDischargeAboveSoc,
         safetySoc: storedSettings.safetySoc,
         lowForecastSelfConsumptionMinKwh: storedSettings.lowForecastSelfConsumptionMinKwh,
+        lowForecastAutoSunnyEnabled: Boolean(storedSettings.lowForecastAutoSunnyEnabled),
+        lowForecastAutoSunnySoc: storedSettings.lowForecastAutoSunnySoc,
+        lowForecastAutoSunnyMinutes: storedSettings.lowForecastAutoSunnyMinutes,
         lowForecastFixedEnabled: Boolean(storedSettings.lowForecastFixedEnabled),
         lowForecastFixedDischargeToTarget: Boolean(storedSettings.lowForecastFixedDischargeToTarget),
         lowForecastDynamicCheapEnabled: Boolean(storedSettings.lowForecastDynamicCheapEnabled),

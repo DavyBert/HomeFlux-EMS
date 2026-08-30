@@ -12,14 +12,15 @@ const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
 const composeJson = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'app.json'), 'utf8'));
 const localeNl = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'nl.json'), 'utf8'));
 const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'), 'utf8'));
+const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.3.9');
+  assert.equal(manifest.version, '0.4.2');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.3.9 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.3.9 — Your energy, arranged differently');
+assert.equal(localeNl.settings.subtitle, 'v0.4.2 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.4.2 — Your energy, arranged differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -32,6 +33,9 @@ assert(html.includes('const value = currentSettingValue(id);'), 'changed-only se
 assert(html.includes('if (settingsBaselineReady && settingValuesEqual(value, previous)) continue;'), 'unchanged settings must be skipped');
 assert(html.includes("if (!settingsBaselineReady || !settingValuesEqual(rates, savedRatesBaseline))"), 'tariffs must be change-detected');
 assert(html.includes("'Geen wijzigingen'"), 'no-change save feedback missing');
+assert(html.includes('await loadUiTranslations();'), 'settings translation bundle must load before rendering');
+assert(html.includes("'planning.forecastDecisionTomorrow'"), 'planning forecast text must use translation key');
+assert(!html.includes('const UI_EXACT_EN = {'), 'large translation dictionary must not remain embedded in index.html');
 assert(html.includes("if (name === 'help') ensureHelpCatalogRendered();"));
 assert(!html.includes('\n  renderHelpCatalog();\n\n  function switchTab(name)'));
 
@@ -40,9 +44,9 @@ for (let month = 1; month <= 12; month += 1) {
   assert(html.includes(`'peakReserveMonth${month}'`), `month ${month} missing from settings wiring`);
 }
 assert(!html.includes('id="peakReserveSeasonWinter"'));
-assert(html.includes('Actief tijdens maanden'));
+assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 45"));
+assert(appJs.includes("settingsSchemaVersion', 47"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 assert(html.includes('id="planningMinIntervalMinutes"'), 'planning throttle setting missing');
 assert(apiJs.includes('async refreshPlanning({ homey })'), 'forced planning refresh API missing');
@@ -57,6 +61,20 @@ for (const id of ['sunnyMonthsMinSocEnabled','sunnyMonthsMinSoc']) {
 }
 assert(appJs.includes("if (schema < 41)"), 'v0.3.80 settings migration missing');
 assert(appJs.includes("this.setSetting('sunnyMonthsMinSocEnabled', false)"), 'sunny-month option must default off on upgrade');
+
+for (const id of ['lowForecastAutoSunnyEnabled','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes']) {
+  assert(html.includes(`id="${id}"`), `${id} low-PV sunny-day setting missing`);
+  assert(html.includes(`'${id}'`), `${id} missing from settings wiring`);
+}
+assert(appJs.includes("if (schema < 46)"), 'v0.4.0 low-PV sunny-day migration missing');
+assert(appJs.includes("this.setSetting('lowForecastAutoSunnyEnabled', false)"), 'low-PV sunny-day promotion must default off on upgrade');
+assert.equal(composeJson.homepage, 'https://github.com/DavyBert/HomeFlux-EMS');
+assert.equal(composeJson.support, 'https://github.com/DavyBert/HomeFlux-EMS/issues');
+assert.equal(appJson.homepage, composeJson.homepage);
+assert.equal(appJson.support, composeJson.support);
+assert(composeJson.description.en.includes('dynamic or fixed multi-tariff contracts'));
+assert(composeJson.description.nl.includes('dynamische of vaste meertarievencontracten'));
+
 assert(html.includes('id="peakReserveNightEnabled"'), 'night minimum setting missing');
 assert(html.includes("'peakReserveNightEnabled'"), 'night minimum setting missing from settings wiring');
 assert(appJs.includes("if (schema < 42)"), 'v0.3.84 settings migration missing');
@@ -81,6 +99,10 @@ assert(html.includes("['never',uiLanguage==='nl'?'Niet gebruiken':'Do not use']"
 assert(html.includes("['always',uiLanguage==='nl'?'Altijd':'Always']"), 'tariff charging selector must offer always');
 assert(html.includes('data-rate-k=\"avoidGridImport\"'), 'avoid-grid-import tariff option missing');
 assert(html.includes('EV-laden op werkelijk PV-overschot blijft beschikbaar'), 'avoid-grid conflict explanation missing');
+
+for (const id of ['nightTargetTime','solarTargetTime']) {
+  assert(html.includes(`id=\"${id}\"`) || html.includes(`id="${id}"`), `missing planning target setting ${id}`);
+}
 
 for (const id of ['panel-planning-simulation','planningSimulationBatterySoc','planningSimulationTargetSoc','planningSimulationPvTodayKwh','planningSimulationPvLiveW','planningSimulationTime','runPlanningSimulation','planningSimulationResult']) {
   assert(html.includes(`id="${id}"`), `${id} simulation UI element missing`);

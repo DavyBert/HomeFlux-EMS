@@ -1,0 +1,17 @@
+{
+  "language": "nl",
+  "exact": {},
+  "phrases": {},
+  "strings": {
+    "planning.forecastDecisionTomorrow": "Nachtplanning is actief. Zowel de energieplanning als de dagstrategie gebruiken nu de PV-voorspelling van morgen.",
+    "planning.forecastDecisionToday": "Dagplanning is actief. Zowel de energieplanning als de dagstrategie gebruiken de resterende PV-voorspelling van vandaag.",
+    "planning.targetPeakTitle": "Doelpiek",
+    "planning.nightTargetTitle": "Doelmoment nachtplanning",
+    "planning.dayTargetTitle": "Doelmoment dagplanning",
+    "planning.targetTimeTitle": "Doelmoment",
+    "planning.targetPeakDetail": "De laadberekening gebruikt alleen beschikbare laadtijd vóór de start van deze piek.",
+    "planning.nightTargetDetail": "De nachtplanning gebruikt alleen toegestane laadvensters vóór dit ingestelde ochtenddoel.",
+    "planning.dayTargetDetail": "De dagplanning gebruikt alleen toegestane laadvensters vóór dit ingestelde doelmoment overdag.",
+    "planning.targetTimeDetail": "De laadberekening loopt tot dit ingestelde doelmoment."
+  }
+}
