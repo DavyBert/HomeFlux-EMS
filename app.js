@@ -424,7 +424,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.2 initialized');
+    this.log('HomeFlux EMS v0.4.5 initialized');
   }
 
   refreshSettingsCache() {
@@ -1510,7 +1510,22 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('solarTargetTime') === null) this.setSetting('solarTargetTime', '17:00');
     }
 
-    this.setSetting('settingsSchemaVersion', 47);
+    if (schema < 48) {
+      // v0.4.4: optional heterogeneous battery power limits. Keep this off on
+      // upgrade and seed each battery from the existing shared maxima so merely
+      // enabling the option never changes a user's configured hardware ceiling.
+      if (this.homey.settings.get('individualBatteryPowerLimitsEnabled') === null) this.setSetting('individualBatteryPowerLimitsEnabled', false);
+      const sharedCharge = Math.max(0, Number(this.homey.settings.get('maxChargePerBatteryW')) || Number(DEFAULTS.maxChargePerBatteryW) || 2300);
+      const sharedDischarge = Math.max(0, Number(this.homey.settings.get('maxDischargePerBatteryW')) || Number(DEFAULTS.maxDischargePerBatteryW) || 2400);
+      for (let battery = 1; battery <= 8; battery += 1) {
+        if (this.homey.settings.get(`battery${battery}MinChargeW`) === null) this.setSetting(`battery${battery}MinChargeW`, 0);
+        if (this.homey.settings.get(`battery${battery}MaxChargeW`) === null) this.setSetting(`battery${battery}MaxChargeW`, sharedCharge);
+        if (this.homey.settings.get(`battery${battery}MinDischargeW`) === null) this.setSetting(`battery${battery}MinDischargeW`, 0);
+        if (this.homey.settings.get(`battery${battery}MaxDischargeW`) === null) this.setSetting(`battery${battery}MaxDischargeW`, sharedDischarge);
+      }
+    }
+
+    this.setSetting('settingsSchemaVersion', 48);
   }
 
   async ensureDefaults() {
@@ -4457,10 +4472,30 @@ class HomeFluxEmsApp extends Homey.App {
     const target = Math.max(0, Math.min(currentCharge, Number(targetChargeW) || 0));
     const factor = target / currentCharge;
     const step = Math.max(1, Math.round(Number(settings.batteryCommandStepW) || 1));
-    const adjusted = commands.map(value => {
+    const adjusted = commands.map((value, index) => {
       if (value >= 0) return value;
       const scaled = Math.abs(value) * factor;
-      return -(Math.floor(scaled / step) * step);
+      let magnitude = Math.floor(scaled / step) * step;
+
+      // EV/battery coordination may reduce an already calculated charge command.
+      // When batteries have different specifications, never create a command that
+      // falls below that battery's configured minimum merely because it was scaled.
+      // A too-small command becomes 0 W instead of being rounded upward, preserving
+      // the requested total cap and avoiding oscillation around the minimum.
+      if (Boolean(settings.individualBatteryPowerLimitsEnabled)) {
+        const batteryNumber = index + 1;
+        const sharedMax = Math.max(0, Number(settings.maxChargePerBatteryW) || 2300);
+        const configuredMax = Number(settings[`battery${batteryNumber}MaxChargeW`]);
+        const configuredMin = Number(settings[`battery${batteryNumber}MinChargeW`]);
+        const maxChargeW = Math.max(0, Number.isFinite(configuredMax) ? configuredMax : sharedMax);
+        const minChargeW = Math.max(0, Number.isFinite(configuredMin) ? configuredMin : 0);
+        const quantizedMax = Math.floor(maxChargeW / step) * step;
+        const quantizedMin = Math.ceil(Math.min(minChargeW, maxChargeW) / step) * step;
+        magnitude = Math.min(magnitude, quantizedMax);
+        if (magnitude > 0 && magnitude < quantizedMin) magnitude = 0;
+      }
+
+      return magnitude > 0 ? -magnitude : 0;
     });
     const total = adjusted.reduce((sum, value) => sum + value, 0);
     result.candidateCommands = adjusted;
@@ -5659,6 +5694,22 @@ class HomeFluxEmsApp extends Homey.App {
     const tariffBatteryReady = avgSoc !== null && avgSoc >= tariffMinBatterySoc;
     const tariffAllowed = tariffSelected && tariffBatteryReady;
     const gridW = Number.isFinite(Number(options.gridPowerW)) ? Number(options.gridPowerW) : Number(this.state.gridPowerW);
+    const currentBatteryCommandW = Number.isFinite(Number(options.currentBatteryCommandW))
+      ? Number(options.currentBatteryCommandW)
+      : Number(this.state.lastTotalCommandW) || 0;
+    const nextBatteryCommandW = Number.isFinite(Number(options.nextBatteryCommandW))
+      ? Number(options.nextBatteryCommandW)
+      : currentBatteryCommandW;
+    const peakLimitW = Math.max(0, Number(settings.peakLimitW) || 2500);
+    const peakGuardActive = Boolean(settings.peakShaveEnabled)
+      && (String(result?.action || '') === 'peak_shave' || String(result?.override || '') === 'peak_shave');
+    // gridW already contains the effect of the currently applied battery command.
+    // Predict the meter value after the next battery command by removing the
+    // old command contribution and applying the new one. This lets tariff boiler
+    // heating continue while Peak Guard is successfully supported by the battery.
+    const predictedGridAfterBatteryW = Number.isFinite(gridW)
+      ? gridW + currentBatteryCommandW - nextBatteryCommandW
+      : null;
     const headroomW = this.getPvCurtailmentHeadroomW(settings);
     const pvSurplusW = Math.max(0, Number.isFinite(gridW) ? -gridW : 0) + Math.max(0, headroomW);
     const pvEligible = avgSoc !== null && avgSoc >= startSoc && pvSurplusW >= powerW;
@@ -5693,6 +5744,11 @@ class HomeFluxEmsApp extends Homey.App {
       tariffSelected,
       tariffBatteryReady,
       tariffAllowed,
+      peakGuardActive,
+      peakLimitW,
+      currentBatteryCommandW: Math.round(currentBatteryCommandW),
+      nextBatteryCommandW: Math.round(nextBatteryCommandW),
+      predictedGridAfterBatteryW: predictedGridAfterBatteryW === null ? null : Math.round(predictedGridAfterBatteryW),
       reason: '',
     };
 
@@ -5727,10 +5783,21 @@ class HomeFluxEmsApp extends Homey.App {
 
     if (running) {
       const source = String(this.boilerState.activeSource || 'pv');
-      if (String(result?.action || '') === 'peak_shave' || String(result?.override || '') === 'peak_shave') {
+      // PV-driven boiler heating remains the first flexible load to yield during
+      // Peak Guard. Tariff fallback is different: grid use is intentional there,
+      // so the battery may support the boiler as long as the predicted grid value
+      // remains within the configured hard Peak Guard limit.
+      if (source !== 'tariff' && peakGuardActive) {
         decision.on = false;
         decision.outputCommand = false;
         decision.reason = 'Peak Guard · boiler onmiddellijk uit';
+      } else if (source === 'tariff' && peakGuardActive
+        && (predictedGridAfterBatteryW === null || predictedGridAfterBatteryW > peakLimitW)) {
+        decision.on = false;
+        decision.outputCommand = false;
+        decision.reason = predictedGridAfterBatteryW === null
+          ? 'Peak Guard · onvoldoende meetdata · boilertariefladen gestopt'
+          : `Peak Guard ${peakLimitW} W niet haalbaar (${Math.round(predictedGridAfterBatteryW)} W verwacht) · boilertariefladen gestopt`;
       } else if (source === 'pv' && avgSoc !== null && avgSoc <= stopSoc) {
         decision.on = false;
         decision.outputCommand = false;
@@ -5746,7 +5813,11 @@ class HomeFluxEmsApp extends Homey.App {
           ? 'Wachten op batterij-SoC voor boilertariefladen'
           : `Batterij-SoC ${avgSoc.toFixed(1)}% · boilertariefladen stopt op/onder ${tariffStopBatterySoc}%`;
       } else {
-        decision.reason = source === 'tariff' ? 'Boiler verwarmt tijdens geselecteerd tarief' : 'Boiler verwarmt met PV-overschot';
+        decision.reason = source === 'tariff'
+          ? (peakGuardActive
+            ? `Boiler verwarmt tijdens geselecteerd tarief · Peak Guard ondersteund door batterij (${Math.round(predictedGridAfterBatteryW)} W verwacht)`
+            : 'Boiler verwarmt tijdens geselecteerd tarief')
+          : 'Boiler verwarmt met PV-overschot';
         this.boilerState.latestDecision = decision;
         return decision;
       }
@@ -5953,9 +6024,14 @@ class HomeFluxEmsApp extends Homey.App {
       );
     }
 
+    const boilerNextBatteryCommandW = Number.isFinite(Number(options.effectiveNextBatteryCommandW))
+      ? Number(options.effectiveNextBatteryCommandW)
+      : nextBatteryCommandW;
     let boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
       allowStart: Boolean(this.boilerState.outputOn),
       gridPowerW: adjustedGridW,
+      currentBatteryCommandW,
+      nextBatteryCommandW: boilerNextBatteryCommandW,
     });
 
     let grantedId = '';
@@ -6014,7 +6090,12 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     if (!this.boilerState.outputOn && grantedId === 'boiler') {
-      boilerDecision = this.calculateBoilerDecision(result, storedSettings, { allowStart: true, gridPowerW: adjustedGridW });
+      boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
+        allowStart: true,
+        gridPowerW: adjustedGridW,
+        currentBatteryCommandW,
+        nextBatteryCommandW: boilerNextBatteryCommandW,
+      });
     }
     await this.publishBoilerDecision(boilerDecision);
 
@@ -6823,7 +6904,10 @@ class HomeFluxEmsApp extends Homey.App {
       // Flexible loads and PV limiting belong to the slow/output pass. A pure
       // fast battery correction publishes only the battery command.
       if (Boolean(result._runFlexibleLoadPass)) {
-        await this.publishFlexibleLoads(result, internalTotal, previousInternalTotal, { evDecision: result.evDecision })
+        await this.publishFlexibleLoads(result, internalTotal, previousInternalTotal, {
+          evDecision: result.evDecision,
+          effectiveNextBatteryCommandW: effectiveInternalTotal,
+        })
           .catch(err => this.error('Flexible-load publish after battery command failed', err));
         await this.publishPvPowerLimit(result, internalTotal, previousInternalTotal)
           .catch(err => this.error('PV power limit publish after battery command failed', err));
@@ -6960,7 +7044,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.4.2',
+      version: '0.4.5',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -7027,7 +7111,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.4.2',
+      version: '0.4.5',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -7231,7 +7315,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.4.2',
+      version: '0.4.5',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),

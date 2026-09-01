@@ -13,5 +13,8 @@
   },
   "0.4.2": {
     "en": "Added: convert low-pv day in a sun day. Updated: improved scheduling."
+  },
+  "0.4.3": {
+    "en": "Minor fix"
   }
 }

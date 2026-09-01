@@ -1,7 +1,7 @@
 # HomeFlux EMS
 
 **Your energy, arranged differently**  
-**Jouw energie, anders geregeld**
+**Jouw energie, anders geregeld.**
 
 ## English
 
@@ -28,6 +28,19 @@ Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.4.5
+- Fixed night/tariff boiler fallback being stopped merely because **Peak Guard** became active. Tariff heating may now continue while the battery supplies the required peak-shaving support.
+- Peak Guard remains authoritative: HomeFlux predicts the grid import after the next effective battery command and stops tariff boiler heating when the configured hard grid limit still cannot be respected.
+- The existing boiler tariff SoC hysteresis remains unchanged: start at the configured tariff-start SoC and continue down to the separate tariff-stop SoC.
+- PV-surplus boiler heating keeps its previous safety behaviour and still yields immediately to Peak Guard.
+- No additional polling loop or repeating timer was added.
+
+### v0.4.4
+- Manual battery modes are now true overrides: only **Automatic** uses charge planning, forecast targets and planned reserve floors. Self-consumption, Battery Save, Avoid grid import, Forced charging and Stand-by follow their direct operating meaning while hard SoC limits and Peak Guard remain authoritative.
+- Added optional **different battery power limits** for mixed battery installations. When enabled, each configured battery can have its own minimum/maximum charge and discharge power.
+- Small requests below an individual battery minimum are never rounded upward; HomeFlux uses 0 W for that battery or reallocates the request to another suitable battery.
+- Existing installations keep the shared per-battery limits by default; enabling individual limits starts from the previously configured shared maxima.
+
 ### v0.4.2
 - Split charge planning into two explicit configurable target times: a **night-planning morning target** (default 07:00) and a **day-planning daytime target** (default 17:00).
 - Night planning now only considers allowed charging windows from the previous daytime target up to the configured morning target. It no longer plans through the following afternoon/evening.
@@ -165,7 +178,7 @@ HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy info
 - Added Comfort priority versus Maximize PV recovery: Comfort targets the nearest comfort boundary; PV recovery uses the full comfort band as thermal storage.
 - Outdoor temperature now only determines fan speed. Cooling and heating each have Slow / Normal / Fast fan-response profiles; on a 5-step scale Normal reaches the highest level at about a 5 °C relevant temperature difference.
 - Added the Then card **Set HVAC automatic control** so user Flows can enable or disable automatic HVAC steering without adding polling.
-- Kept the HomeFlux slogan exactly: **Jouw energie, anders geregeld**.
+- Kept the HomeFlux slogan exactly: **Jouw energie, anders geregeld.**
 
 ### v0.3.45
 
@@ -257,7 +270,7 @@ HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy info
 - Safety resends never change mode, never reset mode-switch timers and never replay an old power setpoint.
 - Settings now show compact related Flow-card references per configurable item.
 - English is the default/main settings language; Dutch remains available as the NL locale.
-- Brand slogan kept as “Jouw energie, anders geregeld” / “Your energy, arranged differently”
+- Brand slogan kept as “Jouw energie, anders geregeld.” / “Your energy, arranged differently”
 - Keeps the HP2016-compatible dependency policy.
 
 ### v0.3.30

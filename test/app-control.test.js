@@ -1835,7 +1835,7 @@ function bareApp() {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 47);
+  assert.equal(stored.settingsSchemaVersion, 48);
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
   assert.equal(stored.lowForecastAutoSunnySoc, 90);
   assert.equal(stored.lowForecastAutoSunnyMinutes, 10);
@@ -1871,7 +1871,7 @@ function bareApp() {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.4.2');
+  assert.equal(simulation.version, '0.4.5');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -1980,4 +1980,30 @@ function bareApp() {
   };
   assert.equal(app.updateLowForecastSunnyPromotion(1_000_000, settings), false);
   assert.equal(app.lowForecastSunnyRuntime.aboveSince, 0);
+}
+
+// v0.4.4: EV/battery coordination must not scale an individual battery below
+// its configured minimum charge power. Too-small commands become 0 W instead.
+{
+  const app = bareApp();
+  const result = {
+    canPublishCommands: true,
+    candidateCommands: [-500, -500],
+    candidateTotalCommandW: -1000,
+    calculatedCommands: [-500, -500],
+    calculatedTotalCommandW: -1000,
+    commands: [-500, -500],
+    totalCommandW: -1000,
+  };
+  app.reduceBatteryChargeResult(result, 300, {
+    batteryCommandStepW: 100,
+    maxChargePerBatteryW: 2300,
+    individualBatteryPowerLimitsEnabled: true,
+    battery1MinChargeW: 400,
+    battery1MaxChargeW: 2500,
+    battery2MinChargeW: 100,
+    battery2MaxChargeW: 1000,
+  });
+  assert.deepEqual(result.candidateCommands, [0, -100]);
+  assert.equal(result.candidateTotalCommandW, -100);
 }

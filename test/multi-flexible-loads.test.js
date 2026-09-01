@@ -164,6 +164,19 @@ function makeApp() {
   assert.equal(decision.on, true);
   assert.equal(decision.tariffStopBatterySoc, 30);
 
+  // Tariff boiler heating may stay on while Peak Guard asks the battery to
+  // assist. The current meter value includes the old battery setpoint; after
+  // applying the new 700 W discharge, the predicted import is safely below
+  // the 2500 W hard limit, so the boiler must NOT be switched off.
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    tariffSettings,
+    { now: start + (7 * 60000), allowStart: true, gridPowerW: 3000, currentBatteryCommandW: 0, nextBatteryCommandW: 700 },
+  );
+  assert.equal(decision.on, true);
+  assert.equal(decision.predictedGridAfterBatteryW, 2300);
+  assert.match(decision.reason, /Peak Guard ondersteund door batterij/);
+
   app.state.batterySoc[0] = 30;
   decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (11 * 60000), allowStart: true, gridPowerW: 0 });
   assert.equal(decision.on, false);
@@ -176,6 +189,18 @@ function makeApp() {
   app.state.batterySoc[0] = 40;
   decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (13 * 60000), allowStart: true, gridPowerW: 0 });
   assert.equal(decision.on, true);
+
+  // Peak Guard remains authoritative. If the battery's next command still
+  // leaves the predicted import above the configured hard limit, tariff boiler
+  // heating is shed immediately.
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    tariffSettings,
+    { now: start + (14 * 60000), allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 0, nextBatteryCommandW: 500 },
+  );
+  assert.equal(decision.on, false);
+  assert.equal(decision.predictedGridAfterBatteryW, 2800);
+  assert.match(decision.reason, /niet haalbaar/);
 
   // Boiler warmed status is a separate boolean output and also changes
   // independently when the configured warm-hold expires.

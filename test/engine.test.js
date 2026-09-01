@@ -2236,3 +2236,98 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(result.tariff.rateId, 'a');
   assert.equal(result.nextEventLabel, 'B');
 }
+
+
+// v0.4.4: manual battery modes are true overrides. Automatic planning reserve
+// targets may still be reported, but they must not alter the manual command.
+{
+  const reserveSettings = {
+    peakReserveTargetSoc: 90,
+    peakReserveMonth9: true,
+    peakReserveNightEnabled: true,
+    expectedEnergyNeedKwh: 20,
+    forecastDataReady: true,
+    forecastDailyDataReady: true,
+    forecastRemainingKwh: 0,
+    peakShaveEnabled: false,
+  };
+  for (const forcedMode of ['self_consumption', 'avoid_import']) {
+    const result = evaluate(
+      state({ gridPowerW: 1000, controlGridPowerW: 1000, forecastRemainingKwh: 0, forecastDailyMaxKwh: 0, batterySoc: [50,50,50,50] }),
+      baseSettings({ ...reserveSettings, forcedMode }),
+      new Date('2026-09-02T12:00:00+02:00'),
+    );
+    assert.equal(result.baseMode, forcedMode);
+    assert.equal(result.peakReserveProtected, false);
+    assert.ok(result.totalCommandW >= 995 && result.totalCommandW <= 1005, `${forcedMode} should regulate grid import to zero without a planning floor`);
+  }
+
+  const saved = evaluate(
+    state({ gridPowerW: 600, controlGridPowerW: 600, forecastRemainingKwh: 0, forecastDailyMaxKwh: 0, batterySoc: [80,80,80,80] }),
+    baseSettings({ ...reserveSettings, forcedMode: 'solar_capture', batterySaveDischargeAboveSoc: 70 }),
+    new Date('2026-09-02T12:00:00+02:00'),
+  );
+  assert.equal(saved.peakReserveProtected, false);
+  assert.ok(saved.totalCommandW >= 595 && saved.totalCommandW <= 605, 'manual Battery Save should use only its own save floor');
+}
+
+// v0.4.4: heterogeneous batteries can have independent minimum and maximum
+// charge/discharge power. Shared limits remain the default when disabled.
+{
+  const heterogeneous = baseSettings({
+    batteryCount: 2,
+    balanceEnabled: false,
+    individualBatteryPowerLimitsEnabled: true,
+    battery1MinChargeW: 200,
+    battery1MaxChargeW: 2500,
+    battery1MinDischargeW: 300,
+    battery1MaxDischargeW: 2000,
+    battery2MinChargeW: 500,
+    battery2MaxChargeW: 1000,
+    battery2MinDischargeW: 200,
+    battery2MaxDischargeW: 500,
+    maxTotalChargeW: 5000,
+    maxTotalDischargeW: 5000,
+    peakShaveEnabled: false,
+  });
+
+  const charge = evaluate(
+    state({ gridPowerW: 0, controlGridPowerW: 0, batterySoc: [50,50] }),
+    { ...heterogeneous, forcedMode: 'manual_charge' },
+    new Date('2026-09-02T12:00:00+02:00'),
+  );
+  assert.equal(charge.totalCommandW, -3500);
+  assert.ok(Math.abs(charge.commands[0]) <= 2500);
+  assert.ok(Math.abs(charge.commands[1]) <= 1000);
+
+  const discharge = distributeCommand(2400, state({ batterySoc: [50,50] }), heterogeneous);
+  assert.equal(discharge.reduce((a,b)=>a+b,0), 2400);
+  assert.ok(discharge[0] <= 2000 && discharge[1] <= 500);
+
+  const tooSmall = distributeCommand(-150, state({ batterySoc: [50,50] }), heterogeneous);
+  assert.deepEqual(tooSmall, [0,0], 'a setpoint below every battery minimum must stay at 0 W');
+
+  const oneBattery = distributeCommand(-700, state({ batterySoc: [50,50] }), heterogeneous);
+  assert.equal(oneBattery.reduce((a,b)=>a+b,0), -700);
+  assert.ok(oneBattery.some(value => Math.abs(value) >= 200), 'a usable battery may take the request once its minimum can be met');
+}
+
+// v0.4.4: switching from an active planned charge to manual avoid-import must
+// immediately unwind the old charge and compensate the real house import.
+{
+  const result = evaluate(
+    state({ gridPowerW: 3000, controlGridPowerW: 3000, lastTotalCommandW: -2000, batterySoc: [60,60,60,60], forecastRemainingKwh: 0, forecastDailyMaxKwh: 0 }),
+    baseSettings({
+      forcedMode: 'avoid_import',
+      peakShaveEnabled: false,
+      peakReserveTargetSoc: 95,
+      peakReserveMonth9: true,
+      forecastDataReady: true,
+      forecastDailyDataReady: true,
+    }),
+    new Date('2026-09-02T12:00:00+02:00'),
+  );
+  assert.equal(result.baseMode, 'avoid_import');
+  assert.equal(result.peakReserveProtected, false);
+  assert.ok(result.totalCommandW >= 995 && result.totalCommandW <= 1005, `expected about 1000 W discharge after leaving a 2000 W charge, got ${result.totalCommandW}`);
+}
