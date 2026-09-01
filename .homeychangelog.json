@@ -16,5 +16,8 @@
   },
   "0.4.3": {
     "en": "Minor fix"
+  },
+  "0.4.5": {
+    "en": "Added: maximum battery power for each battery. Changes to boiler behavour. Manual modes does not follow plan limits."
   }
 }

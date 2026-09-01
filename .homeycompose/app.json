@@ -1,6 +1,6 @@
 {
   "id": "com.homeflux.ems",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "compatibility": ">=12.0.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -17,7 +17,7 @@
   },
   "description": {
     "en": "Your energy, managed differently",
-    "nl": "Jouw enrgie, anders geregeld"
+    "nl": "Jouw energie, anders geregeld"
   },
   "category": "energy",
   "tags": {
