@@ -22,5 +22,8 @@
   },
   "0.4.6": {
     "en": "Language corrections."
+  },
+  "0.4.7": {
+    "en": "Fixed: per-battery charge and discharge limits are now handled correctly when batteries have different specifications."
   }
 }

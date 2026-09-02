@@ -77,8 +77,9 @@ assert.equal(composeJson.homepage, 'https://github.com/DavyBert/HomeFlux-EMS');
 assert.equal(composeJson.support, 'https://github.com/DavyBert/HomeFlux-EMS/issues');
 assert.equal(appJson.homepage, composeJson.homepage);
 assert.equal(appJson.support, composeJson.support);
-assert(composeJson.description.en.includes('dynamic or fixed multi-tariff contracts'));
-assert(composeJson.description.nl.includes('dynamische of vaste meertarievencontracten'));
+assert.equal(composeJson.description.en, 'Your energy, managed differently');
+assert.equal(composeJson.description.nl, 'Jouw energie, anders geregeld');
+assert.deepEqual(appJson.description, composeJson.description);
 
 assert(html.includes('id="peakReserveNightEnabled"'), 'night minimum setting missing');
 assert(html.includes("'peakReserveNightEnabled'"), 'night minimum setting missing from settings wiring');
