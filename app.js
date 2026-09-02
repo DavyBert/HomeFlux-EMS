@@ -5,6 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan } = require('./lib/ems-engine');
 const { localParts, normalizeDynamicPriceResponse, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
+const { emptyDay, normalizeDay, totalSavings, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 
 class HomeFluxEmsApp extends Homey.App {
   async onInit() {
@@ -138,6 +139,20 @@ class HomeFluxEmsApp extends Homey.App {
     // calls from several nested helpers on every meter update/evaluation.
     this.settingsCache = null;
     this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0, timer: null, timerAt: 0 };
+
+    // v0.4.9: savings accounting piggybacks on the existing meter/command
+    // updates and the existing one-minute heartbeat. Raw samples are never
+    // stored; only one compact aggregate per day and a tiny battery-origin
+    // inventory are persisted.
+    this.savings = {
+      lastSampleAt: 0,
+      today: emptyDay(''),
+      history: {},
+      inventory: emptyInventory(),
+      total: 0,
+      lastPersistAt: 0,
+      lastDeviceSyncAt: 0,
+    };
 
     // Optional flexible-load modules. They have their own output cadence and
     // never make EV/HVAC inputs prerequisites for the battery EMS.
@@ -275,6 +290,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.restoreForecastState();
     this.restoreLowForecastSunnyState();
+    this.restoreSavingsState();
     await this.syncTokens();
     this.registerFlowCards();
     this.setupInputRequestSchedule();
@@ -304,7 +320,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler')) return;
+        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache();
         this.markFlexibleLoadsDirty();
@@ -424,7 +440,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.6 initialized');
+    this.log('HomeFlux EMS v0.4.9 initialized');
   }
 
   refreshSettingsCache() {
@@ -456,6 +472,178 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.settingsCache) return { ...this.refreshSettingsCache() };
     // Return a shallow snapshot so callers cannot mutate the shared cache.
     return { ...this.settingsCache, timezone: this.homey.clock.getTimezone() || 'UTC' };
+  }
+
+  getSavingsDateKey(at = Date.now()) {
+    return localParts(new Date(Number(at) || Date.now()), this.homey.clock.getTimezone() || 'UTC').dateKey;
+  }
+
+  getSavingsTariffSnapshot(settings = this.getSettings()) {
+    const type = String(settings.contractType || 'tou');
+    const tariff = this.latestResult?.tariff || null;
+    let importPrice = Number(tariff?.price);
+    let feedInPrice = 0;
+    let id = String(tariff?.rateId || tariff?.label || type || 'grid');
+    let label = String(tariff?.label || (type === 'fixed' ? 'Fixed tariff' : 'Grid'));
+
+    if (type === 'fixed') {
+      importPrice = Number(settings.fixedImportPrice);
+      feedInPrice = Number(settings.fixedFeedInPrice);
+      id = 'fixed';
+      label = 'Fixed tariff';
+    } else if (type === 'tou') {
+      const rateId = String(tariff?.rateId || '');
+      const rate = (Array.isArray(settings.touRates) ? settings.touRates : [])
+        .find(item => String(item?.id || '') === rateId);
+      if (rate) {
+        if (!Number.isFinite(importPrice)) importPrice = Number(rate.importPrice);
+        feedInPrice = Number(rate.feedInPrice);
+        id = String(rate.id || id);
+        label = String(rate.name || label);
+      }
+    } else if (isDynamicContract(settings)) {
+      const currentPrice = Number(this.latestResult?.homeyEnergy?.currentPrice);
+      if (Number.isFinite(currentPrice)) importPrice = currentPrice;
+      // Homey Energy currently supplies the purchase price used by HomeFlux,
+      // not a separate dynamic feed-in price. Therefore battery export is not
+      // credited unless HomeFlux has an explicit feed-in price source.
+      feedInPrice = 0;
+      id = String(tariff?.rateId || this.latestResult?.homeyEnergy?.priceClass || 'dynamic');
+      label = String(tariff?.label || this.latestResult?.homeyEnergy?.priceClass || 'Dynamic');
+    }
+
+    return {
+      id: id || 'grid',
+      label: label || 'Grid',
+      importPrice: Number.isFinite(importPrice) ? Math.max(0, importPrice) : 0,
+      feedInPrice: Number.isFinite(feedInPrice) ? Math.max(0, feedInPrice) : 0,
+    };
+  }
+
+  restoreSavingsState() {
+    const storedHistory = this.homey.settings.get('_savingsHistory');
+    const history = storedHistory && typeof storedHistory === 'object' && !Array.isArray(storedHistory)
+      ? storedHistory : {};
+    const normalizedHistory = {};
+    for (const [date, day] of Object.entries(history)) normalizedHistory[date] = normalizeDay(day, date);
+
+    const todayKey = this.getSavingsDateKey();
+    const storedToday = normalizeDay(this.homey.settings.get('_savingsToday'), todayKey);
+    if (storedToday.date && storedToday.date !== todayKey) {
+      normalizedHistory[storedToday.date] = storedToday;
+      this.savings.today = emptyDay(todayKey);
+    } else {
+      storedToday.date = todayKey;
+      this.savings.today = storedToday;
+    }
+    this.savings.history = normalizedHistory;
+    this.savings.inventory = normalizeInventory(this.homey.settings.get('_savingsInventory'));
+    this.savings.total = Number(this.homey.settings.get('_savingsTotal')) || 0;
+    this.savings.lastSampleAt = Date.now();
+  }
+
+  archiveSavingsDay(nextDateKey) {
+    const current = this.savings.today;
+    if (current?.date) this.savings.history[current.date] = normalizeDay(current, current.date);
+    const dates = Object.keys(this.savings.history).sort();
+    while (dates.length > 4000) delete this.savings.history[dates.shift()];
+    this.savings.today = emptyDay(nextDateKey);
+  }
+
+  recordSavingsSample(at = Date.now()) {
+    if (!this.savings) return;
+    const now = Number(at) || Date.now();
+    const currentDate = this.getSavingsDateKey(now);
+    if (!this.savings.today?.date) this.savings.today = emptyDay(currentDate);
+    if (this.savings.today.date !== currentDate) this.archiveSavingsDay(currentDate);
+
+    const previousAt = Number(this.savings.lastSampleAt) || now;
+    this.savings.lastSampleAt = now;
+    const seconds = Math.max(0, (now - previousAt) / 1000);
+    if (seconds <= 0 || seconds > 300) return;
+    if (!this.inputSeen?.grid || !this.inputSeen?.pv) return;
+    if (!Number.isFinite(Number(this.state.gridPowerW)) || !Number.isFinite(Number(this.state.pvPowerW))) return;
+
+    const tariff = this.getSavingsTariffSnapshot();
+    const before = totalSavings(this.savings.today);
+    integrateInterval({
+      day: this.savings.today,
+      inventory: this.savings.inventory,
+      seconds,
+      gridW: Number(this.state.gridPowerW),
+      pvW: Number(this.state.pvPowerW),
+      batteryW: Number(this.state.lastTotalCommandW) || 0,
+      importPrice: tariff.importPrice,
+      feedInPrice: tariff.feedInPrice,
+      tariff,
+      capacityKwh: Number(this.getSettings().totalCapacityKwh) || 0,
+    });
+    const delta = totalSavings(this.savings.today) - before;
+    if (Number.isFinite(delta)) this.savings.total += delta;
+  }
+
+  persistSavingsState(at = Date.now(), alreadySampled = false) {
+    if (!this.savings) return;
+    if (!alreadySampled) this.recordSavingsSample(at);
+    this.homey.settings.set('_savingsToday', this.savings.today);
+    this.homey.settings.set('_savingsHistory', this.savings.history);
+    this.homey.settings.set('_savingsInventory', this.savings.inventory);
+    this.homey.settings.set('_savingsTotal', this.savings.total);
+    this.savings.lastPersistAt = Number(at) || Date.now();
+    this.syncEmsDevices().catch(err => this.error('EMS device savings sync failed', err));
+  }
+
+  getSavingsPeriodRange(period = 'day', at = Date.now()) {
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const parts = localParts(new Date(Number(at) || Date.now()), timezone);
+    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+    let start;
+    let end;
+    if (period === 'year') {
+      start = new Date(Date.UTC(parts.year, 0, 1));
+      end = new Date(Date.UTC(parts.year + 1, 0, 1));
+    } else if (period === 'month') {
+      start = new Date(Date.UTC(parts.year, parts.month - 1, 1));
+      end = new Date(Date.UTC(parts.year, parts.month, 1));
+    } else if (period === 'week') {
+      const weekday = parts.weekday || 1;
+      start = new Date(date.getTime() - ((weekday - 1) * 86400000));
+      end = new Date(start.getTime() + (7 * 86400000));
+    } else {
+      start = date;
+      end = new Date(date.getTime() + 86400000);
+    }
+    return { startKey: start.toISOString().slice(0, 10), endKey: end.toISOString().slice(0, 10) };
+  }
+
+  getSavingsStatus({ period = 'day' } = {}) {
+    this.recordSavingsSample(Date.now());
+    const normalizedPeriod = ['day', 'week', 'month', 'year'].includes(String(period)) ? String(period) : 'day';
+    const range = this.getSavingsPeriodRange(normalizedPeriod);
+    const aggregate = emptyDay('');
+    for (const [date, day] of Object.entries(this.savings.history || {})) {
+      if (date >= range.startKey && date < range.endKey) addDays(aggregate, day);
+    }
+    if (this.savings.today?.date >= range.startKey && this.savings.today?.date < range.endKey) addDays(aggregate, this.savings.today);
+    return {
+      period: normalizedPeriod,
+      startDate: range.startKey,
+      endDate: range.endKey,
+      todaySavings: totalSavings(this.savings.today),
+      totalSavings: Number(this.savings.total) || 0,
+      periodSavings: totalSavings(aggregate),
+      directPv: { kwh: aggregate.directPvKwh, value: aggregate.directPvValue },
+      pvBattery: { kwh: aggregate.pvBatteryKwh, value: aggregate.pvBatteryValue },
+      loadShift: { kwh: aggregate.shiftKwh, value: aggregate.shiftValue },
+      batteryCharging: {
+        kwh: aggregate.batteryChargeKwh,
+        pvKwh: aggregate.pvChargeKwh,
+        gridKwh: aggregate.gridChargeKwh,
+        gridCost: aggregate.gridChargeCost,
+        byTariff: Object.values(aggregate.chargeCostsByTariff || {}).sort((a, b) => b.cost - a.cost),
+      },
+      trackedBatteryKwh: inventoryKwh(this.savings.inventory),
+    };
   }
 
   hasNumericInputChanged(previous, next, wasSeen = true, tolerance = 0.01) {
@@ -650,6 +838,9 @@ class HomeFluxEmsApp extends Homey.App {
   runContextHeartbeat() {
     const now = Date.now();
     const settings = this.getSettings();
+    this.recordSavingsSample(now);
+    if ((now - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) this.persistSavingsState(now, true);
+    else this.syncEmsDevices().catch(err => this.error('EMS device savings sync failed', err));
     const activated = this.checkNightPlanningFallback(now);
     if (activated) return;
 
@@ -2273,6 +2464,8 @@ class HomeFluxEmsApp extends Homey.App {
       evStatus: this.getEvDeviceStatus(settings),
       evOverride: this.getEvOverrideDeviceStatus(settings),
       hvacStatus: this.getHvacDeviceStatus(settings),
+      savingsToday: Number(this.savings ? totalSavings(this.savings.today) : 0) || 0,
+      savingsTotal: Number(this.savings?.total) || 0,
       overrideActive: forcedMode !== 'auto',
       inputAlarm: !readiness.ready,
       balanceAlarm: Boolean(this.balanceMonitor?.warningActive),
@@ -2349,6 +2542,7 @@ class HomeFluxEmsApp extends Homey.App {
       const inputSettings = this.getSettings();
       const wasGridReady = this.getInputReadiness(inputSettings).ready;
       const now = Date.now();
+      this.recordSavingsSample(now);
       this.state.gridPowerW = value;
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
@@ -2372,6 +2566,7 @@ class HomeFluxEmsApp extends Homey.App {
       const value = Number(args.power);
       if (!Number.isFinite(value)) return false;
       const now = Date.now();
+      this.recordSavingsSample(now);
       this.state.pvPowerW = Math.max(0, value);
       this.inputSeen.pv = true;
       this.inputUpdatedAt.pv = now;
@@ -2870,6 +3065,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async onUninit() {
+    this.persistSavingsState(Date.now());
     this.clearInputRequestSchedule();
     this.clearEvSocRequestSchedule();
     this.clearOverrideResumeTimer();
@@ -6912,6 +7108,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.lastEmittedCommands = effectiveInternalCommands;
       this.lastEmittedMode = result.baseMode;
       this.lastEmittedOverride = result.override || '';
+      this.recordSavingsSample(Date.now());
       this.state.lastTotalCommandW = effectiveInternalTotal;
       if (this.latestResult) {
         this.latestResult.outputCommands = commands.slice();
@@ -7450,6 +7647,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     if (body.gridPowerW !== undefined && Number.isFinite(Number(body.gridPowerW))) {
       const now = Date.now();
+      this.recordSavingsSample(now);
       this.state.gridPowerW = Number(body.gridPowerW);
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
@@ -7468,6 +7666,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (body.pvPowerW !== undefined && Number.isFinite(Number(body.pvPowerW))) {
       const now = Date.now();
+      this.recordSavingsSample(now);
       this.state.pvPowerW = Math.max(0, Number(body.pvPowerW));
       this.inputSeen.pv = true;
       this.inputUpdatedAt.pv = now;

@@ -1,0 +1,17 @@
+{
+  "type": "number",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Total savings",
+    "nl": "Winst totaal"
+  },
+  "getable": true,
+  "setable": false,
+  "insights": true,
+  "decimals": 2,
+  "units": {
+    "en": "€",
+    "nl": "€"
+  },
+  "icon": "/assets/capabilities/savings-total.svg"
+}

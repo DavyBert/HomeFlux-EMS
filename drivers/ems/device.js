@@ -11,6 +11,8 @@ class HomeFluxEmsDevice extends Homey.Device {
       'ems_ev_status',
       'ems_ev_override',
       'ems_hvac_status',
+      'ems_savings_today',
+      'ems_savings_total',
     ];
     for (const capability of addedCapabilities) {
       if (this.hasCapability(capability)) continue;
@@ -42,6 +44,8 @@ class HomeFluxEmsDevice extends Homey.Device {
       ['ems_ev_status', values.evStatus],
       ['ems_ev_override', values.evOverride],
       ['ems_hvac_status', values.hvacStatus],
+      ['ems_savings_today', values.savingsToday],
+      ['ems_savings_total', values.savingsTotal],
       ['ems_override_active', Boolean(values.overrideActive)],
       ['alarm_ems_input', Boolean(values.inputAlarm)],
       ['alarm_ems_balance', Boolean(values.balanceAlarm)],

@@ -1,0 +1,17 @@
+{
+  "type": "number",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Savings today",
+    "nl": "Winst vandaag"
+  },
+  "getable": true,
+  "setable": false,
+  "insights": true,
+  "decimals": 2,
+  "units": {
+    "en": "€",
+    "nl": "€"
+  },
+  "icon": "/assets/capabilities/savings-today.svg"
+}

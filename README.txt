@@ -1,4 +1,4 @@
-HOMEFLUX, YOUR ENERGY, MANAGED DIFFERENTLY
+HomeFlux, your energy, managed differently
 
 HomeFlux EMS brings your home’s energy together in one smart system. It decides when to charge or use your home battery, when to make the most of solar power, and when flexible loads such as EV charging, heating, cooling or hot water can run most efficiently.
 

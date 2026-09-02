@@ -13,6 +13,10 @@ module.exports = {
     return homey.app.getPlanningStatus({ force: String(query?.force || '') === 'true' });
   },
 
+  async getSavings({ homey, query }) {
+    return homey.app.getSavingsStatus({ period: String(query?.period || 'day') });
+  },
+
   async refreshPlanning({ homey }) {
     return homey.app.getPlanningStatus({ force: true });
   },

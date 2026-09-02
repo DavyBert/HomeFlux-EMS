@@ -17,6 +17,8 @@
     "ems_ev_status",
     "ems_ev_override",
     "ems_hvac_status",
+    "ems_savings_today",
+    "ems_savings_total",
     "ems_override_active",
     "alarm_ems_input",
     "alarm_ems_balance"

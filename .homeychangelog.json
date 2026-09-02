@@ -25,5 +25,8 @@
   },
   "0.4.7": {
     "en": "Fixed: per-battery charge and discharge limits are now handled correctly when batteries have different specifications."
+  },
+  "0.4.8": {
+    "en": "Slogan Fix"
   }
 }

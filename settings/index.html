@@ -579,16 +579,37 @@
 .priority-actions button { min-width:34px; }
 .live-instance-card { margin-bottom:10px; }
 .instance-disabled { opacity:.68; }
+.savings-periods { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px; }
+.savings-period-button { min-width:74px; }
+.savings-period-button.active { border-color:rgba(79,138,16,.8)!important; box-shadow:0 0 0 1px rgba(79,138,16,.35) inset; }
+.savings-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+.savings-card { display:grid; grid-template-columns:42px minmax(0,1fr); gap:10px; align-items:center; padding:13px; border:1px solid var(--homey-line,rgba(127,127,127,.25)); border-radius:12px; background:rgba(255,255,255,.025); }
+.savings-card svg { width:38px; height:38px; }
+.savings-card .value { font-size:1.35rem; font-weight:800; margin-top:2px; }
+.savings-components { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+.savings-component { padding:11px 12px; border:1px solid var(--homey-line,rgba(127,127,127,.25)); border-radius:10px; }
+.savings-component strong { display:block; margin-top:3px; font-size:1.08rem; }
+.savings-chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.savings-chart-card { padding:14px; border:1px solid var(--homey-line,rgba(127,127,127,.25)); border-radius:12px; background:rgba(255,255,255,.025); }
+.savings-donut-wrap { display:flex; justify-content:center; margin:12px 0; }
+.savings-donut { width:170px; height:170px; border-radius:50%; position:relative; background:rgba(255,255,255,.08); }
+.savings-donut::after { content:''; position:absolute; inset:34px; border-radius:50%; background:#111923; border:1px solid rgba(255,255,255,.08); }
+.savings-donut-center { position:absolute; inset:34px; display:flex; align-items:center; justify-content:center; z-index:2; text-align:center; font-weight:800; font-size:1.05rem; padding:8px; }
+.savings-legend { display:grid; gap:7px; }
+.savings-legend-row { display:grid; grid-template-columns:12px minmax(0,1fr) auto; gap:8px; align-items:center; font-size:.92rem; }
+.savings-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.45); }
+@media (max-width:620px) { .savings-summary,.savings-components,.savings-chart-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.6 — HOMEFLUX, JOUW ENERGIE, ANDERS GEREGELD</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.9 — HomeFlux, jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
 <button class="tab" data-tab="contract" type="button">Energiecontract</button>
+<button class="tab" data-tab="savings" type="button">Winst</button>
 <button class="tab" data-tab="ev" type="button">EV</button>
 <button class="tab" data-tab="hvac" type="button">HVAC</button>
 <button class="tab" data-tab="boiler" type="button">Boiler</button>
@@ -1030,6 +1051,49 @@
 </div>
 </div>
 </div>
+</section>
+<section class="panel" id="panel-savings">
+<fieldset class="homey-form-fieldset">
+<legend class="homey-form-legend">Winst</legend>
+<div class="muted" style="margin-bottom:12px">HomeFlux bewaart alleen compacte dagtotalen. De berekening gebruikt de bestaande net- en PV-metingen en het werkelijk gepubliceerde batterijvermogen; er wordt geen extra polling toegevoegd.</div>
+<div class="savings-periods" id="savingsPeriods">
+<button class="homey-button-secondary savings-period-button active" type="button" data-savings-period="day">Dag</button>
+<button class="homey-button-secondary savings-period-button" type="button" data-savings-period="week">Week</button>
+<button class="homey-button-secondary savings-period-button" type="button" data-savings-period="month">Maand</button>
+<button class="homey-button-secondary savings-period-button" type="button" data-savings-period="year">Jaar</button>
+</div>
+<div class="savings-summary">
+  <div class="savings-card">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" stroke-width="4"/><path d="M39 20c-2-2-5-3-8-3-7 0-12 6-12 15s5 15 12 15c3 0 6-1 8-3M16 28h19M16 36h17" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M45 14v9h9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><div class="muted">Winst vandaag</div><div class="value" id="savingsTodayValue">€0,00</div></div>
+  </div>
+  <div class="savings-card">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 46h44M14 42l10-12 9 7 15-20" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M41 17h7v7" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="19" r="8" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+    <div><div class="muted">Winst totaal</div><div class="value" id="savingsTotalValue">€0,00</div></div>
+  </div>
+</div>
+<div class="savings-components">
+  <div class="savings-component"><span class="muted">PV rechtstreeks gebruikt</span><strong id="savingsDirectPvValue">€0,00 · 0,00 kWh</strong></div>
+  <div class="savings-component"><span class="muted">PV uit batterij</span><strong id="savingsPvBatteryValue">€0,00 · 0,00 kWh</strong></div>
+  <div class="savings-component"><span class="muted">Winst door laadverschuiving</span><strong id="savingsShiftValue">€0,00 · 0,00 kWh</strong></div>
+  <div class="savings-component"><span class="muted">Totale besparing geselecteerde periode</span><strong id="savingsPeriodValue">€0,00</strong></div>
+</div>
+<div class="savings-chart-grid">
+  <div class="savings-chart-card">
+    <h3 style="margin-top:0">Grafiek kost</h3>
+    <div class="muted">Kosten van netenergie waarmee de batterij in deze periode werd geladen. PV-laden blijft €0.</div>
+    <div class="savings-donut-wrap"><div class="savings-donut" id="savingsCostChart"><div class="savings-donut-center" id="savingsCostCenter">€0,00</div></div></div>
+    <div class="savings-legend" id="savingsCostLegend"></div>
+  </div>
+  <div class="savings-chart-card">
+    <h3 style="margin-top:0">Grafiek netto winst</h3>
+    <div class="muted">Waarde van directe PV, PV uit de batterij en het prijsverschil van netenergie die naar een later tarief werd verschoven.</div>
+    <div class="savings-donut-wrap"><div class="savings-donut" id="savingsProfitChart"><div class="savings-donut-center" id="savingsProfitCenter">€0,00</div></div></div>
+    <div class="savings-legend" id="savingsProfitLegend"></div>
+  </div>
+</div>
+<div class="muted" style="margin-top:12px">Bij een dynamisch contract gebruikt HomeFlux de actuele Homey Energy-aankoopprijs. Een aparte dynamische injectieprijs is niet beschikbaar in de huidige prijsbron en wordt daarom niet als extra winst verzonnen.</div>
+</fieldset>
 </section>
 <section class="panel" id="panel-ev">
 <fieldset class="homey-form-fieldset"><legend class="homey-form-legend">EV-laders</legend><div class="grid"><div class="homey-form-group"><label class="homey-form-label" for="evCount">Aantal EV-laders</label><select class="homey-form-select" id="evCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div><div class="homey-form-group"><div class="muted">EV’s werken onafhankelijk en staan niet in de thermische prioriteitenlijst. HomeFlux laat maximaal één nieuwe EV per normale EMS-cyclus starten.</div></div></div></fieldset>
@@ -1981,6 +2045,80 @@ async function onHomeyReady(Homey) {
 
   let helpCatalogRendered = false;
   let activeMainTab = 'ems';
+  let activeSavingsPeriod = 'day';
+
+  function formatSavingsCurrency(value) {
+    return new Intl.NumberFormat(uiLanguage === 'nl' ? 'nl-BE' : 'en-BE', { style:'currency', currency:'EUR', minimumFractionDigits:2, maximumFractionDigits:2 }).format(Number(value) || 0);
+  }
+
+  function formatSavingsKwh(value) {
+    return `${new Intl.NumberFormat(uiLanguage === 'nl' ? 'nl-BE' : 'en-BE', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(Number(value) || 0)} kWh`;
+  }
+
+  function renderSavingsDonut(chartId, centerId, legendId, items, totalValue, includeFreePv = false, freePvKwh = 0) {
+    const chart = q(chartId);
+    const center = q(centerId);
+    const legend = q(legendId);
+    if (!chart || !center || !legend) return;
+    const palette = ['#4F8A10','#2f6f8f','#a06b21','#77538e','#4f8a72','#8a4f58'];
+    const positive = (Array.isArray(items) ? items : []).map((item,index) => ({ ...item, value:Number(item.value)||0, color:palette[index % palette.length] })).filter(item => item.value > 0);
+    const sum = positive.reduce((acc,item) => acc + item.value,0);
+    if (sum > 0) {
+      let cursor = 0;
+      const stops = positive.map(item => {
+        const start = cursor;
+        cursor += (item.value / sum) * 360;
+        return `${item.color} ${start.toFixed(2)}deg ${cursor.toFixed(2)}deg`;
+      });
+      chart.style.background = `conic-gradient(${stops.join(',')})`;
+    } else {
+      chart.style.background = 'rgba(255,255,255,.08)';
+    }
+    center.textContent = formatSavingsCurrency(totalValue);
+    legend.innerHTML = '';
+    (Array.isArray(items) ? items : []).forEach((item,index) => {
+      const row = document.createElement('div');
+      row.className = 'savings-legend-row';
+      const kwhText = item.kwh !== undefined ? ` · ${formatSavingsKwh(item.kwh)}` : '';
+      row.innerHTML = `<span class="savings-dot" style="background:${palette[index % palette.length]}"></span><span>${escapeHtml(item.label || '')}</span><strong>${escapeHtml(formatSavingsCurrency(item.value))}${escapeHtml(kwhText)}</strong>`;
+      legend.appendChild(row);
+    });
+    if (includeFreePv) {
+      const row = document.createElement('div');
+      row.className = 'savings-legend-row';
+      row.innerHTML = `<span class="savings-dot" style="background:rgba(255,255,255,.35)"></span><span>${uiLanguage === 'nl' ? 'PV-laden · gratis' : 'PV charging · free'}</span><strong>${escapeHtml(formatSavingsCurrency(0))} · ${escapeHtml(formatSavingsKwh(freePvKwh))}</strong>`;
+      legend.appendChild(row);
+    }
+    if (!legend.children.length) legend.innerHTML = `<div class="muted">${uiLanguage === 'nl' ? 'Nog geen gegevens voor deze periode.' : 'No data for this period yet.'}</div>`;
+  }
+
+  async function refreshSavings() {
+    try {
+      const data = await api('GET', `/savings?period=${encodeURIComponent(activeSavingsPeriod)}`);
+      q('savingsTodayValue').textContent = formatSavingsCurrency(data.todaySavings);
+      q('savingsTotalValue').textContent = formatSavingsCurrency(data.totalSavings);
+      q('savingsDirectPvValue').textContent = `${formatSavingsCurrency(data.directPv?.value)} · ${formatSavingsKwh(data.directPv?.kwh)}`;
+      q('savingsPvBatteryValue').textContent = `${formatSavingsCurrency(data.pvBattery?.value)} · ${formatSavingsKwh(data.pvBattery?.kwh)}`;
+      q('savingsShiftValue').textContent = `${formatSavingsCurrency(data.loadShift?.value)} · ${formatSavingsKwh(data.loadShift?.kwh)}`;
+      q('savingsPeriodValue').textContent = formatSavingsCurrency(data.periodSavings);
+      const costItems = (data.batteryCharging?.byTariff || []).map(item => ({ label:item.label, value:item.cost, kwh:item.kwh }));
+      renderSavingsDonut('savingsCostChart','savingsCostCenter','savingsCostLegend',costItems,data.batteryCharging?.gridCost,true,data.batteryCharging?.pvKwh);
+      renderSavingsDonut('savingsProfitChart','savingsProfitCenter','savingsProfitLegend',[
+        { label:uiLanguage === 'nl' ? 'PV rechtstreeks' : 'Direct PV', value:data.directPv?.value, kwh:data.directPv?.kwh },
+        { label:uiLanguage === 'nl' ? 'PV uit batterij' : 'PV from battery', value:data.pvBattery?.value, kwh:data.pvBattery?.kwh },
+        { label:uiLanguage === 'nl' ? 'Laadverschuiving' : 'Load shifting', value:data.loadShift?.value, kwh:data.loadShift?.kwh },
+      ],data.periodSavings);
+    } catch (err) {
+      console.error('Savings refresh failed', err);
+    }
+  }
+
+  document.querySelectorAll('[data-savings-period]').forEach(button => button.addEventListener('click', () => {
+    activeSavingsPeriod = String(button.dataset.savingsPeriod || 'day');
+    document.querySelectorAll('[data-savings-period]').forEach(item => item.classList.toggle('active', item === button));
+    refreshSavings();
+  }));
+
   function ensureHelpCatalogRendered() {
     if (helpCatalogRendered) return;
     renderHelpCatalog();
@@ -1994,6 +2132,7 @@ async function onHomeyReady(Homey) {
     document.querySelectorAll('.panel').forEach(el => el.classList.toggle('active', el.id === `panel-${name}`));
     if (name === 'help') ensureHelpCatalogRendered();
     if (name === 'status' || name === 'ev' || name === 'hvac' || name === 'boiler' || name === 'priority' || (name === 'contract' && q('contractType').value.startsWith('dynamic'))) refreshStatus();
+    if (name === 'savings') refreshSavings();
     if (name === 'planning') refreshPlanning();
   }
 
