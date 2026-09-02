@@ -1982,8 +1982,8 @@ function bareApp() {
   assert.equal(app.lowForecastSunnyRuntime.aboveSince, 0);
 }
 
-// v0.4.4: EV/battery coordination must not scale an individual battery below
-// its configured minimum charge power. Too-small commands become 0 W instead.
+// v0.4.6: EV/battery coordination preserves individual maximum charge power.
+// Device-specific minimum power is handled only by Split Command.
 {
   const app = bareApp();
   const result = {
@@ -1999,11 +1999,9 @@ function bareApp() {
     batteryCommandStepW: 100,
     maxChargePerBatteryW: 2300,
     individualBatteryPowerLimitsEnabled: true,
-    battery1MinChargeW: 400,
     battery1MaxChargeW: 2500,
-    battery2MinChargeW: 100,
     battery2MaxChargeW: 1000,
   });
-  assert.deepEqual(result.candidateCommands, [0, -100]);
-  assert.equal(result.candidateTotalCommandW, -100);
+  assert.deepEqual(result.candidateCommands, [-100, -100]);
+  assert.equal(result.candidateTotalCommandW, -200);
 }

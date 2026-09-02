@@ -584,7 +584,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.5 — Jouw energie, anders geregeld.</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.6 — HOMEFLUX, JOUW ENERGIE, ANDERS GEREGELD</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -608,77 +608,61 @@
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>SoC-grenzen</h4><p class="muted">Minimum en maximum vormen de harde batterijgrenzen. Veiligheids-SoC en de spaargrens bepalen hoeveel reserve HomeFlux tijdens normale werking bewaart.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item" data-setting-id="minSoc"><label class="homey-form-label" for="minSoc">Minimum SoC (%)</label><input class="homey-form-input" id="minSoc" max="100" min="0" step="1" type="number"/><div class="muted">Absolute ondergrens. Peak Guard mag tot deze grens gaan, nooit eronder.</div></div><div class="homey-form-group cluster-item" data-setting-id="maxSoc"><label class="homey-form-label" for="maxSoc">Maximum SoC (%)</label><input class="homey-form-input" id="maxSoc" max="100" min="0" step="1" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="safetySoc"><label class="homey-form-label" for="safetySoc">Veiligheids-SoC (%)</label><input class="homey-form-input" id="safetySoc" max="100" min="0" step="1" type="number"/><div class="muted">Operationele reserve voor de nacht/ochtend. Normale zelfconsumptie en Batterij sparen ontladen niet onder deze grens. De laadplanning mikt minstens op deze SoC; Peak Guard mag indien nodig nog tot Minimum SoC gaan.</div></div><div class="homey-form-group cluster-item" data-setting-id="batterySaveDischargeAboveSoc"><label class="homey-form-label" for="batterySaveDischargeAboveSoc">Batterij sparen: ontladen boven SoC (%)</label><input class="homey-form-input" id="batterySaveDischargeAboveSoc" max="100" min="0" step="1" type="number"/><div class="muted">In Batterij sparen mag elke batterij afzonderlijk ontladen zolang haar SoC boven deze grens zit. 100% = volledig sparen. Peak Guard mag altijd ingrijpen tot Minimum SoC, maar nooit eronder.</div></div></div></div>
 <div class="homey-form-group full-width wide-explainer"><label class="homey-form-label" for="lowForecastSelfConsumptionMinKwh">Minimum hoeveelheid zon voor zelfconsumptie (kWh)</label><input class="homey-form-input" id="lowForecastSelfConsumptionMinKwh" min="0" step="0.1" type="number"/><div class="muted">Als de volledige PV-voorspelling van de relevante zonnedag lager is dan deze waarde, kan de EMS per prijscategorie naar Batterij sparen schakelen. Overdag gebruikt HomeFlux vandaag; zodra het nachtplan actief is gebruikt dezelfde logica de voorspelling van morgen. Kies onder Energiecontract voor welke categorieën dit geldt.</div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Lage-PV-dag automatisch vrijgeven</h4><p class="muted">Optionele uitweg wanneer de werkelijke dag duidelijk beter uitvalt dan de PV-voorspelling. Dit beïnvloedt alleen Batterij sparen bij lage PV; de forecast zelf en Peak Guard veranderen niet.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item full-width" data-setting-id="lowForecastAutoSunnyEnabled"><label class="homey-form-checkbox"><input id="lowForecastAutoSunnyEnabled" type="checkbox"/> <span>Schakel lage-PV-dag naar zonnedag bij hoge batterij-SoC</span></label><div class="muted">Alleen tijdens de actieve dagplanning (nadat PV-productie is gezien). Zodra de gemiddelde SoC onafgebroken op of boven de gekozen grens blijft gedurende de ingestelde tijd, behandelt HomeFlux de huidige dag voor de lage-PV-logica als zonnedag. Daalt de SoC vóór het einde van de timer, dan begint de timer opnieuw. Na omschakeling blijft de zonnedagstatus gelden voor de rest van de huidige dagplanning.</div></div><div class="homey-form-group cluster-item" data-setting-id="lowForecastAutoSunnySoc"><label class="homey-form-label" for="lowForecastAutoSunnySoc">SoC-drempel voor zonnedag (%)</label><input class="homey-form-input" id="lowForecastAutoSunnySoc" min="0" max="100" step="1" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="lowForecastAutoSunnyMinutes"><label class="homey-form-label" for="lowForecastAutoSunnyMinutes">Tijd boven SoC-drempel (min)</label><input class="homey-form-input" id="lowForecastAutoSunnyMinutes" min="1" max="1440" step="1" type="number"/></div></div></div>
-<div class="setting-cluster full-width"><div class="cluster-header"><h4>Vermogensgrenzen</h4><p class="muted">Totale limieten gelden voor de volledige batterijgroep; de gedeelde limieten per batterij worden gebruikt zolang individuele batterijlimieten uitgeschakeld zijn.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item" data-setting-id="maxTotalChargeW"><label class="homey-form-label" for="maxTotalChargeW">Max totaal laden (W)</label><input class="homey-form-input" id="maxTotalChargeW" max="50000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="maxTotalDischargeW"><label class="homey-form-label" for="maxTotalDischargeW">Max totaal ontladen (W)</label><input class="homey-form-input" id="maxTotalDischargeW" max="50000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="maxChargePerBatteryW"><label class="homey-form-label" for="maxChargePerBatteryW">Max laden per batterij (W)</label><input class="homey-form-input" id="maxChargePerBatteryW" max="10000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="maxDischargePerBatteryW"><label class="homey-form-label" for="maxDischargePerBatteryW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="maxDischargePerBatteryW" max="10000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item full-width" data-setting-id="individualBatteryPowerLimitsEnabled"><label class="homey-form-checkbox"><input id="individualBatteryPowerLimitsEnabled" type="checkbox"/> <span>Mijn batterijen hebben verschillende vermogenslimieten</span></label><div class="muted">Schakel dit in wanneer niet alle batterijen dezelfde laad- en ontlaadspecificaties hebben. HomeFlux gebruikt dan per batterij de ingestelde minimum- en maximumvermogens. Een te klein setpoint wordt nooit naar het minimum omhoog geforceerd: HomeFlux gebruikt dan 0 W of verdeelt het vermogen over een andere geschikte batterij.</div></div></div></div>
+<div class="setting-cluster full-width"><div class="cluster-header"><h4>Vermogensgrenzen</h4><p class="muted">Totale limieten gelden voor de volledige batterijgroep; de gedeelde limieten per batterij worden gebruikt zolang individuele batterijlimieten uitgeschakeld zijn.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item" data-setting-id="maxTotalChargeW"><label class="homey-form-label" for="maxTotalChargeW">Max totaal laden (W)</label><input class="homey-form-input" id="maxTotalChargeW" max="50000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="maxTotalDischargeW"><label class="homey-form-label" for="maxTotalDischargeW">Max totaal ontladen (W)</label><input class="homey-form-input" id="maxTotalDischargeW" max="50000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="maxChargePerBatteryW"><label class="homey-form-label" for="maxChargePerBatteryW">Max laden per batterij (W)</label><input class="homey-form-input" id="maxChargePerBatteryW" max="10000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="maxDischargePerBatteryW"><label class="homey-form-label" for="maxDischargePerBatteryW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="maxDischargePerBatteryW" max="10000" min="0" step="50" type="number"/></div><div class="homey-form-group cluster-item full-width" data-setting-id="individualBatteryPowerLimitsEnabled"><label class="homey-form-checkbox"><input id="individualBatteryPowerLimitsEnabled" type="checkbox"/> <span>Mijn batterijen hebben verschillende vermogenslimieten</span></label><div class="muted">Schakel dit in wanneer niet alle batterijen dezelfde laad- en ontlaadspecificaties hebben. HomeFlux gebruikt dan per batterij een afzonderlijk maximum laadvermogen en maximum ontlaadvermogen. Technische minimumvermogens stel je alleen in via Split Command wanneer een batterij dat nodig heeft.</div></div></div></div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="1">
 <div class="cluster-header"><h4>Batterij 1 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery1MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery1MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery1MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery1MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery1MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery1MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery1MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery1MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery1MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery1MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery1MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery1MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="2">
 <div class="cluster-header"><h4>Batterij 2 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery2MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery2MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery2MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery2MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery2MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery2MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery2MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery2MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery2MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery2MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery2MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery2MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="3">
 <div class="cluster-header"><h4>Batterij 3 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery3MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery3MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery3MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery3MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery3MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery3MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery3MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery3MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery3MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery3MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery3MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery3MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="4">
 <div class="cluster-header"><h4>Batterij 4 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery4MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery4MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery4MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery4MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery4MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery4MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery4MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery4MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery4MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery4MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery4MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery4MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="5">
 <div class="cluster-header"><h4>Batterij 5 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery5MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery5MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery5MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery5MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery5MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery5MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery5MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery5MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery5MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery5MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery5MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery5MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="6">
 <div class="cluster-header"><h4>Batterij 6 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery6MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery6MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery6MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery6MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery6MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery6MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery6MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery6MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery6MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery6MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery6MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery6MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="7">
 <div class="cluster-header"><h4>Batterij 7 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery7MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery7MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery7MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery7MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery7MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery7MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery7MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery7MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery7MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery7MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery7MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery7MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width individual-battery-limit-card hidden" data-individual-battery-limit="8">
 <div class="cluster-header"><h4>Batterij 8 - vermogenslimieten</h4></div>
 <div class="cluster-grid">
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery8MinChargeW">Minimum laadvermogen (W)</label><input class="homey-form-input" id="battery8MinChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery8MaxChargeW">Maximum laadvermogen (W)</label><input class="homey-form-input" id="battery8MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery8MinDischargeW">Minimum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery8MinDischargeW" max="10000" min="0" step="1" type="number"/></div>
-<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery8MaxDischargeW">Maximum ontlaadvermogen (W)</label><input class="homey-form-input" id="battery8MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery8MaxChargeW">Max laden per batterij (W)</label><input class="homey-form-input" id="battery8MaxChargeW" max="10000" min="0" step="1" type="number"/></div>
+<div class="homey-form-group cluster-item"><label class="homey-form-label" for="battery8MaxDischargeW">Max ontladen per batterij (W)</label><input class="homey-form-input" id="battery8MaxDischargeW" max="10000" min="0" step="1" type="number"/></div>
 </div>
 </div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Batterij-uitvoer</h4><p class="muted">Deze instellingen bepalen hoe het berekende batterijvermogen uiteindelijk naar je Flow of batterij wordt gepubliceerd.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item full-width" data-setting-id="invertBatteryCommand"><label class="homey-form-checkbox"><input id="invertBatteryCommand" type="checkbox"/> <span>Laad-/ontlaadwaarden omkeren</span></label><div class="muted">Standaard publiceert HomeFlux laden als een negatieve waarde en ontladen als een positieve waarde. Schakel dit in wanneer jouw batterij of Flow net de omgekeerde conventie verwacht. De interne EMS-berekening verandert niet; alleen de uitgestuurde waarden worden omgekeerd. Na wijzigen is een nieuwe laadtest verplicht.</div></div><div class="homey-form-group cluster-item full-width" data-setting-id="batteryCommandStepW"><label class="homey-form-label" for="batteryCommandStepW">Batterijsturing afronden op</label><select class="homey-form-select" id="batteryCommandStepW"><option value="1">1 W</option><option value="10">10 W</option><option value="100">100 W</option></select><div class="muted">Rondt elk werkelijk batterijsetpoint conservatief af naar de lagere absolute stap. Zo wordt 178 W → 100 W en -178 W → -100 W: afronding kan dus nooit harder sturen dan berekend. Kies 100 W voor systemen zoals LUNA die alleen 100, 200, 300 … W accepteren. De volgende regelcyclus corrigeert verder op basis van de echte netmeting.</div></div></div></div>
@@ -1686,8 +1670,7 @@ async function onHomeyReady(Homey) {
   }
   for (let battery = 1; battery <= 8; battery += 1) {
     const powerLimitIds = [
-      `battery${battery}MinChargeW`, `battery${battery}MaxChargeW`,
-      `battery${battery}MinDischargeW`, `battery${battery}MaxDischargeW`,
+      `battery${battery}MaxChargeW`, `battery${battery}MaxDischargeW`,
     ];
     ids.push(...powerLimitIds);
     powerLimitIds.forEach(id => numeric.add(id));
@@ -2479,7 +2462,6 @@ async function onHomeyReady(Homey) {
           else if (id === 'lowForecastAutoSunnyMinutes') q(id).value = 10;
           else if (id === 'peakReserveTargetSoc') q(id).value = 0;
           else if (id === 'sunnyMonthsMinSoc') q(id).value = 20;
-          else if (/^battery[1-8](MinChargeW|MinDischargeW)$/.test(id)) q(id).value = 0;
           else if (/^battery[1-8]MaxChargeW$/.test(id)) q(id).value = Number(snapshot.maxChargePerBatteryW) || 2300;
           else if (/^battery[1-8]MaxDischargeW$/.test(id)) q(id).value = Number(snapshot.maxDischargePerBatteryW) || 2400;
           else if (/^splitCommandBattery[1-8](ChargeMinSwitchSeconds|DischargeMinSwitchSeconds|MinBetweenSwitchSeconds)$/.test(id)) q(id).value = 60;
@@ -2699,28 +2681,6 @@ async function onHomeyReady(Homey) {
       }
       if (Number.isFinite(max) && value > max) {
         return { field, message: uiLanguage === 'nl' ? `${label}: maximum is ${max}.` : `${label}: maximum is ${max}.` };
-      }
-    }
-    if (Boolean(q('individualBatteryPowerLimitsEnabled')?.checked)) {
-      const count = Math.max(1, Math.min(8, Math.round(Number(q('batteryCount')?.value) || 1)));
-      for (let battery = 1; battery <= count; battery += 1) {
-        for (const direction of ['Charge','Discharge']) {
-          const minField = q(`battery${battery}Min${direction}W`);
-          const maxField = q(`battery${battery}Max${direction}W`);
-          const minValue = Number(minField?.value);
-          const maxValue = Number(maxField?.value);
-          if (Number.isFinite(minValue) && Number.isFinite(maxValue) && minValue > maxValue) {
-            const label = direction === 'Charge'
-              ? (uiLanguage === 'nl' ? 'laadvermogen' : 'charge power')
-              : (uiLanguage === 'nl' ? 'ontlaadvermogen' : 'discharge power');
-            return {
-              field: minField,
-              message: uiLanguage === 'nl'
-                ? `Batterij ${battery}: minimum ${label} mag niet hoger zijn dan het maximum.`
-                : `Battery ${battery}: minimum ${label} cannot exceed the maximum.`,
-            };
-          }
-        }
       }
     }
     return null;

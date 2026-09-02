@@ -15,12 +15,12 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.4.5');
+  assert.equal(manifest.version, '0.4.6');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.4.5 — Jouw energie, anders geregeld.');
-assert.equal(localeEn.settings.subtitle, 'v0.4.5 — Your energy, arranged differently');
+assert.equal(localeNl.settings.subtitle, 'v0.4.6 — HOMEFLUX, JOUW ENERGIE, ANDERS GEREGELD');
+assert.equal(localeEn.settings.subtitle, 'v0.4.6 — HOMEFLUX, YOUR ENERGY, MANAGED DIFFERENTLY');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -44,6 +44,11 @@ for (let month = 1; month <= 12; month += 1) {
   assert(html.includes(`'peakReserveMonth${month}'`), `month ${month} missing from settings wiring`);
 }
 assert(!html.includes('id="peakReserveSeasonWinter"'));
+assert(!html.includes('id="battery1MinChargeW"'), 'general individual battery minimum charge field must stay out of the UI');
+assert(!html.includes('id="battery1MinDischargeW"'), 'general individual battery minimum discharge field must stay out of the UI');
+assert(html.includes('id="battery1MaxChargeW"'), 'individual maximum charge field missing');
+assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharge field missing');
+assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
 assert(appJs.includes("settingsSchemaVersion', 48"));

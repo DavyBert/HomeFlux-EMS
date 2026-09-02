@@ -1,7 +1,7 @@
 # HomeFlux EMS
 
-**Your energy, arranged differently**  
-**Jouw energie, anders geregeld.**
+**HOMEFLUX, YOUR ENERGY, MANAGED DIFFERENTLY**  
+**HOMEFLUX, JOUW ENERGIE, ANDERS GEREGELD**
 
 ## English
 
@@ -28,6 +28,12 @@ Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.4.6
+- Mixed-battery limits now expose only **Max charge per battery** and **Max discharge per battery** for each configured battery.
+- Individual battery maxima remain hard limits and the existing total charge/discharge limits remain authoritative for the whole battery group.
+- Technical minimum power remains part of **Split Command** only.
+- Restored the HomeFlux slogans exactly to **HOMEFLUX, YOUR ENERGY, MANAGED DIFFERENTLY** and **HOMEFLUX, JOUW ENERGIE, ANDERS GEREGELD**.
+
 ### v0.4.5
 - Fixed night/tariff boiler fallback being stopped merely because **Peak Guard** became active. Tariff heating may now continue while the battery supplies the required peak-shaving support.
 - Peak Guard remains authoritative: HomeFlux predicts the grid import after the next effective battery command and stops tariff boiler heating when the configured hard grid limit still cannot be respected.

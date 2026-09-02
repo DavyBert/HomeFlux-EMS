@@ -424,7 +424,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.5 initialized');
+    this.log('HomeFlux EMS v0.4.6 initialized');
   }
 
   refreshSettingsCache() {
@@ -1518,9 +1518,7 @@ class HomeFluxEmsApp extends Homey.App {
       const sharedCharge = Math.max(0, Number(this.homey.settings.get('maxChargePerBatteryW')) || Number(DEFAULTS.maxChargePerBatteryW) || 2300);
       const sharedDischarge = Math.max(0, Number(this.homey.settings.get('maxDischargePerBatteryW')) || Number(DEFAULTS.maxDischargePerBatteryW) || 2400);
       for (let battery = 1; battery <= 8; battery += 1) {
-        if (this.homey.settings.get(`battery${battery}MinChargeW`) === null) this.setSetting(`battery${battery}MinChargeW`, 0);
         if (this.homey.settings.get(`battery${battery}MaxChargeW`) === null) this.setSetting(`battery${battery}MaxChargeW`, sharedCharge);
-        if (this.homey.settings.get(`battery${battery}MinDischargeW`) === null) this.setSetting(`battery${battery}MinDischargeW`, 0);
         if (this.homey.settings.get(`battery${battery}MaxDischargeW`) === null) this.setSetting(`battery${battery}MaxDischargeW`, sharedDischarge);
       }
     }
@@ -4478,21 +4476,15 @@ class HomeFluxEmsApp extends Homey.App {
       let magnitude = Math.floor(scaled / step) * step;
 
       // EV/battery coordination may reduce an already calculated charge command.
-      // When batteries have different specifications, never create a command that
-      // falls below that battery's configured minimum merely because it was scaled.
-      // A too-small command becomes 0 W instead of being rounded upward, preserving
-      // the requested total cap and avoiding oscillation around the minimum.
+      // Keep the individual maximum intact. Any hardware-specific minimum is a
+      // Split Command concern and is applied later when the command is published.
       if (Boolean(settings.individualBatteryPowerLimitsEnabled)) {
         const batteryNumber = index + 1;
         const sharedMax = Math.max(0, Number(settings.maxChargePerBatteryW) || 2300);
         const configuredMax = Number(settings[`battery${batteryNumber}MaxChargeW`]);
-        const configuredMin = Number(settings[`battery${batteryNumber}MinChargeW`]);
         const maxChargeW = Math.max(0, Number.isFinite(configuredMax) ? configuredMax : sharedMax);
-        const minChargeW = Math.max(0, Number.isFinite(configuredMin) ? configuredMin : 0);
         const quantizedMax = Math.floor(maxChargeW / step) * step;
-        const quantizedMin = Math.ceil(Math.min(minChargeW, maxChargeW) / step) * step;
         magnitude = Math.min(magnitude, quantizedMax);
-        if (magnitude > 0 && magnitude < quantizedMin) magnitude = 0;
       }
 
       return magnitude > 0 ? -magnitude : 0;

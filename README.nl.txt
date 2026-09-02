@@ -1,4 +1,4 @@
-HomeFlux EMS — Jouw energie, anders geregeld.
+HOMEFLUX, JOUW ENERGIE, ANDERS GEREGELD
 
 HomeFlux EMS brengt de energie in je woning samen in één slim systeem. Het bepaalt wanneer je thuisbatterij wordt geladen of gebruikt, wanneer zonne-energie het best wordt benut en wanneer flexibele verbruikers zoals EV-laden, verwarming, koeling of warm water het efficiëntst kunnen draaien.
 

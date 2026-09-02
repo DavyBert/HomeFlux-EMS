@@ -2271,20 +2271,16 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.ok(saved.totalCommandW >= 595 && saved.totalCommandW <= 605, 'manual Battery Save should use only its own save floor');
 }
 
-// v0.4.4: heterogeneous batteries can have independent minimum and maximum
-// charge/discharge power. Shared limits remain the default when disabled.
+// v0.4.6: heterogeneous batteries can have independent maximum charge/discharge
+// power. Hardware minimums belong to Split Command. Shared limits remain the default when disabled.
 {
   const heterogeneous = baseSettings({
     batteryCount: 2,
     balanceEnabled: false,
     individualBatteryPowerLimitsEnabled: true,
-    battery1MinChargeW: 200,
     battery1MaxChargeW: 2500,
-    battery1MinDischargeW: 300,
     battery1MaxDischargeW: 2000,
-    battery2MinChargeW: 500,
     battery2MaxChargeW: 1000,
-    battery2MinDischargeW: 200,
     battery2MaxDischargeW: 500,
     maxTotalChargeW: 5000,
     maxTotalDischargeW: 5000,
@@ -2304,12 +2300,17 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(discharge.reduce((a,b)=>a+b,0), 2400);
   assert.ok(discharge[0] <= 2000 && discharge[1] <= 500);
 
-  const tooSmall = distributeCommand(-150, state({ batterySoc: [50,50] }), heterogeneous);
-  assert.deepEqual(tooSmall, [0,0], 'a setpoint below every battery minimum must stay at 0 W');
+  const smallCharge = distributeCommand(-150, state({ batterySoc: [50,50] }), heterogeneous);
+  assert.equal(smallCharge.reduce((a,b)=>a+b,0), -150, 'general individual limits must not impose a minimum power');
+  assert.ok(Math.abs(smallCharge[0]) <= 2500 && Math.abs(smallCharge[1]) <= 1000);
 
-  const oneBattery = distributeCommand(-700, state({ batterySoc: [50,50] }), heterogeneous);
-  assert.equal(oneBattery.reduce((a,b)=>a+b,0), -700);
-  assert.ok(oneBattery.some(value => Math.abs(value) >= 200), 'a usable battery may take the request once its minimum can be met');
+  const totalChargeLimited = evaluate(
+    state({ gridPowerW: 0, controlGridPowerW: 0, batterySoc: [50,50] }),
+    { ...heterogeneous, forcedMode: 'manual_charge', maxTotalChargeW: 1800 },
+    new Date('2026-09-02T12:00:00+02:00'),
+  );
+  assert.equal(totalChargeLimited.totalCommandW, -1800, 'group maximum must remain authoritative above individual maxima');
+  assert.ok(Math.abs(totalChargeLimited.commands[0]) <= 2500 && Math.abs(totalChargeLimited.commands[1]) <= 1000);
 }
 
 // v0.4.4: switching from an active planned charge to manual avoid-import must
