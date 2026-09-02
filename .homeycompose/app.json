@@ -1,6 +1,6 @@
 {
   "id": "com.homeflux.ems",
-  "version": "0.4.6",
+  "version": "0.4.9",
   "compatibility": ">=12.0.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -16,8 +16,8 @@
     "nl": "HomeFlux EMS"
   },
   "description": {
-    "en": "Your energy, managed differently",
-    "nl": "Jouw energie, anders geregeld"
+    "en": "HomeFlux, your energy, managed differently",
+    "nl": "HomeFlux, jouw energie, anders geregeld"
   },
   "category": "energy",
   "tags": {
@@ -51,6 +51,10 @@
     "getPlanning": {
       "method": "GET",
       "path": "/planning"
+    },
+    "getSavings": {
+      "method": "GET",
+      "path": "/savings"
     },
     "refreshPlanning": {
       "method": "POST",
