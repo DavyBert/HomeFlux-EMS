@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const { HomeyAPI } = require('homey-api');
-const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan } = require('./lib/ems-engine');
+const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand } = require('./lib/ems-engine');
 const { localParts, normalizeDynamicPriceResponse, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
@@ -440,7 +440,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.9 initialized');
+    this.log('HomeFlux EMS v0.4.10 initialized');
   }
 
   refreshSettingsCache() {
@@ -917,8 +917,8 @@ class HomeFluxEmsApp extends Homey.App {
     const fields = [
       'Enabled','SocEnabled','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority',
       'BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA',
-      'StandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds','FixedChargeWindowEnabled',
-      'DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
+      'StandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal',
+      'PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
     ];
     const settings = { ...source };
     for (const suffix of fields) settings[`ev${suffix}`] = source[this.getEvSettingKey(index, suffix)];
@@ -1714,7 +1714,17 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    this.setSetting('settingsSchemaVersion', 48);
+    if (schema < 49) {
+      // v0.4.10: optional EV Peak Guard battery assistance. Disabled on upgrade
+      // to preserve the former behaviour until the user explicitly enables it.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}PeakGuardBatteryAssistNormal`) === null) this.setSetting(`${stem}PeakGuardBatteryAssistNormal`, false);
+        if (this.homey.settings.get(`${stem}PeakGuardBatteryAssistEmergency`) === null) this.setSetting(`${stem}PeakGuardBatteryAssistEmergency`, false);
+      }
+    }
+
+    this.setSetting('settingsSchemaVersion', 49);
   }
 
   async ensureDefaults() {
@@ -2089,12 +2099,19 @@ class HomeFluxEmsApp extends Homey.App {
         if (now < switchAt) {
           outputMode = state.currentMode;
           outputInternal = 0;
-          effectiveInternalCommands[index] = 0;
           this.scheduleSplitCommandRecheck(index, switchAt);
         }
       }
 
       const power = this.getSplitPowerValue(outputMode, outputInternal, config);
+      // Split Command can deliberately turn an internal 0 W or a value below
+      // its configured minimum into a real non-zero hardware command. Feed the
+      // actual output back into HomeFlux in the controller's internal sign
+      // convention, so Peak Guard, live status and Savings all see what the
+      // battery is really being asked to do.
+      effectiveInternalCommands[index] = outputMode === 'charge'
+        ? -Math.abs(Number(power) || 0)
+        : Math.abs(Number(power) || 0);
       const powerTrigger = outputMode === 'charge' ? triggers.chargePower : triggers.dischargePower;
       const modeNeedsSwitch = !state.currentMode || state.currentMode !== outputMode;
 
@@ -2752,75 +2769,6 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-
-    // Deprecated pre-0.3.51 HVAC input aliases. Homey keeps deprecated cards
-    // working in existing Flows but hides them from the Add Card picker. The
-    // shared outdoor-temperature card is intentionally NOT deprecated.
-    this.homey.flow.getActionCard('set_hvac_room_temperature').registerRunListener(async args => {
-      if (this.getHvacCount() < 1) return true;
-      const value = Number(args.temperature);
-      if (!Number.isFinite(value)) return false;
-      const changed = this.hasNumericInputChanged(
-        this.state.hvacRoomTemperatureC, value, Boolean(this.inputSeen.hvac?.roomTemperature), 0.05,
-      );
-      this.state.hvacRoomTemperatureC = value;
-      this.inputSeen.hvac.roomTemperature = true;
-      this.inputUpdatedAt.hvac.roomTemperature = Date.now();
-      if (changed) this.requestContextEvaluate(false, 'legacy_hvac_room');
-      return true;
-    });
-
-    this.homey.flow.getActionCard('set_hvac_mode').registerRunListener(async args => {
-      if (this.getHvacCount() < 1) return true;
-      const nextMode = String(args.mode || 'off');
-      const changed = this.hasTextInputChanged(this.state.hvacMode, nextMode, Boolean(this.inputSeen.hvac?.mode));
-      this.state.hvacMode = nextMode;
-      this.inputSeen.hvac.mode = true;
-      this.inputUpdatedAt.hvac.mode = Date.now();
-      if (changed) this.requestContextEvaluate(false, 'legacy_hvac_mode');
-      return true;
-    });
-
-    this.homey.flow.getActionCard('set_hvac_setpoint').registerRunListener(async args => {
-      if (this.getHvacCount() < 1) return true;
-      const value = Number(args.setpoint);
-      if (!Number.isFinite(value)) return false;
-      const changed = this.hasNumericInputChanged(
-        this.state.hvacSetpointC, value, Boolean(this.inputSeen.hvac?.setpoint), 0.05,
-      );
-      this.state.hvacSetpointC = value;
-      this.inputSeen.hvac.setpoint = true;
-      this.inputUpdatedAt.hvac.setpoint = Date.now();
-      if (Number.isFinite(Number(this.lastPublishedHvacSetpoint))
-        && Math.abs(value - Number(this.lastPublishedHvacSetpoint)) < 0.11) {
-        this.lastPublishedHvacSetpoint = value;
-      }
-      if (changed) this.requestContextEvaluate(false, 'legacy_hvac_setpoint');
-      return true;
-    });
-
-    this.homey.flow.getActionCard('set_hvac_fan_speed').registerRunListener(async args => {
-      if (this.getHvacCount() < 1) return true;
-      const value = Number(args.speed);
-      if (!Number.isFinite(value)) return false;
-      const normalized = Math.max(0, value);
-      const changed = this.hasNumericInputChanged(
-        this.state.hvacFanSpeed, normalized, Boolean(this.inputSeen.hvac?.fanSpeed), 0.5,
-      );
-      this.state.hvacFanSpeed = normalized;
-      this.inputSeen.hvac.fanSpeed = true;
-      this.inputUpdatedAt.hvac.fanSpeed = Date.now();
-      if (changed) this.requestContextEvaluate(false, 'legacy_hvac_fan');
-      return true;
-    });
-
-    this.homey.flow.getActionCard('set_hvac_automatic_control').registerRunListener(async args => {
-      if (this.getHvacCount() < 1) return true;
-      const enabled = String(args.enabled || 'yes') === 'yes';
-      if ((this.getSettings().hvacAutomaticControlEnabled !== false) === enabled) return true;
-      this.setSetting('hvacAutomaticControlEnabled', enabled);
-      return true;
-    });
 
 
     // HVAC instance inputs and outputs are uniformly numbered 1-4. Outdoor
@@ -4481,7 +4429,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
   }
 
-  calculateAdditionalEvControl(index, result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, adjustedGridPowerW = this.state.gridPowerW) {
+  calculateAdditionalEvControl(index, result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, adjustedGridPowerW = this.state.gridPowerW, options = {}) {
     const storedSettings = this.getSettings();
     const runtimeBase = this.getRuntimeSettings(storedSettings);
     const settings = this.getEvInstanceSettings(index, runtimeBase);
@@ -4515,6 +4463,7 @@ class HomeFluxEmsApp extends Homey.App {
       nextBatteryCommandW,
       pvHeadroomW: this.getPvCurtailmentHeadroomW(settings),
       pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
+      skipPeakLimit: Boolean(options.skipPeakLimit),
     });
     decision = this.applyEvPvSessionHysteresisFor(index, decision, result, settings, adjustedGridPowerW);
     return { ...decision, instance: index + 1 };
@@ -4556,6 +4505,144 @@ class HomeFluxEmsApp extends Homey.App {
     return decision;
   }
 
+  shouldUseEvPeakGuardBatteryAssist(settings = this.getSettings(), mode = 'smart', source = '') {
+    if (!Boolean(settings.peakShaveEnabled)) return false;
+    if (String(mode) === 'emergency') return Boolean(settings.evPeakGuardBatteryAssistEmergency);
+    // Pure PV charging must never drain the home battery merely to keep an EV
+    // session alive. The normal option applies to Smart tariff/guarantee
+    // charging and SoC-target charging.
+    if (['pv', 'pv_hold'].includes(String(source || ''))) return false;
+    return Boolean(settings.evPeakGuardBatteryAssistNormal);
+  }
+
+  getEvPeakGuardBatteryAssistAllocation(targetDischargeW, settings = this.getSettings()) {
+    const count = Math.max(1, Math.min(8, Math.round(Number(settings.batteryCount) || 1)));
+    const configuredGroupMax = Math.max(0, Number(settings.maxTotalDischargeW) || Number(DEFAULTS.maxTotalDischargeW) || 0);
+    const target = Math.max(0, Math.min(configuredGroupMax, Number(targetDischargeW) || 0));
+    if (target <= 0) return { commands: Array(count).fill(0), totalW: 0 };
+
+    const minSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
+    let commands = distributeCommand(target, { batterySoc: this.state.batterySoc }, settings, { dischargeFloorSoc: minSoc });
+    commands = commands.slice(0, count).map(value => Math.max(0, roundBatteryCommand(value, settings)));
+    const totalW = Math.min(configuredGroupMax, commands.reduce((sum, value) => sum + (Number(value) || 0), 0));
+    return { commands, totalW };
+  }
+
+  applyEvPeakGuardBatteryAssist(result, allocation, settings = this.getSettings()) {
+    if (!result || !allocation || !Boolean(result.canPublishCommands)) return 0;
+    const count = Math.max(1, Math.min(8, Math.round(Number(settings.batteryCount) || 1)));
+    const commands = Array.from({ length: count }, (_, index) => Math.max(0, Number(allocation.commands?.[index]) || 0));
+    const total = commands.reduce((sum, value) => sum + value, 0);
+
+    // A 0 W assist request may still be meaningful: when the battery was
+    // scheduled to charge, cancelling that charge can create enough Peak Guard
+    // room for the EV without actually discharging the home battery. Never
+    // replace an already-positive discharge command with 0 W.
+    if (!(total > 0) && Number(result.candidateTotalCommandW) >= 0) return 0;
+
+    result.candidateCommands = commands.slice();
+    result.candidateTotalCommandW = total;
+    result.calculatedCommands = commands.slice();
+    result.calculatedTotalCommandW = total;
+    result.commands = commands.slice();
+    result.totalCommandW = total;
+    result.gridChargeAssistW = 0;
+    result.pvChargeW = 0;
+    if (total > 0) {
+      result.override = 'peak_shave';
+      result.overrideLabel = 'Peak Guard';
+    }
+    this.refreshBatteryPresentationAfterCoordination(result, settings);
+    return total;
+  }
+
+  coordinateAdditionalEvPeakGuardBatteryAssist(result, storedSettings = this.getSettings()) {
+    if (!result || !Boolean(result.canPublishCommands)) return 0;
+    const runtimeSettings = this.getRuntimeSettings(storedSettings);
+    if (!Boolean(runtimeSettings.peakShaveEnabled)) return 0;
+    const evCount = this.getEvCount(storedSettings);
+    if (evCount <= 1) return 0;
+
+    const softTargetW = Math.max(0, (Number(runtimeSettings.peakLimitW) || 0) - Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0));
+    const currentBatteryW = Number(this.state.lastTotalCommandW) || 0;
+    let nextBatteryW = Number(result.candidateTotalCommandW) || 0;
+    let adjustedGridW = Number(this.state.gridPowerW) || 0;
+    let startReserved = false;
+    let highestAssistW = 0;
+
+    // Mirror publishFlexibleLoads' sequential grid accounting so an additional
+    // EV only receives battery-backed Peak Guard room that is still available
+    // after the EVs ahead of it. At most one previously inactive EV may start in
+    // a single slow control pass, exactly like the output publisher.
+    if (evCount > 0 && result.evDecision) {
+      const input = this.getEvInputSnapshot(0) || {};
+      const settings = this.getEvInstanceSettings(0, storedSettings);
+      const actualPowerW = Math.max(0, Number(input.chargeCurrentA) || 0) * evPowerPerAmp(settings);
+      const previousActive = this.isEvOutputActiveFor(0, storedSettings);
+      const desiredActive = this.isEvDecisionOutputActiveFor(0, result.evDecision, storedSettings);
+      if (!previousActive && desiredActive) startReserved = true;
+      const desiredPowerW = desiredActive
+        ? (Math.max(0, Number(result.evDecision.desiredPowerW) || 0) || actualPowerW)
+        : 0;
+      adjustedGridW += desiredPowerW - actualPowerW;
+    }
+
+    for (let index = 1; index < evCount; index += 1) {
+      const instanceSettings = this.getEvInstanceSettings(index, runtimeSettings);
+      instanceSettings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
+      const input = this.getEvInputSnapshot(index) || {};
+      const actualCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+      const actualPowerW = actualCurrentA * evPowerPerAmp(instanceSettings);
+      const previousActive = this.isEvOutputActiveFor(index, storedSettings);
+
+      let decision = this.calculateAdditionalEvControl(index, result, nextBatteryW, currentBatteryW, adjustedGridW);
+      const unbounded = this.calculateAdditionalEvControl(index, result, nextBatteryW, currentBatteryW, adjustedGridW, { skipPeakLimit: true });
+      const mayStartThisPass = previousActive || !startReserved;
+      const useAssist = mayStartThisPass
+        && Boolean(unbounded?.allowed)
+        && Number(unbounded?.requestedPowerW || unbounded?.desiredPowerW) > 0
+        && this.shouldUseEvPeakGuardBatteryAssist(instanceSettings, instanceSettings.evMode, unbounded?.source);
+
+      if (useAssist) {
+        const baseGridWithoutBatteryEvW = adjustedGridW + currentBatteryW - actualPowerW;
+        const maxAssist = this.getEvPeakGuardBatteryAssistAllocation(
+          Number(runtimeSettings.maxTotalDischargeW) || Number(DEFAULTS.maxTotalDischargeW) || 0,
+          runtimeSettings,
+        );
+        const requestedPowerW = Math.max(0, Number(unbounded.requestedPowerW || unbounded.desiredPowerW) || 0);
+        const requestedCurrentA = Math.max(0, Number(unbounded.requestedCurrentA) || this.getEvCurrentForPower(requestedPowerW, instanceSettings));
+        const maxSupportedEvPowerW = Math.max(0, softTargetW + maxAssist.totalW - baseGridWithoutBatteryEvW);
+        let finalCurrentA = this.getEvCurrentForPower(Math.min(requestedPowerW, maxSupportedEvPowerW), instanceSettings);
+        if (this.getEvControlType(instanceSettings) === 'mode' && finalCurrentA < requestedCurrentA) finalCurrentA = 0;
+
+        const baselineCurrentA = Math.max(0, Number(decision?.desiredCurrentA) || 0);
+        if (finalCurrentA > baselineCurrentA) {
+          const finalPowerW = finalCurrentA * evPowerPerAmp(instanceSettings);
+          const requiredDischargeW = Math.max(0, baseGridWithoutBatteryEvW + finalPowerW - softTargetW);
+          const allocation = this.getEvPeakGuardBatteryAssistAllocation(requiredDischargeW, runtimeSettings);
+          const appliedAssistW = this.applyEvPeakGuardBatteryAssist(result, allocation, runtimeSettings);
+          if (appliedAssistW + 1 >= requiredDischargeW || requiredDischargeW <= 1) {
+            nextBatteryW = Number(result.candidateTotalCommandW) || 0;
+            highestAssistW = Math.max(highestAssistW, appliedAssistW);
+            decision = this.calculateAdditionalEvControl(index, result, nextBatteryW, currentBatteryW, adjustedGridW);
+          }
+        }
+      }
+
+      let desiredActive = this.isEvDecisionOutputActiveFor(index, decision, storedSettings);
+      if (!previousActive && desiredActive) {
+        if (startReserved) desiredActive = false;
+        else startReserved = true;
+      }
+      const desiredPowerW = desiredActive
+        ? (Math.max(0, Number(decision?.desiredPowerW) || 0) || actualPowerW)
+        : 0;
+      adjustedGridW += desiredPowerW - actualPowerW;
+    }
+
+    return highestAssistW;
+  }
+
   getEvCurrentForPower(powerW, settings = this.getSettings()) {
     const perAmpW = evPowerPerAmp(settings);
     const minA = Math.max(1, Math.min(64, Math.round(Number(settings.evMinCurrentA) || 6)));
@@ -4595,9 +4682,11 @@ class HomeFluxEmsApp extends Homey.App {
     return { first, second };
   }
 
-  refreshBatteryPresentationAfterCoordination(result, settings = this.getSettings()) {
+  refreshBatteryPresentationAfterCoordination(result, settings = this.getSettings(), totalCommandOverrideW = null) {
     if (!result) return result;
-    const totalCommandW = Number(result.candidateTotalCommandW);
+    const overrideProvided = totalCommandOverrideW !== null && totalCommandOverrideW !== undefined;
+    const overrideW = Number(totalCommandOverrideW);
+    const totalCommandW = overrideProvided && Number.isFinite(overrideW) ? overrideW : Number(result.candidateTotalCommandW);
     if (!Number.isFinite(totalCommandW)) return result;
 
     const previousWorkingModeLabel = String(result.workingModeLabel || result.actionLabel || result.modeLabel || '');
@@ -4607,7 +4696,16 @@ class HomeFluxEmsApp extends Homey.App {
     let pvChargeW = 0;
 
     if (finalChargeW > 0) {
-      if (String(result.baseMode || '') === 'manual_charge') {
+      const measuredGridW = Number(this.state?.gridPowerW);
+      if (overrideProvided && Boolean(this.inputSeen?.grid) && Number.isFinite(measuredGridW)) {
+        // The meter is authoritative for the physical source of charging. Any
+        // simultaneous net import can supply at most that much of the battery
+        // charge; the remainder is PV surplus. This prevents a Split Command
+        // minimum/hold remainder from being labelled as solar while importing.
+        gridChargeW = Math.min(finalChargeW, Math.max(0, measuredGridW));
+        pvChargeW = Math.max(0, finalChargeW - gridChargeW);
+      } else if (String(result.baseMode || '') === 'manual_charge') {
+        // Fallback only before a valid grid measurement has been received.
         gridChargeW = finalChargeW;
       } else if (String(result.baseMode || '') === 'charge' || Number(result.gridChargeAssistW) > 0) {
         gridChargeW = Math.min(finalChargeW, Math.max(0, Number(result.gridChargeAssistW) || 0));
@@ -4861,12 +4959,55 @@ class HomeFluxEmsApp extends Homey.App {
       const batteryChargeForExportTargetW = Math.max(0, Math.min(batteryChargeRequestW, -targetBatteryCommandW));
       batteryAllocatedW = Math.max(batteryAllocatedW, batteryChargeForExportTargetW);
     }
-    const evCurrentA = this.getEvCurrentForPower(evAllocatedRawW, settings);
-    const evAllocatedW = evCurrentA * evPowerPerAmp(settings);
-    const peakLimited = evAllocatedW + 1 < evTotalRequestW && Boolean(settings.peakShaveEnabled)
+    let evCurrentA = this.getEvCurrentForPower(evAllocatedRawW, settings);
+    let evAllocatedW = evCurrentA * evPowerPerAmp(settings);
+    let peakLimited = evAllocatedW + 1 < evTotalRequestW && Boolean(settings.peakShaveEnabled)
       && Number.isFinite(totalFlexibleCapW)
       && (batteryChargeRequestW + evTotalRequestW) > totalFlexibleCapW + 1;
-    const priorityLimited = evAllocatedW + 1 < evTotalRequestW && !peakLimited;
+    let priorityLimited = evAllocatedW + 1 < evTotalRequestW && !peakLimited;
+    let peakGuardBatteryAssistW = 0;
+
+    const usePeakGuardBatteryAssist = !forcedBatteryPriority
+      && this.shouldUseEvPeakGuardBatteryAssist(settings, mode, request.source)
+      && evTotalRequestW > 0;
+    if (usePeakGuardBatteryAssist) {
+      const softTargetW = Math.max(0, (Number(settings.peakLimitW) || 0) - Math.max(0, Number(settings.peakSoftMarginW) || 0));
+      const maxAssist = this.getEvPeakGuardBatteryAssistAllocation(Number(settings.maxTotalDischargeW) || Number(DEFAULTS.maxTotalDischargeW) || 0, settings);
+      const maxEvPowerWithAssistW = Math.max(0, softTargetW + maxAssist.totalW - baseGridWithoutBatteryEvW);
+      const requestedCurrentA = Math.max(0, Number(request.requestedCurrentA) || this.getEvCurrentForPower(evTotalRequestW, settings));
+      let assistedCurrentA = this.getEvCurrentForPower(Math.min(evTotalRequestW, maxEvPowerWithAssistW), settings);
+      const controlType = this.getEvControlType(settings);
+
+      // A mode-controlled charger cannot be partially reduced. Keep STANDARD
+      // only when the batteries can support the complete requested mode;
+      // otherwise retain the existing safe STOP decision. Ampere control may
+      // use the maximum current that remains safe.
+      if (controlType === 'mode' && assistedCurrentA < requestedCurrentA) assistedCurrentA = 0;
+      if (assistedCurrentA > evCurrentA) {
+        const assistedPowerW = assistedCurrentA * evPowerPerAmp(settings);
+        const requiredDischargeW = Math.max(0, baseGridWithoutBatteryEvW + assistedPowerW - softTargetW);
+        const assist = this.getEvPeakGuardBatteryAssistAllocation(requiredDischargeW, settings);
+        const supportedEvPowerW = Math.max(0, softTargetW + assist.totalW - baseGridWithoutBatteryEvW);
+        const safeCurrentA = this.getEvCurrentForPower(Math.min(evTotalRequestW, supportedEvPowerW), settings);
+        const finalCurrentA = controlType === 'mode'
+          ? (safeCurrentA >= requestedCurrentA ? requestedCurrentA : 0)
+          : Math.max(evCurrentA, safeCurrentA);
+
+        if (finalCurrentA > evCurrentA) {
+          const finalPowerW = finalCurrentA * evPowerPerAmp(settings);
+          const finalRequiredDischargeW = Math.max(0, baseGridWithoutBatteryEvW + finalPowerW - softTargetW);
+          const finalAssist = this.getEvPeakGuardBatteryAssistAllocation(finalRequiredDischargeW, settings);
+          const appliedAssistW = this.applyEvPeakGuardBatteryAssist(result, finalAssist, settings);
+          if (appliedAssistW + 1 >= finalRequiredDischargeW || finalRequiredDischargeW <= 1) {
+            evCurrentA = finalCurrentA;
+            evAllocatedW = finalPowerW;
+            peakGuardBatteryAssistW = appliedAssistW;
+            peakLimited = evAllocatedW + 1 < evTotalRequestW;
+            priorityLimited = false;
+          }
+        }
+      }
+    }
 
     if (batteryChargeRequestW > 0 && batteryAllocatedW + 1 < batteryChargeRequestW) {
       this.reduceBatteryChargeResult(result, batteryAllocatedW, settings);
@@ -4887,6 +5028,8 @@ class HomeFluxEmsApp extends Homey.App {
       gridPriority,
       evFirstExportMarginActive,
       evFirstExportTargetW: evFirstExportMarginActive ? Math.round(evFirstExportTargetW) : 0,
+      peakGuardBatteryAssistActive: peakGuardBatteryAssistW > 0,
+      peakGuardBatteryAssistW: Math.round(peakGuardBatteryAssistW),
       forcedBatteryPriority,
     };
 
@@ -4905,6 +5048,10 @@ class HomeFluxEmsApp extends Homey.App {
       if (priorityLimited) decision.reason += ' · beperkt door ingestelde energieprioriteit';
       if (evFirstExportMarginActive) decision.reason += ` · EV-eerst exportdoel ${Math.round(evFirstExportTargetW)} W`;
       if (peakLimited) decision.reason += ' · begrensd door Peak Guard';
+    }
+    if (peakGuardBatteryAssistW > 0) {
+      decision.reason += ` · Peak Guard ondersteund door thuisbatterij ${Math.round(peakGuardBatteryAssistW)} W`;
+      if (peakLimited) decision.reason += ' · resterend EV-vermogen begrensd';
     }
 
     result.evDecision = decision;
@@ -6730,6 +6877,7 @@ class HomeFluxEmsApp extends Homey.App {
       const result = this.createSafetyResult(calculated, settings, readiness);
       const rawCandidateTotalW = Number(result.candidateTotalCommandW) || 0;
       this.coordinateEvBatteryPriority(result, storedSettings);
+      this.coordinateAdditionalEvPeakGuardBatteryAssist(result, storedSettings);
       this.cacheEvBatteryCoordination(rawCandidateTotalW, result, now);
 
       result.warningText = this.updateBalanceHealth(result, settings);
@@ -6757,8 +6905,11 @@ class HomeFluxEmsApp extends Homey.App {
       const batteryPublishQueued = this.queueCommandEmit(result, batteryWantsChange);
       if (!batteryPublishQueued) {
         const emergency = this.getEffectiveEvMode(storedSettings) === 'emergency';
+        const ev1Settings = this.getEvInstanceSettings(0, storedSettings);
+        ev1Settings.evMode = this.getEffectiveEvMode(storedSettings);
+        const emergencyNeedsBatteryFirst = emergency && Boolean(ev1Settings.evPeakGuardBatteryAssistEmergency);
         this.publishFlexibleLoads(result, this.state.lastTotalCommandW, this.state.lastTotalCommandW, {
-          allowEvIncrease: !batteryWantsChange || emergency,
+          allowEvIncrease: !batteryWantsChange || (emergency && !emergencyNeedsBatteryFirst),
           evDecision: result.evDecision,
         })
           .catch(err => this.error('Flexible-load publish failed', err))
@@ -7111,8 +7262,17 @@ class HomeFluxEmsApp extends Homey.App {
       this.recordSavingsSample(Date.now());
       this.state.lastTotalCommandW = effectiveInternalTotal;
       if (this.latestResult) {
-        this.latestResult.outputCommands = commands.slice();
-        this.latestResult.outputTotalCommandW = publishedTotal;
+        const effectiveCommands = effectiveInternalCommands.map(value => this.toPublishedCommand(value, settings));
+        this.latestResult.outputCommands = effectiveCommands;
+        this.latestResult.outputTotalCommandW = this.toPublishedCommand(effectiveInternalTotal, settings);
+        // A Split Command minimum or blocked direction change may make the real
+        // output differ from the calculated candidate. Only then reclassify the
+        // live source from the measured balance; for an unchanged command the
+        // meter can still reflect the previous output for a moment.
+        const candidateInternalTotal = Number(this.latestResult.candidateTotalCommandW);
+        if (Number.isFinite(candidateInternalTotal) && Math.abs(effectiveInternalTotal - candidateInternalTotal) > 0.5) {
+          this.refreshBatteryPresentationAfterCoordination(this.latestResult, settings, effectiveInternalTotal);
+        }
         this.queueStatusUpdate(this.latestResult, true);
       }
       if (!Boolean(result._runFlexibleLoadPass)) {

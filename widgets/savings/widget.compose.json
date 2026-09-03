@@ -1,0 +1,136 @@
+{
+  "name": {
+    "en": "Savings",
+    "nl": "Winst"
+  },
+  "height": 150,
+  "devices": {
+    "type": "app",
+    "singular": true
+  },
+  "settings": [
+    {
+      "id": "chart",
+      "type": "dropdown",
+      "title": {
+        "en": "Chart",
+        "nl": "Grafiek"
+      },
+      "value": "profit",
+      "values": [
+        {
+          "id": "cost",
+          "title": {
+            "en": "Cost",
+            "nl": "Kost"
+          }
+        },
+        {
+          "id": "profit",
+          "title": {
+            "en": "Net profit",
+            "nl": "Netto winst"
+          }
+        },
+        {
+          "id": "cost_profit",
+          "title": {
+            "en": "Cost + profit",
+            "nl": "Kost + winst"
+          }
+        },
+        {
+          "id": "profit_cost",
+          "title": {
+            "en": "Profit + cost",
+            "nl": "Winst + kost"
+          }
+        }
+      ]
+    },
+    {
+      "id": "period",
+      "type": "dropdown",
+      "title": {
+        "en": "Period",
+        "nl": "Periode"
+      },
+      "value": "day",
+      "values": [
+        {
+          "id": "day",
+          "title": {
+            "en": "Day",
+            "nl": "Dag"
+          }
+        },
+        {
+          "id": "month",
+          "title": {
+            "en": "Month",
+            "nl": "Maand"
+          }
+        },
+        {
+          "id": "year",
+          "title": {
+            "en": "Year",
+            "nl": "Jaar"
+          }
+        }
+      ]
+    },
+    {
+      "id": "refresh",
+      "type": "dropdown",
+      "title": {
+        "en": "Refresh interval",
+        "nl": "Updatefrequentie"
+      },
+      "value": "5",
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "1 minute",
+            "nl": "1 minuut"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "3 minutes",
+            "nl": "3 minuten"
+          }
+        },
+        {
+          "id": "5",
+          "title": {
+            "en": "5 minutes",
+            "nl": "5 minuten"
+          }
+        },
+        {
+          "id": "10",
+          "title": {
+            "en": "10 minutes",
+            "nl": "10 minuten"
+          }
+        },
+        {
+          "id": "15",
+          "title": {
+            "en": "15 minutes",
+            "nl": "15 minuten"
+          }
+        }
+      ]
+    }
+  ],
+  "api": {
+    "getSavings": {
+      "method": "GET",
+      "path": "/savings"
+    }
+  }
+}

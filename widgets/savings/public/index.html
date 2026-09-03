@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeFlux Savings</title>
+  <style>
+    :root {
+      --hf-green: #4F8A10;
+      --hf-blue: #2f6f8f;
+      --hf-orange: #a06b21;
+      --hf-purple: #77538e;
+      --hf-teal: #4f8a72;
+      --hf-red: #8a4f58;
+      --hf-muted: var(--homey-text-color-light, rgba(127,127,127,.85));
+      --hf-track: rgba(127,127,127,.14);
+      --hf-row: rgba(127,127,127,.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      background: var(--homey-background-color, transparent);
+      color: var(--homey-text-color, inherit);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .widget { width: 100%; padding: 0; }
+    .widget.single { height: 150px; }
+    .widget.multi { height: 300px; }
+    .content { height: 100%; min-height: 0; display: grid; }
+    .content.single { grid-template-rows: 150px; }
+    .content.multi { grid-template-rows: repeat(2, 150px); }
+    .chart-section {
+      height: 150px;
+      min-height: 0;
+      padding: 4px 8px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 2px;
+    }
+    .header { min-width: 0; }
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chart-panel {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+    .donut-wrap {
+      width: 108px;
+      height: 108px;
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .donut {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--hf-track);
+    }
+    .donut::after {
+      content: "";
+      position: absolute;
+      inset: 19px;
+      border-radius: 50%;
+      background: var(--homey-background-color, #111);
+    }
+    .total {
+      position: relative;
+      z-index: 1;
+      max-width: 74px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 750;
+      line-height: 1.05;
+      letter-spacing: -0.35px;
+      white-space: nowrap;
+    }
+    .legend {
+      min-width: 0;
+      max-height: 112px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+    }
+    .row {
+      min-width: 0;
+      padding: 3px 5px;
+      display: grid;
+      grid-template-columns: 8px minmax(0,1fr) auto;
+      gap: 5px;
+      align-items: center;
+      border-radius: 7px;
+      background: var(--hf-row);
+      font-size: 10.5px;
+      line-height: 1.1;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .value { font-weight: 650; white-space: nowrap; }
+    .empty, .error {
+      color: var(--hf-muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .error { padding: 4px 8px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="widget single" id="widget">
+    <div class="content single" id="content"></div>
+    <div class="error hidden" id="error"></div>
+  </div>
+  <script type="text/javascript">
+    const PALETTE = ['#4F8A10','#2f6f8f','#a06b21','#77538e','#4f8a72','#8a4f58'];
+
+    function tr(Homey, key, fallback) {
+      try {
+        const translated = Homey.__(key);
+        return translated && translated !== key ? translated : fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function money(value) {
+      const amount = Number(value) || 0;
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2,
+        }).format(amount);
+      } catch (_) {
+        return `€${amount.toFixed(2)}`;
+      }
+    }
+
+    function buildChart(data, chart, Homey) {
+      if (chart === 'cost') {
+        const items = (data.batteryCharging?.byTariff || []).map((item, index) => ({
+          label: item.label || tr(Homey, 'widget.savings.gridCharging', 'Grid charging'),
+          value: Number(item.cost) || 0,
+          color: PALETTE[index % PALETTE.length],
+        }));
+        if (Number(data.batteryCharging?.pvKwh) > 0) {
+          items.push({
+            label: tr(Homey, 'widget.savings.pvChargingFree', 'PV charging · free'),
+            value: 0,
+            color: 'rgba(127,127,127,.55)',
+          });
+        }
+        return {
+          key: 'cost',
+          title: tr(Homey, 'widget.savings.cost', 'Cost'),
+          total: Number(data.batteryCharging?.gridCost) || 0,
+          items,
+        };
+      }
+      return {
+        key: 'profit',
+        title: tr(Homey, 'widget.savings.netProfit', 'Net profit'),
+        total: Number(data.periodSavings) || 0,
+        items: [
+          { label: tr(Homey, 'widget.savings.directPv', 'Direct PV'), value: Number(data.directPv?.value) || 0, color: PALETTE[0] },
+          { label: tr(Homey, 'widget.savings.pvBattery', 'PV from battery'), value: Number(data.pvBattery?.value) || 0, color: PALETTE[1] },
+          { label: tr(Homey, 'widget.savings.loadShift', 'Load shifting'), value: Number(data.loadShift?.value) || 0, color: PALETTE[2] },
+        ],
+      };
+    }
+
+    function chartOrder(mode) {
+      if (mode === 'cost_profit') return ['cost', 'profit'];
+      if (mode === 'profit_cost') return ['profit', 'cost'];
+      return [mode === 'cost' ? 'cost' : 'profit'];
+    }
+
+    function renderDonut(target, items) {
+      const positive = items.filter(item => Number(item.value) > 0);
+      const sum = positive.reduce((acc, item) => acc + Number(item.value), 0);
+      if (!(sum > 0)) {
+        target.style.background = 'var(--hf-track)';
+        return;
+      }
+      let cursor = 0;
+      const stops = positive.map(item => {
+        const start = cursor;
+        cursor += (Number(item.value) / sum) * 360;
+        return `${item.color} ${start.toFixed(2)}deg ${cursor.toFixed(2)}deg`;
+      });
+      target.style.background = `conic-gradient(${stops.join(',')})`;
+    }
+
+    function renderLegend(target, items, Homey) {
+      target.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = tr(Homey, 'widget.savings.noData', 'No data for this period yet.');
+        target.appendChild(empty);
+        return;
+      }
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.style.background = item.color;
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = item.label;
+        const value = document.createElement('span');
+        value.className = 'value';
+        value.textContent = money(item.value);
+        row.append(dot, label, value);
+        target.appendChild(row);
+      });
+    }
+
+    function renderPanel(model, Homey) {
+      const panel = document.createElement('div');
+      panel.className = `chart-panel ${model.key}`;
+
+      const donutWrap = document.createElement('div');
+      donutWrap.className = 'donut-wrap';
+      const donut = document.createElement('div');
+      donut.className = 'donut';
+      const total = document.createElement('div');
+      total.className = 'total';
+      total.textContent = money(model.total);
+      donutWrap.append(donut, total);
+
+      const legend = document.createElement('div');
+      legend.className = 'legend';
+      renderDonut(donut, model.items);
+      renderLegend(legend, model.items, Homey);
+      panel.append(donutWrap, legend);
+      return panel;
+    }
+
+    function renderSection(model, Homey, periodLabel) {
+      const section = document.createElement('section');
+      section.className = 'chart-section';
+
+      const header = document.createElement('div');
+      header.className = 'header';
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = `${model.title} - ${String(periodLabel || '').toLocaleLowerCase()}`;
+      header.appendChild(title);
+
+      section.append(header, renderPanel(model, Homey));
+      return section;
+    }
+
+    async function onHomeyReady(Homey) {
+      const settings = Homey.getSettings() || {};
+      const validCharts = ['cost', 'profit', 'cost_profit', 'profit_cost'];
+      const chart = validCharts.includes(settings.chart) ? settings.chart : 'profit';
+      const combined = chart === 'cost_profit' || chart === 'profit_cost';
+      await Homey.ready({ height: combined ? 300 : 150 });
+      const period = ['day', 'month', 'year'].includes(settings.period) ? settings.period : 'day';
+      const refreshMinutes = [1, 3, 5, 10, 15].includes(Number(settings.refresh)) ? Number(settings.refresh) : 5;
+      const periodLabels = {
+        day: tr(Homey, 'widget.savings.day', 'Day'),
+        month: tr(Homey, 'widget.savings.month', 'Month'),
+        year: tr(Homey, 'widget.savings.year', 'Year'),
+      };
+      let refreshBusy = false;
+      let hasRendered = false;
+
+      async function refresh() {
+        if (refreshBusy) return;
+        refreshBusy = true;
+        try {
+          const data = await Homey.api('GET', `/savings?period=${encodeURIComponent(period)}`, {});
+          const models = chartOrder(chart).map(key => buildChart(data || {}, key, Homey));
+          const content = document.getElementById('content');
+          const modeClass = models.length > 1 ? 'multi' : 'single';
+          document.getElementById('widget').className = `widget ${modeClass}`;
+          content.className = `content ${modeClass}`;
+          content.innerHTML = '';
+          models.forEach(model => content.appendChild(renderSection(model, Homey, periodLabels[period])));
+          document.getElementById('error').classList.add('hidden');
+          content.classList.remove('hidden');
+          hasRendered = true;
+        } catch (error) {
+          if (!hasRendered) {
+            document.getElementById('content').classList.add('hidden');
+            const target = document.getElementById('error');
+            target.classList.remove('hidden');
+            target.textContent = tr(Homey, 'widget.savings.error', 'Savings data is temporarily unavailable.');
+          }
+          console.error('HomeFlux Savings widget failed', error);
+        } finally {
+          refreshBusy = false;
+        }
+      }
+
+      await refresh();
+      setInterval(() => {
+        if (!document.hidden) refresh();
+      }, refreshMinutes * 60 * 1000);
+    }
+  </script>
+</body>
+</html>

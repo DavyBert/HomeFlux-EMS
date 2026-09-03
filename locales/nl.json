@@ -1,7 +1,23 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.4.9 — HomeFlux, jouw energie, anders geregeld",
+    "subtitle": "v0.4.10 — HomeFlux, jouw energie, anders geregeld",
     "language": "nl"
+  },
+  "widget": {
+    "savings": {
+      "cost": "Kost",
+      "netProfit": "Netto winst",
+      "day": "Dag",
+      "month": "Maand",
+      "year": "Jaar",
+      "directPv": "PV rechtstreeks",
+      "pvBattery": "PV uit batterij",
+      "loadShift": "Laadverschuiving",
+      "gridCharging": "Netladen",
+      "pvChargingFree": "PV-laden · gratis",
+      "noData": "Nog geen gegevens voor deze periode.",
+      "error": "Winstgegevens zijn tijdelijk niet beschikbaar."
+    }
   }
 }

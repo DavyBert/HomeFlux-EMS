@@ -887,6 +887,230 @@ function bareApp() {
 
 
 
+// v0.4.10: normal tariff EV charging may use the home battery to keep
+// Peak Guard instead of stopping/reducing the EV when the dedicated option is on.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.evSoc = null;
+  app.state.gridPowerW = 2000;
+  app.state.lastTotalCommandW = 0;
+  app.state.batterySoc = [50, null, null, null, null, null, null, null];
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou',
+    touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true }],
+    touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evControlType: 'current',
+    evSmartPvPriority: 'battery_first', evSmartGridPriority: 'ev_first',
+    evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    evPeakGuardBatteryAssistNormal: true, evPeakGuardBatteryAssistEmergency: false,
+    peakShaveEnabled: true, peakLimitW: 2500, peakSoftMarginW: 100,
+    maxTotalDischargeW: 4000, maxDischargePerBatteryW: 4000,
+    minSoc: 10, maxSoc: 100, batteryCommandStepW: 1, batteryCount: 1,
+    exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    baseMode: 'self_consumption', modeLabel: 'Zelfconsumptie',
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Dal' },
+    canPublishCommands: true,
+    candidateCommands: [0], candidateTotalCommandW: 0,
+    calculatedCommands: [0], calculatedTotalCommandW: 0,
+    commands: [0], totalCommandW: 0,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.desiredCurrentA, 16);
+  assert.equal(ev.peakLimited, false);
+  assert.equal(ev.peakGuardBatteryAssistActive, true);
+  assert.equal(ev.peakGuardBatteryAssistW, 3280);
+  assert.equal(result.candidateTotalCommandW, 3280);
+}
+
+// The same Peak Guard battery-assist setting is wired for EV2-EV4, not only EV1.
+{
+  const app = bareApp();
+  app.state.gridPowerW = 2000;
+  app.state.lastTotalCommandW = 0;
+  app.state.batterySoc = [50, null, null, null, null, null, null, null];
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  app.getInputReadiness = () => ({ ready: true });
+  app.extraEvInstances = [{
+    state: { soc: null, connected: true, chargeCurrentA: 0 },
+    seen: { soc: false, connected: true, chargeCurrent: true },
+    updatedAt: { soc: 0, connected: 1, chargeCurrent: 1 },
+    lastPublishedCurrentA: 0, lastPublishedAllowed: false, lastPublishedChargeMode: '',
+    stopHoldUntil: 0, sessionOverride: { mode: null },
+    pvSession: { active: false, rateId: '', overImportSince: 0 },
+  }, null, null];
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', evCount: 2,
+    touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: false, ev2ChargeAllowed: true, ev2PvChargeAllowed: true }],
+    touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: false, ev2Enabled: true, ev2SocEnabled: false, ev2Mode: 'smart', ev2ControlType: 'current',
+    ev2SmartPvPriority: 'battery_first', ev2SmartGridPriority: 'ev_first',
+    ev2Phases: 1, ev2MinCurrentA: 6, ev2MaxCurrentA: 32, ev2StandardCurrentA: 16,
+    ev2PeakGuardBatteryAssistNormal: true, ev2PeakGuardBatteryAssistEmergency: false,
+    peakShaveEnabled: true, peakLimitW: 2500, peakSoftMarginW: 100,
+    maxTotalDischargeW: 4000, maxDischargePerBatteryW: 4000,
+    minSoc: 10, maxSoc: 100, batteryCommandStepW: 1, batteryCount: 1,
+    exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    baseMode: 'self_consumption', modeLabel: 'Zelfconsumptie',
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Dal' },
+    canPublishCommands: true,
+    candidateCommands: [0], candidateTotalCommandW: 0,
+    calculatedCommands: [0], calculatedTotalCommandW: 0,
+    commands: [0], totalCommandW: 0,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const assist = app.coordinateAdditionalEvPeakGuardBatteryAssist(result, settings);
+  assert.equal(assist, 3280);
+  assert.equal(result.candidateTotalCommandW, 3280);
+  const ev2 = app.calculateAdditionalEvControl(1, result, 3280, 0, 2000);
+  assert.equal(ev2.desiredCurrentA, 16);
+  assert.equal(ev2.peakLimited, false);
+}
+
+// The same option remains bounded by battery availability. Ampere-controlled
+// chargers keep the highest safe partial current; Peak Guard is never relaxed.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = 2000;
+  app.state.lastTotalCommandW = 0;
+  app.state.batterySoc = [50, null, null, null, null, null, null, null];
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou',
+    touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true }],
+    touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evControlType: 'current',
+    evSmartPvPriority: 'battery_first', evSmartGridPriority: 'ev_first',
+    evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    evPeakGuardBatteryAssistNormal: true,
+    peakShaveEnabled: true, peakLimitW: 2500, peakSoftMarginW: 100,
+    maxTotalDischargeW: 2400, maxDischargePerBatteryW: 2400,
+    minSoc: 10, maxSoc: 100, batteryCommandStepW: 1, batteryCount: 1,
+    exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    baseMode: 'self_consumption', modeLabel: 'Zelfconsumptie',
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Dal' },
+    canPublishCommands: true,
+    candidateCommands: [0], candidateTotalCommandW: 0,
+    calculatedCommands: [0], calculatedTotalCommandW: 0,
+    commands: [0], totalCommandW: 0,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.desiredCurrentA, 12);
+  assert.equal(ev.peakLimited, true);
+  assert.equal(ev.peakGuardBatteryAssistActive, true);
+  assert.equal(ev.peakGuardBatteryAssistW, 2360);
+  assert.equal(result.candidateTotalCommandW, 2360);
+  assert.ok((2000 + ev.desiredPowerW - result.candidateTotalCommandW) <= 2400);
+}
+
+// Emergency mode-controlled charging may stay in STANDARD when the battery can
+// fully cover the Peak Guard difference. If it cannot, the existing safe STOP
+// behaviour remains in force because this charger type cannot accept a partial ampere setpoint.
+{
+  const run = maxDischargeW => {
+    const app = bareApp();
+    app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+    app.state.evConnected = true;
+    app.state.evChargeCurrentA = 0;
+    app.state.gridPowerW = 1000;
+    app.state.lastTotalCommandW = 0;
+    app.state.batterySoc = [50, null, null, null, null, null, null, null];
+    app.getPvCurtailmentHeadroomW = () => 0;
+    app.getRuntimeSettings = settings => settings;
+    const settings = {
+      timezone: 'Europe/Brussels', contractType: 'fixed',
+      evEnabled: true, evSocEnabled: false, evMode: 'emergency', evControlType: 'mode',
+      evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 16, evStandardCurrentA: 16,
+      evPeakGuardBatteryAssistNormal: false, evPeakGuardBatteryAssistEmergency: true,
+      peakShaveEnabled: true, peakLimitW: 2500, peakSoftMarginW: 100,
+      maxTotalDischargeW: maxDischargeW, maxDischargePerBatteryW: maxDischargeW,
+      minSoc: 10, maxSoc: 100, batteryCommandStepW: 1, batteryCount: 1,
+      exportLimitEnabled: false, minimumExportW: 0,
+    };
+    app.getSettings = () => settings;
+    const result = {
+      baseMode: 'self_consumumption', modeLabel: 'Zelfconsumptie',
+      tariff: { kind: 'fixed', rateId: 'fixed', className: 'normal', label: 'Vast' },
+      canPublishCommands: true,
+      candidateCommands: [0], candidateTotalCommandW: 0,
+      calculatedCommands: [0], calculatedTotalCommandW: 0,
+      commands: [0], totalCommandW: 0,
+      gridChargeAssistW: 0, pvChargeW: 0,
+    };
+    const ev = app.coordinateEvBatteryPriority(result, settings);
+    return { app, settings, result, ev };
+  };
+  const supported = run(3000);
+  assert.equal(supported.ev.desiredCurrentA, 16);
+  assert.equal(supported.ev.peakLimited, false);
+  assert.equal(supported.ev.peakGuardBatteryAssistW, 2280);
+  assert.equal(supported.app.getEvChargeMode(supported.ev, supported.settings), 'standard');
+
+  const insufficient = run(1500);
+  assert.equal(insufficient.ev.peakLimited, true);
+  assert.equal(insufficient.app.getEvChargeMode(insufficient.ev, insufficient.settings), 'stop');
+}
+
+// With both new options off, legacy Peak Guard behaviour is unchanged.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = 2000;
+  app.state.lastTotalCommandW = 0;
+  app.state.batterySoc = [50, null, null, null, null, null, null, null];
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou',
+    touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true }],
+    touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evControlType: 'mode',
+    evSmartPvPriority: 'battery_first', evSmartGridPriority: 'ev_first',
+    evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    evPeakGuardBatteryAssistNormal: false, evPeakGuardBatteryAssistEmergency: false,
+    peakShaveEnabled: true, peakLimitW: 2500, peakSoftMarginW: 100,
+    maxTotalDischargeW: 4000, maxDischargePerBatteryW: 4000,
+    minSoc: 10, maxSoc: 100, batteryCommandStepW: 1, batteryCount: 1,
+    exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    baseMode: 'self_consumption', modeLabel: 'Zelfconsumptie',
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Dal' },
+    canPublishCommands: true,
+    candidateCommands: [0], candidateTotalCommandW: 0,
+    calculatedCommands: [0], calculatedTotalCommandW: 0,
+    commands: [0], totalCommandW: 0,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.peakLimited, true);
+  assert.equal(app.getEvChargeMode(ev, settings), 'stop');
+  assert.equal(result.candidateTotalCommandW, 0);
+}
+
 // v0.3.83: null means that the slow EV/battery pass imposed no limit.
 // Number(null) is 0 in JavaScript, so the former fast-loop code cancelled an
 // otherwise valid battery charge even when EV control was disabled.
@@ -1112,7 +1336,7 @@ function bareApp() {
   app.scheduleSplitCommandRecheck = () => { recheckScheduled = true; };
   const blocked = await app.publishSplitBatteryCommands([900], settings);
   assert.deepEqual(events, ['charge-tag:100', 'discharge-tag:0', 'charge-power:100']);
-  assert.deepEqual(blocked, [0]);
+  assert.deepEqual(blocked, [-100]);
   assert.equal(app.splitCommandState[0].currentMode, 'charge');
   assert.equal(recheckScheduled, true);
 
@@ -1131,7 +1355,7 @@ function bareApp() {
     splitCommandBattery1DirectionConfirmSeconds: 0,
   });
   assert.deepEqual(events, ['charge-tag:100', 'discharge-tag:0', 'charge-power:100']);
-  assert.deepEqual(betweenLocked, [0]);
+  assert.deepEqual(betweenLocked, [-100]);
   assert.equal(app.splitCommandState[0].currentMode, 'charge');
   assert.equal(recheckScheduled, true);
 
@@ -1153,6 +1377,46 @@ function bareApp() {
   console.error(err);
   process.exitCode = 1;
 });
+
+// v0.4.10: Split Command feedback must report the physical minimum power, not
+// the smaller pre-Split request. Hardware charge sign does not change HomeFlux'
+// internal negative=charge convention.
+(async () => {
+  const app = bareApp();
+  app.getSplitPowerDelayMs = () => 0;
+  app.splitCommandTriggers = Array.from({ length: 8 }, () => ({ chargeMode: null, dischargeMode: null, chargePower: null, dischargePower: null }));
+  app.splitCommandState = Array.from({ length: 8 }, () => ({ currentMode: 'charge', chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: null }));
+  app.tokens.set('splitbattery1chargepower', { setValue: async () => {} });
+  app.tokens.set('splitbattery1dischargepower', { setValue: async () => {} });
+  const base = { batteryCount:1, splitCommandBattery1Enabled:true, splitCommandBattery1KeepMinimumPower:true, splitCommandBattery1MinimumPowerW:500, splitCommandBattery1ZeroMode:'charge', splitCommandBattery1ChargeMinSwitchSeconds:0, splitCommandBattery1DischargeMinSwitchSeconds:0, splitCommandBattery1MinBetweenSwitchSeconds:0, splitCommandBattery1DirectionConfirmSeconds:0 };
+  assert.deepEqual(await app.publishSplitBatteryCommands([-40], { ...base, splitCommandBattery1ChargePowerPositive:true }), [-500]);
+  assert.deepEqual(await app.publishSplitBatteryCommands([-40], { ...base, splitCommandBattery1ChargePowerPositive:false }), [-500]);
+})().catch(err => { console.error(err); process.exitCode = 1; });
+
+// v0.4.10: live charging source is derived from the measured grid balance. A
+// Split Command remainder while importing cannot be presented as PV charging.
+{
+  const app = bareApp();
+  app.state.gridPowerW = 8637;
+  app.inputSeen.grid = true;
+  const result = { candidateTotalCommandW:-500, baseMode:'self_consumption', modeLabel:'Zelfconsumptie', workingModeLabel:'Laden uit zon 500 W', statusText:'Piek · Laden uit zon 500 W' };
+  app.refreshBatteryPresentationAfterCoordination(result, { commandDeadbandW:25 }, -500);
+  assert.equal(result.gridChargeAssistW, 500);
+  assert.equal(result.pvChargeW, 0);
+  assert.equal(result.action, 'grid_charge');
+  assert.equal(result.workingModeLabel, 'Netladen 500 W');
+  assert.equal(result.statusText, 'Piek · Netladen 500 W');
+}
+{
+  const app = bareApp();
+  app.state.gridPowerW = 200;
+  app.inputSeen.grid = true;
+  const result = { candidateTotalCommandW:-500, baseMode:'self_consumption', modeLabel:'Zelfconsumptie', workingModeLabel:'Laden uit zon 500 W', statusText:'Dal · Laden uit zon 500 W' };
+  app.refreshBatteryPresentationAfterCoordination(result, { commandDeadbandW:25 }, -500);
+  assert.equal(result.gridChargeAssistW, 200);
+  assert.equal(result.pvChargeW, 300);
+  assert.equal(result.action, 'grid_and_pv_charge');
+}
 
 // v0.3.40: a split battery must request the opposite direction continuously for
 // the configured confirmation period. A short cloud-induced reversal is ignored.
@@ -1189,7 +1453,7 @@ function bareApp() {
   };
 
   const first = await app.publishSplitBatteryCommands([900], settings);
-  assert.deepEqual(first, [0]);
+  assert.deepEqual(first, [-100]);
   assert.equal(app.splitCommandState[0].currentMode, 'charge');
   assert.equal(app.splitCommandState[0].pendingMode, 'discharge');
   assert.ok(recheckAt >= app.splitCommandState[0].pendingModeSince + 15_000);
@@ -1835,10 +2099,14 @@ function bareApp() {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 48);
+  assert.equal(stored.settingsSchemaVersion, 49);
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
   assert.equal(stored.lowForecastAutoSunnySoc, 90);
   assert.equal(stored.lowForecastAutoSunnyMinutes, 10);
+  assert.equal(stored.evPeakGuardBatteryAssistNormal, false);
+  assert.equal(stored.evPeakGuardBatteryAssistEmergency, false);
+  assert.equal(stored.ev2PeakGuardBatteryAssistNormal, false);
+  assert.equal(stored.ev4PeakGuardBatteryAssistEmergency, false);
 }
 
 // v0.3.80: planning simulation is a pure calculation. It uses the entered SoC,
