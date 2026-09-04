@@ -18,11 +18,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.4.14');
-assert.equal(appCompose.version, '0.4.14');
-assert.equal(packageJson.version, '0.4.14');
-assert.equal(packageLock.version, '0.4.14');
-assert.equal(packageLock.packages[''].version, '0.4.14');
+assert.equal(manifest.version, '0.4.15');
+assert.equal(appCompose.version, '0.4.15');
+assert.equal(packageJson.version, '0.4.15');
+assert.equal(packageLock.version, '0.4.15');
+assert.equal(packageLock.packages[''].version, '0.4.15');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
 assert.deepEqual(manifest.widgets.status, { ...statusCompose, id: 'status' }, 'generated status widget manifest must match widget Compose');
 for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar']) {

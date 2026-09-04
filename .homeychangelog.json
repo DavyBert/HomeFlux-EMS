@@ -46,5 +46,8 @@
   },
   "0.4.14": {
     "en": "Updated: EMS status widget planning information. Fixed: removed remaining deprecated HVAC input cards and aligned Flow Help catalog."
+  },
+  "0.4.15": {
+    "en": "Fixed: exclude generated build output and development metadata from published app packages to prevent obsolete Flow card metadata from being submitted."
   }
 }

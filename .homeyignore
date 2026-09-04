@@ -1,0 +1,11 @@
+# Generated Homey build output. Always rebuild this from the current source/Compose files.
+.homeybuild/
+
+# Repository and CI metadata are not part of the Homey runtime package.
+.git/
+.github/
+
+# Development-only files that are not needed by the installed Homey app.
+test/
+*.log
+app.js.precoherent
