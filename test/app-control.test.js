@@ -2277,7 +2277,7 @@ function bareApp() {
 
 
 // v0.4.11: the profit chart's avoided-cost bar is net profit relative to
-// the actual energy cost for the selected period. Example: EUR 0.99 / EUR 7.77 = 12.74%.
+// the hypothetical total energy cost for the selected period. Example: EUR 0.99 / (EUR 7.77 + EUR 0.99) = 11.30%.
 {
   const app = bareApp();
   const day = emptyDay('2026-09-04');
@@ -2298,7 +2298,7 @@ function bareApp() {
   const status = app.getSavingsStatus({ period: 'day' });
   assert.ok(Math.abs(status.periodSavings - 0.99) < 1e-9);
   assert.ok(Math.abs(status.actualCost - 7.77) < 1e-9);
-  const expected = (0.99 / 7.77) * 100;
+  const expected = (0.99 / (7.77 + 0.99)) * 100;
   assert.ok(Math.abs(status.avoidedCostsPercentage - expected) < 1e-9);
   assert.ok(Math.abs(status.avoidedEnergyCostPercentage - expected) < 1e-9);
 }

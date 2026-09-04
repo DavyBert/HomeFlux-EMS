@@ -1,6 +1,6 @@
 {
   "id": "com.homeflux.ems",
-  "version": "0.4.11",
+  "version": "0.4.12",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",

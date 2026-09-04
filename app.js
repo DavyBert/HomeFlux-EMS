@@ -632,12 +632,15 @@ class HomeFluxEmsApp extends Homey.App {
       + Math.max(0, Number(aggregate.gridChargeCost) || 0);
     const avoidedCost = avoidedEnergyValue(aggregate);
     const periodSavings = totalSavings(aggregate);
-    // Both percentage bars intentionally use the same metric: total net savings
-    // relative to the actual energy cost for the selected period. Keep the
-    // legacy avoidedEnergyCostPercentage field for UI compatibility, but make
-    // it identical to avoidedCostsPercentage so the two charts cannot diverge.
-    const avoidedCostsPercentage = actualCost > 0
-      ? (Math.max(0, Number(periodSavings) || 0) / actualCost) * 100
+    // Both percentage bars intentionally use the same metric: the share of the
+    // hypothetical total energy cost that was avoided. Using actual cost plus
+    // net savings as the denominator keeps the value naturally within 0..100%.
+    // Keep the legacy avoidedEnergyCostPercentage field for UI compatibility,
+    // but make it identical to avoidedCostsPercentage so both charts agree.
+    const positiveSavings = Math.max(0, Number(periodSavings) || 0);
+    const hypotheticalCost = actualCost + positiveSavings;
+    const avoidedCostsPercentage = hypotheticalCost > 0
+      ? (positiveSavings / hypotheticalCost) * 100
       : 0;
     const avoidedEnergyCostPercentage = avoidedCostsPercentage;
     const chartKwh = Math.max(0, Number(aggregate.directGridKwh) || 0)
