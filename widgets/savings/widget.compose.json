@@ -81,6 +81,81 @@
       ]
     },
     {
+      "id": "showProgress",
+      "type": "dropdown",
+      "title": {
+        "en": "Percentage bar",
+        "nl": "Percentagebalk"
+      },
+      "value": "show",
+      "values": [
+        {
+          "id": "show",
+          "title": {
+            "en": "Show",
+            "nl": "Tonen"
+          }
+        },
+        {
+          "id": "hide",
+          "title": {
+            "en": "Hide",
+            "nl": "Verbergen"
+          }
+        }
+      ]
+    },
+    {
+      "id": "combinedProgressTarget",
+      "type": "dropdown",
+      "title": {
+        "en": "Percentage bar in combined chart",
+        "nl": "Percentagebalk bij dubbele grafiek"
+      },
+      "value": "profit",
+      "values": [
+        {
+          "id": "cost",
+          "title": {
+            "en": "Show with cost",
+            "nl": "Tonen bij kost"
+          }
+        },
+        {
+          "id": "profit",
+          "title": {
+            "en": "Show with profit",
+            "nl": "Tonen bij winst"
+          }
+        }
+      ]
+    },
+    {
+      "id": "combineGridCharging",
+      "type": "dropdown",
+      "title": {
+        "en": "Combine grid charging",
+        "nl": "Combineer netladen"
+      },
+      "value": "no",
+      "values": [
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        },
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        }
+      ]
+    },
+    {
       "id": "refresh",
       "type": "dropdown",
       "title": {

@@ -640,13 +640,19 @@
     "Kosten van netenergie waarmee de batterij in deze periode werd geladen. PV-laden blijft €0.": "Cost of grid energy used to charge the battery during this period. PV charging remains €0.",
     "Waarde van directe PV, PV uit de batterij en het prijsverschil van netenergie die naar een later tarief werd verschoven.": "Value of direct PV, PV from the battery and the price difference of grid energy shifted to a later tariff.",
     "Bij een dynamisch contract gebruikt HomeFlux de actuele Homey Energy-aankoopprijs. Een aparte dynamische injectieprijs is niet beschikbaar in de huidige prijsbron en wordt daarom niet als extra winst verzonnen.": "With a dynamic contract, HomeFlux uses the current Homey Energy purchase price. A separate dynamic feed-in price is not available from the current price source, so HomeFlux does not invent additional profit.",
-    "v0.4.10 — HomeFlux, jouw energie, anders geregeld": "v0.4.10 — HomeFlux, your energy, managed differently",
+    "v0.4.11 — HomeFlux, jouw energie, anders geregeld": "v0.4.11 — HomeFlux, your energy, managed differently",
     "Peak Guard en EV": "Peak Guard and EV",
     "Kies wanneer de thuisbatterij de EV mag ondersteunen om de ingestelde maximale netimport te bewaken.": "Choose when the home battery may support the EV to keep grid import within the configured Peak Guard limit.",
     "Thuisbatterij gebruiken voor Peak Guard bij normaal EV-laden": "Use home battery for Peak Guard during normal EV charging",
     "Geldt voor Slim en Op SoC-doel. HomeFlux laat de thuisbatterij tot Minimum SoC bijspringen zodat de EV zo lang mogelijk kan blijven laden. Als de batterijhulp onvoldoende is, wordt de EV alsnog begrensd of gestopt.": "Applies to Smart and SoC target. HomeFlux lets the home battery assist down to Minimum SoC so the EV can keep charging as long as possible. If battery support is insufficient, the EV is still limited or stopped.",
     "Thuisbatterij gebruiken voor Peak Guard bij Emergency charge": "Use home battery for Peak Guard during Emergency charge",
-    "Emergency charge behoudt maximaal mogelijk EV-vermogen terwijl de thuisbatterij Peak Guard ondersteunt tot Minimum SoC. Als dat niet volstaat, blijft Peak Guard absoluut en wordt de EV alsnog begrensd of gestopt.": "Emergency charge keeps the maximum possible EV power while the home battery supports Peak Guard down to Minimum SoC. If that is not enough, Peak Guard remains absolute and the EV is still limited or stopped."
+    "Emergency charge behoudt maximaal mogelijk EV-vermogen terwijl de thuisbatterij Peak Guard ondersteunt tot Minimum SoC. Als dat niet volstaat, blijft Peak Guard absoluut en wordt de EV alsnog begrensd of gestopt.": "Emergency charge keeps the maximum possible EV power while the home battery supports Peak Guard down to Minimum SoC. If that is not enough, Peak Guard remains absolute and the EV is still limited or stopped.",
+    "HomeFlux registreert live hoeveel netenergie rechtstreeks wordt verbruikt en hoeveel per tarief naar de batterij gaat. De input “Geïmporteerde energie vandaag” corrigeert die netverdeling evenredig naar de werkelijke dagteller. De taart gebruikt kWh; directe PV en PV-laden blijven gratis maar nemen hun echte aandeel in.": "HomeFlux records live how much grid energy is used directly and how much goes to the battery per tariff. The “Imported energy today” input proportionally corrects that grid distribution to the actual daily counter. The pie uses kWh; direct PV and PV charging remain free but keep their real share.",
+    "Vermeden energiekost": "Avoided energy cost",
+    "Rechtstreeks netverbruik": "Direct grid use",
+    "PV rechtstreeks · gratis": "Direct PV · free",
+    "PV naar batterij · gratis": "PV to battery · free",
+    "Savings haalt geen dagverbruik of dagkost op via Homey Energy. Bij een dynamisch contract blijft alleen de bestaande Homey Energy-prijsbron gebruikt worden voor de actuele aankoopprijs. Een aparte dynamische injectieprijs wordt niet verzonnen.": "Savings does not retrieve daily consumption or daily cost from Homey Energy. With a dynamic contract, only the existing Homey Energy price source remains in use for the current purchase price. A separate dynamic feed-in price is not invented."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",
@@ -909,6 +915,8 @@
     "planning.targetPeakDetail": "The charge calculation only uses available charging time before this peak starts.",
     "planning.nightTargetDetail": "Night planning only uses allowed charging windows before this configured morning target.",
     "planning.dayTargetDetail": "Day planning only uses allowed charging windows before this configured daytime target.",
-    "planning.targetTimeDetail": "The charge calculation runs until this configured target time."
+    "planning.targetTimeDetail": "The charge calculation runs until this configured target time.",
+    "Vermeden kosten": "Avoided costs",
+    "PV in batterij · gratis": "PV in battery · free"
   }
 }

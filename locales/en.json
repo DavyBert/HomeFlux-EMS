@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.4.10 — HomeFlux, your energy, managed differently",
+    "subtitle": "v0.4.11 — HomeFlux, your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -17,7 +17,12 @@
       "gridCharging": "Grid charging",
       "pvChargingFree": "PV charging · free",
       "noData": "No data for this period yet.",
-      "error": "Savings data is temporarily unavailable."
+      "error": "Savings data is temporarily unavailable.",
+      "directGrid": "Direct grid use",
+      "directPvFree": "Direct PV · free",
+      "pvToBatteryFree": "PV in battery · free",
+      "avoidedEnergyCost": "Avoided energy cost",
+      "avoidedCosts": "Avoided costs"
     }
   }
 }

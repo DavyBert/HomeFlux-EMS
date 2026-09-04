@@ -31,5 +31,8 @@
   },
   "0.4.9": {
     "en": "Added: Savings dashboard with daily, weekly, monthly and yearly financial insights. Added: Track savings from direct solar use, battery-stored solar energy and tariff shifting. Added: Homey Insights values for savings today and total savings."
+  },
+  "0.4.10": {
+    "en": "Added: Savings widget with selectable cost/profit charts, day/month/year views and adjustable refresh intervals. Added: EV Peak Guard support using the home battery during normal and emergency charging. Fixed: Split Command battery feedback and incorrect PV charging classification. Updated: Removed legacy unnumbered EV/HVAC flow cards and improved Savings widget layout."
   }
 }

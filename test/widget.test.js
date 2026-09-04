@@ -13,7 +13,7 @@ const html = fs.readFileSync(path.join(widgetRoot, 'public', 'index.html'), 'utf
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.4.10');
+assert.equal(manifest.version, '0.4.11');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
 assert.equal(compose.height, 150);
 assert.deepEqual(compose.devices, { type: 'app', singular: true });
@@ -31,6 +31,33 @@ assert.deepEqual(period.values.map(item => item.id), ['day', 'month', 'year']);
 assert.equal(period.title.en, 'Period');
 assert.equal(period.title.nl, 'Periode');
 
+const showProgress = compose.settings.find(item => item.id === 'showProgress');
+assert(showProgress, 'percentage bar widget setting missing');
+assert.equal(showProgress.type, 'dropdown');
+assert.equal(showProgress.value, 'show');
+assert.deepEqual(showProgress.values.map(item => item.id), ['show', 'hide']);
+assert.deepEqual(showProgress.values.map(item => item.title.nl), ['Tonen', 'Verbergen']);
+assert.equal(showProgress.title.en, 'Percentage bar');
+assert.equal(showProgress.title.nl, 'Percentagebalk');
+
+const combinedProgressTarget = compose.settings.find(item => item.id === 'combinedProgressTarget');
+assert(combinedProgressTarget, 'combined percentage bar target setting missing');
+assert.equal(combinedProgressTarget.type, 'dropdown');
+assert.equal(combinedProgressTarget.value, 'profit');
+assert.deepEqual(combinedProgressTarget.values.map(item => item.id), ['cost', 'profit']);
+assert.deepEqual(combinedProgressTarget.values.map(item => item.title.nl), ['Tonen bij kost', 'Tonen bij winst']);
+assert.equal(combinedProgressTarget.title.en, 'Percentage bar in combined chart');
+assert.equal(combinedProgressTarget.title.nl, 'Percentagebalk bij dubbele grafiek');
+
+const combineGridCharging = compose.settings.find(item => item.id === 'combineGridCharging');
+assert(combineGridCharging, 'combine grid charging widget setting missing');
+assert.equal(combineGridCharging.type, 'dropdown');
+assert.equal(combineGridCharging.value, 'no');
+assert.deepEqual(combineGridCharging.values.map(item => item.id), ['no', 'yes']);
+assert.deepEqual(combineGridCharging.values.map(item => item.title.nl), ['Nee', 'Ja']);
+assert.equal(combineGridCharging.title.en, 'Combine grid charging');
+assert.equal(combineGridCharging.title.nl, 'Combineer netladen');
+
 const refresh = compose.settings.find(item => item.id === 'refresh');
 assert(refresh, 'refresh widget setting missing');
 assert.equal(refresh.value, '5');
@@ -40,12 +67,27 @@ assert.equal(refresh.title.nl, 'Updatefrequentie');
 
 assert(html.includes('Homey.getSettings()'), 'widget must read its Homey widget settings');
 assert(html.includes("Homey.api('GET'"), 'widget must read Savings through its local widget API');
-assert(html.includes('Homey.ready({ height: combined ? 300 : 150 })'), 'widget must use full height for stacked combined charts and compact height for single charts');
+assert(html.includes("const showProgress = String(settings.showProgress || 'show') !== 'hide';"), 'widget must allow the percentage bar to be shown or hidden');
+assert(html.includes("const combinedProgressTarget = ['cost', 'profit'].includes(String(settings.combinedProgressTarget))"), 'combined widget must read which chart should show the percentage bar');
+assert(html.includes("const shouldShowProgress = key => showProgress && (!combined || key === combinedProgressTarget);"), 'single widgets must keep show/hide while combined widgets show the bar on only the selected chart');
+assert(html.includes("return key === 'cost' ? 220 : 180;"), 'cost widget must reserve extra height so its percentage bar cannot overlap the longer legend');
+assert(html.includes('const widgetHeight = chartKeys.reduce((sum, key) => sum + getSectionHeight(key, shouldShowProgress(key)), 0);'), 'widget height must sum chart-specific progress heights');
+assert(html.includes('Homey.ready({ height: widgetHeight })'), 'widget must publish the exact calculated height to Homey');
+assert(html.includes("content.style.gridTemplateRows = models.map(model => `${getSectionHeight(model.key, shouldShowProgress(model.key))}px`).join(' ');"), 'stacked widget rows must use the selected percentage-bar target height');
 assert(html.includes("['cost', 'profit', 'cost_profit', 'profit_cost']"), 'widget must support single and combined chart modes');
 assert(html.includes('.content.multi { grid-template-rows: repeat(2, 150px); }'), 'combined charts must be stacked vertically');
 assert(html.includes('grid-template-columns: 108px minmax(0, 1fr);'), 'combined chart panels must retain the full single-chart layout');
 assert(!html.includes('.multi .donut-wrap'), 'combined charts must not shrink the donut');
-assert(html.includes('renderSection(model, Homey, periodLabels[period])'), 'each stacked chart must render as a full standalone-style section');
+assert(html.includes('renderSection(model, Homey, periodLabels[period], shouldShowProgress(model.key))'), 'each stacked chart must render with progress only on its selected target');
+assert(html.includes("widget.savings.directGrid"), 'cost widget must include direct grid use');
+assert(html.includes("widget.savings.pvToBatteryFree"), 'cost widget must include free PV-to-battery energy');
+assert(html.includes("const combineGridCharging = String(settings.combineGridCharging || 'no') === 'yes';"), 'widget must read the combine grid charging setting');
+assert(html.includes('tariffCharging.reduce((sum, item) => sum + (Number(item.kwh) || 0), 0)'), 'combined grid charging must sum tariff kWh');
+assert(html.includes("const chargePalette = ['#c084fc','#8b5cf6','#5b21b6'"), 'separate grid charging tariffs must use a higher-contrast palette');
+assert(html.includes('.chart-section.with-progress .legend { max-height: none; }'), 'only the chart that shows a percentage bar may expand its legend');
+assert(html.includes("widget.savings.avoidedEnergyCost"), 'cost widget must label the avoided energy cost bar');
+assert(html.includes("widget.savings.avoidedCosts"), 'profit widget must label the avoided costs bar');
+assert(html.includes('if (showProgress) renderProgress(details, model.progress, Homey, model.progressKey, model.progressFallback);'), 'widget percentage bars must render outside the clipped legend when enabled');
 assert(html.includes("[1, 3, 5, 10, 15].includes(Number(settings.refresh))"), 'widget must validate refresh setting');
 assert(html.includes('setInterval(() => {'), 'widget must refresh at the selected interval');
 assert(html.includes('refreshMinutes * 60 * 1000'), 'widget refresh interval must be expressed in selected minutes');

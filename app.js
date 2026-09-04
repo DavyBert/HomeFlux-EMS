@@ -5,7 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand } = require('./lib/ems-engine');
 const { localParts, normalizeDynamicPriceResponse, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
-const { emptyDay, normalizeDay, totalSavings, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
+const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, rawImportedKwh, calibrateImportedEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 
 class HomeFluxEmsApp extends Homey.App {
   async onInit() {
@@ -440,7 +440,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.10 initialized');
+    this.log('HomeFlux EMS v0.4.11 initialized');
   }
 
   refreshSettingsCache() {
@@ -530,7 +530,7 @@ class HomeFluxEmsApp extends Homey.App {
     const todayKey = this.getSavingsDateKey();
     const storedToday = normalizeDay(this.homey.settings.get('_savingsToday'), todayKey);
     if (storedToday.date && storedToday.date !== todayKey) {
-      normalizedHistory[storedToday.date] = storedToday;
+      normalizedHistory[storedToday.date] = calibrateImportedEnergy(storedToday);
       this.savings.today = emptyDay(todayKey);
     } else {
       storedToday.date = todayKey;
@@ -544,7 +544,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   archiveSavingsDay(nextDateKey) {
     const current = this.savings.today;
-    if (current?.date) this.savings.history[current.date] = normalizeDay(current, current.date);
+    if (current?.date) this.savings.history[current.date] = calibrateImportedEnergy(current);
     const dates = Object.keys(this.savings.history).sort();
     while (dates.length > 4000) delete this.savings.history[dates.shift()];
     this.savings.today = emptyDay(nextDateKey);
@@ -624,16 +624,43 @@ class HomeFluxEmsApp extends Homey.App {
     for (const [date, day] of Object.entries(this.savings.history || {})) {
       if (date >= range.startKey && date < range.endKey) addDays(aggregate, day);
     }
-    if (this.savings.today?.date >= range.startKey && this.savings.today?.date < range.endKey) addDays(aggregate, this.savings.today);
+    if (this.savings.today?.date >= range.startKey && this.savings.today?.date < range.endKey) {
+      addDays(aggregate, calibrateImportedEnergy(this.savings.today));
+    }
+
+    const actualCost = Math.max(0, Number(aggregate.directGridCost) || 0)
+      + Math.max(0, Number(aggregate.gridChargeCost) || 0);
+    const avoidedCost = avoidedEnergyValue(aggregate);
+    const periodSavings = totalSavings(aggregate);
+    // Both percentage bars intentionally use the same metric: total net savings
+    // relative to the actual energy cost for the selected period. Keep the
+    // legacy avoidedEnergyCostPercentage field for UI compatibility, but make
+    // it identical to avoidedCostsPercentage so the two charts cannot diverge.
+    const avoidedCostsPercentage = actualCost > 0
+      ? (Math.max(0, Number(periodSavings) || 0) / actualCost) * 100
+      : 0;
+    const avoidedEnergyCostPercentage = avoidedCostsPercentage;
+    const chartKwh = Math.max(0, Number(aggregate.directGridKwh) || 0)
+      + Math.max(0, Number(aggregate.gridChargeKwh) || 0)
+      + Math.max(0, Number(aggregate.directPvKwh) || 0)
+      + Math.max(0, Number(aggregate.pvChargeKwh) || 0);
+
     return {
       period: normalizedPeriod,
       startDate: range.startKey,
       endDate: range.endKey,
       todaySavings: totalSavings(this.savings.today),
       totalSavings: Number(this.savings.total) || 0,
-      periodSavings: totalSavings(aggregate),
+      periodSavings,
+      actualCost,
+      avoidedEnergyCost: avoidedCost,
+      avoidedEnergyCostPercentage,
+      avoidedCostsPercentage,
+      chartKwh,
+      directGrid: { kwh: aggregate.directGridKwh, value: aggregate.directGridCost },
       directPv: { kwh: aggregate.directPvKwh, value: aggregate.directPvValue },
       pvBattery: { kwh: aggregate.pvBatteryKwh, value: aggregate.pvBatteryValue },
+      pvBatteryHome: { kwh: aggregate.pvBatteryHomeKwh, value: aggregate.pvBatteryHomeValue },
       loadShift: { kwh: aggregate.shiftKwh, value: aggregate.shiftValue },
       batteryCharging: {
         kwh: aggregate.batteryChargeKwh,
@@ -641,6 +668,11 @@ class HomeFluxEmsApp extends Homey.App {
         gridKwh: aggregate.gridChargeKwh,
         gridCost: aggregate.gridChargeCost,
         byTariff: Object.values(aggregate.chargeCostsByTariff || {}).sort((a, b) => b.cost - a.cost),
+      },
+      importedEnergyToday: {
+        inputKwh: Number(this.savings.today?.importedEnergyKwh) || 0,
+        known: Boolean(this.savings.today?.importedEnergyKnown),
+        measuredKwh: rawImportedKwh(this.savings.today),
       },
       trackedBatteryKwh: inventoryKwh(this.savings.inventory),
     };
@@ -2576,6 +2608,19 @@ class HomeFluxEmsApp extends Homey.App {
       } else {
         this.requestEvaluate();
       }
+      return true;
+    });
+
+    this.homey.flow.getActionCard('set_imported_energy_today').registerRunListener(async args => {
+      const value = Number(args.energy);
+      if (!Number.isFinite(value) || value < 0) return false;
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      const todayKey = this.getSavingsDateKey(now);
+      if (!this.savings.today?.date) this.savings.today = emptyDay(todayKey);
+      if (this.savings.today.date !== todayKey) this.archiveSavingsDay(todayKey);
+      this.savings.today.importedEnergyKwh = value;
+      this.savings.today.importedEnergyKnown = true;
       return true;
     });
 

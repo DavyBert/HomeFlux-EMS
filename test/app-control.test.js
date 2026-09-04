@@ -9,6 +9,7 @@ Module._load = function load(request, parent, isMain) {
   return originalLoad.call(this, request, parent, isMain);
 };
 const HomeFluxEmsApp = require('../app');
+const { emptyDay, emptyInventory } = require('../lib/savings');
 Module._load = originalLoad;
 
 function bareApp() {
@@ -2272,4 +2273,32 @@ function bareApp() {
   });
   assert.deepEqual(result.candidateCommands, [-100, -100]);
   assert.equal(result.candidateTotalCommandW, -200);
+}
+
+
+// v0.4.11: the profit chart's avoided-cost bar is net profit relative to
+// the actual energy cost for the selected period. Example: EUR 0.99 / EUR 7.77 = 12.74%.
+{
+  const app = bareApp();
+  const day = emptyDay('2026-09-04');
+  day.directGridCost = 2.00;
+  day.gridChargeCost = 5.77;
+  day.directPvValue = 0.40;
+  day.pvBatteryValue = 0.30;
+  day.pvBatteryHomeValue = 0.30;
+  day.shiftValue = 0.29;
+  app.savings = {
+    history: {},
+    today: day,
+    total: 0.99,
+    inventory: emptyInventory(),
+  };
+  app.recordSavingsSample = () => {};
+  app.getSavingsPeriodRange = () => ({ startKey: '2026-09-04', endKey: '2026-09-05' });
+  const status = app.getSavingsStatus({ period: 'day' });
+  assert.ok(Math.abs(status.periodSavings - 0.99) < 1e-9);
+  assert.ok(Math.abs(status.actualCost - 7.77) < 1e-9);
+  const expected = (0.99 / 7.77) * 100;
+  assert.ok(Math.abs(status.avoidedCostsPercentage - expected) < 1e-9);
+  assert.ok(Math.abs(status.avoidedEnergyCostPercentage - expected) < 1e-9);
 }

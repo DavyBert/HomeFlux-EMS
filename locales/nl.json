@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.4.10 — HomeFlux, jouw energie, anders geregeld",
+    "subtitle": "v0.4.11 — HomeFlux, jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -17,7 +17,12 @@
       "gridCharging": "Netladen",
       "pvChargingFree": "PV-laden · gratis",
       "noData": "Nog geen gegevens voor deze periode.",
-      "error": "Winstgegevens zijn tijdelijk niet beschikbaar."
+      "error": "Winstgegevens zijn tijdelijk niet beschikbaar.",
+      "directGrid": "Rechtstreeks netverbruik",
+      "directPvFree": "PV rechtstreeks · gratis",
+      "pvToBatteryFree": "PV in batterij · gratis",
+      "avoidedEnergyCost": "Vermeden energiekost",
+      "avoidedCosts": "Vermeden kosten"
     }
   }
 }
