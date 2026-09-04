@@ -52,5 +52,8 @@
   },
   "0.4.16": {
     "en": "Fixed: removed obsolete legacy EV/HVAC Flow card definitions from the publishable app manifest."
+  },
+  "0.4.17": {
+    "en": "Fixed: EMS status widget preview images are now fully text-free. No functional EMS logic changes."
   }
 }
