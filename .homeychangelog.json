@@ -49,5 +49,8 @@
   },
   "0.4.15": {
     "en": "Fixed: exclude generated build output and development metadata from published app packages to prevent obsolete Flow card metadata from being submitted."
+  },
+  "0.4.16": {
+    "en": "Fixed: removed obsolete legacy EV/HVAC Flow card definitions from the publishable app manifest."
   }
 }

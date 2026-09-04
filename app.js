@@ -440,7 +440,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.15 initialized');
+    this.log('HomeFlux EMS v0.4.16 initialized');
   }
 
   refreshSettingsCache() {
