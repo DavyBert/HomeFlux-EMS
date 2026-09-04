@@ -30,6 +30,7 @@ function makeApp() {
   app.settingsCache = { ...DEFAULTS, timezone: 'UTC' };
   app.state = { batterySoc: [95], gridPowerW: -2500, pvPowerW: 0 };
   app.inputSeen = { batterySoc: [true], pv: false };
+  app.inputUpdatedAt = { pv: 0 };
   app.lastPublishedPvLimitPercent = 100;
   app.boilerState = {
     outputOn: false, cycleAccumulatedMs: 0, lastTickAt: 0, lastCompletedAt: 0,
@@ -53,6 +54,41 @@ function makeApp() {
     priorityEvaluationMinutes: 5,
   };
   app.settingsCache = { ...settings };
+
+  // v0.4.13: the boiler PV route may only start on real solar surplus.
+  // Battery-created export is removed, while solar charging into the battery
+  // still counts as available PV surplus.
+  {
+    const pvApp = makeApp();
+    const pvSettings = { ...settings, boilerPowerW: 300 };
+    pvApp.settingsCache = { ...pvSettings };
+    const pvNow = Date.UTC(2026, 7, 26, 12, 0, 0);
+    pvApp.inputSeen.pv = true;
+    pvApp.inputUpdatedAt.pv = pvNow;
+
+    pvApp.state.pvPowerW = 0;
+    let pvDecision = pvApp.calculateBoilerDecision({}, pvSettings, {
+      now: pvNow, allowStart: true, gridPowerW: -500, currentBatteryCommandW: 1000,
+    });
+    assert.equal(pvDecision.pvSurplusW, 0);
+    assert.equal(pvDecision.on, false, 'battery-created export may not start the boiler');
+
+    pvApp.state.pvPowerW = 1000;
+    pvApp.inputUpdatedAt.pv = pvNow + 1000;
+    pvDecision = pvApp.calculateBoilerDecision({}, pvSettings, {
+      now: pvNow + 1000, allowStart: true, gridPowerW: -900, currentBatteryCommandW: 700,
+    });
+    assert.equal(pvDecision.pvSurplusW, 200);
+    assert.equal(pvDecision.on, false, 'only the solar share of export may count');
+
+    pvApp.state.pvPowerW = 2500;
+    pvApp.inputUpdatedAt.pv = pvNow + 2000;
+    pvDecision = pvApp.calculateBoilerDecision({}, pvSettings, {
+      now: pvNow + 2000, allowStart: true, gridPowerW: 0, currentBatteryCommandW: -2000,
+    });
+    assert.equal(pvDecision.pvSurplusW, 2000);
+    assert.equal(pvDecision.on, true, 'PV charging into the battery must count as solar surplus');
+  }
 
   // v0.3.50: optional flexible-load modules can be configured as zero.
   assert.equal(app.getEvCount({ evCount: 0 }), 0);
@@ -85,6 +121,9 @@ function makeApp() {
   const start = Date.UTC(2026, 7, 26, 20, 0, 0);
   app.boilerState.lastTickAt = start;
   app.boilerState.trackingStartedAt = start - (4 * 86400000);
+  app.inputSeen.pv = true;
+  app.state.pvPowerW = 5000;
+  app.inputUpdatedAt.pv = start;
   let decision = app.calculateBoilerDecision({}, settings, { now: start, allowStart: false, gridPowerW: -2500 });
   assert.equal(decision.startEligible, true);
   assert.equal(decision.on, false);
@@ -92,6 +131,8 @@ function makeApp() {
   // Granted start; 30 minutes later a low-SoC stop keeps cumulative progress.
   decision = app.calculateBoilerDecision({}, settings, { now: start, allowStart: true, gridPowerW: -2500 });
   assert.equal(decision.on, true);
+  decision = app.calculateBoilerDecision({}, settings, { now: start + (5 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, true, 'a PV-started cycle keeps running until its solar-hour SoC stop threshold');
   app.state.batterySoc[0] = 60;
   decision = app.calculateBoilerDecision({}, settings, { now: start + (30 * 60000), allowStart: true, gridPowerW: 0 });
   assert.equal(decision.on, false);
@@ -100,6 +141,7 @@ function makeApp() {
   // Resume later and complete the remaining 60 minutes.
   app.state.batterySoc[0] = 95;
   const resumeAt = start + (40 * 60000);
+  app.inputUpdatedAt.pv = resumeAt;
   decision = app.calculateBoilerDecision({}, settings, { now: resumeAt, allowStart: true, gridPowerW: -2500 });
   assert.equal(decision.on, true);
   decision = app.calculateBoilerDecision({}, settings, { now: resumeAt + (60 * 60000), allowStart: true, gridPowerW: -2500 });
@@ -117,6 +159,7 @@ function makeApp() {
   // At the daily reset boundary the previous cycle becomes cold and a new
   // boiler day starts, so later PV heating is eligible again.
   const afterReset = Date.UTC(2026, 7, 27, 7, 1, 0);
+  app.inputUpdatedAt.pv = afterReset;
   decision = app.calculateBoilerDecision({}, settings, { now: afterReset, allowStart: false, gridPowerW: -2500 });
   assert.equal(decision.warm, false);
   assert.equal(decision.completedToday, false);
@@ -143,6 +186,8 @@ function makeApp() {
   app.boilerState.cycleAccumulatedMs = 10 * 60000;
   app.boilerState.outputOn = false;
   app.boilerState.activeSource = '';
+  app.state.pvPowerW = 0;
+  app.inputUpdatedAt.pv = start;
   app.state.batterySoc[0] = 35;
   const cheapTariff = { className: 'cheap' };
   decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start, allowStart: true, gridPowerW: 0 });

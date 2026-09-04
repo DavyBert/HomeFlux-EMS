@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.4.12",
+  "version": "0.4.14",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -4826,10 +4826,6 @@
         "nl": "Winst"
       },
       "height": 150,
-      "devices": {
-        "type": "app",
-        "singular": true
-      },
       "settings": [
         {
           "id": "chart",
@@ -5031,6 +5027,220 @@
         }
       },
       "id": "savings"
+    },
+    "status": {
+      "name": {
+        "en": "EMS status",
+        "nl": "EMS-status"
+      },
+      "height": 320,
+      "settings": [
+        {
+          "id": "showDecision",
+          "type": "checkbox",
+          "title": {
+            "en": "Current decision",
+            "nl": "Huidige beslissing"
+          },
+          "value": true
+        },
+        {
+          "id": "showReasons",
+          "type": "checkbox",
+          "title": {
+            "en": "Reasons for decisions",
+            "nl": "Redenen van beslissingen"
+          },
+          "value": true
+        },
+        {
+          "id": "showTariff",
+          "type": "checkbox",
+          "title": {
+            "en": "Current tariff",
+            "nl": "Huidig tarief"
+          },
+          "value": true
+        },
+        {
+          "id": "showNextTariff",
+          "type": "checkbox",
+          "title": {
+            "en": "Next tariff",
+            "nl": "Volgend tarief"
+          },
+          "value": true
+        },
+        {
+          "id": "showPriceStatus",
+          "type": "checkbox",
+          "title": {
+            "en": "Price data freshness",
+            "nl": "Actualiteit prijsgegevens"
+          },
+          "value": true
+        },
+        {
+          "id": "showEmsMode",
+          "type": "checkbox",
+          "title": {
+            "en": "EMS mode",
+            "nl": "EMS-modus"
+          },
+          "value": true
+        },
+        {
+          "id": "showOutput",
+          "type": "checkbox",
+          "title": {
+            "en": "EMS output value",
+            "nl": "EMS-uitgestuurde waarde"
+          },
+          "value": true
+        },
+        {
+          "id": "showBatterySoc",
+          "type": "checkbox",
+          "title": {
+            "en": "Battery state of charge",
+            "nl": "Batterij-SoC"
+          },
+          "value": true
+        },
+        {
+          "id": "showBatteryTarget",
+          "type": "checkbox",
+          "title": {
+            "en": "Battery target",
+            "nl": "Batterijdoel"
+          },
+          "value": true
+        },
+        {
+          "id": "showNextCharge",
+          "type": "checkbox",
+          "title": {
+            "en": "Next charging window",
+            "nl": "Volgend laadvenster"
+          },
+          "value": true
+        },
+        {
+          "id": "showPlanningPhase",
+          "type": "checkbox",
+          "title": {
+            "en": "Active day/night plan and target time",
+            "nl": "Actueel dag-/nachtplan en doelmoment"
+          },
+          "value": true
+        },
+        {
+          "id": "showPlanningForecast",
+          "type": "checkbox",
+          "title": {
+            "en": "PV forecast used in current plan",
+            "nl": "PV-forecast gebruikt in actueel plan"
+          },
+          "value": true
+        },
+        {
+          "id": "showPlanningNeed",
+          "type": "checkbox",
+          "title": {
+            "en": "Energy still needed to planning target",
+            "nl": "Nog nodig tot planningsdoel"
+          },
+          "value": true
+        },
+        {
+          "id": "showPlanningGrid",
+          "type": "checkbox",
+          "title": {
+            "en": "Energy planned from grid",
+            "nl": "Geplande energie uit het net"
+          },
+          "value": true
+        },
+        {
+          "id": "showPlanningSolar",
+          "type": "checkbox",
+          "title": {
+            "en": "PV energy still expected by plan",
+            "nl": "Nog verwachte PV-energie in plan"
+          },
+          "value": true
+        },
+        {
+          "id": "showPeakGuard",
+          "type": "checkbox",
+          "title": {
+            "en": "Peak Guard status",
+            "nl": "Peak Guard-status"
+          },
+          "value": true
+        },
+        {
+          "id": "showEvs",
+          "type": "checkbox",
+          "title": {
+            "en": "Configured EVs",
+            "nl": "Geconfigureerde EV's"
+          },
+          "value": true
+        },
+        {
+          "id": "showEvDetails",
+          "type": "checkbox",
+          "title": {
+            "en": "EV connection and charging value",
+            "nl": "EV-aansluiting en laadwaarde"
+          },
+          "value": true
+        },
+        {
+          "id": "showHvacs",
+          "type": "checkbox",
+          "title": {
+            "en": "Configured HVACs",
+            "nl": "Geconfigureerde HVAC's"
+          },
+          "value": true
+        },
+        {
+          "id": "showHvacTemperatures",
+          "type": "checkbox",
+          "title": {
+            "en": "HVAC room and target temperature",
+            "nl": "HVAC ruimte- en doeltemperatuur"
+          },
+          "value": true
+        },
+        {
+          "id": "showBoiler",
+          "type": "checkbox",
+          "title": {
+            "en": "Boiler status",
+            "nl": "Boilerstatus"
+          },
+          "value": true
+        },
+        {
+          "id": "showBoilerWait",
+          "type": "checkbox",
+          "title": {
+            "en": "Boiler solar wait days",
+            "nl": "Boiler wachtdagen op zon"
+          },
+          "value": true
+        }
+      ],
+      "api": {
+        "getStatus": {
+          "method": "GET",
+          "path": "/status"
+        }
+      },
+      "id": "status"
     }
   },
   "capabilities": {

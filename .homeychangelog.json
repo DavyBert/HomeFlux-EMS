@@ -37,5 +37,14 @@
   },
   "0.4.11": {
     "en": "Enhanced energy insights for widget. New input card for imported energy today."
+  },
+  "0.4.12": {
+    "en": "Bugfix is savings progress bar"
+  },
+  "0.4.13": {
+    "en": "Added: configurable EMS status widget for tariff, EMS decision/output, battery, Peak Guard, EV, HVAC and boiler status. Fixed: boiler PV-surplus detection now excludes battery-created export. Fixed: PV day/night switching keeps the 10-minute PV-stop delay."
+  },
+  "0.4.14": {
+    "en": "Updated: EMS status widget planning information. Fixed: removed remaining deprecated HVAC input cards and aligned Flow Help catalog."
   }
 }

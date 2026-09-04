@@ -440,7 +440,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.11 initialized');
+    this.log('HomeFlux EMS v0.4.14 initialized');
   }
 
   refreshSettingsCache() {
@@ -2418,6 +2418,74 @@ class HomeFluxEmsApp extends Homey.App {
     return parts.join(' · ');
   }
 
+  getWidgetNextChargeStatus(now = Date.now()) {
+    const plan = this.planningCache?.value?.plan || null;
+    if (!plan || plan.currentSoc === null || plan.currentSoc === undefined) {
+      return { state: 'waiting', startAt: 0, endAt: 0, powerW: 0, targetSoc: null };
+    }
+
+    const targetSoc = Number.isFinite(Number(plan.targetSoc)) ? Number(plan.targetSoc) : null;
+    const energyNeed = Number(plan.energyNeedKwh) || 0;
+    if (!(energyNeed > 0.001)) {
+      return { state: 'not_needed', startAt: 0, endAt: 0, powerW: 0, targetSoc };
+    }
+
+    const rows = Array.isArray(plan.rows)
+      ? plan.rows.filter(row => row && row.plannedNetCharge && Number(row.endAt) > Number(now))
+      : [];
+    if (!rows.length) {
+      return {
+        state: plan.dynamicPriceReady === false ? 'no_price_data' : 'no_window',
+        startAt: 0, endAt: 0, powerW: 0, targetSoc,
+      };
+    }
+
+    const row = rows[0];
+    const startAt = Number(row.startAt) || 0;
+    const endAt = Number(row.endAt) || 0;
+    return {
+      state: startAt > 0 && Number(now) >= startAt && Number(now) < endAt ? 'active' : 'planned',
+      startAt,
+      endAt,
+      powerW: Math.max(0, Math.round(Number(row.plannedChargeW) || 0)),
+      targetSoc,
+    };
+  }
+
+  getWidgetPlanningSummary(now = Date.now()) {
+    const plan = this.planningCache?.value?.plan || null;
+    if (!plan || plan.currentSoc === null || plan.currentSoc === undefined) {
+      return {
+        ready: false,
+        phase: '',
+        forecastSource: 'none',
+        forecastKwh: null,
+        energyNeedKwh: null,
+        gridPlannedKwh: null,
+        targetAt: 0,
+      };
+    }
+
+    const rows = Array.isArray(plan.rows) ? plan.rows : [];
+    const gridPlannedKwh = rows
+      .filter(row => row && row.plannedNetCharge && Number(row.endAt) > Number(now))
+      .reduce((sum, row) => sum + Math.max(0, Number(row.plannedEnergyKwh) || 0), 0);
+    const forecastRaw = plan.forecastUsedKwh ?? plan.forecastKwh;
+    const forecastKwh = Number.isFinite(Number(forecastRaw)) ? Math.max(0, Number(forecastRaw)) : null;
+    const energyNeedRaw = plan.energyNeedKwh;
+    const energyNeedKwh = Number.isFinite(Number(energyNeedRaw)) ? Math.max(0, Number(energyNeedRaw)) : null;
+
+    return {
+      ready: true,
+      phase: String(plan.planningPhase || (plan.forecastDay === 'tomorrow' ? 'night' : 'day')),
+      forecastSource: String(plan.forecastUsedSource || (plan.forecastDay === 'tomorrow' ? 'tomorrow' : 'today_remaining')),
+      forecastKwh: forecastKwh === null ? null : Math.round(forecastKwh * 100) / 100,
+      energyNeedKwh: energyNeedKwh === null ? null : Math.round(energyNeedKwh * 100) / 100,
+      gridPlannedKwh: Math.round(gridPlannedKwh * 100) / 100,
+      targetAt: Number(plan.planningPeakStartAt) || Number(plan.planningChargeDeadlineAt) || 0,
+    };
+  }
+
   getEvInstanceDeviceStatus(index, settings = this.getSettings()) {
     const instanceSettings = this.getEvInstanceSettings(index, settings);
     const name = this.getEvInstanceName(index, settings);
@@ -3295,6 +3363,9 @@ class HomeFluxEmsApp extends Homey.App {
   checkNightPlanningFallback(at = Date.now()) {
     this.resetExpiredNightPlanning(at);
     if (this.getLocalMinuteOfDay(at) < 20 * 60) return false;
+    // Once a real PV end candidate has armed the 10-minute debounce, that
+    // timer remains authoritative even if the last PV input becomes stale.
+    if (!this.state.nightPlanningActive && this.pvStopTimer) return false;
 
     // If PV is still genuinely producing, wait for the normal <5 W / 10 min
     // boundary. Otherwise 20:00 is the safety fallback, including when no PV
@@ -3302,9 +3373,20 @@ class HomeFluxEmsApp extends Homey.App {
     const pv = Number(this.state.pvPowerW);
     const lastPvAt = Number(this.inputUpdatedAt?.pv) || 0;
     const pvFresh = Boolean(this.inputSeen.pv) && lastPvAt > 0 && (Number(at) - lastPvAt) <= 5 * 60 * 1000;
-    if (pvFresh && Number.isFinite(pv) && pv >= 5) return false;
-
     const today = this.getLocalDateKey(new Date(at));
+    if (pvFresh && Number.isFinite(pv)) {
+      if (pv >= 5) return false;
+      const pvSeenToday = String(this.state.pvProducingDate || '') === today
+        && Boolean(this.state.pvSeenProducingToday);
+      // Fresh low PV after real production must always finish the normal
+      // 10-minute stop debounce. The 20:00 safety fallback may not bypass it;
+      // if the timer was lost, re-arm it from the latest fresh PV value.
+      if (!this.state.nightPlanningActive && pvSeenToday) {
+        if (!this.pvStopTimer) this.updatePvPlanningState(pv, at);
+        return false;
+      }
+    }
+
     if (this.state.nightPlanningActive) {
       // v0.3.80: on a completely dark day the previous night's phase must stay
       // active (never fall through to daytime logic), but at 20:00 it still has
@@ -6093,8 +6175,22 @@ class HomeFluxEmsApp extends Homey.App {
     const predictedGridAfterBatteryW = Number.isFinite(gridW)
       ? gridW + currentBatteryCommandW - nextBatteryCommandW
       : null;
-    const headroomW = this.getPvCurtailmentHeadroomW(settings);
-    const pvSurplusW = Math.max(0, Number.isFinite(gridW) ? -gridW : 0) + Math.max(0, headroomW);
+    const pvPowerW = Math.max(0, Number(this.state.pvPowerW) || 0);
+    const lastPvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    const pvFresh = Boolean(this.inputSeen.pv)
+      && lastPvAt > 0
+      && (now - lastPvAt) <= 5 * 60 * 1000
+      && pvPowerW > 0;
+    const headroomW = pvFresh ? this.getPvCurtailmentHeadroomW(settings) : 0;
+    // Remove the currently applied battery command from the meter position before
+    // treating export as solar surplus. Internal battery convention is positive
+    // discharge / negative charge, so -(grid + battery) represents the solar
+    // power that is actually left for battery charging and/or grid export. Clamp
+    // it to the fresh PV input so battery-created export can never start the boiler.
+    const measuredSolarSurplusW = pvFresh && Number.isFinite(gridW)
+      ? Math.min(pvPowerW, Math.max(0, -(gridW + currentBatteryCommandW)))
+      : 0;
+    const pvSurplusW = measuredSolarSurplusW + Math.max(0, headroomW);
     const pvEligible = avgSoc !== null && avgSoc >= startSoc && pvSurplusW >= powerW;
     const warmUntil = this.getBoilerWarmUntil(settings);
     const warm = Number(this.boilerState.lastCompletedAt || 0) > 0 && now < warmUntil;
@@ -7621,6 +7717,22 @@ class HomeFluxEmsApp extends Homey.App {
     preview.pvLimitTargetGridW = Number(preview.pvLimitTargetGridW) || 0;
     preview.pvLimitPredictedGridW = Number(preview.pvLimitPredictedGridW) || 0;
     preview.lastControlEvaluationAt = Number(this.lastControlEvalAt) || 0;
+    preview.nextCharge = this.getWidgetNextChargeStatus(statusNow);
+    preview.planningSummary = this.getWidgetPlanningSummary(statusNow);
+
+    const dynamicPriceRequired = isDynamicContract(storedSettings);
+    const priceLastUpdatedAt = Number(this.homeyEnergy?.lastUpdatedAt) || 0;
+    const priceAgeMs = priceLastUpdatedAt > 0 ? Math.max(0, statusNow - priceLastUpdatedAt) : null;
+    preview.priceData = {
+      required: dynamicPriceRequired,
+      ready: dynamicPriceRequired ? readiness.priceDataReady !== false : true,
+      fresh: dynamicPriceRequired
+        ? readiness.priceDataReady !== false && priceLastUpdatedAt > 0 && priceAgeMs <= 20 * 60 * 1000
+        : true,
+      lastUpdatedAt: priceLastUpdatedAt,
+      ageSeconds: priceAgeMs === null ? null : Math.round(priceAgeMs / 1000),
+      refreshing: dynamicPriceRequired ? Boolean(this.homeyEnergy?.refreshing) : false,
+    };
 
     if (pauseInfo.active) {
       preview.batteryCommandPauseActive = true;

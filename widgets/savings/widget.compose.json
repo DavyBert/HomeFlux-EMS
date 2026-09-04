@@ -4,10 +4,6 @@
     "nl": "Winst"
   },
   "height": 150,
-  "devices": {
-    "type": "app",
-    "singular": true
-  },
   "settings": [
     {
       "id": "chart",

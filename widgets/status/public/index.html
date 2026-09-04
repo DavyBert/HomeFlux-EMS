@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeFlux EMS status</title>
+  <style>
+    :root {
+      --hf-muted: var(--homey-text-color-light, rgba(127,127,127,.85));
+      --hf-row: rgba(127,127,127,.08);
+      --hf-border: rgba(127,127,127,.16);
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; margin: 0; min-height: 100%; }
+    body {
+      overflow: hidden;
+      background: var(--homey-background-color, transparent);
+      color: var(--homey-text-color, inherit);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #widget { width: 100%; padding: 8px; }
+    .stack { display: grid; gap: 8px; }
+    .decision {
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: var(--hf-row);
+      border: 1px solid var(--hf-border);
+    }
+    .eyebrow { color: var(--hf-muted); font-size: 10px; line-height: 1.1; }
+    .decision-value { margin-top: 3px; font-size: 15px; line-height: 1.2; font-weight: 750; }
+    .decision-reason { margin-top: 4px; font-size: 11.5px; line-height: 1.25; font-weight: 650; }
+    .section { display: grid; gap: 4px; }
+    .section-title { font-size: 11px; font-weight: 750; line-height: 1.15; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    .metric, .item {
+      min-width: 0;
+      padding: 6px 7px;
+      border-radius: 8px;
+      background: var(--hf-row);
+    }
+    .metric-label, .item-sub { color: var(--hf-muted); font-size: 9.5px; line-height: 1.15; }
+    .metric-value { margin-top: 2px; font-size: 11.5px; line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
+    .item-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .item-name { min-width: 0; font-size: 11.5px; line-height: 1.2; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-state { margin-top: 3px; font-size: 11px; line-height: 1.2; font-weight: 650; overflow-wrap: anywhere; }
+    .item-reason { margin-top: 3px; font-size: 10px; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
+    .item-sub { margin-top: 3px; }
+    .error { padding: 8px; color: var(--hf-muted); font-size: 11px; line-height: 1.3; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="widget"><div id="content" class="stack"></div><div id="error" class="error hidden"></div></div>
+  <script type="text/javascript">
+    function tr(Homey, key, fallback) {
+      try {
+        const translated = Homey.__(key);
+        return translated && translated !== key ? translated : fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function enabled(settings, id, fallback = true) {
+      return settings[id] === undefined || settings[id] === null ? fallback : Boolean(settings[id]);
+    }
+
+    function formatW(value) {
+      const watts = Math.round(Number(value) || 0);
+      return `${watts > 0 ? '+' : ''}${watts.toLocaleString()} W`;
+    }
+
+    function formatC(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toFixed(1).replace('.0', '')} °C` : '—';
+    }
+
+    function formatSoc(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toFixed(1).replace('.0', '')}%` : '—';
+    }
+
+    function formatTime(value) {
+      const at = Number(value);
+      if (!(at > 0)) return '';
+      try {
+        return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function nextTariffText(status) {
+      const label = String(status.tariff?.nextLabel || '').trim();
+      if (!label) return '—';
+      const time = formatTime(status.tariff?.nextAt);
+      return time ? `${label} · ${time}` : label;
+    }
+
+    function priceDataText(status, Homey) {
+      const info = status.priceData || {};
+      if (!info.required) return tr(Homey, 'widget.status.priceConfigured', 'Configured tariff');
+      if (!info.ready) return tr(Homey, 'widget.status.priceUnavailable', 'Unavailable');
+
+      const ageSeconds = Number(info.ageSeconds);
+      let ageText = '';
+      if (Number.isFinite(ageSeconds)) {
+        const minutes = Math.max(0, Math.floor(ageSeconds / 60));
+        ageText = minutes < 1
+          ? tr(Homey, 'widget.status.updatedNow', 'updated just now')
+          : tr(Homey, 'widget.status.updatedMinutes', 'updated {minutes} min ago').replace('{minutes}', minutes);
+      }
+      const state = info.fresh
+        ? tr(Homey, 'widget.status.priceCurrent', 'Current')
+        : tr(Homey, 'widget.status.priceStale', 'Outdated');
+      return ageText ? `${state} · ${ageText}` : state;
+    }
+
+    function nextChargeText(status, Homey) {
+      const charge = status.nextCharge || {};
+      const state = String(charge.state || 'waiting');
+      const target = Number.isFinite(Number(charge.targetSoc)) ? formatSoc(charge.targetSoc) : '';
+      if (state === 'not_needed') {
+        const base = tr(Homey, 'widget.status.chargeNotNeeded', 'Do not charge');
+        return target ? `${base} · ${tr(Homey, 'widget.status.target', 'target')} ${target}` : base;
+      }
+      if (state === 'no_price_data') return tr(Homey, 'widget.status.chargeNoPriceData', 'Charging needed · no price data');
+      if (state === 'no_window') return tr(Homey, 'widget.status.chargeNoWindow', 'Charging needed · no charging window');
+      if (state !== 'active' && state !== 'planned') return tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning');
+
+      const parts = [state === 'active'
+        ? tr(Homey, 'widget.status.chargeActive', 'Active')
+        : tr(Homey, 'widget.status.chargePlanned', 'Planned')];
+      const start = formatTime(charge.startAt);
+      const end = formatTime(charge.endAt);
+      if (start && end) parts.push(`${start}–${end}`);
+      const power = Math.max(0, Math.round(Number(charge.powerW) || 0));
+      if (power > 0) parts.push(`${power.toLocaleString()} W`);
+      if (target) parts.push(`${tr(Homey, 'widget.status.target', 'target')} ${target}`);
+      return parts.join(' · ');
+    }
+
+    function formatKwh(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toFixed(2).replace(/\.?0+$/, '')} kWh` : '—';
+    }
+
+    function planningPhaseText(status, Homey) {
+      const plan = status.planningSummary || {};
+      if (!plan.ready) return tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning');
+      const phase = String(plan.phase || '');
+      const phaseText = phase === 'night'
+        ? tr(Homey, 'widget.status.nightPlan', 'Night plan')
+        : tr(Homey, 'widget.status.dayPlan', 'Day plan');
+      const target = formatTime(plan.targetAt);
+      return target ? `${phaseText} · ${tr(Homey, 'widget.status.until', 'until')} ${target}` : phaseText;
+    }
+
+    function planningForecastText(status, Homey) {
+      const plan = status.planningSummary || {};
+      if (!plan.ready) return tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning');
+      const source = String(plan.forecastSource || 'none');
+      const labels = {
+        today_remaining: tr(Homey, 'widget.status.forecastRemainingToday', 'Remaining today'),
+        today_full: tr(Homey, 'widget.status.forecastToday', 'PV today'),
+        today_full_fallback: tr(Homey, 'widget.status.forecastTodayFallback', 'PV today · fallback'),
+        tomorrow: tr(Homey, 'widget.status.forecastTomorrow', 'PV tomorrow'),
+        none: tr(Homey, 'widget.status.forecastUnavailable', 'No forecast'),
+      };
+      return labels[source] || labels.none;
+    }
+
+    function emsMode(status, Homey) {
+      const modes = {
+        auto: tr(Homey, 'widget.status.modeAuto', 'Automatic'),
+        self_consumption: tr(Homey, 'widget.status.modeSelfConsumption', 'Self-consumption'),
+        solar_capture: tr(Homey, 'widget.status.modeSolarCapture', 'Save battery'),
+        avoid_import: tr(Homey, 'widget.status.modeAvoidImport', 'Avoid grid import'),
+        manual_charge: tr(Homey, 'widget.status.modeManualCharge', 'Manual charging'),
+        standby: tr(Homey, 'widget.status.modeStandby', 'Standby'),
+      };
+      return modes[String(status.forcedMode || 'auto')] || String(status.forcedMode || 'auto');
+    }
+
+    function emsDecision(status, Homey) {
+      const action = String(status.action || 'idle');
+      const actionLabels = {
+        peak_shave: tr(Homey, 'widget.status.decisionPeakShave', 'Peak Guard support'),
+        grid_and_pv_charge: tr(Homey, 'widget.status.decisionGridPvCharge', 'Charging from grid and solar'),
+        grid_charge: tr(Homey, 'widget.status.decisionGridCharge', 'Charging from grid'),
+        pv_charge: tr(Homey, 'widget.status.decisionPvCharge', 'Charging from solar'),
+        avoid_grid_import: tr(Homey, 'widget.status.decisionAvoidImport', 'Avoiding grid import'),
+        discharge: tr(Homey, 'widget.status.decisionDischarge', 'Discharging battery'),
+      };
+      if (actionLabels[action]) return actionLabels[action];
+      const base = String(status.baseMode || '');
+      const baseLabels = {
+        solar_capture: tr(Homey, 'widget.status.decisionSaveBattery', 'Saving battery'),
+        charge: tr(Homey, 'widget.status.decisionGridCharge', 'Charging from grid'),
+        manual_charge: tr(Homey, 'widget.status.decisionManualCharge', 'Manual charging'),
+        avoid_import: tr(Homey, 'widget.status.decisionAvoidImport', 'Avoiding grid import'),
+        standby: tr(Homey, 'widget.status.decisionStandby', 'Standby'),
+      };
+      return baseLabels[base] || tr(Homey, 'widget.status.decisionSelfConsumption', 'Self-consumption');
+    }
+
+    function emsDecisionReason(status) {
+      const mode = String(status.modeLabel || '').trim();
+      const separator = mode.indexOf('·');
+      if (separator >= 0) return mode.slice(separator + 1).trim();
+      const warning = String(status.warningText || '').trim();
+      return warning;
+    }
+
+    function reasonText(reason, Homey) {
+      const text = String(reason || '').trim();
+      if (!text) return '';
+      return `${tr(Homey, 'widget.status.reason', 'Reason')}: ${text}`;
+    }
+
+    function evState(ev, Homey) {
+      if (!ev || !ev.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
+      if (ev.received && ev.received.connected === false) return tr(Homey, 'widget.status.waitingForStatus', 'Waiting for status');
+      if (!ev.connected) return tr(Homey, 'widget.status.evNotConnected', 'Not connected');
+      if (ev.peakLimited) return tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
+      const active = Number(ev.desiredCurrentA || ev.outputCurrentA || ev.actualCurrentA || 0) > 0 && (ev.allowed || ev.outputAllowed || Number(ev.actualCurrentA) > 0);
+      const source = String(ev.source || 'off');
+      if (active) {
+        if (ev.override?.active || source === 'emergency' || source === 'soc_target') return tr(Homey, 'widget.status.evChargingOverride', 'Charging by override/target');
+        if (source.includes('pv') && source.includes('tariff')) return tr(Homey, 'widget.status.evChargingPvTariff', 'Charging from solar + tariff');
+        if (source.includes('tariff') || source === 'guarantee') return tr(Homey, 'widget.status.evChargingTariff', 'Charging on tariff');
+        if (source.includes('pv')) return tr(Homey, 'widget.status.evChargingPv', 'Charging from solar');
+        return tr(Homey, 'widget.status.evCharging', 'Charging');
+      }
+      if (String(ev.reason || '').toLowerCase().includes('peak guard')) return tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
+      if (ev.mode === 'smart') {
+        if (Number(ev.pvAvailableW) > 0 || String(ev.reason || '').toLowerCase().includes('pv')) return tr(Homey, 'widget.status.evWaitingPvTariff', 'Waiting for solar or charging tariff');
+        return tr(Homey, 'widget.status.evWaitingPvTariff', 'Waiting for solar or charging tariff');
+      }
+      return tr(Homey, 'widget.status.evWaiting', 'Waiting');
+    }
+
+    function hvacState(hvac, Homey) {
+      if (!hvac || !hvac.enabled || hvac.automaticControlEnabled === false) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
+      const reason = String(hvac.reason || '').toLowerCase();
+      if (reason.includes('peak guard')) return tr(Homey, 'widget.status.hvacPeakGuard', 'Stopped by Peak Guard');
+      if (hvac.boostActive || hvac.managedPowerOn) {
+        if (hvac.energySource === 'battery') return tr(Homey, 'widget.status.hvacBatteryBoost', 'Extra energy to HVAC from battery');
+        return tr(Homey, 'widget.status.hvacPvBoost', 'Using solar surplus');
+      }
+      if (reason.includes('comfortdoel') || reason.includes('activatiemarge')) return tr(Homey, 'widget.status.hvacComfortReached', 'Comfort target reached');
+      if (reason.includes('wacht') || reason.includes('geen pv') || reason.includes('overschot')) return tr(Homey, 'widget.status.hvacWaitingSurplus', 'Waiting for surplus');
+      const mode = String(hvac.mode || hvac.currentMode || '').toLowerCase();
+      if (mode === 'off') return tr(Homey, 'widget.status.off', 'Off');
+      return tr(Homey, 'widget.status.hvacWaitingSurplus', 'Waiting for surplus');
+    }
+
+    function boilerState(boiler, Homey) {
+      if (!boiler || !boiler.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
+      const reason = String(boiler.reason || '').toLowerCase();
+      if (reason.includes('peak guard')) return tr(Homey, 'widget.status.boilerPeakGuard', 'Disabled by Peak Guard');
+      if (boiler.outputOn || boiler.running) {
+        return String(boiler.activeSource || '') === 'tariff'
+          ? tr(Homey, 'widget.status.boilerTariff', 'Heating on tariff')
+          : tr(Homey, 'widget.status.boilerPv', 'Heating from solar');
+      }
+      if (boiler.warm) return tr(Homey, 'widget.status.boilerWarm', 'Heated');
+      const fallbackDays = Math.max(0, Math.round(Number(boiler.fallbackDays) || 0));
+      const daysWithoutCycle = Math.max(0, Math.round(Number(boiler.daysWithoutCycle) || 0));
+      if (fallbackDays > 0 && !boiler.fallbackDue && daysWithoutCycle > 0) {
+        const remaining = Math.max(0, fallbackDays - daysWithoutCycle);
+        return tr(Homey, 'widget.status.boilerSkipped', 'Heating skipped: {days} day(s), waiting {remaining} more day(s) for solar')
+          .replace('{days}', daysWithoutCycle).replace('{remaining}', remaining);
+      }
+      if (boiler.fallbackDue && boiler.tariffSelected && !boiler.tariffBatteryReady) return tr(Homey, 'widget.status.boilerFallbackBattery', 'Maximum solar wait reached; waiting for battery SoC');
+      if (boiler.fallbackDue && !boiler.tariffSelected) return tr(Homey, 'widget.status.boilerFallbackDue', 'Maximum solar wait reached; waiting for an allowed tariff');
+      return tr(Homey, 'widget.status.boilerWaitingSun', 'Waiting for solar');
+    }
+
+    function addMetric(grid, label, value) {
+      const cell = document.createElement('div');
+      cell.className = 'metric';
+      const labelEl = document.createElement('div');
+      labelEl.className = 'metric-label';
+      labelEl.textContent = label;
+      const valueEl = document.createElement('div');
+      valueEl.className = 'metric-value';
+      valueEl.textContent = value;
+      cell.append(labelEl, valueEl);
+      grid.appendChild(cell);
+    }
+
+    function section(title) {
+      const root = document.createElement('section');
+      root.className = 'section';
+      const heading = document.createElement('div');
+      heading.className = 'section-title';
+      heading.textContent = title;
+      root.appendChild(heading);
+      return root;
+    }
+
+    function addItem(root, name, state, sub = '', reason = '') {
+      const item = document.createElement('div');
+      item.className = 'item';
+      const head = document.createElement('div');
+      head.className = 'item-head';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'item-name';
+      nameEl.textContent = name;
+      head.appendChild(nameEl);
+      const stateEl = document.createElement('div');
+      stateEl.className = 'item-state';
+      stateEl.textContent = state;
+      item.append(head, stateEl);
+      if (reason) {
+        const reasonEl = document.createElement('div');
+        reasonEl.className = 'item-reason';
+        reasonEl.textContent = reason;
+        item.appendChild(reasonEl);
+      }
+      if (sub) {
+        const subEl = document.createElement('div');
+        subEl.className = 'item-sub';
+        subEl.textContent = sub;
+        item.appendChild(subEl);
+      }
+      root.appendChild(item);
+    }
+
+    function renderStatus(status, settings, Homey) {
+      const content = document.getElementById('content');
+      content.innerHTML = '';
+
+      if (enabled(settings, 'showDecision')) {
+        const decision = document.createElement('div');
+        decision.className = 'decision';
+        const eyebrow = document.createElement('div');
+        eyebrow.className = 'eyebrow';
+        eyebrow.textContent = tr(Homey, 'widget.status.currentDecision', 'Current decision');
+        const value = document.createElement('div');
+        value.className = 'decision-value';
+        value.textContent = emsDecision(status, Homey);
+        decision.append(eyebrow, value);
+        if (enabled(settings, 'showReasons')) {
+          const reason = emsDecisionReason(status);
+          if (reason) {
+            const reasonEl = document.createElement('div');
+            reasonEl.className = 'decision-reason';
+            reasonEl.textContent = reasonText(reason, Homey);
+            decision.appendChild(reasonEl);
+          }
+        }
+        content.appendChild(decision);
+      }
+
+      const generalGrid = document.createElement('div');
+      generalGrid.className = 'grid';
+      if (enabled(settings, 'showTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.currentTariff', 'Current tariff'), String(status.tariff?.label || '—'));
+      if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status));
+      if (enabled(settings, 'showPriceStatus')) addMetric(generalGrid, tr(Homey, 'widget.status.priceData', 'Price data'), priceDataText(status, Homey));
+      if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
+      if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));
+      if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc));
+      if (enabled(settings, 'showBatteryTarget')) addMetric(generalGrid, tr(Homey, 'widget.status.batteryTarget', 'Battery target'), formatSoc(status.targetSoc));
+      if (enabled(settings, 'showNextCharge')) addMetric(generalGrid, tr(Homey, 'widget.status.nextCharge', 'Next charging window'), nextChargeText(status, Homey));
+      if (enabled(settings, 'showPeakGuard')) {
+        const peakEnabled = Boolean(status.settings?.peakShaveEnabled);
+        const peakActive = String(status.override || '') === 'peak_shave';
+        const peakValue = !peakEnabled
+          ? tr(Homey, 'widget.status.off', 'Off')
+          : peakActive
+            ? `${tr(Homey, 'widget.status.active', 'Active')} · ${formatW(status.settings?.peakLimitW).replace('+', '')}`
+            : `${tr(Homey, 'widget.status.monitoring', 'Monitoring')} · ${formatW(status.settings?.peakLimitW).replace('+', '')}`;
+        addMetric(generalGrid, tr(Homey, 'widget.status.peakGuard', 'Peak Guard'), peakValue);
+      }
+      if (enabled(settings, 'showPlanningPhase')) addMetric(generalGrid, tr(Homey, 'widget.status.activePlan', 'Active plan'), planningPhaseText(status, Homey));
+      if (enabled(settings, 'showPlanningForecast')) addMetric(generalGrid, tr(Homey, 'widget.status.pvInPlan', 'PV in plan'), planningForecastText(status, Homey));
+      if (enabled(settings, 'showPlanningNeed')) addMetric(generalGrid, tr(Homey, 'widget.status.energyStillNeeded', 'Still needed to target'), status.planningSummary?.ready ? formatKwh(status.planningSummary.energyNeedKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
+      if (enabled(settings, 'showPlanningGrid')) addMetric(generalGrid, tr(Homey, 'widget.status.gridPlanned', 'Planned from grid'), status.planningSummary?.ready ? formatKwh(status.planningSummary.gridPlannedKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
+      if (enabled(settings, 'showPlanningSolar')) addMetric(generalGrid, tr(Homey, 'widget.status.solarExpected', 'PV still expected'), status.planningSummary?.ready ? formatKwh(status.planningSummary.forecastKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
+      if (generalGrid.children.length) content.appendChild(generalGrid);
+
+      if (enabled(settings, 'showEvs')) {
+        const evs = Array.isArray(status.evs) ? status.evs.filter(Boolean) : [];
+        if (evs.length) {
+          const root = section(tr(Homey, 'widget.status.evs', 'EVs'));
+          evs.forEach(ev => {
+            const details = [];
+            if (enabled(settings, 'showEvDetails')) {
+              details.push(ev.connected ? tr(Homey, 'widget.status.connected', 'Connected') : tr(Homey, 'widget.status.notConnected', 'Not connected'));
+              const amps = Math.max(0, Number(ev.outputCurrentA || ev.desiredCurrentA || ev.actualCurrentA) || 0);
+              if (amps > 0) details.push(`${Math.round(amps * 10) / 10} A`);
+            }
+            addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), enabled(settings, 'showReasons') ? reasonText(ev.reason, Homey) : '');
+          });
+          content.appendChild(root);
+        }
+      }
+
+      if (enabled(settings, 'showHvacs')) {
+        const hvacs = Array.isArray(status.hvacs) ? status.hvacs.filter(Boolean) : [];
+        if (hvacs.length) {
+          const root = section(tr(Homey, 'widget.status.hvacs', 'HVAC'));
+          hvacs.forEach(hvac => {
+            let temperatures = '';
+            if (enabled(settings, 'showHvacTemperatures')) {
+              const target = hvac.setpointCommand !== null && hvac.setpointCommand !== undefined
+                ? hvac.setpointCommand
+                : hvac.outputSetpointC !== null && hvac.outputSetpointC !== undefined
+                  ? hvac.outputSetpointC
+                  : hvac.setpointC;
+              temperatures = `${tr(Homey, 'widget.status.room', 'Room')} ${formatC(hvac.roomTemperatureC)} → ${tr(Homey, 'widget.status.target', 'target')} ${formatC(target)}`;
+            }
+            addItem(root, String(hvac.name || `HVAC ${hvac.instance || ''}`), hvacState(hvac, Homey), temperatures, enabled(settings, 'showReasons') ? reasonText(hvac.reason, Homey) : '');
+          });
+          content.appendChild(root);
+        }
+      }
+
+      if (enabled(settings, 'showBoiler') && Number(status.settings?.boilerCount || 0) > 0 && status.boiler) {
+        const root = section(String(status.boiler.name || tr(Homey, 'widget.status.boiler', 'Boiler')));
+        let details = '';
+        if (enabled(settings, 'showBoilerWait')) {
+          const fallbackDays = Math.max(0, Math.round(Number(status.boiler.fallbackDays) || 0));
+          const daysWithoutCycle = Math.max(0, Math.round(Number(status.boiler.daysWithoutCycle) || 0));
+          if (fallbackDays > 0 && !status.boiler.fallbackDue) {
+            const remaining = Math.max(0, fallbackDays - daysWithoutCycle);
+            details = tr(Homey, 'widget.status.boilerDaysDetail', '{days} day(s) skipped · {remaining} day(s) left waiting for solar')
+              .replace('{days}', daysWithoutCycle).replace('{remaining}', remaining);
+          }
+        }
+        addItem(root, String(status.boiler.name || tr(Homey, 'widget.status.boiler', 'Boiler')), boilerState(status.boiler, Homey), details, enabled(settings, 'showReasons') ? reasonText(status.boiler.reason, Homey) : '');
+        content.appendChild(root);
+      }
+    }
+
+    async function onHomeyReady(Homey) {
+      const settings = Homey.getSettings() || {};
+      let hasRendered = false;
+      let refreshBusy = false;
+      let lastHeight = 0;
+
+      async function resize() {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const height = Math.max(90, Math.ceil(document.getElementById('widget').scrollHeight));
+        if (height !== lastHeight) {
+          lastHeight = height;
+          if (hasRendered && typeof Homey.setHeight === 'function') await Homey.setHeight(height);
+          return height;
+        }
+        return lastHeight;
+      }
+
+      async function refresh(first = false) {
+        if (refreshBusy) return;
+        refreshBusy = true;
+        try {
+          const status = await Homey.api('GET', '/status', {});
+          renderStatus(status || {}, settings, Homey);
+          document.getElementById('error').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
+          const height = await resize();
+          if (first) await Homey.ready({ height });
+          hasRendered = true;
+        } catch (error) {
+          if (!hasRendered) {
+            document.getElementById('content').classList.add('hidden');
+            const target = document.getElementById('error');
+            target.classList.remove('hidden');
+            target.textContent = tr(Homey, 'widget.status.error', 'EMS status is temporarily unavailable.');
+            const height = await resize();
+            if (first) await Homey.ready({ height });
+          }
+          console.error('HomeFlux EMS status widget failed', error);
+        } finally {
+          refreshBusy = false;
+        }
+      }
+
+      await refresh(true);
+      setInterval(() => {
+        if (!document.hidden) refresh(false);
+      }, 10000);
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 {
   "name": "com.homeflux.ems",
-  "version": "0.4.11",
+  "version": "0.4.14",
   "description": "HomeFlux EMS coordinates batteries, solar and flexible loads around your energy contract and grid limits.",
   "main": "app.js",
   "private": true,

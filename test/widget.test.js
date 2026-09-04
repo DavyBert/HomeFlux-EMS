@@ -10,13 +10,44 @@ const compose = JSON.parse(fs.readFileSync(path.join(widgetRoot, 'widget.compose
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
 const appCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'app.json'), 'utf8'));
 const html = fs.readFileSync(path.join(widgetRoot, 'public', 'index.html'), 'utf8');
+const statusWidgetRoot = path.join(root, 'widgets', 'status');
+const statusCompose = JSON.parse(fs.readFileSync(path.join(statusWidgetRoot, 'widget.compose.json'), 'utf8'));
+const statusHtml = fs.readFileSync(path.join(statusWidgetRoot, 'public', 'index.html'), 'utf8');
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.4.11');
+assert.equal(manifest.version, '0.4.14');
+assert.equal(appCompose.version, '0.4.14');
+assert.equal(packageJson.version, '0.4.14');
+assert.equal(packageLock.version, '0.4.14');
+assert.equal(packageLock.packages[''].version, '0.4.14');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
+assert.deepEqual(manifest.widgets.status, { ...statusCompose, id: 'status' }, 'generated status widget manifest must match widget Compose');
+for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar']) {
+  assert(statusCompose.settings.some(item => item.id === id), `status widget setting ${id} missing`);
+}
+assert(statusHtml.includes("enabled(settings, 'showTariff')"), 'status widget must allow current tariff to be selected');
+assert(statusHtml.includes("enabled(settings, 'showNextTariff')"), 'status widget must allow next tariff to be selected');
+assert(statusHtml.includes("enabled(settings, 'showPriceStatus')"), 'status widget must allow price freshness to be selected');
+assert(statusHtml.includes("enabled(settings, 'showNextCharge')"), 'status widget must allow next charge to be selected');
+assert(statusHtml.includes("enabled(settings, 'showPlanningPhase')"), 'status widget must allow active planning phase to be selected');
+assert(statusHtml.includes("enabled(settings, 'showPlanningForecast')"), 'status widget must allow planning forecast to be selected');
+assert(statusHtml.includes("enabled(settings, 'showPlanningNeed')"), 'status widget must allow remaining planning need to be selected');
+assert(statusHtml.includes("enabled(settings, 'showPlanningGrid')"), 'status widget must allow planned grid energy to be selected');
+assert(statusHtml.includes("enabled(settings, 'showPlanningSolar')"), 'status widget must allow expected PV energy to be selected');
+assert(statusHtml.includes("enabled(settings, 'showReasons')"), 'status widget must allow decision reasons to be selected');
+assert(statusHtml.includes('emsDecisionReason(status)'), 'status widget must render the existing EMS decision reason');
+assert(statusHtml.includes('reasonText(ev.reason, Homey)'), 'status widget must render the existing EV reason');
+assert(statusHtml.includes('reasonText(hvac.reason, Homey)'), 'status widget must render the existing HVAC reason');
+assert(statusHtml.includes('reasonText(status.boiler.reason, Homey)'), 'status widget must render the existing boiler reason');
+assert(statusHtml.includes('nextTariffText(status)'), 'status widget must render the next tariff');
+assert(statusHtml.includes('priceDataText(status, Homey)'), 'status widget must render price-data freshness');
+assert(statusHtml.includes('nextChargeText(status, Homey)'), 'status widget must render next-charge status');
 assert.equal(compose.height, 150);
-assert.deepEqual(compose.devices, { type: 'app', singular: true });
+assert.equal(compose.devices, undefined, 'savings widget must not require a device selection');
+assert.equal(statusCompose.devices, undefined, 'status widget must not require a device selection');
 
 const chart = compose.settings.find(item => item.id === 'chart');
 assert(chart, 'chart widget setting missing');

@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.11 — HomeFlux, jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.14 — HomeFlux, jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -1387,8 +1387,8 @@
 <fieldset class="homey-form-fieldset"><legend class="homey-form-legend">Boilerregeling</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-checkbox"><input id="boilerEnabled" type="checkbox"/> <span>Boilerregeling activeren</span></label><div class="muted">HomeFlux publiceert alleen een eenvoudige ja/nee-uitgang.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="boilerName">Naam</label><input class="homey-form-input" id="boilerName" maxlength="40" type="text" value="Boiler"/></div>
-<div class="homey-form-group"><label class="homey-form-label" for="boilerStartSoc">Boiler laden vanaf batterij-SoC (%)</label><input class="homey-form-input" id="boilerStartSoc" min="0" max="100" step="1" type="number"/></div>
-<div class="homey-form-group"><label class="homey-form-label" for="boilerStopSoc">Boiler stoppen onder batterij-SoC (%)</label><input class="homey-form-input" id="boilerStopSoc" min="0" max="100" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="boilerStartSoc">Boiler laden tijdens zonneuren vanaf batterij-SoC (%)</label><input class="homey-form-input" id="boilerStartSoc" min="0" max="100" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="boilerStopSoc">Boiler terug stoppen tijdens zonneuren onder batterij-SoC (%)</label><input class="homey-form-input" id="boilerStopSoc" min="0" max="100" step="1" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="boilerPowerW">Boilervermogen / vereist PV-overschot (W)</label><input class="homey-form-input" id="boilerPowerW" min="100" max="20000" step="100" type="number"/><div class="muted">HomeFlux start pas wanneer minstens dit werkelijk resterende overschot beschikbaar is.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="boilerCycleMinutes">Volledige opwarmcyclus (min)</label><input class="homey-form-input" id="boilerCycleMinutes" min="1" max="1440" step="1" type="number"/><div class="muted">De looptijd is cumulatief. Onderbrekingen door wolken of SoC wissen de voortgang niet.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="boilerColdResetTime">Boiler wordt opnieuw koud om</label><input class="homey-form-input" id="boilerColdResetTime" type="time" value="07:00"/><div class="muted">Standaard 07:00. Een volledige opwarmcyclus blijft tot dit dagelijkse resetuur als warm gelden, zodat een PV-opwarming overdag niet opnieuw tijdens de nacht wordt gestart.</div></div>

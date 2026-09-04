@@ -194,6 +194,37 @@ function bareApp() {
   assert.equal(app.getPlanningForecastDay(1000), 'tomorrow');
 }
 
+// v0.4.13: at 20:00, fresh low PV after a real solar day must still
+// complete the normal 10-minute stop delay. If the timer disappeared, the
+// fallback re-arms it instead of switching day/night immediately.
+{
+  const app = bareApp();
+  const callbacks = [];
+  app.homey.setTimeout = callback => { callbacks.push(callback); return callbacks.length; };
+  app.requestContextEvaluate = () => {};
+  app.publishChargePlanIfChanged = async () => {};
+  app.getSettings = () => ({ chargeDeadline: '07:00' });
+  app.getLocalDateKey = () => '2026-09-04';
+  app.getLocalMinuteOfDay = () => 20 * 60;
+  const now = 1_000_000;
+  app.inputSeen.pv = true;
+  app.inputUpdatedAt.pv = now;
+  app.state.pvProducingDate = '2026-09-04';
+  app.state.pvSeenProducingToday = true;
+  app.state.pvPowerW = 4;
+  app.pvStopTimer = null;
+
+  assert.equal(app.checkNightPlanningFallback(now), false);
+  assert.equal(app.state.nightPlanningActive, false);
+  assert.equal(callbacks.length, 1, 'lost PV-stop timer must be re-armed');
+  app.inputUpdatedAt.pv = now - (6 * 60 * 1000);
+  assert.equal(app.checkNightPlanningFallback(now), false, '20:00 fallback may not bypass an armed PV-stop timer');
+  assert.equal(app.state.nightPlanningActive, false);
+  callbacks[0]();
+  assert.equal(app.state.nightPlanningActive, true);
+  assert.equal(app.state.nightPlanningDecisionSource, 'pv_below_5w_10m');
+}
+
 // v0.2.26: without PV input, the fallback plan is made at 20:00.
 {
   const app = bareApp();
@@ -1527,6 +1558,63 @@ function bareApp() {
   assert.deepEqual(status.outputCommands, [400, -100]);
   assert.equal(status.outputTotalCommandW, 300);
   assert.equal(status.lastControlEvaluationAt, 123456);
+  assert.equal(status.nextCharge.state, 'waiting');
+  assert.equal(status.priceData.required, false);
+  assert.equal(status.priceData.ready, true);
+  assert.equal(status.priceData.fresh, true);
+}
+
+// v0.4.13: the status widget reads the cached charge plan without triggering a
+// fresh planning calculation. It distinguishes active/planned/no-charge states.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.planningCache = {
+    value: {
+      plan: {
+        currentSoc: 50,
+        targetSoc: 80,
+        energyNeedKwh: 4,
+        rows: [{ plannedNetCharge: true, startAt: now - 60000, endAt: now + 60000, plannedChargeW: 2500 }],
+      },
+    },
+  };
+  let nextCharge = app.getWidgetNextChargeStatus(now);
+  assert.equal(nextCharge.state, 'active');
+  assert.equal(nextCharge.powerW, 2500);
+  assert.equal(nextCharge.targetSoc, 80);
+
+  app.planningCache.value.plan.rows = [{ plannedNetCharge: true, startAt: now + 60000, endAt: now + 120000, plannedChargeW: 1800 }];
+  nextCharge = app.getWidgetNextChargeStatus(now);
+  assert.equal(nextCharge.state, 'planned');
+
+  app.planningCache.value.plan.energyNeedKwh = 0;
+  app.planningCache.value.plan.rows = [];
+  nextCharge = app.getWidgetNextChargeStatus(now);
+  assert.equal(nextCharge.state, 'not_needed');
+
+  app.planningCache.value.plan = {
+    currentSoc: 64.8,
+    targetSoc: 80,
+    planningPhase: 'night',
+    forecastUsedSource: 'tomorrow',
+    forecastUsedKwh: 7.5,
+    energyNeedKwh: 3.2,
+    planningPeakStartAt: now + (8 * 60 * 60 * 1000),
+    rows: [
+      { plannedNetCharge: true, endAt: now + 3600000, plannedEnergyKwh: 1.25 },
+      { plannedNetCharge: true, endAt: now + 7200000, plannedEnergyKwh: 0.75 },
+      { plannedNetCharge: false, endAt: now + 7200000, plannedEnergyKwh: 5 },
+    ],
+  };
+  const planningSummary = app.getWidgetPlanningSummary(now);
+  assert.equal(planningSummary.ready, true);
+  assert.equal(planningSummary.phase, 'night');
+  assert.equal(planningSummary.forecastSource, 'tomorrow');
+  assert.equal(planningSummary.forecastKwh, 7.5);
+  assert.equal(planningSummary.energyNeedKwh, 3.2);
+  assert.equal(planningSummary.gridPlannedKwh, 2);
+  assert.equal(planningSummary.targetAt, now + (8 * 60 * 60 * 1000));
 }
 
 // v0.3.30: a split-mode change that is blocked by the anti-chatter timers must
