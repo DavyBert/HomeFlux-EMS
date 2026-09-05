@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.4.18 — HomeFlux, jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.5.1 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -3335,6 +3335,40 @@ async function onHomeyReady(Homey) {
 
   function evModeLabel(value){ return value==='emergency'?'Emergency charge':value==='soc_target'?(uiLanguage==='nl'?'Op SoC-doel':'SoC target'):(uiLanguage==='nl'?'Slim':'Smart'); }
 
+  function evCoordinationPower(value){
+    const watts=Math.max(0,Math.round(Number(value)||0));
+    return watts>=1000?`${(watts/1000).toFixed(watts%1000===0?0:1)} kW`:`${watts} W`;
+  }
+
+  function evBatteryCoordinationText(ev={}) {
+    const supportW=Math.max(0,Number(ev.batterySupportAllocatedW)||0);
+    const batteryW=Math.max(0,Number(ev.batteryDischargeW)||0);
+    const gridTargetW=Math.max(0,Number(ev.evGridImportTargetW)||0);
+    const remaining=Math.max(0,Math.round(Number(ev.evGridImportGraceRemainingSeconds)||0));
+    const desiredA=Math.max(0,Number(ev.desiredCurrentA)||0);
+    if(supportW>0){
+      return uiLanguage==='nl'
+        ? `Thuisbatterij ondersteunt de EV bewust met ${evCoordinationPower(supportW)} extra laadvermogen.`
+        : `Home battery intentionally supports the EV with ${evCoordinationPower(supportW)} of extra charging power.`;
+    }
+    if(Boolean(ev.evGridImportWaiting) && batteryW>0){
+      if(String(ev.evGridImportControlState||'')==='waiting_command'){
+        return uiLanguage==='nl'
+          ? `Batterij ontlaadt tijdelijk ${evCoordinationPower(batteryW)} terwijl het lagere EV-setpoint (${desiredA.toFixed(0)} A) wacht om uitgestuurd te worden.`
+          : `Battery temporarily discharges ${evCoordinationPower(batteryW)} while the lower EV setpoint (${desiredA.toFixed(0)} A) is waiting to be sent.`;
+      }
+      return uiLanguage==='nl'
+        ? `Batterij ontlaadt tijdelijk ${evCoordinationPower(batteryW)} terwijl HomeFlux wacht tot de EV ${desiredA.toFixed(0)} A volgt${remaining?` · nog max. ${remaining} s`:''}.`
+        : `Battery temporarily discharges ${evCoordinationPower(batteryW)} while HomeFlux waits for the EV to follow ${desiredA.toFixed(0)} A${remaining?` · max. ${remaining} s remaining`:''}.`;
+    }
+    if(gridTargetW>0){
+      return uiLanguage==='nl'
+        ? `EV-netafname toegestaan tot ${evCoordinationPower(gridTargetW)}; de batterijregeling compenseert dit EV-deel niet${batteryW>0?` · actueel batterijontladen ${evCoordinationPower(batteryW)}`:''}.`
+        : `EV grid import allowed up to ${evCoordinationPower(gridTargetW)}; battery control does not compensate this EV share${batteryW>0?` · current battery discharge ${evCoordinationPower(batteryW)}`:''}.`;
+    }
+    return '';
+  }
+
   function renderFlexibleLoadStatus(status={}) {
     const evs=Array.isArray(status.evs)?status.evs:[];
     const evInputs=Array.isArray(status.inputs?.evs)?status.inputs.evs:[];
@@ -3349,7 +3383,23 @@ async function onHomeyReady(Homey) {
       if(q(`${stem}ConfigInputSummary`)) q(`${stem}ConfigInputSummary`).textContent=`Inputs: SoC ${ev.socEnabled===false?(uiLanguage==='nl'?'UIT':'OFF'):(received.soc?'OK':(uiLanguage==='nl'?'WACHT':'WAIT'))} · ${uiLanguage==='nl'?'aansluiting':'connection'} ${received.connected?'OK':(uiLanguage==='nl'?'WACHT':'WAIT')} · ${uiLanguage==='nl'?'laadstroom':'current'} ${received.chargeCurrent?'OK':(uiLanguage==='nl'?'WACHT':'WAIT')}`;
     }
     const evHost=q('evLiveInstances');
-    if(evHost){ evHost.innerHTML=''; for(const ev of evs){ if(!ev.enabled) continue; const input=evInputs[Number(ev.instance||1)-1]||{}; const override=ev.override||{}; const output=String(ev.controlType||'current')==='mode'?String(ev.outputChargeMode||'stop'):`${Number(ev.outputCurrentA||0).toFixed(0)} A`; const detail=override.active?`${evModeLabel(override.mode)} · ${override.sessionStarted?(uiLanguage==='nl'?'actief':'active'):(uiLanguage==='nl'?'gewapend':'armed')}`:(uiLanguage==='nl'?'Geen override':'No override'); const card=document.createElement('div'); card.className='card live-instance-card'; card.innerHTML=`<h3>${escapeHtml(ev.name||`EV ${ev.instance}`)}</h3><div class="status-grid"><div class="card"><div class="muted">SoC</div><div class="metric">${ev.socEnabled===false?(uiLanguage==='nl'?'UIT':'OFF'):(ev.soc===null||ev.soc===undefined?'—':`${Number(ev.soc).toFixed(1)}%`)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Aangesloten':'Connected'}</div><div class="metric">${ev.connected?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Werkelijke stroom':'Actual current'}</div><div class="metric">${Number(ev.actualCurrentA||0).toFixed(1)} A</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Uitgang':'Output'}</div><div class="metric">${escapeHtml(output)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Toegestaan':'Allowed'}</div><div class="metric">${ev.outputAllowed?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">Override</div><div class="metric">${escapeHtml(detail)}</div></div></div><div class="statusline">${escapeHtml(ev.reason||'—')}</div><div class="muted">${uiLanguage==='nl'?'Normale modus':'Configured mode'}: ${escapeHtml(evModeLabel(ev.configuredMode||'smart'))}</div>`; evHost.appendChild(card); } if(!evHost.children.length) evHost.innerHTML=`<div class="muted">${uiLanguage==='nl'?'Geen actieve EV-lader.':'No active EV charger.'}</div>`; }
+    if(evHost){
+      evHost.innerHTML='';
+      for(const ev of evs){
+        if(!ev.enabled) continue;
+        const input=evInputs[Number(ev.instance||1)-1]||{};
+        const override=ev.override||{};
+        const output=String(ev.controlType||'current')==='mode'?String(ev.outputChargeMode||'stop'):`${Number(ev.outputCurrentA||0).toFixed(0)} A`;
+        const detail=override.active?`${evModeLabel(override.mode)} · ${override.sessionStarted?(uiLanguage==='nl'?'actief':'active'):(uiLanguage==='nl'?'gewapend':'armed')}`:(uiLanguage==='nl'?'Geen override':'No override');
+        const coordination=evBatteryCoordinationText(ev);
+        const card=document.createElement('div');
+        card.className='card live-instance-card';
+        card.innerHTML=`<h3>${escapeHtml(ev.name||`EV ${ev.instance}`)}</h3><div class="status-grid"><div class="card"><div class="muted">SoC</div><div class="metric">${ev.socEnabled===false?(uiLanguage==='nl'?'UIT':'OFF'):(ev.soc===null||ev.soc===undefined?'—':`${Number(ev.soc).toFixed(1)}%`)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Aangesloten':'Connected'}</div><div class="metric">${ev.connected?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Werkelijke stroom':'Actual current'}</div><div class="metric">${Number(ev.actualCurrentA||0).toFixed(1)} A</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Uitgang':'Output'}</div><div class="metric">${escapeHtml(output)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Toegestaan':'Allowed'}</div><div class="metric">${ev.outputAllowed?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">Override</div><div class="metric">${escapeHtml(detail)}</div></div></div><div class="statusline">${escapeHtml(ev.reason||'—')}</div>${coordination?`<div class="statusline">${escapeHtml(coordination)}</div>`:''}<div class="muted">${uiLanguage==='nl'?'Normale modus':'Configured mode'}: ${escapeHtml(evModeLabel(ev.configuredMode||'smart'))}</div>`;
+        evHost.appendChild(card);
+      }
+      if(!evHost.children.length) evHost.innerHTML=`<div class="muted">${uiLanguage==='nl'?'Geen actieve EV-lader.':'No active EV charger.'}</div>`;
+    }
+
 
     const hvacs=Array.isArray(status.hvacs)?status.hvacs:[];
     const hvacInputs=Array.isArray(status.inputs?.hvacs)?status.inputs.hvacs:[];

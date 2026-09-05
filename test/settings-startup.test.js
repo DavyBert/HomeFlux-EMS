@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.4.18');
+  assert.equal(manifest.version, '0.5.1');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.4.18 — HomeFlux, jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.4.18 — HomeFlux, your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.5.1 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.5.1 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -91,8 +91,8 @@ assert.equal(composeJson.homepage, 'https://github.com/DavyBert/HomeFlux-EMS');
 assert.equal(composeJson.support, 'https://github.com/DavyBert/HomeFlux-EMS/issues');
 assert.equal(appJson.homepage, composeJson.homepage);
 assert.equal(appJson.support, composeJson.support);
-assert.equal(composeJson.description.en, 'HomeFlux, your energy, managed differently');
-assert.equal(composeJson.description.nl, 'HomeFlux, jouw energie, anders geregeld');
+assert.equal(composeJson.description.en, 'Your energy, managed differently');
+assert.equal(composeJson.description.nl, 'Jouw energie, anders geregeld');
 assert.deepEqual(appJson.description, composeJson.description);
 
 assert(html.includes('id="peakReserveNightEnabled"'), 'night minimum setting missing');

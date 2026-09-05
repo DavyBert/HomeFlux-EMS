@@ -218,6 +218,41 @@
       return `${tr(Homey, 'widget.status.reason', 'Reason')}: ${text}`;
     }
 
+    function coordinationPower(value) {
+      const watts = Math.max(0, Math.round(Number(value) || 0));
+      if (watts >= 1000) return `${(watts / 1000).toFixed(watts % 1000 === 0 ? 0 : 1)} kW`;
+      return `${watts} W`;
+    }
+
+    function evBatteryCoordinationText(ev, Homey) {
+      const supportW = Math.max(0, Number(ev?.batterySupportAllocatedW) || 0);
+      const batteryW = Math.max(0, Number(ev?.batteryDischargeW) || 0);
+      const gridTargetW = Math.max(0, Number(ev?.evGridImportTargetW) || 0);
+      const remaining = Math.max(0, Math.round(Number(ev?.evGridImportGraceRemainingSeconds) || 0));
+      const desiredA = Math.max(0, Number(ev?.desiredCurrentA) || 0);
+      if (supportW > 0) {
+        return tr(Homey, 'widget.status.evBatterySupport', 'Home battery intentionally supports the EV with {power} extra charging power')
+          .replace('{power}', coordinationPower(supportW));
+      }
+      if (Boolean(ev?.evGridImportWaiting) && batteryW > 0) {
+        if (String(ev?.evGridImportControlState || '') === 'waiting_command') {
+          return tr(Homey, 'widget.status.evBatteryWaitingCommand', 'Battery temporarily discharges {power} while the lower EV setpoint ({amps} A) is waiting to be sent')
+            .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0));
+        }
+        return tr(Homey, 'widget.status.evBatteryWaitingResponse', 'Battery temporarily discharges {power} while waiting for the EV to follow {amps} A · max. {seconds} s remaining')
+          .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0)).replace('{seconds}', remaining);
+      }
+      if (gridTargetW > 0) {
+        const key = batteryW > 0 ? 'widget.status.evGridImportTargetBattery' : 'widget.status.evGridImportTarget';
+        const fallback = batteryW > 0
+          ? 'EV grid import allowed up to {target}; battery control compensates only above this EV share · current battery discharge {power}'
+          : 'EV grid import allowed up to {target}; battery control does not compensate this EV share';
+        return tr(Homey, key, fallback)
+          .replace('{target}', coordinationPower(gridTargetW)).replace('{power}', coordinationPower(batteryW));
+      }
+      return '';
+    }
+
     function evState(ev, Homey) {
       if (!ev || !ev.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
       if (ev.received && ev.received.connected === false) return tr(Homey, 'widget.status.waitingForStatus', 'Waiting for status');
@@ -392,7 +427,14 @@
               const amps = Math.max(0, Number(ev.outputCurrentA || ev.desiredCurrentA || ev.actualCurrentA) || 0);
               if (amps > 0) details.push(`${Math.round(amps * 10) / 10} A`);
             }
-            addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), enabled(settings, 'showReasons') ? reasonText(ev.reason, Homey) : '');
+            const reasons = [];
+            if (enabled(settings, 'showReasons')) {
+              const normalReason = reasonText(ev.reason, Homey);
+              if (normalReason) reasons.push(normalReason);
+            }
+            const coordinationReason = evBatteryCoordinationText(ev, Homey);
+            if (coordinationReason) reasons.push(coordinationReason);
+            addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), reasons.join(' · '));
           });
           content.appendChild(root);
         }

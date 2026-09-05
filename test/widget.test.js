@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..');
@@ -18,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.4.18');
-assert.equal(appCompose.version, '0.4.18');
-assert.equal(packageJson.version, '0.4.18');
-assert.equal(packageLock.version, '0.4.18');
-assert.equal(packageLock.packages[''].version, '0.4.18');
+assert.equal(manifest.version, '0.5.1');
+assert.equal(appCompose.version, '0.5.1');
+assert.equal(packageJson.version, '0.5.1');
+assert.equal(packageLock.version, '0.5.1');
+assert.equal(packageLock.packages[''].version, '0.5.1');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
 assert.deepEqual(manifest.widgets.status, { ...statusCompose, id: 'status' }, 'generated status widget manifest must match widget Compose');
 for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar']) {
@@ -140,6 +141,20 @@ for (const name of ['preview-light.png', 'preview-dark.png']) {
   assert.equal(header.height, 1024, `${name} height`);
   assert.equal(header.colorType, 6, `${name} must be RGBA for transparent background support`);
 }
+
+// v0.4.17+: keep the approved EMS-status previews byte-for-byte unchanged.
+// These are deliberately text-free; a hash regression prevents a later build
+// from accidentally reintroducing readable preview text.
+const statusPreviewHashes = {
+  'preview-light.png': 'cfeacd09ae1f1cc341285203b1a9199e090f2d593b93a38443f514566cbb8e1b',
+  'preview-dark.png': '3aa96cd49001f036f33104526c8b6fc033652c1ec89ee5ed58d55611f6d5d8e7',
+};
+for (const [name, expectedHash] of Object.entries(statusPreviewHashes)) {
+  const data = fs.readFileSync(path.join(statusWidgetRoot, name));
+  const actualHash = crypto.createHash('sha256').update(data).digest('hex');
+  assert.equal(actualHash, expectedHash, `${name} must remain the approved text-free status preview`);
+}
+assert(statusHtml.includes('evBatteryCoordinationText(ev, Homey)'), 'status widget must explain EV/battery coordination');
 
 const widgetApi = require('../widgets/savings/api');
 (async () => {

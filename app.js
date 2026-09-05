@@ -443,7 +443,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.18 initialized');
+    this.log('HomeFlux EMS v0.5.1 initialized');
   }
 
   refreshSettingsCache() {
@@ -1768,10 +1768,12 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     if (schema < 50) {
-      // v0.4.18: battery regulation keeps using the real P1 balance. EVs are
-      // controlled only through their own setpoints. Add configurable meter
-      // smoothing, adaptive live control and weighted EV sharing. Grid-import
-      // allowances default to 0 W so an upgrade keeps aiming at a zero meter.
+      // v0.4.18: battery regulation keeps using the real P1 measurement. EV power
+      // is controlled through EV setpoints; an explicitly permitted EV grid
+      // share only shifts the battery meter target and never subtracts estimated
+      // EV consumption from P1. Grid-import allowances default to 0 W so an
+      // upgrade keeps aiming at a zero meter. Add configurable meter smoothing,
+      // adaptive live control and weighted EV sharing.
       if (this.homey.settings.get('gridControlWindowSeconds') === null) this.setSetting('gridControlWindowSeconds', 5);
       if (this.homey.settings.get('adaptiveLiveControlEnabled') === null) this.setSetting('adaptiveLiveControlEnabled', true);
       if (this.homey.settings.get('adaptiveSetpointDeltaW') === null) this.setSetting('adaptiveSetpointDeltaW', 1000);
@@ -4239,9 +4241,17 @@ class HomeFluxEmsApp extends Homey.App {
     const useAdaptiveLiveGrid = this.isAdaptiveLiveControlActive(settings, now);
     const useLiveGrid = controlWindowMs === 0 || usePvLiveGrid || useAdaptiveLiveGrid;
     const selectedGridW = useLiveGrid ? liveGridPowerW : smoothedGridW;
+    const evGridControl = this.getEvGridImportControlStatus(settings, now);
+    const activeEvGridImportTargetW = Math.max(0, Number(evGridControl.activeTargetW) || 0);
+    // The battery controller itself is unchanged. When Smart EV charging is
+    // explicitly allowed to use grid energy, shift only its meter TARGET by
+    // that EV allowance. Raw P1 remains untouched and Peak Guard still uses the
+    // real meter, so this cannot hide an installation peak.
+    const selectedControlGridW = selectedGridW - activeEvGridImportTargetW;
     let controlGridSource = controlWindowMs === 0 ? 'direct' : `average_${Math.round(controlWindowMs / 1000)}s`;
     if (usePvLiveGrid) controlGridSource = 'live_pv_delta';
     else if (useAdaptiveLiveGrid) controlGridSource = 'live_adaptive_setpoint';
+    if (activeEvGridImportTargetW > 0) controlGridSource += '_ev_grid_target';
 
     return {
       ...this.state,
@@ -4249,10 +4259,13 @@ class HomeFluxEmsApp extends Homey.App {
       forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
       forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
       gridPowerW: liveGridPowerW,
-      // v0.4.18: the battery regulator always follows the real meter balance.
-      // EV charging is shaped exclusively through EV setpoints and is never
-      // subtracted from the battery control signal.
-      controlGridPowerW: selectedGridW,
+      // The real meter remains authoritative. A positive EV grid target is a
+      // target offset, not subtracted EV consumption: normal household import
+      // is still regulated and Peak Guard continues to see raw gridPowerW.
+      controlGridPowerW: selectedControlGridW,
+      evGridImportTargetW: activeEvGridImportTargetW,
+      evGridImportRequestedTargetW: Math.max(0, Number(evGridControl.requestedTargetW) || 0),
+      evGridImportControlState: String(evGridControl.state || 'inactive'),
       gridAverage5sW,
       controlGridSource,
       pvDeltaW: Number(pvDeltaW) || 0,
@@ -5014,7 +5027,12 @@ class HomeFluxEmsApp extends Homey.App {
     const currentBatteryW = Number(currentBatteryCommandW) || 0;
     const nextBatteryW = Number(nextBatteryCommandW) || 0;
     const predictedGridAfterBatteryW = rawGridW + currentBatteryW - nextBatteryW;
-    const residualZeroGridPvW = Math.max(0, -predictedGridAfterBatteryW) + this.getPvCurtailmentHeadroomW(runtimeSettings);
+    // EV budgets must never treat battery discharge as free EV headroom.
+    // Reconstruct the meter balance that would exist without the NEXT battery
+    // discharge command. Battery charging remains in the balance because
+    // EV-first may explicitly take that charging power in Stage 2 below.
+    const predictedGridWithoutBatteryDischargeW = predictedGridAfterBatteryW + Math.max(0, nextBatteryW);
+    const residualZeroGridPvW = Math.max(0, -predictedGridWithoutBatteryDischargeW) + this.getPvCurtailmentHeadroomW(runtimeSettings);
     const batteryPvChargeW = Math.max(0, Number(result?.pvChargeW) || 0);
     const batteryGridChargeW = Math.max(0, Number(result?.gridChargeAssistW) || 0);
     const decisions = [];
@@ -5148,7 +5166,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     if (!smartEntries.length) return decisions;
     const currentSmartPowerW = smartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
-    const predictedGridBeforeSmartChangeW = predictedGridAfterBatteryW + Math.max(0, nonSmartIncreaseW);
+    const predictedGridBeforeSmartChangeW = predictedGridWithoutBatteryDischargeW + Math.max(0, nonSmartIncreaseW);
     const maxRequestedW = smartEntries.reduce((sum, entry) => sum + entry.maxPowerW, 0);
 
     // Absolute Peak Guard budget. No theoretical EV power is subtracted from
@@ -5167,6 +5185,7 @@ class HomeFluxEmsApp extends Homey.App {
     const zeroGridBudgetW = Math.max(0, currentSmartPowerW - predictedGridBeforeSmartChangeW);
     let allocation = this.allocateWeightedEvPower(smartEntries, Math.min(zeroGridBudgetW, peakBudgetW));
     let allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    const allocatedAfterZeroGridW = allocatedW;
 
     // Stage 2: EV-first may take PV that the battery engine currently plans to
     // store. The battery controller is untouched; after the EV setpoint rises it
@@ -5177,6 +5196,8 @@ class HomeFluxEmsApp extends Homey.App {
       allocation = this.allocateWeightedEvPower(pvFirstEntries, allocatedW + pvExtraBudgetW, allocation);
       allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
     }
+    const allocatedAfterPvW = allocatedW;
+    const transferredBatteryPvW = Math.max(0, allocatedAfterPvW - allocatedAfterZeroGridW);
 
     // Stage 3: during an explicitly selected standard-charging tariff the user
     // may allow a TOTAL grid-import budget for all EVs. Only EVs for which that
@@ -5196,6 +5217,20 @@ class HomeFluxEmsApp extends Homey.App {
       allocation = this.allocateWeightedEvPower(tariffEntries, allocatedW + tariffExtraBudgetW, allocation);
       allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
     }
+    const allocatedAfterTariffW = allocatedW;
+    // This is the part of the site-meter import that is intentionally allowed
+    // for EV tariff charging. Normal household import remains the battery EMS'
+    // responsibility. PV transferred away from an already charging battery is
+    // explicitly removed so it never becomes a false grid-import target.
+    const nonEvGridBeforeSmartW = predictedGridBeforeSmartChangeW - currentSmartPowerW;
+    const predictedGridAfterTariffW = predictedGridBeforeSmartChangeW
+      + (allocatedAfterTariffW - currentSmartPowerW) - transferredBatteryPvW;
+    const portfolioEvGridImportTargetW = tariffEntries.length && allocatedAfterTariffW > 0
+      ? Math.min(
+        gridImportLimitW,
+        Math.max(0, predictedGridAfterTariffW - Math.max(0, nonEvGridBeforeSmartW)),
+      )
+      : 0;
 
     // Stage 4: when home-battery grid charging is already planned, reuse that
     // existing pool according to the explicit battery-vs-EV priority. This does
@@ -5259,7 +5294,8 @@ class HomeFluxEmsApp extends Homey.App {
       decision.batterySupportAllocatedW = Math.round(Math.max(0, actualAllocatedW - beforeBatterySupportW));
       const pvForThisEvW = Math.min(actualAllocatedW, Math.max(0, Number(decision.pvAvailableW) || 0));
       decision.pvAllocatedW = Math.round(pvForThisEvW);
-      decision.gridAllocatedW = Math.round(Math.max(0, actualAllocatedW - pvForThisEvW));
+      decision.gridAllocatedW = Math.round(Math.max(0, actualAllocatedW - pvForThisEvW - decision.batterySupportAllocatedW));
+      decision.portfolioGridImportTargetW = Math.round(portfolioEvGridImportTargetW);
       if (allocatedCurrentA <= 0) {
         if (Boolean(runtimeSettings.peakShaveEnabled) && peakBudgetW <= 0) decision.reason = 'Peak Guard laat geen EV-laadvermogen toe';
         else if (decision.pvPriority === 'battery_first' && batteryPvChargeW > 0 && residualZeroGridPvW <= 0 && !decision.selectedTariff) decision.reason = 'Wachten: thuisbatterij heeft voorrang op PV-overschot';
@@ -5350,6 +5386,92 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvCommandIntervalMs(settings = this.getSettings()) {
     return Math.max(1, Number(settings.evCommandIntervalSeconds) || 10) * 1000;
+  }
+
+  getEvGridImportControlStatus(storedSettings = this.getSettings(), now = Date.now()) {
+    const evCount = this.getEvCount(storedSettings);
+    const batteryDischargeW = Math.max(0, Number(this.state?.lastTotalCommandW) || 0);
+    if (evCount <= 0) {
+      return {
+        requestedTargetW: 0, activeTargetW: 0, batteryDischargeW,
+        state: 'inactive', remainingSeconds: 0, waitingInstances: [],
+      };
+    }
+
+    const relevant = [];
+    let requestedTargetW = 0;
+    for (let index = 0; index < evCount; index += 1) {
+      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      if (!decision || !Boolean(decision.connected) || !Boolean(decision.selectedTariff)) continue;
+      const portfolioTargetW = Math.max(0, Number(decision.portfolioGridImportTargetW) || 0);
+      if (portfolioTargetW <= 0 || Math.max(0, Number(decision.desiredCurrentA) || 0) <= 0) continue;
+      requestedTargetW = Math.max(requestedTargetW, portfolioTargetW);
+      relevant.push({ index, decision });
+    }
+
+    if (requestedTargetW <= 0 || !relevant.length) {
+      return {
+        requestedTargetW: 0, activeTargetW: 0, batteryDischargeW,
+        state: 'inactive', remainingSeconds: 0, waitingInstances: [],
+      };
+    }
+
+    const waitingCommandInstances = [];
+    const waitingResponseInstances = [];
+    let remainingMs = 0;
+
+    for (const { index, decision } of relevant) {
+      const settings = this.getEvInstanceSettings(index, storedSettings);
+      if (this.getEvControlType(settings) !== 'current') continue;
+      const input = this.getEvInputSnapshot(index) || {};
+      const desiredA = Math.max(0, Number(decision.desiredCurrentA) || 0);
+      const publishedA = index === 0
+        ? Math.max(0, Number(this.lastPublishedEvCurrentA) || 0)
+        : Math.max(0, Number(this.getExtraEv(index)?.lastPublishedCurrentA) || 0);
+      const publishedAt = index === 0
+        ? Math.max(0, Number(this.lastEvPublishedAt) || 0)
+        : Math.max(0, Number(this.getExtraEv(index)?.lastPublishedAt) || 0);
+      const intervalMs = this.getEvCommandIntervalMs(settings);
+
+      // If a lower command is still waiting for the configured EV output
+      // interval, keep zero-grid battery regulation for the short transition.
+      if (publishedA > desiredA + 0.25) {
+        waitingCommandInstances.push(index + 1);
+        if (publishedAt > 0) remainingMs = Math.max(remainingMs, Math.max(0, (publishedAt + intervalMs) - now));
+        continue;
+      }
+
+      // Once the lower setpoint has actually been published, allow the charger
+      // one normal EV command interval (minimum 5 s, maximum 30 s) to follow it.
+      // During this grace period the ordinary battery EMS may temporarily keep
+      // the meter near zero. If the charger still has not reacted afterwards,
+      // the permitted EV grid-import target is released anyway; the battery then
+      // only compensates the part above that target/Peak Guard.
+      if (Boolean(input?.seen?.chargeCurrent)) {
+        const actualA = Math.max(0, Number(input.chargeCurrentA) || 0);
+        if (actualA > desiredA + 0.5 && publishedAt > 0) {
+          const graceMs = Math.max(5000, Math.min(30000, intervalMs));
+          const leftMs = Math.max(0, (publishedAt + graceMs) - now);
+          if (leftMs > 0) {
+            waitingResponseInstances.push(index + 1);
+            remainingMs = Math.max(remainingMs, leftMs);
+          }
+        }
+      }
+    }
+
+    const waitingInstances = [...new Set([...waitingCommandInstances, ...waitingResponseInstances])];
+    const waiting = waitingInstances.length > 0;
+    return {
+      requestedTargetW: Math.round(requestedTargetW),
+      activeTargetW: waiting ? 0 : Math.round(requestedTargetW),
+      batteryDischargeW: Math.round(batteryDischargeW),
+      state: waitingCommandInstances.length ? 'waiting_command' : waitingResponseInstances.length ? 'waiting_response' : 'active',
+      remainingSeconds: waiting ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0,
+      waitingInstances,
+      waitingCommandInstances,
+      waitingResponseInstances,
+    };
   }
 
   scheduleEvPublish(waitMs) {
@@ -7812,6 +7934,9 @@ class HomeFluxEmsApp extends Homey.App {
       preview.batteryCommandPauseActive = false;
     }
 
+    const evGridControl = this.getEvGridImportControlStatus(storedSettings, statusNow);
+    preview.evGridControl = evGridControl;
+
     const evStatuses = Array.from({ length: this.getEvCount(storedSettings) }, (_, index) => {
       const instanceSettings = this.getEvInstanceSettings(index, storedSettings);
       const input = this.getEvInputSnapshot(index);
@@ -7840,6 +7965,12 @@ class HomeFluxEmsApp extends Homey.App {
         outputChargeMode: index === 0 ? String(this.lastPublishedEvChargeMode || 'stop') : String(runtime?.lastPublishedChargeMode || 'stop'),
         outputAllowed: index === 0 ? Boolean(this.lastPublishedEvAllowed) : Boolean(runtime?.lastPublishedAllowed),
         stopHoldRemainingSeconds: Math.max(0, Math.ceil(((index === 0 ? Number(this.evPeakGuardStopHoldUntil) : Number(runtime?.stopHoldUntil)) - statusNow) / 1000)),
+        batteryDischargeW: Math.max(0, Math.round(Number(this.state.lastTotalCommandW) || 0)),
+        evGridImportTargetW: Math.max(0, Math.round(Number(evGridControl.requestedTargetW) || 0)),
+        evGridImportActiveTargetW: Math.max(0, Math.round(Number(evGridControl.activeTargetW) || 0)),
+        evGridImportControlState: String(evGridControl.state || 'inactive'),
+        evGridImportGraceRemainingSeconds: Math.max(0, Math.round(Number(evGridControl.remainingSeconds) || 0)),
+        evGridImportWaiting: Array.isArray(evGridControl.waitingInstances) && evGridControl.waitingInstances.includes(index + 1),
       };
     });
 

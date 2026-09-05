@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.4.18 — HomeFlux, jouw energie, anders geregeld",
+    "subtitle": "v0.5.1 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -112,7 +112,12 @@
       "forecastUnavailable": "Geen forecast",
       "energyStillNeeded": "Nog nodig tot doel",
       "gridPlanned": "Uit net gepland",
-      "solarExpected": "PV nog verwacht"
+      "solarExpected": "PV nog verwacht",
+      "evBatterySupport": "Thuisbatterij ondersteunt de EV bewust met {power} extra laadvermogen",
+      "evBatteryWaitingCommand": "Batterij ontlaadt tijdelijk {power} terwijl het lagere EV-setpoint ({amps} A) wacht om uitgestuurd te worden",
+      "evBatteryWaitingResponse": "Batterij ontlaadt tijdelijk {power} terwijl HomeFlux wacht tot de EV {amps} A volgt · nog max. {seconds} s",
+      "evGridImportTarget": "EV-netafname toegestaan tot {target}; de batterijregeling compenseert dit EV-deel niet",
+      "evGridImportTargetBattery": "EV-netafname toegestaan tot {target}; de batterijregeling compenseert alleen boven dit EV-deel · actueel batterijontladen {power}"
     }
   }
 }

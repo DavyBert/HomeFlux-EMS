@@ -640,7 +640,7 @@
     "Kosten van netenergie waarmee de batterij in deze periode werd geladen. PV-laden blijft €0.": "Cost of grid energy used to charge the battery during this period. PV charging remains €0.",
     "Waarde van directe PV, PV uit de batterij en het prijsverschil van netenergie die naar een later tarief werd verschoven.": "Value of direct PV, PV from the battery and the price difference of grid energy shifted to a later tariff.",
     "Bij een dynamisch contract gebruikt HomeFlux de actuele Homey Energy-aankoopprijs. Een aparte dynamische injectieprijs is niet beschikbaar in de huidige prijsbron en wordt daarom niet als extra winst verzonnen.": "With a dynamic contract, HomeFlux uses the current Homey Energy purchase price. A separate dynamic feed-in price is not available from the current price source, so HomeFlux does not invent additional profit.",
-    "v0.4.18 — HomeFlux, jouw energie, anders geregeld": "v0.4.18 — HomeFlux, your energy, managed differently",
+    "v0.5.1 — Jouw energie, anders geregeld": "v0.5.1 — Your energy, managed differently",
     "Thuisbatterij en EV": "Home battery and EV",
     "Kies of HomeFlux beschikbaar vermogen uit de thuisbatterij als extra EV-laadbudget mag gebruiken. De normale batterijregeling blijft op de echte P1 sturen en Peak Guard blijft altijd de absolute bovengrens.": "Choose whether HomeFlux may use available home-battery power as extra EV charging budget. Normal battery control continues to use the real P1 measurement and Peak Guard always remains the absolute upper limit.",
     "Thuisbatterij gebruiken om EV extra te laden": "Use home battery to provide extra EV charging power",

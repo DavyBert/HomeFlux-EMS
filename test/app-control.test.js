@@ -896,8 +896,9 @@ function bareApp() {
   assert.equal(triggerCalls, 0);
 }
 
-// v0.4.18: the battery regulator always receives the real meter value. EV
-// current is never subtracted from its control input.
+// v0.4.18: the raw meter remains authoritative. EV current is never
+// subtracted from P1; without an active EV grid-import target the controller
+// therefore receives the real meter value unchanged.
 {
   const app = bareApp();
   const now = 4_000_000;
@@ -2097,6 +2098,95 @@ function bareApp() {
   assert.equal(typeof app.reduceBatteryChargeResult, 'undefined');
 }
 
+
+
+// v0.4.18 EV rework regression: battery discharge may not create extra EV
+// budget when home-battery EV support is disabled. With 5 kW PV, 3 kW house
+// load and a 3-phase EV still drawing 16 A, the underlying meter would import
+// 9.04 kW without the battery. A 5 kW EV grid allowance therefore permits
+// 6.9 kW / 10 A to the EV. The battery candidate itself remains untouched.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 16;
+  app.state.gridPowerW = 0;
+  app.state.pvPowerW = 5000;
+  app.state.lastTotalCommandW = 9040;
+  app.state.batterySoc = [80];
+  app.lastPublishedEvCurrentA = 16;
+  app.lastEvPublishedAt = now - 20000;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
+    touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 5000 }],
+    touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evSmartGridPriority: 'share', evWeight: 1,
+    evPeakGuardBatteryAssistNormal: false,
+    evControlType: 'current', evPhases: 3, evMinCurrentA: 6, evMaxCurrentA: 16, evStandardCurrentA: 16, evCommandIntervalSeconds: 10,
+    batteryCount: 1, minSoc: 10, maxSoc: 100,
+    maxTotalDischargeW: 10000, maxDischargePerBatteryW: 10000, balanceEnabled: false,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Dal' },
+    candidateCommands: [9040], candidateTotalCommandW: 9040,
+    calculatedCommands: [9040], calculatedTotalCommandW: 9040,
+    commands: [9040], totalCommandW: 9040,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.desiredCurrentA, 10);
+  assert.equal(ev.desiredPowerW, 6900);
+  assert.equal(ev.portfolioGridImportTargetW, 4900);
+  assert.equal(result.candidateTotalCommandW, 9040);
+  assert.deepStrictEqual(result.candidateCommands, [9040]);
+
+  // The lower 10 A command has not yet been published: battery regulation may
+  // temporarily keep zero-grid so the charger does not create an import spike.
+  app.latestEvDecision = ev;
+  let coordination = app.getEvGridImportControlStatus(settings, now);
+  assert.equal(coordination.state, 'waiting_command');
+  assert.equal(coordination.requestedTargetW, 4900);
+  assert.equal(coordination.activeTargetW, 0);
+
+  // After publishing 10 A, wait one normal EV command interval for the real
+  // charger current to follow. If it is still at 16 A, keep the temporary hold.
+  app.lastPublishedEvCurrentA = 10;
+  app.lastEvPublishedAt = now;
+  coordination = app.getEvGridImportControlStatus(settings, now + 3000);
+  assert.equal(coordination.state, 'waiting_response');
+  assert.equal(coordination.activeTargetW, 0);
+  assert.equal(coordination.remainingSeconds, 7);
+
+  // If the charger remains slow beyond the grace time, release the permitted
+  // 4.9 kW EV grid target anyway. The battery may then only cover power above it.
+  coordination = app.getEvGridImportControlStatus(settings, now + 11000);
+  assert.equal(coordination.state, 'active');
+  assert.equal(coordination.activeTargetW, 4900);
+
+  // As soon as the charger actually follows 10 A, the allowance is active
+  // immediately; no unnecessary battery discharge hold remains.
+  app.state.evChargeCurrentA = 10;
+  coordination = app.getEvGridImportControlStatus(settings, now + 3000);
+  assert.equal(coordination.state, 'active');
+  assert.equal(coordination.activeTargetW, 4900);
+
+  app.getPlanningForecastDay = () => 'today';
+  app.isNightPlanningPhase = () => false;
+  app.isLowForecastSunnyOverrideActive = () => false;
+  app.isAdaptiveLiveControlActive = () => false;
+  app.gridInputHistory = [];
+  const evaluationState = app.getEvaluationState({ ...settings, gridControlWindowSeconds: 0, pvDeltaThresholdW: 0 }, now + 3000, 0);
+  assert.equal(evaluationState.gridPowerW, 0, 'raw P1 must remain untouched');
+  assert.equal(evaluationState.evGridImportTargetW, 4900);
+  assert.equal(evaluationState.controlGridPowerW, -4900, 'only the battery meter target is shifted by the permitted EV grid share');
+}
 
 // v0.4.11: the profit chart's avoided-cost bar is net profit relative to
 // the hypothetical total energy cost for the selected period. Example: EUR 0.99 / (EUR 7.77 + EUR 0.99) = 11.30%.

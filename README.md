@@ -1,7 +1,7 @@
 # HomeFlux EMS
 
-**HomeFlux, your energy, managed differently**  
-**HomeFlux, jouw energie, anders geregeld**
+**Your energy, managed differently**  
+**Jouw energie, anders geregeld**
 
 ## English
 
@@ -32,7 +32,7 @@ HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy info
 - Mixed-battery limits now expose only **Max charge per battery** and **Max discharge per battery** for each configured battery.
 - Individual battery maxima remain hard limits and the existing total charge/discharge limits remain authoritative for the whole battery group.
 - Technical minimum power remains part of **Split Command** only.
-- Restored the HomeFlux slogans exactly to **HomeFlux, your energy, managed differently** and **HomeFlux, jouw energie, anders geregeld**.
+- Updated the slogans to Athom-compatible short forms: **Your energy, managed differently** and **Jouw energie, anders geregeld**.
 
 ### v0.4.5
 - Fixed night/tariff boiler fallback being stopped merely because **Peak Guard** became active. Tariff heating may now continue while the battery supplies the required peak-shaving support.

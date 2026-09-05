@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.4.18 — HomeFlux, your energy, managed differently",
+    "subtitle": "v0.5.1 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -112,7 +112,12 @@
       "forecastUnavailable": "No forecast",
       "energyStillNeeded": "Still needed to target",
       "gridPlanned": "Planned from grid",
-      "solarExpected": "PV still expected"
+      "solarExpected": "PV still expected",
+      "evBatterySupport": "Home battery intentionally supports the EV with {power} extra charging power",
+      "evBatteryWaitingCommand": "Battery temporarily discharges {power} while the lower EV setpoint ({amps} A) is waiting to be sent",
+      "evBatteryWaitingResponse": "Battery temporarily discharges {power} while waiting for the EV to follow {amps} A · max. {seconds} s remaining",
+      "evGridImportTarget": "EV grid import allowed up to {target}; battery control does not compensate this EV share",
+      "evGridImportTargetBattery": "EV grid import allowed up to {target}; battery control compensates only above this EV share · current battery discharge {power}"
     }
   }
 }
