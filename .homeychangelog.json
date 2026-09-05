@@ -55,5 +55,8 @@
   },
   "0.4.17": {
     "en": "Fixed: EMS status widget preview images are now fully text-free. No functional EMS logic changes."
+  },
+  "0.4.18": {
+    "en": "Reworked: EV charging now follows real meter headroom and is controlled through EV setpoints, with weighted multi-EV sharing, optional total EV grid-import limits per tariff and optional home-battery support for extra EV charging power without overriding normal battery control. Added: configurable direct/5/7/10-second grid regulation with PV-delta and adaptive live control for repeating large load changes. Added: read-only EMS, EV, HVAC and boiler Flow condition cards."
   }
 }

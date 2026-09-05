@@ -1,0 +1,50 @@
+{
+  "title": {
+    "en": "[[ev]] is connected",
+    "nl": "[[ev]] is aangesloten"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "dropdown",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "EV 1",
+            "nl": "EV 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "EV 2",
+            "nl": "EV 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "EV 3",
+            "nl": "EV 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "EV 4",
+            "nl": "EV 4"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] is connected",
+    "nl": "[[ev]] is aangesloten"
+  }
+}

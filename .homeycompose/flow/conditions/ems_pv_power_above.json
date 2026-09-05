@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "PV power is above [[power]] W",
+    "nl": "PV-vermogen is hoger dan [[power]] W"
+  },
+  "args": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Power (W)",
+        "nl": "Vermogen (W)"
+      },
+      "min": 0,
+      "max": 100000,
+      "step": 100
+    }
+  ],
+  "titleFormatted": {
+    "en": "PV power is above [[power]] W",
+    "nl": "PV-vermogen is hoger dan [[power]] W"
+  }
+}

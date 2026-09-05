@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.4.17",
+  "version": "0.4.18",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -2494,6 +2494,583 @@
     "conditions": [
       {
         "title": {
+          "en": "Water heater output is on",
+          "nl": "Boiler-uitgang staat aan"
+        },
+        "titleFormatted": {
+          "en": "Water heater output is on",
+          "nl": "Boiler-uitgang staat aan"
+        },
+        "id": "boiler_is_on"
+      },
+      {
+        "title": {
+          "en": "Water heater is marked warm",
+          "nl": "Boiler is als opgewarmd gemarkeerd"
+        },
+        "titleFormatted": {
+          "en": "Water heater is marked warm",
+          "nl": "Boiler is als opgewarmd gemarkeerd"
+        },
+        "id": "boiler_is_warm"
+      },
+      {
+        "title": {
+          "en": "EMS action is [[action]]",
+          "nl": "EMS-actie is [[action]]"
+        },
+        "args": [
+          {
+            "name": "action",
+            "type": "dropdown",
+            "title": {
+              "en": "Action",
+              "nl": "Actie"
+            },
+            "values": [
+              {
+                "id": "idle",
+                "title": {
+                  "en": "Idle / no action",
+                  "nl": "Geen actie"
+                }
+              },
+              {
+                "id": "pv_charge",
+                "title": {
+                  "en": "Charging from PV",
+                  "nl": "Laden uit PV"
+                }
+              },
+              {
+                "id": "grid_charge",
+                "title": {
+                  "en": "Charging from grid",
+                  "nl": "Laden uit net"
+                }
+              },
+              {
+                "id": "grid_and_pv_charge",
+                "title": {
+                  "en": "Charging from grid + PV",
+                  "nl": "Laden uit net + PV"
+                }
+              },
+              {
+                "id": "discharge",
+                "title": {
+                  "en": "Discharging",
+                  "nl": "Ontladen"
+                }
+              },
+              {
+                "id": "avoid_grid_import",
+                "title": {
+                  "en": "Avoiding grid import",
+                  "nl": "Netimport vermijden"
+                }
+              },
+              {
+                "id": "peak_shave",
+                "title": {
+                  "en": "Peak Guard intervention",
+                  "nl": "Peak Guard ingreep"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EMS action is [[action]]",
+          "nl": "EMS-actie is [[action]]"
+        },
+        "id": "ems_action_is"
+      },
+      {
+        "title": {
+          "en": "Average battery SoC is above [[soc]]%",
+          "nl": "Gemiddelde batterij-SoC is hoger dan [[soc]]%"
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SoC (%)",
+              "nl": "SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Average battery SoC is above [[soc]]%",
+          "nl": "Gemiddelde batterij-SoC is hoger dan [[soc]]%"
+        },
+        "id": "ems_average_battery_soc_above"
+      },
+      {
+        "title": {
+          "en": "Battery group is [[state]]",
+          "nl": "Batterijgroep is [[state]]"
+        },
+        "args": [
+          {
+            "name": "state",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery state",
+              "nl": "Batterijstatus"
+            },
+            "values": [
+              {
+                "id": "charging",
+                "title": {
+                  "en": "Charging",
+                  "nl": "Laden"
+                }
+              },
+              {
+                "id": "idle",
+                "title": {
+                  "en": "Idle",
+                  "nl": "Rust"
+                }
+              },
+              {
+                "id": "discharging",
+                "title": {
+                  "en": "Discharging",
+                  "nl": "Ontladen"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Battery group is [[state]]",
+          "nl": "Batterijgroep is [[state]]"
+        },
+        "id": "ems_battery_state_is"
+      },
+      {
+        "title": {
+          "en": "EMS control is enabled",
+          "nl": "EMS-sturing is actief"
+        },
+        "titleFormatted": {
+          "en": "EMS control is enabled",
+          "nl": "EMS-sturing is actief"
+        },
+        "id": "ems_control_is_enabled"
+      },
+      {
+        "title": {
+          "en": "Current tariff is [[tariff]]",
+          "nl": "Huidig tarief is [[tariff]]"
+        },
+        "args": [
+          {
+            "name": "tariff",
+            "type": "text",
+            "title": {
+              "en": "Tariff name",
+              "nl": "Tariefnaam"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Current tariff is [[tariff]]",
+          "nl": "Huidig tarief is [[tariff]]"
+        },
+        "id": "ems_current_tariff_is"
+      },
+      {
+        "title": {
+          "en": "EMS mode is [[mode]]",
+          "nl": "EMS-modus is [[mode]]"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "self_consumption",
+                "title": {
+                  "en": "Self consumption",
+                  "nl": "Zelfconsumptie"
+                }
+              },
+              {
+                "id": "solar_capture",
+                "title": {
+                  "en": "Battery save",
+                  "nl": "Batterij sparen"
+                }
+              },
+              {
+                "id": "charge",
+                "title": {
+                  "en": "Planned grid charging",
+                  "nl": "Gepland netladen"
+                }
+              },
+              {
+                "id": "manual_charge",
+                "title": {
+                  "en": "Forced charging",
+                  "nl": "Geforceerd laden"
+                }
+              },
+              {
+                "id": "avoid_import",
+                "title": {
+                  "en": "Avoid grid import",
+                  "nl": "Netimport vermijden"
+                }
+              },
+              {
+                "id": "standby",
+                "title": {
+                  "en": "Standby",
+                  "nl": "Stand-by"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EMS mode is [[mode]]",
+          "nl": "EMS-modus is [[mode]]"
+        },
+        "id": "ems_mode_is"
+      },
+      {
+        "title": {
+          "en": "Peak Guard is actively limiting",
+          "nl": "Peak Guard grijpt momenteel in"
+        },
+        "titleFormatted": {
+          "en": "Peak Guard is actively limiting",
+          "nl": "Peak Guard grijpt momenteel in"
+        },
+        "id": "ems_peak_guard_is_active"
+      },
+      {
+        "title": {
+          "en": "Planning phase is [[phase]]",
+          "nl": "Planningsfase is [[phase]]"
+        },
+        "args": [
+          {
+            "name": "phase",
+            "type": "dropdown",
+            "title": {
+              "en": "Planning phase",
+              "nl": "Planningsfase"
+            },
+            "values": [
+              {
+                "id": "day",
+                "title": {
+                  "en": "Day planning",
+                  "nl": "Dagplanning"
+                }
+              },
+              {
+                "id": "night",
+                "title": {
+                  "en": "Night planning",
+                  "nl": "Nachtplanning"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Planning phase is [[phase]]",
+          "nl": "Planningsfase is [[phase]]"
+        },
+        "id": "ems_planning_phase_is"
+      },
+      {
+        "title": {
+          "en": "Price data is current",
+          "nl": "Prijsgegevens zijn actueel"
+        },
+        "titleFormatted": {
+          "en": "Price data is current",
+          "nl": "Prijsgegevens zijn actueel"
+        },
+        "id": "ems_price_data_is_fresh"
+      },
+      {
+        "title": {
+          "en": "PV power is above [[power]] W",
+          "nl": "PV-vermogen is hoger dan [[power]] W"
+        },
+        "args": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Power (W)",
+              "nl": "Vermogen (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100
+          }
+        ],
+        "titleFormatted": {
+          "en": "PV power is above [[power]] W",
+          "nl": "PV-vermogen is hoger dan [[power]] W"
+        },
+        "id": "ems_pv_power_above"
+      },
+      {
+        "title": {
+          "en": "HomeFlux allows [[ev]] to charge",
+          "nl": "HomeFlux laat [[ev]] laden"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "HomeFlux allows [[ev]] to charge",
+          "nl": "HomeFlux laat [[ev]] laden"
+        },
+        "id": "ev_charging_is_allowed"
+      },
+      {
+        "title": {
+          "en": "[[ev]] is charging",
+          "nl": "[[ev]] is aan het laden"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] is charging",
+          "nl": "[[ev]] is aan het laden"
+        },
+        "id": "ev_is_charging"
+      },
+      {
+        "title": {
+          "en": "[[ev]] is connected",
+          "nl": "[[ev]] is aangesloten"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] is connected",
+          "nl": "[[ev]] is aangesloten"
+        },
+        "id": "ev_is_connected"
+      },
+      {
+        "title": {
+          "en": "[[ev]] mode is [[mode]]",
+          "nl": "[[ev]]-modus is [[mode]]"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] mode is [[mode]]",
+          "nl": "[[ev]]-modus is [[mode]]"
+        },
+        "id": "ev_mode_is"
+      },
+      {
+        "title": {
           "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
           "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
         },
@@ -2563,6 +3140,57 @@
           "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag"
         },
         "id": "homey_energy_expensive_now"
+      },
+      {
+        "title": {
+          "en": "[[hvac]] is actively managed",
+          "nl": "[[hvac]] wordt actief gestuurd"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] is actively managed",
+          "nl": "[[hvac]] wordt actief gestuurd"
+        },
+        "id": "hvac_is_active"
       }
     ],
     "actions": [

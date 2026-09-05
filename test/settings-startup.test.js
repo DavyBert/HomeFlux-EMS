@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.4.17');
+  assert.equal(manifest.version, '0.4.18');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.4.17 — HomeFlux, jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.4.17 — HomeFlux, your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.4.18 — HomeFlux, jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.4.18 — HomeFlux, your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -56,13 +56,17 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 49"));
+assert(appJs.includes("settingsSchemaVersion', 50"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
-  assert(html.includes(`id="${id}"`), `${id} EV Peak Guard battery-assist setting missing`);
+  assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);
   assert(html.includes(`'${id.replace(/^ev(?:[2-4])?/, '')}'`) || html.includes(`'PeakGuardBatteryAssistNormal'`) || html.includes(`'PeakGuardBatteryAssistEmergency'`), `${id} missing from EV settings wiring`);
 }
-assert(appJs.includes('if (schema < 49)'), 'v0.4.10 EV Peak Guard battery-assist migration missing');
+assert(appJs.includes('if (schema < 49)'), 'v0.4.10 EV home-battery support migration missing');
+assert(appJs.includes('if (schema < 50)'), 'v0.4.18 EV/control migration missing');
+for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW']) assert(html.includes(`id="${id}"`), `${id} v0.4.18 setting missing`);
+for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
+assert(html.includes('data-rate-k="evMaxGridImportW"'), 'TOU total EV grid import limit missing');
 assert(html.includes('id="planningMinIntervalMinutes"'), 'planning throttle setting missing');
 assert(apiJs.includes('async refreshPlanning({ homey })'), 'forced planning refresh API missing');
 assert(apiJs.includes('async simulatePlanning({ homey, body })'), 'planning simulation API handler missing');
@@ -168,6 +172,19 @@ assert(html.includes('Koelingstemperatuur (°C)'), 'cooling target label missing
 assert(html.includes('renderPriorityList()'));
 assert(html.includes('test-ev-output'));
 assert(html.includes('test-hvac-output'));
+
+const expectedConditionCards = [
+  'homey_energy_cheapest_now', 'homey_energy_expensive_now', 'homey_energy_cheapest_block_now',
+  'ems_control_is_enabled', 'ems_mode_is', 'ems_action_is', 'ems_current_tariff_is',
+  'ems_peak_guard_is_active', 'ems_battery_state_is', 'ems_planning_phase_is',
+  'ems_price_data_is_fresh', 'ems_pv_power_above', 'ems_average_battery_soc_above',
+  'ev_is_connected', 'ev_is_charging', 'ev_charging_is_allowed', 'ev_mode_is',
+  'hvac_is_active', 'boiler_is_on', 'boiler_is_warm',
+];
+for (const cardId of expectedConditionCards) {
+  assert(appJson.flow.conditions.some(card => card.id === cardId), `${cardId} condition card missing from app manifest`);
+  assert(appJs.includes(`getConditionCard('${cardId}')`), `${cardId} condition listener missing`);
+}
 
 for (const cardId of ['ev1_charge_current_updated','ev1_charging_allowed_updated','ev1_charge_mode_updated','request_ev1_soc_needed','hvac1_power_updated','hvac1_mode_updated','hvac1_setpoint_updated','hvac1_fan_updated']) {
   assert(appJson.flow.triggers.some(card => card.id === cardId), `${cardId} output card missing`);

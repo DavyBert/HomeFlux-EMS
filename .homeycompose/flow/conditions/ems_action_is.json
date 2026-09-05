@@ -1,0 +1,71 @@
+{
+  "title": {
+    "en": "EMS action is [[action]]",
+    "nl": "EMS-actie is [[action]]"
+  },
+  "args": [
+    {
+      "name": "action",
+      "type": "dropdown",
+      "title": {
+        "en": "Action",
+        "nl": "Actie"
+      },
+      "values": [
+        {
+          "id": "idle",
+          "title": {
+            "en": "Idle / no action",
+            "nl": "Geen actie"
+          }
+        },
+        {
+          "id": "pv_charge",
+          "title": {
+            "en": "Charging from PV",
+            "nl": "Laden uit PV"
+          }
+        },
+        {
+          "id": "grid_charge",
+          "title": {
+            "en": "Charging from grid",
+            "nl": "Laden uit net"
+          }
+        },
+        {
+          "id": "grid_and_pv_charge",
+          "title": {
+            "en": "Charging from grid + PV",
+            "nl": "Laden uit net + PV"
+          }
+        },
+        {
+          "id": "discharge",
+          "title": {
+            "en": "Discharging",
+            "nl": "Ontladen"
+          }
+        },
+        {
+          "id": "avoid_grid_import",
+          "title": {
+            "en": "Avoiding grid import",
+            "nl": "Netimport vermijden"
+          }
+        },
+        {
+          "id": "peak_shave",
+          "title": {
+            "en": "Peak Guard intervention",
+            "nl": "Peak Guard ingreep"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "EMS action is [[action]]",
+    "nl": "EMS-actie is [[action]]"
+  }
+}

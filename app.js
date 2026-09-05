@@ -117,6 +117,9 @@ class HomeFluxEmsApp extends Homey.App {
     this.lastControlEvalAt = 0;
     this.pvAtLastControlW = null;
     this.gridInputHistory = [];
+    this.lastAdaptiveGridW = null;
+    this.lastLargeSetpointChangeAt = 0;
+    this.adaptiveLiveUntil = 0;
     this.overrideResumeTimer = null;
     this.statusTimer = null;
     this.statusPublishing = false;
@@ -440,7 +443,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.4.17 initialized');
+    this.log('HomeFlux EMS v0.4.18 initialized');
   }
 
   refreshSettingsCache() {
@@ -918,7 +921,11 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEvCount(settings = this.getSettings()) {
-    return Math.max(0, Math.min(4, Math.round(Number(settings.evCount) || 0)));
+    const configured = Number(settings.evCount);
+    if (Number.isFinite(configured)) return Math.max(0, Math.min(4, Math.round(configured)));
+    // Backwards-compatible fallback for installations/settings snapshots from
+    // before multi-EV support introduced the explicit evCount setting.
+    return Boolean(settings.evEnabled) ? 1 : 0;
   }
 
   getHvacCount(settings = this.getSettings()) {
@@ -950,7 +957,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvInstanceSettings(index, source = this.getSettings()) {
     const fields = [
-      'Enabled','SocEnabled','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority',
+      'Enabled','SocEnabled','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
       'BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA',
       'StandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal',
       'PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
@@ -1750,8 +1757,9 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     if (schema < 49) {
-      // v0.4.10: optional EV Peak Guard battery assistance. Disabled on upgrade
-      // to preserve the former behaviour until the user explicitly enables it.
+      // v0.4.10: optional home-battery support for EV charging. The historical
+      // setting keys are preserved for compatibility; v0.4.18 clarifies that
+      // they add EV charging budget and do not rewrite battery control.
       for (let ev = 1; ev <= 4; ev += 1) {
         const stem = ev === 1 ? 'ev' : `ev${ev}`;
         if (this.homey.settings.get(`${stem}PeakGuardBatteryAssistNormal`) === null) this.setSetting(`${stem}PeakGuardBatteryAssistNormal`, false);
@@ -1759,7 +1767,33 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    this.setSetting('settingsSchemaVersion', 49);
+    if (schema < 50) {
+      // v0.4.18: battery regulation keeps using the real P1 balance. EVs are
+      // controlled only through their own setpoints. Add configurable meter
+      // smoothing, adaptive live control and weighted EV sharing. Grid-import
+      // allowances default to 0 W so an upgrade keeps aiming at a zero meter.
+      if (this.homey.settings.get('gridControlWindowSeconds') === null) this.setSetting('gridControlWindowSeconds', 5);
+      if (this.homey.settings.get('adaptiveLiveControlEnabled') === null) this.setSetting('adaptiveLiveControlEnabled', true);
+      if (this.homey.settings.get('adaptiveSetpointDeltaW') === null) this.setSetting('adaptiveSetpointDeltaW', 1000);
+      if (this.homey.settings.get('adaptiveSetpointWindowSeconds') === null) this.setSetting('adaptiveSetpointWindowSeconds', 15);
+      if (this.homey.settings.get('evFixedMaxGridImportW') === null) this.setSetting('evFixedMaxGridImportW', 0);
+      if (this.homey.settings.get('evDynamicCheapMaxGridImportW') === null) this.setSetting('evDynamicCheapMaxGridImportW', 0);
+      if (this.homey.settings.get('evDynamicNormalMaxGridImportW') === null) this.setSetting('evDynamicNormalMaxGridImportW', 0);
+      if (this.homey.settings.get('evDynamicExpensiveMaxGridImportW') === null) this.setSetting('evDynamicExpensiveMaxGridImportW', 0);
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}Weight`) === null) this.setSetting(`${stem}Weight`, 1);
+      }
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => ({
+          ...rate,
+          evMaxGridImportW: Math.max(0, Number(rate?.evMaxGridImportW) || 0),
+        })));
+      }
+    }
+
+    this.setSetting('settingsSchemaVersion', 50);
   }
 
   async ensureDefaults() {
@@ -2667,6 +2701,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
       this.recordGridSample(value, now);
+      this.updateAdaptiveSetpointDetection(value, inputSettings, now);
       this.checkFlexibleSafetyFromGrid(now, inputSettings);
       const contextGridDelta = this.lastContextGridInputW === null ? Infinity : Math.abs(value - this.lastContextGridInputW);
       if (this.needsSlowMeterContext(inputSettings)
@@ -3041,6 +3076,74 @@ class HomeFluxEmsApp extends Homey.App {
       await this.ensureHomeyEnergyFresh();
       return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'cheapest_block');
     });
+
+    // Read-only EMS condition cards for Advanced Flow. They expose existing
+    // runtime state and never change control outputs.
+    this.homey.flow.getConditionCard('ems_control_is_enabled').registerRunListener(async () => {
+      const settings = this.getSettings();
+      return Boolean(settings.controlEnabled) && this.isChargeTestValid(settings);
+    });
+    this.homey.flow.getConditionCard('ems_mode_is').registerRunListener(async args =>
+      String(this.latestResult?.baseMode || '') === String(args.mode || ''));
+    this.homey.flow.getConditionCard('ems_action_is').registerRunListener(async args =>
+      String(this.latestResult?.action || 'idle') === String(args.action || ''));
+    this.homey.flow.getConditionCard('ems_current_tariff_is').registerRunListener(async args => {
+      const actual = String(this.latestResult?.tariff?.label || '').trim().toLocaleLowerCase();
+      const expected = String(args.tariff || '').trim().toLocaleLowerCase();
+      return Boolean(expected) && actual === expected;
+    });
+    this.homey.flow.getConditionCard('ems_peak_guard_is_active').registerRunListener(async () =>
+      String(this.latestResult?.override || '') === 'peak_shave');
+    this.homey.flow.getConditionCard('ems_battery_state_is').registerRunListener(async args => {
+      const commandW = Number(this.state.lastTotalCommandW) || 0;
+      const state = commandW < -1 ? 'charging' : (commandW > 1 ? 'discharging' : 'idle');
+      return state === String(args.state || '');
+    });
+    this.homey.flow.getConditionCard('ems_planning_phase_is').registerRunListener(async args =>
+      (this.isNightPlanningPhase() ? 'night' : 'day') === String(args.phase || ''));
+    this.homey.flow.getConditionCard('ems_price_data_is_fresh').registerRunListener(async () => {
+      const settings = this.getSettings();
+      if (!isDynamicContract(settings)) return true;
+      const lastUpdatedAt = Number(this.homeyEnergy?.lastUpdatedAt) || 0;
+      const ready = this.getInputReadiness(settings).priceDataReady !== false;
+      return ready && lastUpdatedAt > 0 && (Date.now() - lastUpdatedAt) <= 20 * 60 * 1000;
+    });
+    this.homey.flow.getConditionCard('ems_pv_power_above').registerRunListener(async args =>
+      Boolean(this.inputSeen.pv) && Number(this.state.pvPowerW) > Number(args.power || 0));
+    this.homey.flow.getConditionCard('ems_average_battery_soc_above').registerRunListener(async args => {
+      const soc = this.getAverageBatterySoc(this.getSettings());
+      return soc !== null && Number(soc) > Number(args.soc || 0);
+    });
+    this.homey.flow.getConditionCard('ev_is_connected').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      const input = this.getEvInputSnapshot(index);
+      return Boolean(input?.seen?.connected) && Boolean(input?.connected);
+    });
+    this.homey.flow.getConditionCard('ev_is_charging').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      const input = this.getEvInputSnapshot(index);
+      return Boolean(input?.seen?.chargeCurrent) && Number(input?.chargeCurrentA || 0) > 0.05;
+    });
+    this.homey.flow.getConditionCard('ev_charging_is_allowed').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      return Boolean(decision?.allowed);
+    });
+    this.homey.flow.getConditionCard('ev_mode_is').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      return String(this.getEffectiveEvModeFor(index, this.getSettings())) === String(args.mode || '');
+    });
+    this.homey.flow.getConditionCard('hvac_is_active').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.hvac) || 1)) - 1;
+      if (index >= this.getHvacCount()) return false;
+      return this.isHvacManagedActiveFor(index);
+    });
+    this.homey.flow.getConditionCard('boiler_is_on').registerRunListener(async () => Boolean(this.boilerState?.outputOn));
+    this.homey.flow.getConditionCard('boiler_is_warm').registerRunListener(async () => Boolean(this.boilerState?.latestDecision?.warm));
   }
 
   setupInputRequestSchedule() {
@@ -4080,6 +4183,40 @@ class HomeFluxEmsApp extends Homey.App {
     return area / Math.max(1, now - start);
   }
 
+  getGridControlWindowMs(settings = this.getSettings()) {
+    const configured = Number(settings.gridControlWindowSeconds);
+    if (configured === 0) return 0;
+    if (configured === 7) return 7000;
+    if (configured === 10) return 10000;
+    return 5000;
+  }
+
+  isAdaptiveLiveControlActive(settings = this.getSettings(), now = Date.now()) {
+    if (!Boolean(settings.adaptiveLiveControlEnabled)) return false;
+    return Number(this.adaptiveLiveUntil || 0) > Number(now || Date.now());
+  }
+
+  updateAdaptiveSetpointDetection(gridPowerW, settings = this.getSettings(), now = Date.now()) {
+    const grid = Number(gridPowerW);
+    if (!Number.isFinite(grid)) return false;
+    const previous = Number(this.lastAdaptiveGridW);
+    this.lastAdaptiveGridW = grid;
+    const enabled = Boolean(settings.adaptiveLiveControlEnabled);
+    const thresholdW = Math.max(1, Number(settings.adaptiveSetpointDeltaW) || 1000);
+    const windowMs = Math.max(1, Number(settings.adaptiveSetpointWindowSeconds) || 15) * 1000;
+    if (!enabled || !Number.isFinite(previous)) return false;
+    const deltaW = Math.abs(grid - previous);
+    if (deltaW < thresholdW) return false;
+    const lastLargeAt = Number(this.lastLargeSetpointChangeAt || 0);
+    const repeating = lastLargeAt > 0 && (now - lastLargeAt) <= windowMs;
+    this.lastLargeSetpointChangeAt = now;
+    if (repeating || this.isAdaptiveLiveControlActive(settings, now)) {
+      this.adaptiveLiveUntil = now + windowMs;
+      return true;
+    }
+    return false;
+  }
+
   getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = 0) {
     const count = Math.max(1, Math.min(8, Math.round(Number(settings.batteryCount) || 1)));
     // SoC is value-based, not freshness-based. Once a battery has supplied a
@@ -4093,14 +4230,18 @@ class HomeFluxEmsApp extends Homey.App {
     });
 
     const liveGridPowerW = Number.isFinite(Number(this.state.gridPowerW)) ? Number(this.state.gridPowerW) : 0;
+    const controlWindowMs = this.getGridControlWindowMs(settings);
     const gridAverage5sW = this.getGridAverage(5000, now);
+    const smoothedGridW = controlWindowMs > 0 ? this.getGridAverage(controlWindowMs, now) : liveGridPowerW;
     const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
     const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW) ? Math.max(0, configuredPvDeltaThresholdW) : 100;
-    const useLiveGrid = pvDeltaThresholdW > 0 && Math.abs(Number(pvDeltaW) || 0) >= pvDeltaThresholdW;
-    const evActualPowerW = Boolean(settings.evEnabled) && Boolean(this.state.evConnected) && this.inputSeen.ev?.chargeCurrent
-      ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) * evPowerPerAmp(settings)
-      : 0;
-    const selectedGridW = useLiveGrid ? liveGridPowerW : gridAverage5sW;
+    const usePvLiveGrid = pvDeltaThresholdW > 0 && Math.abs(Number(pvDeltaW) || 0) >= pvDeltaThresholdW;
+    const useAdaptiveLiveGrid = this.isAdaptiveLiveControlActive(settings, now);
+    const useLiveGrid = controlWindowMs === 0 || usePvLiveGrid || useAdaptiveLiveGrid;
+    const selectedGridW = useLiveGrid ? liveGridPowerW : smoothedGridW;
+    let controlGridSource = controlWindowMs === 0 ? 'direct' : `average_${Math.round(controlWindowMs / 1000)}s`;
+    if (usePvLiveGrid) controlGridSource = 'live_pv_delta';
+    else if (useAdaptiveLiveGrid) controlGridSource = 'live_adaptive_setpoint';
 
     return {
       ...this.state,
@@ -4108,13 +4249,12 @@ class HomeFluxEmsApp extends Homey.App {
       forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
       forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
       gridPowerW: liveGridPowerW,
-      // EV is a HomeFlux-controlled flexible load. Remove its measured load from
-      // the ordinary battery error so the home battery never discharges merely
-      // to feed intentional EV charging. Peak Guard still sees raw gridPowerW.
-      controlGridPowerW: selectedGridW - evActualPowerW,
+      // v0.4.18: the battery regulator always follows the real meter balance.
+      // EV charging is shaped exclusively through EV setpoints and is never
+      // subtracted from the battery control signal.
+      controlGridPowerW: selectedGridW,
       gridAverage5sW,
-      evActualPowerW: Math.round(evActualPowerW),
-      controlGridSource: `${useLiveGrid ? 'live_pv_delta' : 'average_5s'}${evActualPowerW > 0 ? '_ev_isolated' : ''}`,
+      controlGridSource,
       pvDeltaW: Number(pvDeltaW) || 0,
       planningForecastDay: this.getPlanningForecastDay(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || '',
@@ -4635,142 +4775,30 @@ class HomeFluxEmsApp extends Homey.App {
     return decision;
   }
 
-  shouldUseEvPeakGuardBatteryAssist(settings = this.getSettings(), mode = 'smart', source = '') {
-    if (!Boolean(settings.peakShaveEnabled)) return false;
+  shouldUseEvBatterySupport(settings = this.getSettings(), mode = 'smart') {
     if (String(mode) === 'emergency') return Boolean(settings.evPeakGuardBatteryAssistEmergency);
-    // Pure PV charging must never drain the home battery merely to keep an EV
-    // session alive. The normal option applies to Smart tariff/guarantee
-    // charging and SoC-target charging.
-    if (['pv', 'pv_hold'].includes(String(source || ''))) return false;
     return Boolean(settings.evPeakGuardBatteryAssistNormal);
   }
 
-  getEvPeakGuardBatteryAssistAllocation(targetDischargeW, settings = this.getSettings()) {
+  getEvBatterySupportAvailableW(settings = this.getSettings(), nextBatteryCommandW = 0) {
     const count = Math.max(1, Math.min(8, Math.round(Number(settings.batteryCount) || 1)));
     const configuredGroupMax = Math.max(0, Number(settings.maxTotalDischargeW) || Number(DEFAULTS.maxTotalDischargeW) || 0);
-    const target = Math.max(0, Math.min(configuredGroupMax, Number(targetDischargeW) || 0));
-    if (target <= 0) return { commands: Array(count).fill(0), totalW: 0 };
+    if (configuredGroupMax <= 0) return 0;
 
     const minSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
-    let commands = distributeCommand(target, { batterySoc: this.state.batterySoc }, settings, { dischargeFloorSoc: minSoc });
+    let commands = distributeCommand(
+      configuredGroupMax,
+      { batterySoc: this.state.batterySoc },
+      settings,
+      { dischargeFloorSoc: minSoc },
+    );
     commands = commands.slice(0, count).map(value => Math.max(0, roundBatteryCommand(value, settings)));
-    const totalW = Math.min(configuredGroupMax, commands.reduce((sum, value) => sum + (Number(value) || 0), 0));
-    return { commands, totalW };
-  }
-
-  applyEvPeakGuardBatteryAssist(result, allocation, settings = this.getSettings()) {
-    if (!result || !allocation || !Boolean(result.canPublishCommands)) return 0;
-    const count = Math.max(1, Math.min(8, Math.round(Number(settings.batteryCount) || 1)));
-    const commands = Array.from({ length: count }, (_, index) => Math.max(0, Number(allocation.commands?.[index]) || 0));
-    const total = commands.reduce((sum, value) => sum + value, 0);
-
-    // A 0 W assist request may still be meaningful: when the battery was
-    // scheduled to charge, cancelling that charge can create enough Peak Guard
-    // room for the EV without actually discharging the home battery. Never
-    // replace an already-positive discharge command with 0 W.
-    if (!(total > 0) && Number(result.candidateTotalCommandW) >= 0) return 0;
-
-    result.candidateCommands = commands.slice();
-    result.candidateTotalCommandW = total;
-    result.calculatedCommands = commands.slice();
-    result.calculatedTotalCommandW = total;
-    result.commands = commands.slice();
-    result.totalCommandW = total;
-    result.gridChargeAssistW = 0;
-    result.pvChargeW = 0;
-    if (total > 0) {
-      result.override = 'peak_shave';
-      result.overrideLabel = 'Peak Guard';
-    }
-    this.refreshBatteryPresentationAfterCoordination(result, settings);
-    return total;
-  }
-
-  coordinateAdditionalEvPeakGuardBatteryAssist(result, storedSettings = this.getSettings()) {
-    if (!result || !Boolean(result.canPublishCommands)) return 0;
-    const runtimeSettings = this.getRuntimeSettings(storedSettings);
-    if (!Boolean(runtimeSettings.peakShaveEnabled)) return 0;
-    const evCount = this.getEvCount(storedSettings);
-    if (evCount <= 1) return 0;
-
-    const softTargetW = Math.max(0, (Number(runtimeSettings.peakLimitW) || 0) - Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0));
-    const currentBatteryW = Number(this.state.lastTotalCommandW) || 0;
-    let nextBatteryW = Number(result.candidateTotalCommandW) || 0;
-    let adjustedGridW = Number(this.state.gridPowerW) || 0;
-    let startReserved = false;
-    let highestAssistW = 0;
-
-    // Mirror publishFlexibleLoads' sequential grid accounting so an additional
-    // EV only receives battery-backed Peak Guard room that is still available
-    // after the EVs ahead of it. At most one previously inactive EV may start in
-    // a single slow control pass, exactly like the output publisher.
-    if (evCount > 0 && result.evDecision) {
-      const input = this.getEvInputSnapshot(0) || {};
-      const settings = this.getEvInstanceSettings(0, storedSettings);
-      const actualPowerW = Math.max(0, Number(input.chargeCurrentA) || 0) * evPowerPerAmp(settings);
-      const previousActive = this.isEvOutputActiveFor(0, storedSettings);
-      const desiredActive = this.isEvDecisionOutputActiveFor(0, result.evDecision, storedSettings);
-      if (!previousActive && desiredActive) startReserved = true;
-      const desiredPowerW = desiredActive
-        ? (Math.max(0, Number(result.evDecision.desiredPowerW) || 0) || actualPowerW)
-        : 0;
-      adjustedGridW += desiredPowerW - actualPowerW;
-    }
-
-    for (let index = 1; index < evCount; index += 1) {
-      const instanceSettings = this.getEvInstanceSettings(index, runtimeSettings);
-      instanceSettings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
-      const input = this.getEvInputSnapshot(index) || {};
-      const actualCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
-      const actualPowerW = actualCurrentA * evPowerPerAmp(instanceSettings);
-      const previousActive = this.isEvOutputActiveFor(index, storedSettings);
-
-      let decision = this.calculateAdditionalEvControl(index, result, nextBatteryW, currentBatteryW, adjustedGridW);
-      const unbounded = this.calculateAdditionalEvControl(index, result, nextBatteryW, currentBatteryW, adjustedGridW, { skipPeakLimit: true });
-      const mayStartThisPass = previousActive || !startReserved;
-      const useAssist = mayStartThisPass
-        && Boolean(unbounded?.allowed)
-        && Number(unbounded?.requestedPowerW || unbounded?.desiredPowerW) > 0
-        && this.shouldUseEvPeakGuardBatteryAssist(instanceSettings, instanceSettings.evMode, unbounded?.source);
-
-      if (useAssist) {
-        const baseGridWithoutBatteryEvW = adjustedGridW + currentBatteryW - actualPowerW;
-        const maxAssist = this.getEvPeakGuardBatteryAssistAllocation(
-          Number(runtimeSettings.maxTotalDischargeW) || Number(DEFAULTS.maxTotalDischargeW) || 0,
-          runtimeSettings,
-        );
-        const requestedPowerW = Math.max(0, Number(unbounded.requestedPowerW || unbounded.desiredPowerW) || 0);
-        const requestedCurrentA = Math.max(0, Number(unbounded.requestedCurrentA) || this.getEvCurrentForPower(requestedPowerW, instanceSettings));
-        const maxSupportedEvPowerW = Math.max(0, softTargetW + maxAssist.totalW - baseGridWithoutBatteryEvW);
-        let finalCurrentA = this.getEvCurrentForPower(Math.min(requestedPowerW, maxSupportedEvPowerW), instanceSettings);
-        if (this.getEvControlType(instanceSettings) === 'mode' && finalCurrentA < requestedCurrentA) finalCurrentA = 0;
-
-        const baselineCurrentA = Math.max(0, Number(decision?.desiredCurrentA) || 0);
-        if (finalCurrentA > baselineCurrentA) {
-          const finalPowerW = finalCurrentA * evPowerPerAmp(instanceSettings);
-          const requiredDischargeW = Math.max(0, baseGridWithoutBatteryEvW + finalPowerW - softTargetW);
-          const allocation = this.getEvPeakGuardBatteryAssistAllocation(requiredDischargeW, runtimeSettings);
-          const appliedAssistW = this.applyEvPeakGuardBatteryAssist(result, allocation, runtimeSettings);
-          if (appliedAssistW + 1 >= requiredDischargeW || requiredDischargeW <= 1) {
-            nextBatteryW = Number(result.candidateTotalCommandW) || 0;
-            highestAssistW = Math.max(highestAssistW, appliedAssistW);
-            decision = this.calculateAdditionalEvControl(index, result, nextBatteryW, currentBatteryW, adjustedGridW);
-          }
-        }
-      }
-
-      let desiredActive = this.isEvDecisionOutputActiveFor(index, decision, storedSettings);
-      if (!previousActive && desiredActive) {
-        if (startReserved) desiredActive = false;
-        else startReserved = true;
-      }
-      const desiredPowerW = desiredActive
-        ? (Math.max(0, Number(decision?.desiredPowerW) || 0) || actualPowerW)
-        : 0;
-      adjustedGridW += desiredPowerW - actualPowerW;
-    }
-
-    return highestAssistW;
+    const availableDischargeW = Math.min(
+      configuredGroupMax,
+      commands.reduce((sum, value) => sum + (Number(value) || 0), 0),
+    );
+    const alreadyDischargingW = Math.max(0, Number(nextBatteryCommandW) || 0);
+    return Math.max(0, availableDischargeW - alreadyDischargingW);
   }
 
   getEvCurrentForPower(powerW, settings = this.getSettings()) {
@@ -4884,313 +4912,382 @@ class HomeFluxEmsApp extends Homey.App {
     return result;
   }
 
-  reduceBatteryChargeResult(result, targetChargeW, settings = this.getSettings()) {
-    if (!result || !Boolean(result.canPublishCommands)) return result;
-    const currentTotal = Number(result.candidateTotalCommandW);
-    if (!Number.isFinite(currentTotal) || currentTotal >= 0) return result;
-    const commands = Array.isArray(result.candidateCommands) ? result.candidateCommands.map(value => Number(value) || 0) : [];
-    const currentCharge = commands.reduce((sum, value) => sum + Math.max(0, -value), 0);
-    if (currentCharge <= 0) return result;
-    const target = Math.max(0, Math.min(currentCharge, Number(targetChargeW) || 0));
-    const factor = target / currentCharge;
-    const step = Math.max(1, Math.round(Number(settings.batteryCommandStepW) || 1));
-    const adjusted = commands.map((value, index) => {
-      if (value >= 0) return value;
-      const scaled = Math.abs(value) * factor;
-      let magnitude = Math.floor(scaled / step) * step;
+  getEvCommandedPowerW(index, storedSettings = this.getSettings()) {
+    const settings = this.getEvInstanceSettings(index, storedSettings);
+    const perAmpW = evPowerPerAmp(settings);
+    if (this.getEvControlType(settings) === 'mode') {
+      if (!this.isEvOutputActiveFor(index, storedSettings)) return 0;
+      return Math.max(0, Number(settings.evStandardCurrentA) || 0) * perAmpW;
+    }
+    const currentA = index === 0
+      ? Number(this.lastPublishedEvCurrentA || 0)
+      : Number(this.getExtraEv(index)?.lastPublishedCurrentA || 0);
+    return Math.max(0, currentA) * perAmpW;
+  }
 
-      // EV/battery coordination may reduce an already calculated charge command.
-      // Keep the individual maximum intact. Any hardware-specific minimum is a
-      // Split Command concern and is applied later when the command is published.
-      if (Boolean(settings.individualBatteryPowerLimitsEnabled)) {
-        const batteryNumber = index + 1;
-        const sharedMax = Math.max(0, Number(settings.maxChargePerBatteryW) || 2300);
-        const configuredMax = Number(settings[`battery${batteryNumber}MaxChargeW`]);
-        const maxChargeW = Math.max(0, Number.isFinite(configuredMax) ? configuredMax : sharedMax);
-        const quantizedMax = Math.floor(maxChargeW / step) * step;
-        magnitude = Math.min(magnitude, quantizedMax);
+  getEvGridImportLimitW(tariff = null, storedSettings = this.getSettings()) {
+    if (!tariff) return 0;
+    if (String(storedSettings.contractType || '') === 'tou') {
+      const rateId = String(tariff.rateId || '');
+      const rate = (Array.isArray(storedSettings.touRates) ? storedSettings.touRates : [])
+        .find(item => String(item?.id || '') === rateId);
+      if (Boolean(rate?.avoidGridImport)) return 0;
+      return Math.max(0, Number(rate?.evMaxGridImportW) || 0);
+    }
+    if (isDynamicContract(storedSettings)) {
+      if (String(tariff.className || '') === 'cheap') return Math.max(0, Number(storedSettings.evDynamicCheapMaxGridImportW) || 0);
+      if (String(tariff.className || '') === 'expensive') return Math.max(0, Number(storedSettings.evDynamicExpensiveMaxGridImportW) || 0);
+      return Math.max(0, Number(storedSettings.evDynamicNormalMaxGridImportW) || 0);
+    }
+    return Math.max(0, Number(storedSettings.evFixedMaxGridImportW) || 0);
+  }
+
+  allocateWeightedEvPower(entries = [], totalBudgetW = 0, existing = new Map()) {
+    const allocation = new Map(existing);
+    let used = 0;
+    for (const value of allocation.values()) used += Math.max(0, Number(value) || 0);
+    let remainingBudget = Math.max(0, Number(totalBudgetW) || 0) - used;
+    if (remainingBudget <= 0 || !entries.length) return allocation;
+
+    const pending = entries.map(entry => ({ ...entry }));
+    for (let pass = 0; pass < 8 && remainingBudget > 0.5 && pending.length; pass += 1) {
+      const active = pending.filter(entry => {
+        const current = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        return current + 0.5 < Math.max(0, Number(entry.maxPowerW) || 0);
+      });
+      if (!active.length) break;
+      const totalWeight = active.reduce((sum, entry) => sum + Math.max(1, Number(entry.weight) || 1), 0);
+      let grantedThisPass = 0;
+      for (const entry of active) {
+        const current = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        const room = Math.max(0, Number(entry.maxPowerW) || 0) - current;
+        if (room <= 0) continue;
+        const weightedShare = remainingBudget * (Math.max(1, Number(entry.weight) || 1) / totalWeight);
+        const grant = Math.min(room, weightedShare);
+        if (grant <= 0) continue;
+        allocation.set(entry.index, current + grant);
+        grantedThisPass += grant;
       }
+      if (grantedThisPass <= 0.5) break;
+      remainingBudget = Math.max(0, remainingBudget - grantedThisPass);
+    }
 
-      return magnitude > 0 ? -magnitude : 0;
+    // Quantize to actual charger current steps. If an EV's weighted share is
+    // below its minimum current it remains stopped; unused budget is then
+    // offered to the higher-weight EVs that can still accept another ampere.
+    let quantizedUsed = 0;
+    for (const entry of entries) {
+      const settings = entry.settings;
+      const currentA = this.getEvCurrentForPower(Math.max(0, Number(allocation.get(entry.index)) || 0), settings);
+      const powerW = currentA * evPowerPerAmp(settings);
+      allocation.set(entry.index, Math.min(Math.max(0, Number(entry.maxPowerW) || 0), powerW));
+      quantizedUsed += Number(allocation.get(entry.index)) || 0;
+    }
+    remainingBudget = Math.max(0, (Number(totalBudgetW) || 0) - quantizedUsed);
+    const ordered = entries.slice().sort((a, b) => (Number(b.weight) || 1) - (Number(a.weight) || 1) || a.index - b.index);
+    let progressed = true;
+    while (progressed && remainingBudget > 0.5) {
+      progressed = false;
+      for (const entry of ordered) {
+        const currentPower = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        const currentA = currentPower > 0 ? Math.round(currentPower / evPowerPerAmp(entry.settings)) : 0;
+        const minA = Math.max(1, Math.round(Number(entry.settings.evMinCurrentA) || 6));
+        const nextA = currentA > 0 ? currentA + 1 : minA;
+        const nextPower = nextA * evPowerPerAmp(entry.settings);
+        const extra = nextPower - currentPower;
+        if (nextPower <= Math.max(0, Number(entry.maxPowerW) || 0) + 0.5 && extra <= remainingBudget + 0.5) {
+          allocation.set(entry.index, nextPower);
+          remainingBudget -= extra;
+          progressed = true;
+        }
+      }
+    }
+    return allocation;
+  }
+
+  calculateEvPortfolioDecisions(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, storedSettings = this.getSettings()) {
+    const runtimeSettings = this.getRuntimeSettings(storedSettings);
+    const evCount = this.getEvCount(storedSettings);
+    if (evCount <= 0) return [];
+    const tariff = result?.tariff || findCurrentTariff(new Date(), runtimeSettings);
+    const rawGridW = Number(this.state.gridPowerW) || 0;
+    const currentBatteryW = Number(currentBatteryCommandW) || 0;
+    const nextBatteryW = Number(nextBatteryCommandW) || 0;
+    const predictedGridAfterBatteryW = rawGridW + currentBatteryW - nextBatteryW;
+    const residualZeroGridPvW = Math.max(0, -predictedGridAfterBatteryW) + this.getPvCurtailmentHeadroomW(runtimeSettings);
+    const batteryPvChargeW = Math.max(0, Number(result?.pvChargeW) || 0);
+    const batteryGridChargeW = Math.max(0, Number(result?.gridChargeAssistW) || 0);
+    const decisions = [];
+    const smartEntries = [];
+    const nonSmartSupportEntries = [];
+    let nonSmartIncreaseW = 0;
+
+    for (let index = 0; index < evCount; index += 1) {
+      const settings = this.getEvInstanceSettings(index, runtimeSettings);
+      settings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
+      const input = this.getEvInputSnapshot(index) || {};
+      const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+      const soc = input?.seen?.soc ? Number(input.soc) : NaN;
+      const actualCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+      const pvPriority = String(settings.evSmartPvPriority || 'battery_first') === 'ev_first' ? 'ev_first' : 'battery_first';
+      const pvAvailableW = residualZeroGridPvW + (pvPriority === 'ev_first' ? batteryPvChargeW : 0);
+      let decision = calculateEvDecision({
+        settings,
+        now: new Date(),
+        tariff,
+        connected,
+        soc,
+        actualCurrentA,
+        gridPowerW: rawGridW,
+        currentBatteryCommandW: currentBatteryW,
+        nextBatteryCommandW: nextBatteryW,
+        pvHeadroomW: 0,
+        pvAvailableWOverride: pvAvailableW,
+        pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
+        skipPeakLimit: String(settings.evMode || 'smart') === 'smart',
+      });
+      decision = this.applyEvPvSessionHysteresisFor(index, decision, result, settings, rawGridW);
+      decision = {
+        ...decision,
+        instance: index + 1,
+        pvPriority,
+        gridPriority: ['battery_first', 'ev_first', 'share'].includes(String(settings.evSmartGridPriority || 'battery_first'))
+          ? String(settings.evSmartGridPriority || 'battery_first') : 'battery_first',
+        weight: Math.max(1, Math.min(10, Math.round(Number(settings.evWeight) || 1))),
+        batterySupportEnabled: this.shouldUseEvBatterySupport(settings, settings.evMode),
+      };
+      decisions.push(decision);
+      const commandedPowerW = this.getEvCommandedPowerW(index, storedSettings);
+      if (String(settings.evMode || 'smart') !== 'smart') {
+        const baselineDesiredPowerW = Math.max(0, Number(decision.desiredPowerW) || 0);
+        if (Boolean(decision.batterySupportEnabled)) {
+          let unbounded = calculateEvDecision({
+            settings,
+            now: new Date(),
+            tariff,
+            connected,
+            soc,
+            actualCurrentA,
+            gridPowerW: rawGridW,
+            currentBatteryCommandW: currentBatteryW,
+            nextBatteryCommandW: nextBatteryW,
+            pvHeadroomW: 0,
+            pvAvailableWOverride: pvAvailableW,
+            pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
+            skipPeakLimit: true,
+          });
+          unbounded = this.applyEvPvSessionHysteresisFor(index, unbounded, result, settings, rawGridW);
+          const maxPowerW = Math.max(baselineDesiredPowerW, Number(unbounded.requestedPowerW || unbounded.desiredPowerW) || 0);
+          if (Boolean(unbounded.allowed) && maxPowerW > baselineDesiredPowerW + 0.5) {
+            nonSmartSupportEntries.push({
+              index,
+              settings,
+              decision,
+              weight: decision.weight,
+              currentPowerW: baselineDesiredPowerW,
+              maxPowerW,
+            });
+          }
+        }
+        nonSmartIncreaseW += baselineDesiredPowerW - commandedPowerW;
+        continue;
+      }
+      if (!decision.allowed || Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0) <= 0) continue;
+      smartEntries.push({
+        index,
+        settings,
+        decision,
+        weight: decision.weight,
+        currentPowerW: commandedPowerW,
+        maxPowerW: Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0),
+      });
+    }
+
+    // Battery support is a shared EV energy budget. It never creates or
+    // rewrites a battery command: it only allows EV setpoints to rise. The
+    // normal battery EMS subsequently reacts to the real P1 measurement.
+    const batterySupportCapacityW = this.getEvBatterySupportAvailableW(runtimeSettings, nextBatteryW);
+    let batterySupportRemainingW = batterySupportCapacityW;
+
+    // Emergency and SoC-target modes retain their normal Peak Guard-limited
+    // decision. When battery support is explicitly enabled, the available
+    // battery headroom may raise those EV setpoints toward their original
+    // request. This support is shared across those EVs according to weight.
+    if (nonSmartSupportEntries.length && batterySupportRemainingW > 0) {
+      const baseline = new Map();
+      let baselineTotalW = 0;
+      let maximumTotalW = 0;
+      for (const entry of nonSmartSupportEntries) {
+        const powerW = Math.max(0, Number(entry.currentPowerW) || 0);
+        baseline.set(entry.index, powerW);
+        baselineTotalW += powerW;
+        maximumTotalW += Math.max(powerW, Number(entry.maxPowerW) || 0);
+      }
+      const targetTotalW = Math.min(maximumTotalW, baselineTotalW + batterySupportRemainingW);
+      const supported = this.allocateWeightedEvPower(nonSmartSupportEntries, targetTotalW, baseline);
+      let usedSupportW = 0;
+      for (const entry of nonSmartSupportEntries) {
+        const beforeW = Math.max(0, Number(baseline.get(entry.index)) || 0);
+        const supportedW = Math.max(beforeW, Number(supported.get(entry.index)) || 0);
+        const supportedCurrentA = this.getEvCurrentForPower(supportedW, entry.settings);
+        const actualSupportedW = supportedCurrentA * evPowerPerAmp(entry.settings);
+        const decision = decisions[entry.index];
+        if (actualSupportedW > beforeW + 0.5) {
+          decision.desiredCurrentA = supportedCurrentA;
+          decision.desiredPowerW = Math.round(actualSupportedW);
+          decision.allowed = supportedCurrentA > 0;
+          decision.peakLimited = false;
+          decision.batterySupportAllocatedW = Math.round(actualSupportedW - beforeW);
+          decision.reason += ` · thuisbatterij ${decision.batterySupportAllocatedW} W extra`;
+          usedSupportW += decision.batterySupportAllocatedW;
+          nonSmartIncreaseW += decision.batterySupportAllocatedW;
+        }
+      }
+      batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedSupportW);
+    }
+
+    if (!smartEntries.length) return decisions;
+    const currentSmartPowerW = smartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
+    const predictedGridBeforeSmartChangeW = predictedGridAfterBatteryW + Math.max(0, nonSmartIncreaseW);
+    const maxRequestedW = smartEntries.reduce((sum, entry) => sum + entry.maxPowerW, 0);
+
+    // Absolute Peak Guard budget. No theoretical EV power is subtracted from
+    // the meter and EV logic never changes a battery setpoint. Any battery help
+    // must first become real meter headroom through the normal battery EMS.
+    let peakBudgetW = maxRequestedW;
+    if (Boolean(runtimeSettings.peakShaveEnabled)) {
+      const softTargetW = Math.max(0, (Number(runtimeSettings.peakLimitW) || 0) - Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0));
+      peakBudgetW = Math.max(0, currentSmartPowerW + (softTargetW - predictedGridBeforeSmartChangeW));
+    }
+    peakBudgetW = Math.min(peakBudgetW, maxRequestedW);
+
+    // Stage 1: keep/increase EV charging only inside the real zero-grid room.
+    // The current EV command is used only to predict the effect of changing our
+    // own setpoint; it is never removed from the battery regulator's P1 signal.
+    const zeroGridBudgetW = Math.max(0, currentSmartPowerW - predictedGridBeforeSmartChangeW);
+    let allocation = this.allocateWeightedEvPower(smartEntries, Math.min(zeroGridBudgetW, peakBudgetW));
+    let allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+
+    // Stage 2: EV-first may take PV that the battery engine currently plans to
+    // store. The battery controller is untouched; after the EV setpoint rises it
+    // sees the real meter and naturally reduces battery charging.
+    const pvFirstEntries = smartEntries.filter(entry => entry.decision.pvPriority === 'ev_first');
+    const pvExtraBudgetW = Math.min(batteryPvChargeW, Math.max(0, peakBudgetW - allocatedW));
+    if (pvFirstEntries.length && pvExtraBudgetW > 0) {
+      allocation = this.allocateWeightedEvPower(pvFirstEntries, allocatedW + pvExtraBudgetW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    }
+
+    // Stage 3: during an explicitly selected standard-charging tariff the user
+    // may allow a TOTAL grid-import budget for all EVs. Only EVs for which that
+    // tariff is selected may consume this extra grid room. 0 W keeps zero-grid.
+    const tariffEntries = smartEntries.filter(entry => Boolean(entry.decision.selectedTariff));
+    const gridImportLimitW = tariffEntries.length ? this.getEvGridImportLimitW(tariff, runtimeSettings) : 0;
+    // The configured value is the maximum P1/grid import while EV tariff
+    // charging is active, not an extra number of watts on top of the current
+    // site load. Convert that meter ceiling into a maximum total smart-EV
+    // setpoint using the real current meter and our currently published EV
+    // commands. This keeps the user-facing limit meaningful even when other
+    // household loads are already importing power.
+    const tariffMeterBudgetW = Math.max(0, currentSmartPowerW + (gridImportLimitW - predictedGridBeforeSmartChangeW));
+    const tariffTargetBudgetW = Math.min(peakBudgetW, tariffMeterBudgetW, maxRequestedW);
+    const tariffExtraBudgetW = Math.max(0, tariffTargetBudgetW - allocatedW);
+    if (tariffEntries.length && tariffExtraBudgetW > 0) {
+      allocation = this.allocateWeightedEvPower(tariffEntries, allocatedW + tariffExtraBudgetW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    }
+
+    // Stage 4: when home-battery grid charging is already planned, reuse that
+    // existing pool according to the explicit battery-vs-EV priority. This does
+    // not create or modify a battery command; it only lets the EV request rise.
+    const gridFirstEntries = smartEntries.filter(entry => entry.decision.gridPriority === 'ev_first');
+    const gridShareEntries = smartEntries.filter(entry => entry.decision.gridPriority === 'share');
+    let gridTransferRemainingW = Math.min(batteryGridChargeW, Math.max(0, peakBudgetW - allocatedW));
+    if (gridFirstEntries.length && gridTransferRemainingW > 0) {
+      const before = allocatedW;
+      allocation = this.allocateWeightedEvPower(gridFirstEntries, allocatedW + gridTransferRemainingW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      gridTransferRemainingW = Math.max(0, gridTransferRemainingW - (allocatedW - before));
+    }
+    if (gridShareEntries.length && gridTransferRemainingW > 0) {
+      const shareBudget = Math.min(gridTransferRemainingW, batteryGridChargeW / 2);
+      allocation = this.allocateWeightedEvPower(gridShareEntries, allocatedW + shareBudget, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    }
+
+    // Stage 5: optional home-battery support gives the EV controller extra
+    // power budget without ever rewriting the battery command. The normal
+    // battery EMS continues to regulate on the real P1 value and will naturally
+    // discharge if its own rules allow it. Battery-first remains authoritative:
+    // while the battery is actively being charged from PV or grid, entries that
+    // explicitly gave the battery priority do not consume battery-support room.
+    const allocationBeforeBatterySupport = new Map(allocation);
+    const batterySupportEntries = smartEntries.filter(entry => {
+      if (!Boolean(entry.decision.batterySupportEnabled)) return false;
+      if (entry.decision.pvPriority === 'battery_first' && batteryPvChargeW > 0) return false;
+      if (entry.decision.gridPriority === 'battery_first' && batteryGridChargeW > 0) return false;
+      return true;
     });
-    const total = adjusted.reduce((sum, value) => sum + value, 0);
-    result.candidateCommands = adjusted;
-    result.candidateTotalCommandW = total;
-    result.calculatedCommands = adjusted.slice();
-    result.calculatedTotalCommandW = total;
-    result.commands = adjusted.slice();
-    result.totalCommandW = total;
-    return result;
+    const batterySupportAvailableW = batterySupportRemainingW;
+    if (batterySupportEntries.length && batterySupportAvailableW > 0) {
+      const peakBudgetWithBatterySupportW = Boolean(runtimeSettings.peakShaveEnabled)
+        ? Math.min(maxRequestedW, peakBudgetW + batterySupportAvailableW)
+        : maxRequestedW;
+      const batterySupportTargetW = Math.min(
+        maxRequestedW,
+        peakBudgetWithBatterySupportW,
+        allocatedW + batterySupportAvailableW,
+      );
+      if (batterySupportTargetW > allocatedW + 0.5) {
+        allocation = this.allocateWeightedEvPower(batterySupportEntries, batterySupportTargetW, allocation);
+        allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      }
+    }
+
+    for (const entry of smartEntries) {
+      const decision = decisions[entry.index];
+      const allocatedPowerW = Math.max(0, Number(allocation.get(entry.index)) || 0);
+      const allocatedCurrentA = this.getEvCurrentForPower(allocatedPowerW, entry.settings);
+      const actualAllocatedW = allocatedCurrentA * evPowerPerAmp(entry.settings);
+      decision.desiredCurrentA = allocatedCurrentA;
+      decision.desiredPowerW = Math.round(actualAllocatedW);
+      decision.allowed = allocatedCurrentA > 0;
+      decision.gridImportLimitW = Math.round(gridImportLimitW);
+      decision.weight = entry.weight;
+      decision.priorityLimited = actualAllocatedW + 1 < entry.maxPowerW;
+      const beforeBatterySupportW = Math.max(0, Number(allocationBeforeBatterySupport.get(entry.index)) || 0);
+      decision.batterySupportAllocatedW = Math.round(Math.max(0, actualAllocatedW - beforeBatterySupportW));
+      const pvForThisEvW = Math.min(actualAllocatedW, Math.max(0, Number(decision.pvAvailableW) || 0));
+      decision.pvAllocatedW = Math.round(pvForThisEvW);
+      decision.gridAllocatedW = Math.round(Math.max(0, actualAllocatedW - pvForThisEvW));
+      if (allocatedCurrentA <= 0) {
+        if (Boolean(runtimeSettings.peakShaveEnabled) && peakBudgetW <= 0) decision.reason = 'Peak Guard laat geen EV-laadvermogen toe';
+        else if (decision.pvPriority === 'battery_first' && batteryPvChargeW > 0 && residualZeroGridPvW <= 0 && !decision.selectedTariff) decision.reason = 'Wachten: thuisbatterij heeft voorrang op PV-overschot';
+        else if (decision.selectedTariff && gridImportLimitW <= 0 && zeroGridBudgetW <= 0) decision.reason = 'Wachten: geselecteerd tarief, maar EV-netimportlimiet is 0 W';
+        else decision.reason = decision.reason || 'Wachten op beschikbaar EV-energiebudget';
+      } else {
+        const pieces = [];
+        if (decision.pvAllocatedW > 0) pieces.push('PV');
+        if (decision.selectedTariff && decision.gridAllocatedW > 0) pieces.push(`tarief (netlimiet ${Math.round(gridImportLimitW)} W totaal)`);
+        if (decision.batterySupportAllocatedW > 0) pieces.push(`thuisbatterij (${decision.batterySupportAllocatedW} W extra)`);
+        decision.reason = `Slim laden via ${pieces.length ? pieces.join(' + ') : 'beschikbaar energiebudget'} · gewicht ${entry.weight}`;
+        if (decision.priorityLimited) decision.reason += ' · verdeeld volgens energieprioriteit';
+      }
+    }
+    return decisions;
   }
 
   coordinateEvBatteryPriority(result, storedSettings = this.getSettings()) {
     if (!result) return null;
-    const settings = this.getRuntimeSettings(storedSettings);
-    const forcedBatteryPriority = String(result.baseMode || '') === 'manual_charge';
-    const initialBatteryCommandW = Number(result.candidateTotalCommandW);
-    const connected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
-    if (!Boolean(settings.evEnabled) || !connected) {
-      result.evDecision = this.calculateEvControl(result, result.candidateTotalCommandW, this.state.lastTotalCommandW);
-      return result.evDecision;
-    }
-
-    const mode = ['emergency', 'soc_target', 'smart'].includes(String(settings.evMode || 'smart'))
-      ? String(settings.evMode || 'smart')
-      : 'smart';
-    const actualEvPowerW = this.inputSeen.ev?.chargeCurrent
-      ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) * evPowerPerAmp(settings)
-      : 0;
-    const currentBatteryW = Number(this.state.lastTotalCommandW) || 0;
-    const rawGridW = Number(this.state.gridPowerW) || 0;
-    // Net position with both controlled flexible loads removed. This is the common
-    // pool from which PV surplus and Peak Guard headroom can be allocated once.
-    const baseGridWithoutBatteryEvW = rawGridW + currentBatteryW - actualEvPowerW;
-    const exportBufferW = Boolean(settings.exportLimitEnabled) && this.isPvCurtailmentSocAllowed(settings)
-      ? Math.max(0, Number(settings.minimumExportW) || 0)
-      : 0;
-    const pvPoolW = Math.max(0, -baseGridWithoutBatteryEvW - exportBufferW + this.getPvCurtailmentHeadroomW(settings));
-
-    const evTariff = result?.tariff || findCurrentTariff(new Date(), settings);
-    let request = calculateEvDecision({
-      settings,
-      now: new Date(),
-      tariff: evTariff,
-      connected,
-      soc: this.inputSeen.ev?.soc ? Number(this.state.evSoc) : NaN,
-      actualCurrentA: this.inputSeen.ev?.chargeCurrent ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) : 0,
-      gridPowerW: rawGridW,
-      currentBatteryCommandW: currentBatteryW,
-      nextBatteryCommandW: 0,
-      pvHeadroomW: 0,
-      pvAvailableWOverride: pvPoolW,
-      pvSessionActive: this.isEvPvSessionActiveForTariff(evTariff, settings),
-      skipPeakLimit: true,
-    });
-    request = this.applyEvPvSessionHysteresis(request, result, settings);
-
-    // A mode-controlled PV hold intentionally has no synthetic power request:
-    // the charger keeps SMART permission while the real P1 meter decides when
-    // the stop delay expires. Preserve the EV-first export margin separately.
-    if (Boolean(request.pvSessionHoldActive) && this.getEvControlType(settings) === 'mode') {
-      const configuredSmartPvPriority = String(settings.evSmartPvPriority || 'battery_first') === 'ev_first' ? 'ev_first' : 'battery_first';
-      const smartPvPriority = forcedBatteryPriority ? 'battery_first' : configuredSmartPvPriority;
-      const actualEvCurrentA = this.inputSeen.ev?.chargeCurrent ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) : 0;
-      const exportTargetW = Math.max(0, Math.min(5000, Number(settings.evSmartPvExportTargetW) || 0));
-      const candidateTotal = Number(result.candidateTotalCommandW) || 0;
-      const batteryChargeRequestW = candidateTotal < 0 ? Math.max(0, -candidateTotal) : 0;
-      const marginActive = !forcedBatteryPriority
-        && smartPvPriority === 'ev_first'
-        && actualEvCurrentA > 0
-        && exportTargetW > 0
-        && rawGridW < -exportTargetW
-        && batteryChargeRequestW > 0;
-      if (marginActive) {
-        const targetBatteryCommandW = currentBatteryW + rawGridW + exportTargetW;
-        const targetChargeW = Math.max(0, Math.min(batteryChargeRequestW, -targetBatteryCommandW));
-        this.reduceBatteryChargeResult(result, targetChargeW, settings);
-      }
-      const heldDecision = {
-        ...request,
-        evFirstExportMarginActive: marginActive,
-        evFirstExportTargetW: marginActive ? Math.round(exportTargetW) : 0,
-        pvPriority: smartPvPriority,
-        gridPriority: forcedBatteryPriority ? 'battery_first' : String(settings.evSmartGridPriority || 'battery_first'),
-        forcedBatteryPriority,
-      };
-      result.evDecision = heldDecision;
-      result.evPriority = { mode, pvPriority: smartPvPriority, gridPriority: heldDecision.gridPriority, forcedBatteryPriority };
-      if (Number.isFinite(initialBatteryCommandW)
-        && Math.abs((Number(result.candidateTotalCommandW) || 0) - initialBatteryCommandW) > 0.5) {
-        this.refreshBatteryPresentationAfterCoordination(result, settings);
-      }
-      return heldDecision;
-    }
-
-    if (!request.allowed || Number(request.requestedPowerW || request.desiredPowerW) <= 0) {
-      request.forcedBatteryPriority = forcedBatteryPriority;
-      result.evDecision = request;
-      return request;
-    }
-
-    const candidateTotal = Number(result.candidateTotalCommandW) || 0;
-    const batteryChargeRequestW = candidateTotal < 0 ? Math.max(0, -candidateTotal) : 0;
-    const batteryGridRequestW = Math.min(batteryChargeRequestW, Math.max(0, Number(result.gridChargeAssistW) || 0));
-    const batteryPvRequestW = Math.max(0, batteryChargeRequestW - batteryGridRequestW);
-    const evTotalRequestW = Math.max(0, Number(request.requestedPowerW || request.desiredPowerW) || 0);
-    const evPvRequestW = Math.min(evTotalRequestW, Math.max(0, Number(request.pvRequestPowerW) || 0));
-    const evGridRequestW = Math.max(0, evTotalRequestW - evPvRequestW);
-
-    const smartPvPriority = String(settings.evSmartPvPriority || 'battery_first') === 'ev_first' ? 'ev_first' : 'battery_first';
-    const smartGridPriority = ['battery_first', 'ev_first', 'share'].includes(String(settings.evSmartGridPriority || 'battery_first'))
-      ? String(settings.evSmartGridPriority || 'battery_first')
-      : 'battery_first';
-    // Emergency and direct SoC-target charging intentionally get first access to
-    // flexible charging room. Smart mode follows the explicit user priorities.
-    // A forced home-battery charge is an explicit operator override. It owns
-    // the available PV/Peak Guard room before every EV request; the EV may use
-    // only the remainder. This keeps the override at the configured EMS maximum
-    // and prevents an EV-first reservation below the charger's minimum current
-    // from collapsing the battery command to 0 W.
-    const pvPriority = forcedBatteryPriority ? 'battery_first' : (mode === 'smart' ? smartPvPriority : 'ev_first');
-    const gridPriority = forcedBatteryPriority ? 'battery_first' : (mode === 'smart' ? smartGridPriority : 'ev_first');
-
-    const pvAllocation = this.allocateFlexiblePair(
-      batteryPvRequestW,
-      evPvRequestW,
-      pvPoolW,
-      pvPriority === 'ev_first' ? 'second' : 'first',
+    const decisions = this.calculateEvPortfolioDecisions(
+      result,
+      Number(result.candidateTotalCommandW) || 0,
+      Number(this.state.lastTotalCommandW) || 0,
+      storedSettings,
     );
-
-    let totalFlexibleCapW = Infinity;
-    if (Boolean(settings.peakShaveEnabled)) {
-      const softTargetW = Math.max(0, (Number(settings.peakLimitW) || 0) - Math.max(0, Number(settings.peakSoftMarginW) || 0));
-      totalFlexibleCapW = Math.max(0, softTargetW - baseGridWithoutBatteryEvW);
-    }
-    const pvAllocatedW = pvAllocation.first + pvAllocation.second;
-    const gridCapacityW = Number.isFinite(totalFlexibleCapW) ? Math.max(0, totalFlexibleCapW - pvAllocatedW) : Infinity;
-    const gridAllocation = this.allocateFlexiblePair(
-      batteryGridRequestW,
-      evGridRequestW,
-      gridCapacityW,
-      gridPriority === 'ev_first' ? 'second' : gridPriority === 'share' ? 'share' : 'first',
-    );
-
-    let batteryAllocatedW = pvAllocation.first + gridAllocation.first;
-    const evAllocatedRawW = pvAllocation.second + gridAllocation.second;
-
-    // v0.3.34: a mode-controlled smart EV charger needs a small visible export
-    // margin to regulate itself. EV-first used to reserve the whole calculated
-    // EV request up front, which could squeeze home-battery charging to 0 W
-    // while the charger was only consuming a fraction of that request. Once the
-    // EV is demonstrably charging (> 0 A), keep only the configured export
-    // target and let the home battery absorb the rest. At 0 A the old priority
-    // behaviour is intentionally preserved, so HomeFlux never creates this
-    // margin merely in anticipation of a charger starting. The margin may
-    // only reduce export that already exceeds the configured target; it must
-    // never create export when the P1 meter is near zero or importing.
-    const actualEvCurrentA = this.inputSeen.ev?.chargeCurrent
-      ? Math.max(0, Number(this.state.evChargeCurrentA) || 0)
-      : 0;
-    const evFirstExportTargetW = Math.max(0, Math.min(5000, Number(settings.evSmartPvExportTargetW) || 0));
-    const evFirstExportMarginActive = mode === 'smart'
-      && pvPriority === 'ev_first'
-      && this.getEvControlType(settings) === 'mode'
-      && actualEvCurrentA > 0
-      && evFirstExportTargetW > 0
-      && rawGridW < -evFirstExportTargetW
-      && pvPoolW > 0
-      && batteryChargeRequestW > 0;
-    if (evFirstExportMarginActive) {
-      // Grid convention: import positive, export negative. Battery command:
-      // discharge positive, charge negative. With the current physical EV load
-      // left untouched, this is the battery command that would move the measured
-      // grid position towards -exportTargetW.
-      const targetBatteryCommandW = currentBatteryW + rawGridW + evFirstExportTargetW;
-      const batteryChargeForExportTargetW = Math.max(0, Math.min(batteryChargeRequestW, -targetBatteryCommandW));
-      batteryAllocatedW = Math.max(batteryAllocatedW, batteryChargeForExportTargetW);
-    }
-    let evCurrentA = this.getEvCurrentForPower(evAllocatedRawW, settings);
-    let evAllocatedW = evCurrentA * evPowerPerAmp(settings);
-    let peakLimited = evAllocatedW + 1 < evTotalRequestW && Boolean(settings.peakShaveEnabled)
-      && Number.isFinite(totalFlexibleCapW)
-      && (batteryChargeRequestW + evTotalRequestW) > totalFlexibleCapW + 1;
-    let priorityLimited = evAllocatedW + 1 < evTotalRequestW && !peakLimited;
-    let peakGuardBatteryAssistW = 0;
-
-    const usePeakGuardBatteryAssist = !forcedBatteryPriority
-      && this.shouldUseEvPeakGuardBatteryAssist(settings, mode, request.source)
-      && evTotalRequestW > 0;
-    if (usePeakGuardBatteryAssist) {
-      const softTargetW = Math.max(0, (Number(settings.peakLimitW) || 0) - Math.max(0, Number(settings.peakSoftMarginW) || 0));
-      const maxAssist = this.getEvPeakGuardBatteryAssistAllocation(Number(settings.maxTotalDischargeW) || Number(DEFAULTS.maxTotalDischargeW) || 0, settings);
-      const maxEvPowerWithAssistW = Math.max(0, softTargetW + maxAssist.totalW - baseGridWithoutBatteryEvW);
-      const requestedCurrentA = Math.max(0, Number(request.requestedCurrentA) || this.getEvCurrentForPower(evTotalRequestW, settings));
-      let assistedCurrentA = this.getEvCurrentForPower(Math.min(evTotalRequestW, maxEvPowerWithAssistW), settings);
-      const controlType = this.getEvControlType(settings);
-
-      // A mode-controlled charger cannot be partially reduced. Keep STANDARD
-      // only when the batteries can support the complete requested mode;
-      // otherwise retain the existing safe STOP decision. Ampere control may
-      // use the maximum current that remains safe.
-      if (controlType === 'mode' && assistedCurrentA < requestedCurrentA) assistedCurrentA = 0;
-      if (assistedCurrentA > evCurrentA) {
-        const assistedPowerW = assistedCurrentA * evPowerPerAmp(settings);
-        const requiredDischargeW = Math.max(0, baseGridWithoutBatteryEvW + assistedPowerW - softTargetW);
-        const assist = this.getEvPeakGuardBatteryAssistAllocation(requiredDischargeW, settings);
-        const supportedEvPowerW = Math.max(0, softTargetW + assist.totalW - baseGridWithoutBatteryEvW);
-        const safeCurrentA = this.getEvCurrentForPower(Math.min(evTotalRequestW, supportedEvPowerW), settings);
-        const finalCurrentA = controlType === 'mode'
-          ? (safeCurrentA >= requestedCurrentA ? requestedCurrentA : 0)
-          : Math.max(evCurrentA, safeCurrentA);
-
-        if (finalCurrentA > evCurrentA) {
-          const finalPowerW = finalCurrentA * evPowerPerAmp(settings);
-          const finalRequiredDischargeW = Math.max(0, baseGridWithoutBatteryEvW + finalPowerW - softTargetW);
-          const finalAssist = this.getEvPeakGuardBatteryAssistAllocation(finalRequiredDischargeW, settings);
-          const appliedAssistW = this.applyEvPeakGuardBatteryAssist(result, finalAssist, settings);
-          if (appliedAssistW + 1 >= finalRequiredDischargeW || finalRequiredDischargeW <= 1) {
-            evCurrentA = finalCurrentA;
-            evAllocatedW = finalPowerW;
-            peakGuardBatteryAssistW = appliedAssistW;
-            peakLimited = evAllocatedW + 1 < evTotalRequestW;
-            priorityLimited = false;
-          }
-        }
-      }
-    }
-
-    if (batteryChargeRequestW > 0 && batteryAllocatedW + 1 < batteryChargeRequestW) {
-      this.reduceBatteryChargeResult(result, batteryAllocatedW, settings);
-      result.gridChargeAssistW = Math.min(Math.max(0, -Number(result.candidateTotalCommandW) || 0), Math.round(gridAllocation.first));
-      result.pvChargeW = Math.max(0, Math.round((-Number(result.candidateTotalCommandW) || 0) - result.gridChargeAssistW));
-    }
-
-    const decision = {
-      ...request,
-      desiredCurrentA: evCurrentA,
-      desiredPowerW: Math.round(evAllocatedW),
-      allowed: evCurrentA > 0,
-      peakLimited,
-      priorityLimited,
-      pvAllocatedW: Math.round(Math.min(evAllocatedW, pvAllocation.second)),
-      gridAllocatedW: Math.round(Math.max(0, evAllocatedW - Math.min(evAllocatedW, pvAllocation.second))),
-      pvPriority,
-      gridPriority,
-      evFirstExportMarginActive,
-      evFirstExportTargetW: evFirstExportMarginActive ? Math.round(evFirstExportTargetW) : 0,
-      peakGuardBatteryAssistActive: peakGuardBatteryAssistW > 0,
-      peakGuardBatteryAssistW: Math.round(peakGuardBatteryAssistW),
-      forcedBatteryPriority,
-    };
-
-    if (evCurrentA <= 0) {
-      if (peakLimited) decision.reason = 'Peak Guard laat geen EV-laadvermogen toe';
-      else if (priorityLimited && mode === 'smart') decision.reason = 'Wachten: thuisbatterij heeft momenteel voorrang';
-    } else if (mode === 'emergency') {
-      decision.reason = 'Emergency charge · maximaal mogelijk vermogen binnen Peak Guard';
-    } else if (mode === 'soc_target') {
-      decision.reason = `Laden tot ${Math.round(Number(settings.evTargetSoc) || 80)}% SoC · binnen Peak Guard`;
-    } else {
-      const pieces = [];
-      if (decision.pvAllocatedW > 0) pieces.push('PV');
-      if (decision.gridAllocatedW > 0) pieces.push(request.guaranteeActive ? 'doelgarantie' : 'geselecteerd tarief');
-      decision.reason = pieces.length ? `Slim laden via ${pieces.join(' + ')}` : request.reason;
-      if (priorityLimited) decision.reason += ' · beperkt door ingestelde energieprioriteit';
-      if (evFirstExportMarginActive) decision.reason += ` · EV-eerst exportdoel ${Math.round(evFirstExportTargetW)} W`;
-      if (peakLimited) decision.reason += ' · begrensd door Peak Guard';
-    }
-    if (peakGuardBatteryAssistW > 0) {
-      decision.reason += ` · Peak Guard ondersteund door thuisbatterij ${Math.round(peakGuardBatteryAssistW)} W`;
-      if (peakLimited) decision.reason += ' · resterend EV-vermogen begrensd';
-    }
-
-    result.evDecision = decision;
-    result.evPriority = { mode, pvPriority, gridPriority, forcedBatteryPriority };
-    if (Number.isFinite(initialBatteryCommandW)
-      && Math.abs((Number(result.candidateTotalCommandW) || 0) - initialBatteryCommandW) > 0.5) {
-      this.refreshBatteryPresentationAfterCoordination(result, settings);
-    }
-    return decision;
+    result.evDecisions = decisions;
+    result.evDecision = decisions[0] || null;
+    return result.evDecision;
   }
 
   getEvControlType(settings = this.getSettings()) {
@@ -6397,6 +6494,9 @@ class HomeFluxEmsApp extends Homey.App {
   async publishFlexibleLoads(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
     const storedSettings = this.getSettings();
     const evCount = this.getEvCount(storedSettings);
+    const portfolio = this.calculateEvPortfolioDecisions(
+      result, nextBatteryCommandW, currentBatteryCommandW, storedSettings,
+    );
     const evDecisions = [];
     let adjustedGridW = Number(this.state.gridPowerW) || 0;
     let totalActualEvPowerW = 0;
@@ -6406,10 +6506,7 @@ class HomeFluxEmsApp extends Homey.App {
     for (let index = 0; index < evCount; index += 1) {
       const instanceSettings = this.getEvInstanceSettings(index, storedSettings);
       instanceSettings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
-      let decision = index === 0
-        ? (options.evDecision || this.calculateEvControl(result, nextBatteryCommandW, currentBatteryCommandW))
-        : this.calculateAdditionalEvControl(index, result, nextBatteryCommandW, currentBatteryCommandW, adjustedGridW);
-      decision = { ...(decision || {}), instance: index + 1 };
+      let decision = { ...(portfolio[index] || {}), instance: index + 1 };
       const previousActive = this.isEvOutputActiveFor(index, storedSettings);
       const previousCurrentA = index === 0
         ? Number(this.lastPublishedEvCurrentA || 0)
@@ -6766,39 +6863,10 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   cacheEvBatteryCoordination(rawCandidateTotalW, result, now = Date.now()) {
-    const raw = Number(rawCandidateTotalW);
-    const coordinated = Number(result?.candidateTotalCommandW);
-    if (Number.isFinite(raw) && raw < 0 && Number.isFinite(coordinated) && coordinated > raw + 0.5) {
-      this.evBatteryCoordinationCache = { maxChargeW: Math.max(0, -coordinated), at: now };
-    } else {
-      this.evBatteryCoordinationCache = { maxChargeW: null, at: now };
-    }
+    this.evBatteryCoordinationCache = { maxChargeW: null, at: now };
   }
 
-  applyCachedEvBatteryCoordination(result, storedSettings, now = Date.now()) {
-    const cachedLimit = this.evBatteryCoordinationCache?.maxChargeW;
-    const age = now - Number(this.evBatteryCoordinationCache?.at || 0);
-    // null explicitly means that the slow EV/battery pass imposed no charge
-    // limit. Do not coerce it with Number(null), because JavaScript converts
-    // that sentinel to 0 and the fast P1 loop would then cancel every battery
-    // charge request, even while the EV module is disabled. A numeric 0 remains
-    // a valid explicit limit when coordination genuinely leaves no headroom.
-    if (cachedLimit === null || cachedLimit === undefined
-      || age > this.getSlowControlIntervalMs(storedSettings) * 2) {
-      if (this.latestEvDecision) result.evDecision = this.latestEvDecision;
-      return result;
-    }
-    const limit = Number(cachedLimit);
-    if (!Number.isFinite(limit) || limit < 0) {
-      if (this.latestEvDecision) result.evDecision = this.latestEvDecision;
-      return result;
-    }
-    const beforeCoordinationW = Number(result?.candidateTotalCommandW);
-    if (beforeCoordinationW < 0) this.reduceBatteryChargeResult(result, limit, storedSettings);
-    if (Number.isFinite(beforeCoordinationW)
-      && Math.abs((Number(result?.candidateTotalCommandW) || 0) - beforeCoordinationW) > 0.5) {
-      this.refreshBatteryPresentationAfterCoordination(result, storedSettings);
-    }
+  applyCachedEvBatteryCoordination(result) {
     if (this.latestEvDecision) result.evDecision = this.latestEvDecision;
     return result;
   }
@@ -6825,17 +6893,17 @@ class HomeFluxEmsApp extends Homey.App {
     if (evaluationState && Number.isFinite(Number(evaluationState.controlGridPowerW))) {
       controlGridW = Number(evaluationState.controlGridPowerW);
     } else {
-      const averageGridW = this.getGridAverage(5000, now);
+      const controlWindowMs = this.getGridControlWindowMs(settings);
+      const averageGridW = controlWindowMs > 0 ? this.getGridAverage(controlWindowMs, now) : rawGridW;
       const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
       const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW)
         ? Math.max(0, configuredPvDeltaThresholdW) : 100;
       const lastPvW = Number(this.pvAtLastControlW);
       const pvDeltaW = Number.isFinite(lastPvW) ? pvW - lastPvW : 0;
-      const useLiveGrid = pvDeltaThresholdW > 0 && Math.abs(pvDeltaW) >= pvDeltaThresholdW;
-      const evActualPowerW = Boolean(settings.evEnabled) && Boolean(this.state.evConnected) && this.inputSeen.ev?.chargeCurrent
-        ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) * evPowerPerAmp(settings)
-        : 0;
-      controlGridW = (useLiveGrid ? rawGridW : averageGridW) - evActualPowerW;
+      const useLiveGrid = controlWindowMs === 0
+        || (pvDeltaThresholdW > 0 && Math.abs(pvDeltaW) >= pvDeltaThresholdW)
+        || this.isAdaptiveLiveControlActive(settings, now);
+      controlGridW = useLiveGrid ? rawGridW : averageGridW;
     }
 
     let zeroMin = Number(settings.gridZeroMinW);
@@ -7021,7 +7089,6 @@ class HomeFluxEmsApp extends Homey.App {
       const result = this.createSafetyResult(calculated, settings, readiness);
       const rawCandidateTotalW = Number(result.candidateTotalCommandW) || 0;
       this.coordinateEvBatteryPriority(result, storedSettings);
-      this.coordinateAdditionalEvPeakGuardBatteryAssist(result, storedSettings);
       this.cacheEvBatteryCoordination(rawCandidateTotalW, result, now);
 
       result.warningText = this.updateBalanceHealth(result, settings);
@@ -7055,6 +7122,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.publishFlexibleLoads(result, this.state.lastTotalCommandW, this.state.lastTotalCommandW, {
           allowEvIncrease: !batteryWantsChange || (emergency && !emergencyNeedsBatteryFirst),
           evDecision: result.evDecision,
+          evDecisions: result.evDecisions,
         })
           .catch(err => this.error('Flexible-load publish failed', err))
           .finally(() => this.publishPvPowerLimit(result, this.state.lastTotalCommandW, this.state.lastTotalCommandW)
@@ -7389,6 +7457,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (Boolean(result._runFlexibleLoadPass)) {
         await this.publishFlexibleLoads(result, internalTotal, previousInternalTotal, {
           evDecision: result.evDecision,
+          evDecisions: result.evDecisions,
           effectiveNextBatteryCommandW: effectiveInternalTotal,
         })
           .catch(err => this.error('Flexible-load publish after battery command failed', err));

@@ -1,0 +1,50 @@
+{
+  "title": {
+    "en": "[[hvac]] is actively managed",
+    "nl": "[[hvac]] wordt actief gestuurd"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "dropdown",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "HVAC 1",
+            "nl": "HVAC 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "HVAC 2",
+            "nl": "HVAC 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "HVAC 3",
+            "nl": "HVAC 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "HVAC 4",
+            "nl": "HVAC 4"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[hvac]] is actively managed",
+    "nl": "[[hvac]] wordt actief gestuurd"
+  }
+}

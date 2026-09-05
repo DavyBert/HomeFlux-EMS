@@ -1,0 +1,20 @@
+{
+  "title": {
+    "en": "Current tariff is [[tariff]]",
+    "nl": "Huidig tarief is [[tariff]]"
+  },
+  "args": [
+    {
+      "name": "tariff",
+      "type": "text",
+      "title": {
+        "en": "Tariff name",
+        "nl": "Tariefnaam"
+      }
+    }
+  ],
+  "titleFormatted": {
+    "en": "Current tariff is [[tariff]]",
+    "nl": "Huidig tarief is [[tariff]]"
+  }
+}

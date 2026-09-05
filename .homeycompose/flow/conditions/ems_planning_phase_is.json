@@ -1,0 +1,36 @@
+{
+  "title": {
+    "en": "Planning phase is [[phase]]",
+    "nl": "Planningsfase is [[phase]]"
+  },
+  "args": [
+    {
+      "name": "phase",
+      "type": "dropdown",
+      "title": {
+        "en": "Planning phase",
+        "nl": "Planningsfase"
+      },
+      "values": [
+        {
+          "id": "day",
+          "title": {
+            "en": "Day planning",
+            "nl": "Dagplanning"
+          }
+        },
+        {
+          "id": "night",
+          "title": {
+            "en": "Night planning",
+            "nl": "Nachtplanning"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Planning phase is [[phase]]",
+    "nl": "Planningsfase is [[phase]]"
+  }
+}

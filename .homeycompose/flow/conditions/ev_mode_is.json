@@ -1,0 +1,81 @@
+{
+  "title": {
+    "en": "[[ev]] mode is [[mode]]",
+    "nl": "[[ev]]-modus is [[mode]]"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "dropdown",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "EV 1",
+            "nl": "EV 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "EV 2",
+            "nl": "EV 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "EV 3",
+            "nl": "EV 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "EV 4",
+            "nl": "EV 4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "values": [
+        {
+          "id": "smart",
+          "title": {
+            "en": "Smart",
+            "nl": "Slim"
+          }
+        },
+        {
+          "id": "soc_target",
+          "title": {
+            "en": "SoC target",
+            "nl": "Op SoC-doel"
+          }
+        },
+        {
+          "id": "emergency",
+          "title": {
+            "en": "Emergency charge",
+            "nl": "Emergency charge"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] mode is [[mode]]",
+    "nl": "[[ev]]-modus is [[mode]]"
+  }
+}
