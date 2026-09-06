@@ -443,7 +443,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.5.1 initialized');
+    this.log('HomeFlux EMS v0.5.2 initialized');
   }
 
   refreshSettingsCache() {
@@ -7728,7 +7728,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.4.5',
+      version: '0.5.2',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -7795,7 +7795,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.4.5',
+      version: '0.5.2',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -7911,6 +7911,37 @@ class HomeFluxEmsApp extends Homey.App {
     preview.nextCharge = this.getWidgetNextChargeStatus(statusNow);
     preview.planningSummary = this.getWidgetPlanningSummary(statusNow);
 
+    // Read-only battery timing for the status widget. Use the ACTUAL internal
+    // battery output, not a theoretical/planned power, so the remaining time
+    // follows what HomeFlux is really asking the batteries to do right now.
+    const actualInternalTotalW = actualInternalCommands.reduce((sum, value) => sum + value, 0);
+    const timingSoc = Number(preview.avgSoc);
+    const timingTargetSoc = Number(preview.targetSoc);
+    const timingSafetySoc = Number(preview.safetySoc ?? storedSettings.safetySoc);
+    const timingCapacityKwh = Number(preview.effectiveCapacityKwh);
+    const timingPowerW = Math.abs(actualInternalTotalW);
+    let batteryTiming = { direction: 'idle', powerW: timingPowerW, hours: null, targetSoc: null };
+    if (Number.isFinite(timingSoc) && Number.isFinite(timingCapacityKwh) && timingCapacityKwh > 0 && timingPowerW > 25) {
+      if (actualInternalTotalW < 0 && Number.isFinite(timingTargetSoc)) {
+        const energyKwh = Math.max(0, timingCapacityKwh * ((timingTargetSoc - timingSoc) / 100));
+        batteryTiming = {
+          direction: 'charge',
+          powerW: timingPowerW,
+          hours: energyKwh > 0 ? energyKwh / (timingPowerW / 1000) : 0,
+          targetSoc: timingTargetSoc,
+        };
+      } else if (actualInternalTotalW > 0 && Number.isFinite(timingSafetySoc)) {
+        const energyKwh = Math.max(0, timingCapacityKwh * ((timingSoc - timingSafetySoc) / 100));
+        batteryTiming = {
+          direction: 'discharge',
+          powerW: timingPowerW,
+          hours: energyKwh > 0 ? energyKwh / (timingPowerW / 1000) : 0,
+          targetSoc: timingSafetySoc,
+        };
+      }
+    }
+    preview.batteryTiming = batteryTiming;
+
     const dynamicPriceRequired = isDynamicContract(storedSettings);
     const priceLastUpdatedAt = Number(this.homeyEnergy?.lastUpdatedAt) || 0;
     const priceAgeMs = priceLastUpdatedAt > 0 ? Math.max(0, statusNow - priceLastUpdatedAt) : null;
@@ -8024,7 +8055,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.4.5',
+      version: '0.5.2',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),

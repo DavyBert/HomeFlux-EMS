@@ -90,11 +90,29 @@
       }
     }
 
-    function nextTariffText(status) {
-      const label = String(status.tariff?.nextLabel || '').trim();
+    function formatDurationMs(ms) {
+      const totalMinutes = Math.max(0, Math.ceil((Number(ms) || 0) / 60000));
+      const days = Math.floor(totalMinutes / 1440);
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0) parts.push(`${hours}u`);
+      if (minutes > 0 || !parts.length) parts.push(`${minutes}m`);
+      return parts.join(' ');
+    }
+
+    function nextTariffText(status, Homey) {
+      const label = String(status.nextEventLabel || status.tariff?.nextLabel || '').trim();
       if (!label) return '—';
-      const time = formatTime(status.tariff?.nextAt);
-      return time ? `${label} · ${time}` : label;
+      const rawAt = status.nextEventAt ?? status.tariff?.nextAt;
+      const numericAt = Number(rawAt);
+      const parsedAt = Number.isFinite(numericAt) && numericAt > 0 ? numericAt : Date.parse(String(rawAt || ''));
+      const nextAt = Number.isFinite(parsedAt) ? parsedAt : 0;
+      const time = formatTime(nextAt);
+      const remaining = nextAt > Date.now() ? formatDurationMs(nextAt - Date.now()) : '';
+      const until = remaining ? `${tr(Homey, 'widget.status.in', 'in')} ${remaining}` : '';
+      return [label, time, until].filter(Boolean).join(' · ');
     }
 
     function priceDataText(status, Homey) {
@@ -204,12 +222,49 @@
       return baseLabels[base] || tr(Homey, 'widget.status.decisionSelfConsumption', 'Self-consumption');
     }
 
-    function emsDecisionReason(status) {
+    function emsDecisionReason(status, Homey) {
       const mode = String(status.modeLabel || '').trim();
       const separator = mode.indexOf('·');
       if (separator >= 0) return mode.slice(separator + 1).trim();
+
       const warning = String(status.warningText || '').trim();
-      return warning;
+      if (warning) return warning;
+
+      const action = String(status.action || 'idle');
+      if (action === 'peak_shave') return tr(Homey, 'widget.status.reasonPeakGuard', 'Peak Guard is intervening above the configured grid limit');
+      if (action === 'grid_charge' || action === 'grid_and_pv_charge') return tr(Homey, 'widget.status.reasonGridCharge', 'The battery needs charging to reach its target within the active charging window');
+      if (action === 'pv_charge') return tr(Homey, 'widget.status.reasonPvCharge', 'Solar surplus is available to charge the battery');
+      if (action === 'avoid_grid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
+      if (action === 'discharge') return tr(Homey, 'widget.status.reasonDischarge', 'The battery is supplying the current shortfall between consumption and solar');
+
+      const base = String(status.baseMode || '');
+      if (base === 'solar_capture') return tr(Homey, 'widget.status.reasonSaveBattery', 'Battery energy is being preserved for later use');
+      if (base === 'charge') return tr(Homey, 'widget.status.reasonGridCharge', 'The battery needs charging to reach its target within the active charging window');
+      if (base === 'manual_charge') return tr(Homey, 'widget.status.reasonManualCharge', 'Manual charging mode is active');
+      if (base === 'avoid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
+      if (base === 'standby') return tr(Homey, 'widget.status.reasonStandby', 'Standby mode is active');
+      return tr(Homey, 'widget.status.reasonBalanced', 'Grid balance is around the configured target');
+    }
+
+    function batteryTimingText(status, Homey) {
+      const timing = status.batteryTiming || {};
+      const direction = String(timing.direction || 'idle');
+      if (direction !== 'charge' && direction !== 'discharge') return null;
+      const hours = Number(timing.hours);
+      const targetSoc = Number(timing.targetSoc);
+      if (!Number.isFinite(hours) || !Number.isFinite(targetSoc)) return null;
+      const totalMinutes = Math.max(0, Math.ceil(hours * 60));
+      const duration = formatDurationMs(totalMinutes * 60000);
+      if (direction === 'charge') {
+        return {
+          label: tr(Homey, 'widget.status.batteryFullIn', 'Full to target'),
+          value: hours <= 0 ? tr(Homey, 'widget.status.batteryAtTarget', 'Target reached') : `${duration} · ${tr(Homey, 'widget.status.target', 'target')} ${formatSoc(targetSoc)}`,
+        };
+      }
+      return {
+        label: tr(Homey, 'widget.status.batterySafetyIn', 'To Safety SoC'),
+        value: hours <= 0 ? tr(Homey, 'widget.status.batteryAtSafety', 'Safety SoC reached') : `${duration} · Safety SoC ${formatSoc(targetSoc)}`,
+      };
     }
 
     function reasonText(reason, Homey) {
@@ -378,7 +433,7 @@
         value.textContent = emsDecision(status, Homey);
         decision.append(eyebrow, value);
         if (enabled(settings, 'showReasons')) {
-          const reason = emsDecisionReason(status);
+          const reason = emsDecisionReason(status, Homey);
           if (reason) {
             const reasonEl = document.createElement('div');
             reasonEl.className = 'decision-reason';
@@ -392,12 +447,14 @@
       const generalGrid = document.createElement('div');
       generalGrid.className = 'grid';
       if (enabled(settings, 'showTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.currentTariff', 'Current tariff'), String(status.tariff?.label || '—'));
-      if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status));
+      if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status, Homey));
       if (enabled(settings, 'showPriceStatus')) addMetric(generalGrid, tr(Homey, 'widget.status.priceData', 'Price data'), priceDataText(status, Homey));
       if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
       if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));
       if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc));
       if (enabled(settings, 'showBatteryTarget')) addMetric(generalGrid, tr(Homey, 'widget.status.batteryTarget', 'Battery target'), formatSoc(status.targetSoc));
+      const timing = batteryTimingText(status, Homey);
+      if (timing) addMetric(generalGrid, timing.label, timing.value);
       if (enabled(settings, 'showNextCharge')) addMetric(generalGrid, tr(Homey, 'widget.status.nextCharge', 'Next charging window'), nextChargeText(status, Homey));
       if (enabled(settings, 'showPeakGuard')) {
         const peakEnabled = Boolean(status.settings?.peakShaveEnabled);

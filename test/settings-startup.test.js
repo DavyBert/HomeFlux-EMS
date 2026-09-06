@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.5.1');
+  assert.equal(manifest.version, '0.5.2');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.5.1 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.5.1 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.5.2 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.5.2 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));

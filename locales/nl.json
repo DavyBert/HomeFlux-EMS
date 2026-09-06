@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.1 — Jouw energie, anders geregeld",
+    "subtitle": "v0.5.2 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -117,7 +117,21 @@
       "evBatteryWaitingCommand": "Batterij ontlaadt tijdelijk {power} terwijl het lagere EV-setpoint ({amps} A) wacht om uitgestuurd te worden",
       "evBatteryWaitingResponse": "Batterij ontlaadt tijdelijk {power} terwijl HomeFlux wacht tot de EV {amps} A volgt · nog max. {seconds} s",
       "evGridImportTarget": "EV-netafname toegestaan tot {target}; de batterijregeling compenseert dit EV-deel niet",
-      "evGridImportTargetBattery": "EV-netafname toegestaan tot {target}; de batterijregeling compenseert alleen boven dit EV-deel · actueel batterijontladen {power}"
+      "evGridImportTargetBattery": "EV-netafname toegestaan tot {target}; de batterijregeling compenseert alleen boven dit EV-deel · actueel batterijontladen {power}",
+      "reasonPeakGuard": "Peak Guard grijpt in boven de ingestelde netlimiet",
+      "reasonGridCharge": "Batterij moet laden om het doel binnen het actieve laadvenster te halen",
+      "reasonPvCharge": "PV-overschot is beschikbaar om de batterij te laden",
+      "reasonAvoidImport": "Netimport wordt vermeden volgens de actieve EMS-/tariefregel",
+      "reasonDischarge": "Batterij levert het actuele tekort tussen verbruik en PV",
+      "reasonSaveBattery": "Batterij-energie wordt bewaard voor later gebruik",
+      "reasonManualCharge": "Handmatige laadmodus is actief",
+      "reasonStandby": "Stand-bymodus is actief",
+      "reasonBalanced": "Netbalans ligt rond de ingestelde doelwaarde",
+      "in": "over",
+      "batteryFullIn": "Vol tot doel",
+      "batterySafetyIn": "Tot Safety SoC",
+      "batteryAtTarget": "Doel bereikt",
+      "batteryAtSafety": "Safety SoC bereikt"
     }
   }
 }

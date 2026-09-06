@@ -61,5 +61,8 @@
   },
   "0.5.1": {
     "en": "Reworked: EV charging now follows real meter headroom and is controlled through EV setpoints, with weighted multi-EV sharing, optional total EV grid-import limits per tariff and optional home-battery support for extra EV charging power without overriding normal battery control. Fixed: battery discharge no longer creates false EV charging headroom when EV battery support is disabled; permitted EV grid import is released only after the lower charger setpoint has been sent and given a short response grace period. Updated: Live status and the EMS widget now explain temporary/intentional battery discharge during EV charging. Added: configurable direct/5/7/10-second grid regulation with PV-delta and adaptive live control for repeating large load changes, plus read-only EMS/EV/HVAC/boiler Flow condition cards. Updated slogan: Your energy, managed differently / Jouw energie, anders geregeld."
+  },
+  "0.5.2": {
+    "en": "Improved: EMS status widget now shows a reason for every battery decision, displays the next tariff with both clock time and remaining time, and shows estimated time to the battery target while charging or to Safety SoC while discharging. No battery-control logic changes."
   }
 }

@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.1 — Your energy, managed differently",
+    "subtitle": "v0.5.2 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -117,7 +117,21 @@
       "evBatteryWaitingCommand": "Battery temporarily discharges {power} while the lower EV setpoint ({amps} A) is waiting to be sent",
       "evBatteryWaitingResponse": "Battery temporarily discharges {power} while waiting for the EV to follow {amps} A · max. {seconds} s remaining",
       "evGridImportTarget": "EV grid import allowed up to {target}; battery control does not compensate this EV share",
-      "evGridImportTargetBattery": "EV grid import allowed up to {target}; battery control compensates only above this EV share · current battery discharge {power}"
+      "evGridImportTargetBattery": "EV grid import allowed up to {target}; battery control compensates only above this EV share · current battery discharge {power}",
+      "reasonPeakGuard": "Peak Guard is intervening above the configured grid limit",
+      "reasonGridCharge": "The battery needs charging to reach its target within the active charging window",
+      "reasonPvCharge": "Solar surplus is available to charge the battery",
+      "reasonAvoidImport": "Grid import is being avoided by the active EMS/tariff rule",
+      "reasonDischarge": "The battery is supplying the current shortfall between consumption and solar",
+      "reasonSaveBattery": "Battery energy is being preserved for later use",
+      "reasonManualCharge": "Manual charging mode is active",
+      "reasonStandby": "Standby mode is active",
+      "reasonBalanced": "Grid balance is around the configured target",
+      "in": "in",
+      "batteryFullIn": "Full to target",
+      "batterySafetyIn": "To Safety SoC",
+      "batteryAtTarget": "Target reached",
+      "batteryAtSafety": "Safety SoC reached"
     }
   }
 }

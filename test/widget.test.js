@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.5.1');
-assert.equal(appCompose.version, '0.5.1');
-assert.equal(packageJson.version, '0.5.1');
-assert.equal(packageLock.version, '0.5.1');
-assert.equal(packageLock.packages[''].version, '0.5.1');
+assert.equal(manifest.version, '0.5.2');
+assert.equal(appCompose.version, '0.5.2');
+assert.equal(packageJson.version, '0.5.2');
+assert.equal(packageLock.version, '0.5.2');
+assert.equal(packageLock.packages[''].version, '0.5.2');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
 assert.deepEqual(manifest.widgets.status, { ...statusCompose, id: 'status' }, 'generated status widget manifest must match widget Compose');
 for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar']) {
@@ -39,11 +39,13 @@ assert(statusHtml.includes("enabled(settings, 'showPlanningNeed')"), 'status wid
 assert(statusHtml.includes("enabled(settings, 'showPlanningGrid')"), 'status widget must allow planned grid energy to be selected');
 assert(statusHtml.includes("enabled(settings, 'showPlanningSolar')"), 'status widget must allow expected PV energy to be selected');
 assert(statusHtml.includes("enabled(settings, 'showReasons')"), 'status widget must allow decision reasons to be selected');
-assert(statusHtml.includes('emsDecisionReason(status)'), 'status widget must render the existing EMS decision reason');
+assert(statusHtml.includes('emsDecisionReason(status, Homey)'), 'status widget must render a reason for every EMS decision');
 assert(statusHtml.includes('reasonText(ev.reason, Homey)'), 'status widget must render the existing EV reason');
 assert(statusHtml.includes('reasonText(hvac.reason, Homey)'), 'status widget must render the existing HVAC reason');
 assert(statusHtml.includes('reasonText(status.boiler.reason, Homey)'), 'status widget must render the existing boiler reason');
-assert(statusHtml.includes('nextTariffText(status)'), 'status widget must render the next tariff');
+assert(statusHtml.includes('nextTariffText(status, Homey)'), 'status widget must render the next tariff with remaining time');
+assert(statusHtml.includes('formatDurationMs(nextAt - Date.now())'), 'next tariff must include a live countdown');
+assert(statusHtml.includes('batteryTimingText(status, Homey)'), 'status widget must render charge/discharge remaining time');
 assert(statusHtml.includes('priceDataText(status, Homey)'), 'status widget must render price-data freshness');
 assert(statusHtml.includes('nextChargeText(status, Homey)'), 'status widget must render next-charge status');
 assert.equal(compose.height, 150);

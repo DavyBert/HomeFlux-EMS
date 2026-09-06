@@ -1980,7 +1980,7 @@ function bareApp() {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.4.5');
+  assert.equal(simulation.version, '0.5.2');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
