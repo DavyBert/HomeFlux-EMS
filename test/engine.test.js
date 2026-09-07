@@ -45,6 +45,37 @@ function state(overrides = {}) {
   };
 }
 
+// v0.5.3: zero home batteries is a first-class configuration. The battery
+// engine must emit no commands and must not invent a Battery 1 Peak Guard
+// discharge. Flexible-load Peak Guard remains handled by the app layer.
+{
+  const settings = baseSettings({ batteryCount: 0, forcedMode: 'auto', peakShaveEnabled: true, peakLimitW: 2500 });
+  const result = evaluate(
+    state({ gridPowerW: 5000, batterySoc: [], lastTotalCommandW: 0 }),
+    settings,
+    new Date('2026-08-22T12:00:00+02:00'),
+  );
+  assert.deepEqual(result.commands, []);
+  assert.equal(result.totalCommandW, 0);
+  assert.equal(result.override, null);
+  assert.equal(result.validBatteryCount, 0);
+}
+
+// Distribution and planning also preserve the explicit zero-battery state.
+{
+  const settings = baseSettings({ batteryCount: 0 });
+  assert.deepEqual(distributeCommand(4000, state({ batterySoc: [] }), settings), []);
+  const plan = buildSocPlan(
+    state({ batterySoc: [] }),
+    settings,
+    new Date('2026-08-22T12:00:00+02:00'),
+  );
+  assert.equal(plan.ready, false);
+  assert.equal(plan.currentSoc, null);
+  assert.equal(plan.maxChargeW, 0);
+  assert.equal(plan.message, 'Geen thuisbatterij geconfigureerd.');
+}
+
 // Solar capture absorbs export and does not discharge for ordinary import.
 {
   const result = evaluate(state({ gridPowerW: -800 }), baseSettings(), new Date('2026-08-22T12:00:00+02:00'));

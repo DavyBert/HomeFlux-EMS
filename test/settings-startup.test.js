@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.5.2');
+  assert.equal(manifest.version, '0.5.3');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.5.2 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.5.2 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.5.3 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.5.3 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -56,7 +56,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 50"));
+assert(appJs.includes("settingsSchemaVersion', 51"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);
@@ -64,6 +64,9 @@ for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmer
 }
 assert(appJs.includes('if (schema < 49)'), 'v0.4.10 EV home-battery support migration missing');
 assert(appJs.includes('if (schema < 50)'), 'v0.4.18 EV/control migration missing');
+assert(appJs.includes('if (schema < 51)'), 'global EV PV distribution migration missing');
+assert(html.includes('id="evPvSharePercent"'), 'global EV PV distribution setting missing');
+for (const id of ['evSmartPvPriority','ev2SmartPvPriority','ev3SmartPvPriority','ev4SmartPvPriority']) assert(!html.includes(`id="${id}"`), `${id} legacy per-EV PV priority must not remain visible`);
 for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW']) assert(html.includes(`id="${id}"`), `${id} v0.4.18 setting missing`);
 for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
 assert(html.includes('data-rate-k="evMaxGridImportW"'), 'TOU total EV grid import limit missing');
@@ -207,3 +210,10 @@ assert(html.includes("uiLanguage==='nl'?'Actueel setpoint':'Current setpoint'"),
 assert(html.includes("uiLanguage==='nl'?'Laatste HomeFlux-uitgang':'Last HomeFlux output'"), 'HVAC live status must separate the last HomeFlux output from received HVAC values');
 
 console.log('settings startup tests passed');
+
+assert(html.includes('id="evFeedbackTolerancePercent"'), 'EV feedback tolerance setting missing');
+for (const pct of [5, 10, 15, 20]) assert(html.includes(`<option value="${pct}">${pct}%</option>`), `EV feedback tolerance option ${pct}% missing`);
+for (const stem of ['ev','ev2','ev3','ev4']) {
+  assert(html.includes(`id="${stem}SkipFeedbackValidation"`), `${stem} skip-feedback setting missing`);
+  assert(html.includes(`id="${stem}CommandIntervalSeconds" max="3600"`), `${stem} EV command interval must allow up to 3600 s`);
+}

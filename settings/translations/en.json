@@ -679,7 +679,12 @@
     "Alleen wanneer standaard EV-laden in het vaste laadvenster is toegestaan en PV tekort komt. HomeFlux probeert eerst rond 0 W netafname te blijven. De ingestelde waarde is de maximale totale netafname op de teller tijdens EV-laden, niet extra EV-vermogen bovenop ander woningverbruik. 0 W = geen extra netenergie voor EV-laden. Peak Guard blijft altijd de absolute bovengrens.": "Only when standard EV charging is allowed in the fixed charging window and PV is insufficient. HomeFlux first tries to stay around 0 W grid import. The configured value is the maximum total meter import during EV charging, not extra EV power on top of other household consumption. 0 W = no additional grid energy for EV charging. Peak Guard always remains the absolute limit.",
     "Maximale tellerafname tijdens EV-laden per prijscategorie": "Maximum meter import during EV charging per price category",
     "De ingestelde waarde is de maximale totale netafname op de teller tijdens standaard EV-laden in die prijscategorie, inclusief ander woningverbruik. HomeFlux probeert eerst 0 W. 0 W = alleen beschikbare PV/energieruimte. Peak Guard blijft altijd absoluut.": "The configured value is the maximum total meter import during standard EV charging in that price category, including other household consumption. HomeFlux first targets 0 W. 0 W = available PV/energy headroom only. Peak Guard always remains absolute.",
-    "v0.5.2 — Jouw energie, anders geregeld": "v0.5.2 — Your energy, managed differently"
+    "v0.5.3 — Jouw energie, anders geregeld": "v0.5.3 — Your energy, managed differently",
+    "Tolerantie EV-stroomcontrole (%)": "EV current feedback tolerance (%)",
+    "Afwijking die HomeFlux accepteert tussen het uitgestuurde ampèresetpoint en een nieuwe EV-meting. 15% accepteert bijvoorbeeld 8 A als terugmelding bij een setpoint van 7 A.": "Deviation HomeFlux accepts between the published ampere setpoint and fresh EV feedback. 15% accepts, for example, an 8 A report for a 7 A setpoint.",
+    "Niet controleren of EV het setpoint aanneemt": "Do not verify whether the EV follows the setpoint",
+    "Standaard uit. Indien ingeschakeld vertrouwt HomeFlux het laatst uitgestuurde EV-setpoint en wacht het niet op bevestiging via de gemeten laadstroom. P1 en Peak Guard blijven altijd actief.": "Off by default. When enabled, HomeFlux trusts the last published EV setpoint and does not wait for confirmation from measured charging current. P1 and Peak Guard always remain active.",
+    "Maximum 3600 s. Een stopcommando mag altijd onmiddellijk worden uitgestuurd en wacht niet op deze timer.": "Maximum 3600 s. A stop command may always be published immediately and never waits for this timer."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",
@@ -945,5 +950,21 @@
     "planning.targetTimeDetail": "The charge calculation runs until this configured target time.",
     "Vermeden kosten": "Avoided costs",
     "PV in batterij · gratis": "PV in battery · free"
-  }
+  },
+  "PV-verdeling thuisbatterij / EV’s": "PV distribution home battery / EVs",
+  "Verdeling beschikbaar PV-vermogen": "Available PV power distribution",
+  "Batterij 90% · EV’s 10%": "Battery 90% · EVs 10%",
+  "Batterij 80% · EV’s 20%": "Battery 80% · EVs 20%",
+  "Batterij 70% · EV’s 30%": "Battery 70% · EVs 30%",
+  "Batterij 60% · EV’s 40%": "Battery 60% · EVs 40%",
+  "Batterij 50% · EV’s 50%": "Battery 50% · EVs 50%",
+  "Batterij 40% · EV’s 60%": "Battery 40% · EVs 60%",
+  "Batterij 30% · EV’s 70%": "Battery 30% · EVs 70%",
+  "Batterij 20% · EV’s 80%": "Battery 20% · EVs 80%",
+  "Batterij 10% · EV’s 90%": "Battery 10% · EVs 90%",
+  "Globaal voor alle EV’s. HomeFlux vormt één PV-budget uit werkelijk resterend PV-overschot en PV-vermogen dat de thuisbatterij al aan het laden is. Dit percentage bepaalt welk deel de gezamenlijke EV-pool mag gebruiken. Het EV-budget wordt daarna verdeeld volgens de individuele EV-gewichten. De normale batterijregeling blijft ongewijzigd.": "Global for all EVs. HomeFlux creates one PV budget from real remaining PV surplus and PV power the home battery is already charging with. This percentage determines the share the combined EV pool may use. The EV budget is then distributed according to the individual EV weights. Normal battery control remains unchanged.",
+  "PV-aandeel EV-pool": "EV pool PV share",
+  "PV-verdeling EV": "PV distribution EV",
+  "batterij": "battery",
+  "verdeeld volgens EV-gewicht": "distributed by EV weight"
 }

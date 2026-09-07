@@ -64,6 +64,49 @@ function bareApp() {
   return app;
 }
 
+// v0.5.3: an explicit zero battery count remains zero throughout the app
+// layer. It requires no charge test, no battery SoC inputs and gives the EV
+// pool the full flexible PV budget.
+{
+  const app = bareApp();
+  assert.equal(app.getBatteryCount({ batteryCount: 0 }), 0);
+  assert.equal(app.getBatteryCount({ batteryCount: -1 }), 0);
+  assert.equal(app.getBatteryCount({ batteryCount: 8 }), 8);
+  assert.equal(app.isChargeTestValid({ batteryCount: 0, chargeTestPassed: false }), true);
+  assert.equal(app.getEvPvSharePercent({ batteryCount: 0, evPvSharePercent: 10 }), 100);
+
+  const now = Date.now();
+  app.inputSeen.grid = true;
+  app.inputUpdatedAt.grid = now;
+  app.inputSeen.batterySoc = Array(8).fill(false);
+  app.state.batterySoc = Array(8).fill(null);
+  const readiness = app.getInputReadiness({ batteryCount: 0, commandIntervalSeconds: 10, contractType: 'fixed' });
+  assert.equal(readiness.ready, true);
+  assert.deepEqual(readiness.received.batterySoc, []);
+  assert.equal(readiness.degraded.some(item => item.startsWith('SoC batterij')), false);
+}
+
+// PV export limiting remains usable without a battery: the battery-SoC gate
+// disappears, while the real grid and PV measurements remain authoritative.
+{
+  const app = bareApp();
+  app.inputSeen.pv = true;
+  app.state.pvPowerW = 5000;
+  app.state.gridPowerW = -1000;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedPvLimitPercent = 100;
+  const settings = {
+    batteryCount: 0,
+    exportLimitEnabled: true,
+    minimumExportW: 50,
+    pvCurtailMinBatterySoc: 95,
+  };
+  const limit = app.calculatePvPowerLimit(settings, 0, 0);
+  assert.equal(limit.batterySocAllowsCurtailment, true);
+  assert.ok(limit.limitPercent < 100);
+  assert.equal(limit.targetGridW, -50);
+}
+
 // Time-weighted 5 s grid history, without any extra polling.
 {
   const app = bareApp();
@@ -927,7 +970,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true }],
     touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evPvSharePercent: 90, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
   };
@@ -940,12 +983,128 @@ function bareApp() {
     gridChargeAssistW: 0, pvChargeW: 3000,
   };
   const ev = app.coordinateEvBatteryPriority(result, settings);
-  assert.equal(ev.desiredCurrentA, 13);
+  assert.equal(ev.desiredCurrentA, 11);
   assert.equal(result.candidateTotalCommandW, -3000);
 }
 
-// Battery-first keeps the already calculated PV battery charge. With no real
-// residual export left, a stopped EV remains stopped.
+// v0.5.3: with no home battery, the stored battery-first/10% preference must
+// not reserve PV for a device that does not exist. The EV effectively receives
+// 100% of the real residual export.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = -3000;
+  app.state.lastTotalCommandW = 0;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 0, evCount: 1,
+    touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true }],
+    touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
+    evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    candidateCommands: [], candidateTotalCommandW: 0,
+    calculatedCommands: [], calculatedTotalCommandW: 0,
+    commands: [], totalCommandW: 0,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.pvSharePercent, 100);
+  assert.equal(ev.desiredCurrentA, 13);
+  assert.equal(ev.pvAllocatedW, 2990);
+  assert.deepEqual(result.candidateCommands, []);
+  assert.equal(result.candidateTotalCommandW, 0);
+}
+
+// v0.5.3: an already-active Smart EV is part of the SAME flexible PV pool.
+// Real-world regression: battery charges at 8.2 kW, P1 imports 122 W and the
+// 3-phase EV is physically at 2.9 A while HomeFlux has 13 A published. With
+// fresh EV feedback the physical pool is 8.2 kW + 2.001 kW - 122 W = 10.079
+// kW. A 90% EV share therefore still supports 13 A; the EV must not eat its
+// own PV budget and be stepped back to 10 A.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: 2000, chargeCurrent: 2000 };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 2.9;
+  app.state.gridPowerW = 122;
+  app.state.lastTotalCommandW = -8200;
+  app.lastPublishedEvCurrentA = 13;
+  app.lastPublishedEvAllowed = true;
+  app.lastEvPublishedAt = 1000;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 1, evCount: 1,
+    touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true }],
+    touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evPvSharePercent: 90, evSmartGridPriority: 'battery_first', evWeight: 1,
+    evPhases: 3, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    candidateCommands: [-8200], candidateTotalCommandW: -8200,
+    calculatedCommands: [-8200], calculatedTotalCommandW: -8200,
+    commands: [-8200], totalCommandW: -8200,
+    gridChargeAssistW: 0, pvChargeW: 8200,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.desiredCurrentA, 13);
+  assert.equal(ev.pvAllocatedW, 8970);
+  assert.equal(result.candidateTotalCommandW, -8200);
+}
+
+// Grid import must still be removed from an already-active EV's reconstructed
+// PV contribution when there is no home battery. 10 A at one phase is 2300 W;
+// with 500 W P1 import only 1800 W is PV-funded, so 7 A is the largest whole
+// ampere step that can remain active.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: 2000, chargeCurrent: 2000 };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 10;
+  app.state.gridPowerW = 500;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedEvCurrentA = 10;
+  app.lastPublishedEvAllowed = true;
+  app.lastEvPublishedAt = 1000;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 0, evCount: 1,
+    touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true }],
+    touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evPvSharePercent: 10, evWeight: 1,
+    evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    candidateCommands: [], candidateTotalCommandW: 0,
+    calculatedCommands: [], calculatedTotalCommandW: 0,
+    commands: [], totalCommandW: 0,
+    gridChargeAssistW: 0, pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.pvSharePercent, 100);
+  assert.equal(ev.desiredCurrentA, 7);
+  assert.equal(ev.pvAllocatedW, 1610);
+}
+
+// Battery-first may start from REAL residual export. A queued battery increase
+// does not erase export that is physically present on P1 yet.
 {
   const app = bareApp();
   app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
@@ -959,7 +1118,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true }],
     touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
   };
@@ -974,6 +1133,76 @@ function bareApp() {
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(result.candidateTotalCommandW, -3000);
+}
+
+// EV-first uses PV power that the battery is ALREADY charging with as EV budget,
+// even when there is no residual export. With 8 kW active battery charge and a
+// 6 kW PV start threshold, a 3-phase EV may start at 11 A (7.59 kW). The queued
+// battery candidate remains untouched.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = 0;
+  app.state.lastTotalCommandW = -8000;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
+    touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true, evPvMinSurplusW: 6000 }],
+    touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evPvSharePercent: 90, evSmartGridPriority: 'battery_first', evWeight: 1,
+    evPhases: 3, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    candidateCommands: [-10000], candidateTotalCommandW: -10000,
+    calculatedCommands: [-10000], calculatedTotalCommandW: -10000,
+    commands: [-10000], totalCommandW: -10000,
+    gridChargeAssistW: 0, pvChargeW: 10000,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.desiredCurrentA, 10);
+  assert.equal(ev.pvAllocatedW, 6900);
+  assert.equal(result.candidateTotalCommandW, -10000);
+}
+
+// Regression for the real-world EV-first case: 5.2 kW is already charging
+// the battery and P1 still exports 1.826 kW. EV-first sees both as 7.026 kW of
+// transferable PV budget, so a 3-phase EV with 7 A minimum and a 6 kW start
+// threshold receives 10 A (6.9 kW). Battery-first sees only the real 1.826 kW
+// export and therefore stays stopped.
+for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = -1826;
+  app.state.lastTotalCommandW = -5200;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
+    touRates: [{ id: 'piek', name: 'Piek', evChargeAllowed: false, evPvChargeAllowed: true, evPvMinSurplusW: 6000 }],
+    touSchedule: [{ rateId: 'piek', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: priority, evPvSharePercent: priority === 'ev_first' ? 90 : 10, evSmartGridPriority: 'battery_first', evWeight: 1,
+    evPhases: 3, evMinCurrentA: 7, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'piek', className: 'peak', label: 'Piek' },
+    candidateCommands: [-8000], candidateTotalCommandW: -8000,
+    calculatedCommands: [-8000], calculatedTotalCommandW: -8000,
+    commands: [-8000], totalCommandW: -8000,
+    gridChargeAssistW: 0, pvChargeW: 8000,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.desiredCurrentA, expectedA);
+  assert.equal(result.candidateTotalCommandW, -8000);
 }
 
 // Standard charging on a selected tariff first targets zero grid and may then
@@ -991,7 +1220,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 2000 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
   };
@@ -1026,7 +1255,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 2000 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
   };
@@ -1058,7 +1287,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 5000 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     peakShaveEnabled: true, peakLimitW: 2500, peakSoftMarginW: 100,
     exportLimitEnabled: false, minimumExportW: 0,
@@ -1099,7 +1328,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 2,
     touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true, ev2ChargeAllowed: false, ev2PvChargeAllowed: true }],
     touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 3,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 90, evSmartGridPriority: 'battery_first', evWeight: 3,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     ev2Enabled: true, ev2SocEnabled: false, ev2Mode: 'smart', ev2SmartPvPriority: 'battery_first', ev2SmartGridPriority: 'battery_first', ev2Weight: 1,
     ev2Phases: 1, ev2MinCurrentA: 6, ev2MaxCurrentA: 32, ev2StandardCurrentA: 16,
@@ -1934,7 +2163,7 @@ function bareApp() {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 50);
+  assert.equal(stored.settingsSchemaVersion, 51);
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
   assert.equal(stored.lowForecastAutoSunnySoc, 90);
   assert.equal(stored.lowForecastAutoSunnyMinutes, 10);
@@ -1947,6 +2176,7 @@ function bareApp() {
   assert.equal(stored.adaptiveSetpointDeltaW, 1000);
   assert.equal(stored.adaptiveSetpointWindowSeconds, 15);
   assert.equal(stored.evWeight, 1);
+  assert.equal(stored.evPvSharePercent, 10);
   assert.equal(stored.evFixedMaxGridImportW, 0);
 }
 
@@ -1980,7 +2210,7 @@ function bareApp() {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.5.2');
+  assert.equal(simulation.version, '0.5.3');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2125,7 +2355,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 5000 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evSmartGridPriority: 'share', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evPvSharePercent: 90, evSmartGridPriority: 'share', evWeight: 1,
     evPeakGuardBatteryAssistNormal: false,
     evControlType: 'current', evPhases: 3, evMinCurrentA: 6, evMaxCurrentA: 16, evStandardCurrentA: 16, evCommandIntervalSeconds: 10,
     batteryCount: 1, minSoc: 10, maxSoc: 100,
@@ -2155,25 +2385,34 @@ function bareApp() {
   assert.equal(coordination.requestedTargetW, 4900);
   assert.equal(coordination.activeTargetW, 0);
 
-  // After publishing 10 A, wait one normal EV command interval for the real
-  // charger current to follow. If it is still at 16 A, keep the temporary hold.
+  // After publishing 10 A, stale EV feedback may not release intentional grid
+  // import. The battery controller keeps its ordinary zero-grid target until a
+  // feedback sample newer than the command confirms that the charger followed.
   app.lastPublishedEvCurrentA = 10;
   app.lastEvPublishedAt = now;
+  app.inputUpdatedAt.ev.chargeCurrent = now - 1000;
   coordination = app.getEvGridImportControlStatus(settings, now + 3000);
   assert.equal(coordination.state, 'waiting_response');
   assert.equal(coordination.activeTargetW, 0);
-  assert.equal(coordination.remainingSeconds, 7);
+  assert.equal(coordination.remainingSeconds, 0);
 
-  // If the charger remains slow beyond the grace time, release the permitted
-  // 4.9 kW EV grid target anyway. The battery may then only cover power above it.
-  coordination = app.getEvGridImportControlStatus(settings, now + 11000);
-  assert.equal(coordination.state, 'active');
-  assert.equal(coordination.activeTargetW, 4900);
+  // Even many minutes later the stale 16 A sample must not create an EV grid
+  // allowance. This is important for cloud APIs that poll only every 15 min.
+  coordination = app.getEvGridImportControlStatus(settings, now + (15 * 60 * 1000));
+  assert.equal(coordination.state, 'waiting_response');
+  assert.equal(coordination.activeTargetW, 0);
 
-  // As soon as the charger actually follows 10 A, the allowance is active
-  // immediately; no unnecessary battery discharge hold remains.
+  // A fresh sample that still reports too much current also keeps zero-grid.
+  app.inputUpdatedAt.ev.chargeCurrent = now + (15 * 60 * 1000);
+  coordination = app.getEvGridImportControlStatus(settings, now + (15 * 60 * 1000) + 1);
+  assert.equal(coordination.state, 'waiting_response');
+  assert.equal(coordination.activeTargetW, 0);
+
+  // As soon as fresh feedback confirms 10 A, the explicitly configured 4.9 kW
+  // tariff allowance may become active.
   app.state.evChargeCurrentA = 10;
-  coordination = app.getEvGridImportControlStatus(settings, now + 3000);
+  app.inputUpdatedAt.ev.chargeCurrent = now + (15 * 60 * 1000) + 2000;
+  coordination = app.getEvGridImportControlStatus(settings, now + (15 * 60 * 1000) + 2001);
   assert.equal(coordination.state, 'active');
   assert.equal(coordination.activeTargetW, 4900);
 
@@ -2186,6 +2425,162 @@ function bareApp() {
   assert.equal(evaluationState.gridPowerW, 0, 'raw P1 must remain untouched');
   assert.equal(evaluationState.evGridImportTargetW, 4900);
   assert.equal(evaluationState.controlGridPowerW, -4900, 'only the battery meter target is shifted by the permitted EV grid share');
+}
+
+// v0.5.3 EV cloud-feedback regression: a measurement older than the last
+// published EV current must not override the setpoint used by EV control.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now - 60000 };
+  app.state.evChargeCurrentA = 7.5;
+  app.lastPublishedEvCurrentA = 11;
+  app.lastEvPublishedAt = now;
+  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0)), 11);
+  app.inputUpdatedAt.ev.chargeCurrent = now + 1000;
+  app.state.evChargeCurrentA = 10.8;
+  // Default 15% tolerance: 10.8 A is accepted as the already published 11 A.
+  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 15 }), 11);
+  // At a 7 A command, a fresh 8 A report differs by 14.3% and is therefore
+  // accepted at 15%, but not at 10%.
+  app.lastPublishedEvCurrentA = 7;
+  app.state.evChargeCurrentA = 8;
+  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 15 }), 7);
+  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 10 }), 8);
+  // A clearly different fresh measurement remains authoritative.
+  app.state.evChargeCurrentA = 9;
+  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 15 }), 9);
+}
+
+
+// v0.5.3 optional EV feedback validation bypass: when enabled HomeFlux trusts
+// its own published setpoint even when fresh charger telemetry differs. This is
+// intended for slow/coarse cloud APIs. P1/Peak Guard remain independent.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now + 1000 };
+  app.state.evChargeCurrentA = 7;
+  app.lastPublishedEvCurrentA = 11;
+  app.lastEvPublishedAt = now;
+  const settings = { evSkipFeedbackValidation: true, evFeedbackTolerancePercent: 5 };
+  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), settings), 11);
+  assert.equal(app.getEvCommandIntervalMs({ evCommandIntervalSeconds: 3600 }), 3600_000);
+  assert.equal(app.getEvCommandIntervalMs({ evCommandIntervalSeconds: 9999 }), 3600_000);
+}
+
+// Disabling EV feedback validation also means an already-published lower
+// setpoint does not hold the tariff grid-import allowance waiting for charger
+// feedback. Waiting for the output interval itself still applies.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now - 1000 };
+  app.state.evChargeCurrentA = 16;
+  app.lastPublishedEvCurrentA = 10;
+  app.lastEvPublishedAt = now;
+  app.latestEvDecision = {
+    connected: true, selectedTariff: true, portfolioGridImportTargetW: 4900,
+    desiredCurrentA: 10,
+  };
+  const settings = {
+    evCount: 1, evEnabled: true, evControlType: 'current', evCommandIntervalSeconds: 3600,
+    evSkipFeedbackValidation: true, evFeedbackTolerancePercent: 5,
+  };
+  const coordination = app.getEvGridImportControlStatus(settings, now + 1000);
+  assert.equal(coordination.state, 'active');
+  assert.equal(coordination.activeTargetW, 4900);
+}
+
+// A current-controlled EV STOP (0 A) must bypass even a one-hour EV output
+// interval. Non-stop changes continue to respect the configured interval.
+(async () => {
+  const app = bareApp();
+  const now = Date.now();
+  const settings = {
+    evEnabled: true, evControlType: 'current', evMode: 'smart', evCommandIntervalSeconds: 3600,
+  };
+  app.getSettings = () => settings;
+  app.lastPublishedEvCurrentA = 16;
+  app.lastPublishedEvAllowed = true;
+  app.lastEvPublishedAt = now;
+  app.evPublishing = false;
+  app.forceEvOutput = false;
+  app.tokens = new Map();
+  let currentTriggered = null;
+  app.evCurrentTrigger = { trigger: async tokens => { currentTriggered = tokens.charge_current; return true; } };
+  app.evAllowedTrigger = { trigger: async () => true };
+  await app.publishEvDecision({
+    connected: true, allowed: false, peakLimited: false, desiredCurrentA: 0,
+    desiredPowerW: 0, source: 'off', reason: 'stop now',
+  });
+  assert.equal(currentTriggered, 0);
+  assert.equal(app.lastPublishedEvCurrentA, 0);
+})().catch(err => {
+  console.error(err);
+  process.exitCode = 1;
+});
+
+
+// v0.5.3: Live status exposes the next EV output, why it is wanted and
+// how long the configured minimum output interval still blocks it.
+{
+  const app = bareApp();
+  const now = 2_000_000;
+  app.extraEvInstances = [];
+  app.lastPublishedEvCurrentA = 0;
+  app.lastPublishedEvAllowed = false;
+  app.lastEvPublishedAt = now - 1_000;
+  const settings = {
+    evCount: 1, evEnabled: true, evControlType: 'current', evMode: 'smart',
+    evCommandIntervalSeconds: 300,
+  };
+  const timing = app.getEvOutputTimingStatus(0, {
+    connected: true, allowed: true, peakLimited: false,
+    desiredCurrentA: 13, desiredPowerW: 2990,
+    reason: 'Slim laden via PV · PV-verdeling EV 90% / batterij 10%',
+  }, settings, now);
+  assert.equal(timing.state, 'waiting_interval');
+  assert.equal(timing.pending, true);
+  assert.equal(timing.nextCurrentA, 13);
+  assert.equal(timing.nextAllowed, true);
+  assert.equal(timing.remainingSeconds, 299);
+  assert.equal(timing.waitReason, 'minimumtijd tussen EV-uitgangen');
+  assert.match(timing.reason, /Slim laden via PV/);
+}
+
+// When the primary EV output timer expires, EV1 must request a complete fresh
+// EMS/portfolio evaluation just like EV2-4. It must not republish a legacy
+// single-EV decision that can bypass the current PV distribution.
+{
+  const app = bareApp();
+  let timerCallback = null;
+  let evaluation = null;
+  let legacyCalculationCalled = false;
+  let directPublishCalled = false;
+  app.evTimer = null;
+  app.homey.setTimeout = (callback, delay) => {
+    timerCallback = callback;
+    assert.equal(delay, 1234);
+    return 77;
+  };
+  app.requestContextEvaluate = (force, reason) => { evaluation = { force, reason }; };
+  app.calculateEvControl = () => { legacyCalculationCalled = true; return null; };
+  app.publishEvDecision = async () => { directPublishCalled = true; };
+  app.scheduleEvPublish(1234);
+  assert.equal(app.evTimer, 77);
+  assert.ok(timerCallback);
+  timerCallback();
+  assert.equal(app.evTimer, null);
+  assert.deepEqual(evaluation, { force: true, reason: 'ev1_output_timer' });
+  assert.equal(legacyCalculationCalled, false);
+  assert.equal(directPublishCalled, false);
 }
 
 // v0.4.11: the profit chart's avoided-cost bar is net profit relative to
@@ -2232,7 +2627,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 0 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPeakGuardBatteryAssistNormal: true,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     batteryCount: 1, batterySoc: [80], minSoc: 10, maxSoc: 100,
@@ -2269,7 +2664,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 0 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPeakGuardBatteryAssistNormal: false,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     batteryCount: 1, minSoc: 10, maxSoc: 100,
@@ -2297,8 +2692,8 @@ function bareApp() {
   app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
   app.state.evConnected = true;
   app.state.evChargeCurrentA = 0;
-  app.state.gridPowerW = -3000;
-  app.state.lastTotalCommandW = 0;
+  app.state.gridPowerW = 0;
+  app.state.lastTotalCommandW = -3000;
   app.state.batterySoc = [80];
   app.getPvCurtailmentHeadroomW = () => 0;
   app.getRuntimeSettings = settings => settings;
@@ -2306,7 +2701,7 @@ function bareApp() {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
     touRates: [{ id: 'cheap', name: 'Dal', evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 0 }],
     touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
-    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evSmartGridPriority: 'battery_first', evWeight: 1,
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'battery_first', evPvSharePercent: 10, evSmartGridPriority: 'battery_first', evWeight: 1,
     evPeakGuardBatteryAssistNormal: true,
     evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
     batteryCount: 1, minSoc: 10, maxSoc: 100,

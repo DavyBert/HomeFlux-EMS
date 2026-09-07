@@ -122,6 +122,7 @@ const DEFAULTS = {
   evMaxCurrentA: 32,
   evStandardCurrentA: 16,
   evCommandIntervalSeconds: 10,
+  evFeedbackTolerancePercent: 15,
   evPeakGuardStopHoldSeconds: 60,
   evFixedChargeWindowEnabled: true,
   evDynamicCheapEnabled: true,
@@ -197,7 +198,7 @@ const DEFAULTS = {
 const EV_INSTANCE_DEFAULT_KEYS = [
   'Enabled','Name','SocEnabled','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW',
   'SmartGridPriority','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases',
-  'MinCurrentA','MaxCurrentA','StandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds',
+  'MinCurrentA','MaxCurrentA','StandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','PeakGuardStopHoldSeconds',
   'FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
 ];
 const EV_INSTANCE_DEFAULT_SOURCE = {
@@ -218,6 +219,7 @@ const EV_INSTANCE_DEFAULT_SOURCE = {
   MaxCurrentA: DEFAULTS.evMaxCurrentA,
   StandardCurrentA: DEFAULTS.evStandardCurrentA,
   CommandIntervalSeconds: DEFAULTS.evCommandIntervalSeconds,
+  FeedbackTolerancePercent: DEFAULTS.evFeedbackTolerancePercent,
   PeakGuardStopHoldSeconds: DEFAULTS.evPeakGuardStopHoldSeconds,
   FixedChargeWindowEnabled: DEFAULTS.evFixedChargeWindowEnabled,
   DynamicCheapEnabled: DEFAULTS.evDynamicCheapEnabled,

@@ -283,7 +283,6 @@
       const supportW = Math.max(0, Number(ev?.batterySupportAllocatedW) || 0);
       const batteryW = Math.max(0, Number(ev?.batteryDischargeW) || 0);
       const gridTargetW = Math.max(0, Number(ev?.evGridImportTargetW) || 0);
-      const remaining = Math.max(0, Math.round(Number(ev?.evGridImportGraceRemainingSeconds) || 0));
       const desiredA = Math.max(0, Number(ev?.desiredCurrentA) || 0);
       if (supportW > 0) {
         return tr(Homey, 'widget.status.evBatterySupport', 'Home battery intentionally supports the EV with {power} extra charging power')
@@ -294,8 +293,8 @@
           return tr(Homey, 'widget.status.evBatteryWaitingCommand', 'Battery temporarily discharges {power} while the lower EV setpoint ({amps} A) is waiting to be sent')
             .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0));
         }
-        return tr(Homey, 'widget.status.evBatteryWaitingResponse', 'Battery temporarily discharges {power} while waiting for the EV to follow {amps} A · max. {seconds} s remaining')
-          .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0)).replace('{seconds}', remaining);
+        return tr(Homey, 'widget.status.evBatteryWaitingResponse', 'Battery temporarily discharges {power} while waiting for fresh EV feedback confirming {amps} A')
+          .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0));
       }
       if (gridTargetW > 0) {
         const key = batteryW > 0 ? 'widget.status.evGridImportTargetBattery' : 'widget.status.evGridImportTarget';

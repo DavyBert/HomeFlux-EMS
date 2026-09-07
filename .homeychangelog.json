@@ -64,5 +64,9 @@
   },
   "0.5.2": {
     "en": "Improved: EMS status widget now shows a reason for every battery decision, displays the next tariff with both clock time and remaining time, and shows estimated time to the battery target while charging or to Safety SoC while discharging. No battery-control logic changes."
+  },
+  "0.5.3": {
+    "en": "Fixed: EV feedback validation now tolerates configurable reporting deviations of 5%, 10%, 15% or 20%. Fresh EV measurements within tolerance no longer pull the requested charging setpoint backward.",
+    "nl": "Opgelost: EV-feedbackcontrole accepteert nu instelbare rapportageafwijkingen van 5%, 10%, 15% of 20%. Nieuwe EV-metingen binnen de tolerantie trekken het gevraagde laadsetpoint niet meer terug."
   }
 }

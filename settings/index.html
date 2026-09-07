@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.5.2 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.5.3 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -629,7 +629,7 @@
 <fieldset class="homey-form-fieldset">
 <legend class="homey-form-legend">Batterijen</legend>
 <div class="grid">
-<div class="homey-form-group"><label class="homey-form-label" for="batteryCount">Aantal batterijen</label><input class="homey-form-input" id="batteryCount" max="8" min="1" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="batteryCount">Aantal batterijen</label><input class="homey-form-input" id="batteryCount" max="8" min="0" step="1" type="number"/><div class="muted">0 = geen thuisbatterij. EV, Peak Guard en andere niet-batterijmodules blijven beschikbaar.</div></div><div class="danger-note full-width hidden" id="batteryEmptyState"><strong>Geen thuisbatterij:</strong> batterij-SoC, laadplanning, Battery Balance en batterijcommando’s worden overgeslagen. Voor slim EV-laden gebruikt de EV-pool automatisch 100% van het beschikbare flexibele PV-vermogen.</div>
 <div class="homey-form-group"><label class="homey-form-label" for="totalCapacityKwh">Totale capaciteit (kWh)</label><input class="homey-form-input" id="totalCapacityKwh" max="200" min="1" step="0.1" type="number"/></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>SoC-grenzen</h4><p class="muted">Minimum en maximum vormen de harde batterijgrenzen. Veiligheids-SoC en de spaargrens bepalen hoeveel reserve HomeFlux tijdens normale werking bewaart.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item" data-setting-id="minSoc"><label class="homey-form-label" for="minSoc">Minimum SoC (%)</label><input class="homey-form-input" id="minSoc" max="100" min="0" step="1" type="number"/><div class="muted">Absolute ondergrens. Peak Guard mag tot deze grens gaan, nooit eronder.</div></div><div class="homey-form-group cluster-item" data-setting-id="maxSoc"><label class="homey-form-label" for="maxSoc">Maximum SoC (%)</label><input class="homey-form-input" id="maxSoc" max="100" min="0" step="1" type="number"/></div><div class="homey-form-group cluster-item" data-setting-id="safetySoc"><label class="homey-form-label" for="safetySoc">Veiligheids-SoC (%)</label><input class="homey-form-input" id="safetySoc" max="100" min="0" step="1" type="number"/><div class="muted">Operationele reserve voor de nacht/ochtend. Normale zelfconsumptie en Batterij sparen ontladen niet onder deze grens. De laadplanning mikt minstens op deze SoC; Peak Guard mag indien nodig nog tot Minimum SoC gaan.</div></div><div class="homey-form-group cluster-item" data-setting-id="batterySaveDischargeAboveSoc"><label class="homey-form-label" for="batterySaveDischargeAboveSoc">Batterij sparen: ontladen boven SoC (%)</label><input class="homey-form-input" id="batterySaveDischargeAboveSoc" max="100" min="0" step="1" type="number"/><div class="muted">In Batterij sparen mag elke batterij afzonderlijk ontladen zolang haar SoC boven deze grens zit. 100% = volledig sparen. Peak Guard mag altijd ingrijpen tot Minimum SoC, maar nooit eronder.</div></div></div></div>
 <div class="homey-form-group full-width wide-explainer"><label class="homey-form-label" for="lowForecastSelfConsumptionMinKwh">Minimum hoeveelheid zon voor zelfconsumptie (kWh)</label><input class="homey-form-input" id="lowForecastSelfConsumptionMinKwh" min="0" step="0.1" type="number"/><div class="muted">Als de volledige PV-voorspelling van de relevante zonnedag lager is dan deze waarde, kan de EMS per prijscategorie naar Batterij sparen schakelen. Overdag gebruikt HomeFlux vandaag; zodra het nachtplan actief is gebruikt dezelfde logica de voorspelling van morgen. Kies onder Energiecontract voor welke categorieën dit geldt.</div></div>
@@ -857,9 +857,9 @@
 <legend class="homey-form-legend">Netexport en PV-begrenzing</legend>
 <label class="homey-form-checkbox"><input id="exportLimitEnabled" type="checkbox"/> <span>Netexport verbieden — PV automatisch terugregelen</span></label>
 <div class="grid">
-<div class="setting-cluster full-width"><div class="cluster-header"><h4>PV-afregeling</h4><p class="muted">De exportbuffer en batterij-SoC-drempel bepalen wanneer PV-begrenzing mag starten. De verzendtijd bepaalt hoe vaak de PV-uitgang werkelijk mag wijzigen.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item" data-setting-id="minimumExportW"><label class="homey-form-label" for="minimumExportW">Minimum export behouden (W)</label><input class="homey-form-input" id="minimumExportW" max="5000" min="0" step="10" type="number"/><div class="muted">Boven de ingestelde batterij-SoC mag HomeFlux bewust een kleine blijvende export behouden. Bijvoorbeeld 50 W betekent dan een doel rond -50 W. Onder de SoC-drempel vervalt deze exportbuffer volledig en krijgt de thuisbatterij het PV-overschot.</div></div><div class="homey-form-group cluster-item" data-setting-id="pvCurtailMinBatterySoc"><label class="homey-form-label" for="pvCurtailMinBatterySoc">PV-begrenzing / exportbuffer vanaf batterij-SoC (%)</label><input class="homey-form-input" id="pvCurtailMinBatterySoc" max="100" min="0" step="1" type="number"/><div class="muted">Standaard 95%. Onder deze gemiddelde batterij-SoC blijft PV op 100% én gebruikt de batterijregeling geen bewuste exportbuffer. Zonder geldige batterij-SoC wordt PV niet begrensd en wordt geen exportdoel aangehouden.</div></div><div class="homey-form-group cluster-item full-width" data-setting-id="pvCommandIntervalSeconds"><label class="homey-form-label" for="pvCommandIntervalSeconds">Min. tijd tussen PV-setpoints (s)</label><input class="homey-form-input" id="pvCommandIntervalSeconds" max="300" min="1" step="1" type="number"/><div class="muted">Eigen minimum verzendtijd voor de Flow-kaart “PV-vermogenslimiet is bijgewerkt”. Deze staat los van de batterijtimer. Bijvoorbeeld: batterij elke 5 s, PV slechts elke 30 s. Tijdens de wachttijd wordt geen oud PV-setpoint bewaard; zodra de timer vrij is rekent HomeFlux opnieuw met de nieuwste meetwaarden.</div></div></div></div>
+<div class="setting-cluster full-width"><div class="cluster-header"><h4>PV-afregeling</h4><p class="muted">De exportbuffer en batterij-SoC-drempel bepalen wanneer PV-begrenzing mag starten. De verzendtijd bepaalt hoe vaak de PV-uitgang werkelijk mag wijzigen.</p></div><div class="cluster-grid"><div class="homey-form-group cluster-item" data-setting-id="minimumExportW"><label class="homey-form-label" for="minimumExportW">Minimum export behouden (W)</label><input class="homey-form-input" id="minimumExportW" max="5000" min="0" step="10" type="number"/><div class="muted">Boven de ingestelde batterij-SoC mag HomeFlux bewust een kleine blijvende export behouden. Bijvoorbeeld 50 W betekent dan een doel rond -50 W. Onder de SoC-drempel vervalt deze exportbuffer volledig en krijgt de thuisbatterij het PV-overschot.</div></div><div class="homey-form-group cluster-item" data-setting-id="pvCurtailMinBatterySoc"><label class="homey-form-label" for="pvCurtailMinBatterySoc">PV-begrenzing / exportbuffer vanaf batterij-SoC (%)</label><input class="homey-form-input" id="pvCurtailMinBatterySoc" max="100" min="0" step="1" type="number"/><div class="muted">Standaard 95%. Met één of meer batterijen blijft PV onder deze gemiddelde batterij-SoC op 100% en gebruikt de batterijregeling geen bewuste exportbuffer. Zonder geldige batterij-SoC wordt dan evenmin begrensd. Bij 0 batterijen vervalt deze SoC-voorwaarde en kan PV-begrenzing rechtstreeks op de netmeting werken.</div></div><div class="homey-form-group cluster-item full-width" data-setting-id="pvCommandIntervalSeconds"><label class="homey-form-label" for="pvCommandIntervalSeconds">Min. tijd tussen PV-setpoints (s)</label><input class="homey-form-input" id="pvCommandIntervalSeconds" max="300" min="1" step="1" type="number"/><div class="muted">Eigen minimum verzendtijd voor de Flow-kaart “PV-vermogenslimiet is bijgewerkt”. Deze staat los van de batterijtimer. Bijvoorbeeld: batterij elke 5 s, PV slechts elke 30 s. Tijdens de wachttijd wordt geen oud PV-setpoint bewaard; zodra de timer vrij is rekent HomeFlux opnieuw met de nieuwste meetwaarden.</div></div></div></div>
 </div>
-<div class="danger-note"><strong>Flow-kaart “PV-vermogenslimiet is bijgewerkt”:</strong> levert een schaal van <strong>10–100%</strong>. Gebruik de tag “PV-limiet (%)” om het maximale omvormer/PV-vermogen te sturen. 100% = niets begrenzen. De kaart respecteert altijd de hierboven ingestelde <strong>minimumtijd tussen PV-setpoints</strong>. PV-begrenzing én de bewuste exportbuffer worden pas toegestaan vanaf de ingestelde gemiddelde batterij-SoC. Boven die drempel laat HomeFlux bij bestaande export de ingestelde kleine exportbuffer door de batterijregeling staan, voorspelt daarna wat het nieuwe batterijcommando met de netmeter doet en begrenst alleen het resterende overschot. Zo corrigeren batterij laden en PV-afregeling nooit dezelfde export dubbel. Als zelfs 10% nog te veel produceert, blijft extra export technisch mogelijk.</div>
+<div class="danger-note"><strong>Flow-kaart “PV-vermogenslimiet is bijgewerkt”:</strong> levert een schaal van <strong>10–100%</strong>. Gebruik de tag “PV-limiet (%)” om het maximale omvormer/PV-vermogen te sturen. 100% = niets begrenzen. De kaart respecteert altijd de hierboven ingestelde <strong>minimumtijd tussen PV-setpoints</strong>. Met één of meer batterijen worden PV-begrenzing en de bewuste exportbuffer pas toegestaan vanaf de ingestelde gemiddelde batterij-SoC. Bij 0 batterijen vervalt die SoC-voorwaarde. Boven die drempel laat HomeFlux bij bestaande export de ingestelde kleine exportbuffer door de batterijregeling staan, voorspelt daarna wat het nieuwe batterijcommando met de netmeter doet en begrenst alleen het resterende overschot. Zo corrigeren batterij laden en PV-afregeling nooit dezelfde export dubbel. Als zelfs 10% nog te veel produceert, blijft extra export technisch mogelijk.</div>
 </fieldset>
 <fieldset class="homey-form-fieldset">
 <legend class="homey-form-legend">Regelaar en veiligheid</legend>
@@ -1114,6 +1114,7 @@
 </section>
 <section class="panel" id="panel-ev">
 <fieldset class="homey-form-fieldset"><legend class="homey-form-legend">EV-laders</legend><div class="grid"><div class="homey-form-group"><label class="homey-form-label" for="evCount">Aantal EV-laders</label><select class="homey-form-select" id="evCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div><div class="homey-form-group"><div class="muted">EV’s werken onafhankelijk en staan niet in de thermische prioriteitenlijst. HomeFlux laat maximaal één nieuwe EV per normale EMS-cyclus starten.</div></div></div></fieldset>
+<fieldset class="homey-form-fieldset" id="evGlobalPvDistributionSettings"><legend class="homey-form-legend">PV-verdeling thuisbatterij / EV’s</legend><div class="grid"><div class="homey-form-group"><label class="homey-form-label" for="evPvSharePercent">Verdeling beschikbaar PV-vermogen</label><select class="homey-form-select" id="evPvSharePercent"><option value="10">Batterij 90% · EV’s 10%</option><option value="20">Batterij 80% · EV’s 20%</option><option value="30">Batterij 70% · EV’s 30%</option><option value="40">Batterij 60% · EV’s 40%</option><option value="50">Batterij 50% · EV’s 50%</option><option value="60">Batterij 40% · EV’s 60%</option><option value="70">Batterij 30% · EV’s 70%</option><option value="80">Batterij 20% · EV’s 80%</option><option value="90">Batterij 10% · EV’s 90%</option></select><div class="muted"><span id="evPvShareHelp">Globaal voor alle EV’s. HomeFlux vormt één PV-budget uit werkelijk resterend PV-overschot en PV-vermogen dat de thuisbatterij al aan het laden is. Dit percentage bepaalt welk deel de gezamenlijke EV-pool mag gebruiken. Het EV-budget wordt daarna verdeeld volgens de individuele EV-gewichten. De normale batterijregeling blijft ongewijzigd.</span></div></div></div></fieldset>
 <div class="card hidden" id="evEmptyState"><div class="statusline">Geen EV-laders geconfigureerd</div><div class="muted">Kies hierboven 1–4 wanneer HomeFlux EV-laders moet beheren.</div></div>
 <div class="instance-tabs" id="evInstanceTabs"><button class="instance-tab active" type="button" data-instance-tab-kind="ev" data-instance-tab="1" id="evInstanceTab1">EV 1</button><button class="instance-tab" type="button" data-instance-tab-kind="ev" data-instance-tab="2" id="evInstanceTab2">EV 2</button><button class="instance-tab" type="button" data-instance-tab-kind="ev" data-instance-tab="3" id="evInstanceTab3">EV 3</button><button class="instance-tab" type="button" data-instance-tab-kind="ev" data-instance-tab="4" id="evInstanceTab4">EV 4</button></div>
 <div id="evInstancePanels"><div class="device-instance-panel active" id="evInstancePanel1" data-ev-instance="1">
@@ -1127,7 +1128,9 @@
 <div class="homey-form-group full-width"><label class="homey-form-label" for="evControlType">Type laadsturing</label><select class="homey-form-select" id="evControlType"><option value="current">Laadstroom regelen (A)</option><option value="mode">Laadmodus sturen (Stop / Slim / Standaard)</option></select><div class="muted" id="evControlTypeHelp"></div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Aansluiting en timing</h4></div><div class="cluster-grid">
 <div class="homey-form-group"><label class="homey-form-label" for="evPhases">Aansluiting laadpunt</label><select class="homey-form-select" id="evPhases"><option value="1">1 fase</option><option value="3">3 fasen</option></select></div>
-<div class="homey-form-group"><label class="homey-form-label" for="evCommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="evCommandIntervalSeconds" max="300" min="1" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="evCommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="evCommandIntervalSeconds" max="3600" min="1" step="1" type="number"/><div class="muted">Maximum 3600 s. Een stopcommando mag altijd onmiddellijk worden uitgestuurd en wacht niet op deze timer.</div></div>
+<div class="homey-form-group"><label class="homey-form-label" for="evFeedbackTolerancePercent">Tolerantie EV-stroomcontrole (%)</label><select class="homey-form-select" id="evFeedbackTolerancePercent"><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select><div class="muted">Afwijking die HomeFlux accepteert tussen het uitgestuurde ampèresetpoint en een nieuwe EV-meting. 15% accepteert bijvoorbeeld 8 A als terugmelding bij een setpoint van 7 A.</div></div>
+<div class="homey-form-group"><label class="homey-form-checkbox"><input id="evSkipFeedbackValidation" type="checkbox"/> <span>Niet controleren of EV het setpoint aanneemt</span></label><div class="muted">Standaard uit. Indien ingeschakeld vertrouwt HomeFlux het laatst uitgestuurde EV-setpoint en wacht het niet op bevestiging via de gemeten laadstroom. P1 en Peak Guard blijven altijd actief.</div></div>
 <div class="homey-form-group full-width" id="evPeakGuardStopHoldGroup"><label class="homey-form-label" for="evPeakGuardStopHoldSeconds">Minimum stoptijd vóór EV-herstart (s)</label><input class="homey-form-input" id="evPeakGuardStopHoldSeconds" max="3600" min="0" step="1" type="number"/><div class="muted">Na iedere door HomeFlux gestuurde STOP blijft een modusgestuurde EV minimaal deze tijd gestopt. Peak Guard stopt onmiddellijk. 0 = uit.</div></div>
 </div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Thuisbatterij en EV</h4><p class="muted">Kies of HomeFlux beschikbaar vermogen uit de thuisbatterij als extra EV-laadbudget mag gebruiken. De normale batterijregeling blijft op de echte P1 sturen en Peak Guard blijft altijd de absolute bovengrens.</p></div><div class="cluster-grid">
@@ -1148,7 +1151,6 @@
 </div></div>
 </fieldset>
 <fieldset class="homey-form-fieldset" id="evSmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
-<div class="homey-form-group"><label class="homey-form-label" for="evSmartPvPriority">Bij PV-overschot</label><select class="homey-form-select" id="evSmartPvPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option></select><div class="muted">Bepaalt wie het beschikbare PV-overschot eerst krijgt.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="evWeight">Verdelingsgewicht EV 1</label><input class="homey-form-input" id="evWeight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
 <div class="homey-form-group" id="evSmartPvExportTargetGroup"><label class="homey-form-label" for="evSmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="evSmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="evSmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="evSmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
@@ -1177,7 +1179,9 @@
 <div class="homey-form-group full-width"><label class="homey-form-label" for="ev2ControlType">Type laadsturing</label><select class="homey-form-select" id="ev2ControlType"><option value="current">Laadstroom regelen (A)</option><option value="mode">Laadmodus sturen (Stop / Slim / Standaard)</option></select><div class="muted" id="ev2ControlTypeHelp"></div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Aansluiting en timing</h4></div><div class="cluster-grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev2Phases">Aansluiting laadpunt</label><select class="homey-form-select" id="ev2Phases"><option value="1">1 fase</option><option value="3">3 fasen</option></select></div>
-<div class="homey-form-group"><label class="homey-form-label" for="ev2CommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="ev2CommandIntervalSeconds" max="300" min="1" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="ev2CommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="ev2CommandIntervalSeconds" max="3600" min="1" step="1" type="number"/><div class="muted">Maximum 3600 s. Een stopcommando mag altijd onmiddellijk worden uitgestuurd en wacht niet op deze timer.</div></div>
+<div class="homey-form-group"><label class="homey-form-label" for="ev2FeedbackTolerancePercent">Tolerantie EV-stroomcontrole (%)</label><select class="homey-form-select" id="ev2FeedbackTolerancePercent"><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select><div class="muted">Afwijking die HomeFlux accepteert tussen het uitgestuurde ampèresetpoint en een nieuwe EV-meting. 15% accepteert bijvoorbeeld 8 A als terugmelding bij een setpoint van 7 A.</div></div>
+<div class="homey-form-group"><label class="homey-form-checkbox"><input id="ev2SkipFeedbackValidation" type="checkbox"/> <span>Niet controleren of EV het setpoint aanneemt</span></label><div class="muted">Standaard uit. Indien ingeschakeld vertrouwt HomeFlux het laatst uitgestuurde EV-setpoint en wacht het niet op bevestiging via de gemeten laadstroom. P1 en Peak Guard blijven altijd actief.</div></div>
 <div class="homey-form-group full-width" id="ev2PeakGuardStopHoldGroup"><label class="homey-form-label" for="ev2PeakGuardStopHoldSeconds">Minimum stoptijd vóór EV-herstart (s)</label><input class="homey-form-input" id="ev2PeakGuardStopHoldSeconds" max="3600" min="0" step="1" type="number"/><div class="muted">Na iedere door HomeFlux gestuurde STOP blijft een modusgestuurde EV minimaal deze tijd gestopt. Peak Guard stopt onmiddellijk. 0 = uit.</div></div>
 </div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Thuisbatterij en EV</h4><p class="muted">Kies of HomeFlux beschikbaar vermogen uit de thuisbatterij als extra EV-laadbudget mag gebruiken. De normale batterijregeling blijft op de echte P1 sturen en Peak Guard blijft altijd de absolute bovengrens.</p></div><div class="cluster-grid">
@@ -1198,7 +1202,6 @@
 </div></div>
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev2SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
-<div class="homey-form-group"><label class="homey-form-label" for="ev2SmartPvPriority">Bij PV-overschot</label><select class="homey-form-select" id="ev2SmartPvPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option></select><div class="muted">Bepaalt wie het beschikbare PV-overschot eerst krijgt.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2Weight">Verdelingsgewicht EV 2</label><input class="homey-form-input" id="ev2Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
 <div class="homey-form-group" id="ev2SmartPvExportTargetGroup"><label class="homey-form-label" for="ev2SmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="ev2SmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev2SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
@@ -1227,7 +1230,9 @@
 <div class="homey-form-group full-width"><label class="homey-form-label" for="ev3ControlType">Type laadsturing</label><select class="homey-form-select" id="ev3ControlType"><option value="current">Laadstroom regelen (A)</option><option value="mode">Laadmodus sturen (Stop / Slim / Standaard)</option></select><div class="muted" id="ev3ControlTypeHelp"></div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Aansluiting en timing</h4></div><div class="cluster-grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev3Phases">Aansluiting laadpunt</label><select class="homey-form-select" id="ev3Phases"><option value="1">1 fase</option><option value="3">3 fasen</option></select></div>
-<div class="homey-form-group"><label class="homey-form-label" for="ev3CommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="ev3CommandIntervalSeconds" max="300" min="1" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="ev3CommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="ev3CommandIntervalSeconds" max="3600" min="1" step="1" type="number"/><div class="muted">Maximum 3600 s. Een stopcommando mag altijd onmiddellijk worden uitgestuurd en wacht niet op deze timer.</div></div>
+<div class="homey-form-group"><label class="homey-form-label" for="ev3FeedbackTolerancePercent">Tolerantie EV-stroomcontrole (%)</label><select class="homey-form-select" id="ev3FeedbackTolerancePercent"><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select><div class="muted">Afwijking die HomeFlux accepteert tussen het uitgestuurde ampèresetpoint en een nieuwe EV-meting. 15% accepteert bijvoorbeeld 8 A als terugmelding bij een setpoint van 7 A.</div></div>
+<div class="homey-form-group"><label class="homey-form-checkbox"><input id="ev3SkipFeedbackValidation" type="checkbox"/> <span>Niet controleren of EV het setpoint aanneemt</span></label><div class="muted">Standaard uit. Indien ingeschakeld vertrouwt HomeFlux het laatst uitgestuurde EV-setpoint en wacht het niet op bevestiging via de gemeten laadstroom. P1 en Peak Guard blijven altijd actief.</div></div>
 <div class="homey-form-group full-width" id="ev3PeakGuardStopHoldGroup"><label class="homey-form-label" for="ev3PeakGuardStopHoldSeconds">Minimum stoptijd vóór EV-herstart (s)</label><input class="homey-form-input" id="ev3PeakGuardStopHoldSeconds" max="3600" min="0" step="1" type="number"/><div class="muted">Na iedere door HomeFlux gestuurde STOP blijft een modusgestuurde EV minimaal deze tijd gestopt. Peak Guard stopt onmiddellijk. 0 = uit.</div></div>
 </div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Thuisbatterij en EV</h4><p class="muted">Kies of HomeFlux beschikbaar vermogen uit de thuisbatterij als extra EV-laadbudget mag gebruiken. De normale batterijregeling blijft op de echte P1 sturen en Peak Guard blijft altijd de absolute bovengrens.</p></div><div class="cluster-grid">
@@ -1248,7 +1253,6 @@
 </div></div>
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev3SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
-<div class="homey-form-group"><label class="homey-form-label" for="ev3SmartPvPriority">Bij PV-overschot</label><select class="homey-form-select" id="ev3SmartPvPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option></select><div class="muted">Bepaalt wie het beschikbare PV-overschot eerst krijgt.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3Weight">Verdelingsgewicht EV 3</label><input class="homey-form-input" id="ev3Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
 <div class="homey-form-group" id="ev3SmartPvExportTargetGroup"><label class="homey-form-label" for="ev3SmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="ev3SmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev3SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
@@ -1277,7 +1281,9 @@
 <div class="homey-form-group full-width"><label class="homey-form-label" for="ev4ControlType">Type laadsturing</label><select class="homey-form-select" id="ev4ControlType"><option value="current">Laadstroom regelen (A)</option><option value="mode">Laadmodus sturen (Stop / Slim / Standaard)</option></select><div class="muted" id="ev4ControlTypeHelp"></div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Aansluiting en timing</h4></div><div class="cluster-grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev4Phases">Aansluiting laadpunt</label><select class="homey-form-select" id="ev4Phases"><option value="1">1 fase</option><option value="3">3 fasen</option></select></div>
-<div class="homey-form-group"><label class="homey-form-label" for="ev4CommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="ev4CommandIntervalSeconds" max="300" min="1" step="1" type="number"/></div>
+<div class="homey-form-group"><label class="homey-form-label" for="ev4CommandIntervalSeconds">Min. tijd tussen EV-uitgangen (s)</label><input class="homey-form-input" id="ev4CommandIntervalSeconds" max="3600" min="1" step="1" type="number"/><div class="muted">Maximum 3600 s. Een stopcommando mag altijd onmiddellijk worden uitgestuurd en wacht niet op deze timer.</div></div>
+<div class="homey-form-group"><label class="homey-form-label" for="ev4FeedbackTolerancePercent">Tolerantie EV-stroomcontrole (%)</label><select class="homey-form-select" id="ev4FeedbackTolerancePercent"><option value="5">5%</option><option value="10">10%</option><option value="15">15%</option><option value="20">20%</option></select><div class="muted">Afwijking die HomeFlux accepteert tussen het uitgestuurde ampèresetpoint en een nieuwe EV-meting. 15% accepteert bijvoorbeeld 8 A als terugmelding bij een setpoint van 7 A.</div></div>
+<div class="homey-form-group"><label class="homey-form-checkbox"><input id="ev4SkipFeedbackValidation" type="checkbox"/> <span>Niet controleren of EV het setpoint aanneemt</span></label><div class="muted">Standaard uit. Indien ingeschakeld vertrouwt HomeFlux het laatst uitgestuurde EV-setpoint en wacht het niet op bevestiging via de gemeten laadstroom. P1 en Peak Guard blijven altijd actief.</div></div>
 <div class="homey-form-group full-width" id="ev4PeakGuardStopHoldGroup"><label class="homey-form-label" for="ev4PeakGuardStopHoldSeconds">Minimum stoptijd vóór EV-herstart (s)</label><input class="homey-form-input" id="ev4PeakGuardStopHoldSeconds" max="3600" min="0" step="1" type="number"/><div class="muted">Na iedere door HomeFlux gestuurde STOP blijft een modusgestuurde EV minimaal deze tijd gestopt. Peak Guard stopt onmiddellijk. 0 = uit.</div></div>
 </div></div>
 <div class="setting-cluster full-width"><div class="cluster-header"><h4>Thuisbatterij en EV</h4><p class="muted">Kies of HomeFlux beschikbaar vermogen uit de thuisbatterij als extra EV-laadbudget mag gebruiken. De normale batterijregeling blijft op de echte P1 sturen en Peak Guard blijft altijd de absolute bovengrens.</p></div><div class="cluster-grid">
@@ -1298,7 +1304,6 @@
 </div></div>
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev4SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
-<div class="homey-form-group"><label class="homey-form-label" for="ev4SmartPvPriority">Bij PV-overschot</label><select class="homey-form-select" id="ev4SmartPvPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option></select><div class="muted">Bepaalt wie het beschikbare PV-overschot eerst krijgt.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4Weight">Verdelingsgewicht EV 4</label><input class="homey-form-input" id="ev4Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
 <div class="homey-form-group" id="ev4SmartPvExportTargetGroup"><label class="homey-form-label" for="ev4SmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="ev4SmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev4SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
@@ -1742,16 +1747,16 @@ async function onHomeyReady(Homey) {
     'balanceEnabled','balanceDeadbandPct','balanceStrength','balanceWarningEnabled','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','controlEnabled','peakShaveEnabled','peakLimitW','peakSoftMarginW',
     'gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','batteryCommandPauseEnabled','batteryCommandPauseStart','batteryCommandPauseEnd','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','nightTargetTime','solarTargetTime','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','sunnyMonthsMinSoc','peakReserveNightEnabled','controlProfile','overrideResumeOnTariffChange','contractType','dynamicPriceSource','dynamicUseBatteryNormalHours',
     'fixedImportPrice','fixedFeedInPrice','fixedChargeWindowStart','fixedChargeWindowEnd','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','exportLimitEnabled',
-    'evCount','hvacCount','boilerCount',
+    'evCount','evPvSharePercent','hvacCount','boilerCount',
     'boilerEnabled','boilerName','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerColdResetTime','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled',
     'priorityEvaluationMinutes','flexibleLoadPriorityOrder'
   ];
-  const numeric = new Set(['batteryCount','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
+  const numeric = new Set(['batteryCount','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','evPvSharePercent','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
   const boolean = new Set(['balanceEnabled','balanceWarningEnabled','controlEnabled','adaptiveLiveControlEnabled','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandPauseEnabled','exportLimitEnabled','peakShaveEnabled','overrideResumeOnTariffChange','dynamicUseBatteryNormalHours','lowForecastAutoSunnyEnabled','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','peakReserveNightEnabled','boilerEnabled','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled']);
   const jsonArray = new Set(['flexibleLoadPriorityOrder']);
-  const evSuffixes = ['Enabled','Name','SocEnabled','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
-  const evNumericSuffixes = new Set(['SmartPvExportTargetW','Weight','BatteryCapacityKwh','TargetSoc','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds']);
-  const evBooleanSuffixes = new Set(['Enabled','SocEnabled','GuaranteeTarget','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled']);
+  const evSuffixes = ['Enabled','Name','SocEnabled','Mode','ControlType','SmartPvExportTargetW','SmartGridPriority','Weight','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
+  const evNumericSuffixes = new Set(['SmartPvExportTargetW','Weight','BatteryCapacityKwh','TargetSoc','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','PeakGuardStopHoldSeconds']);
+  const evBooleanSuffixes = new Set(['Enabled','SocEnabled','GuaranteeTarget','SkipFeedbackValidation','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled']);
   const hvacSuffixes = ['Enabled','Name','AutomaticControlEnabled','AllowOnBattery','UsePvSurplus','ComfortMinC','ComfortMaxC','EnergyDeviationC','HeatingActivationBelowC','CoolingActivationAboveC','Priority','CoolingFanProfile','HeatingFanProfile','ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW','AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl','FanMinValue','FanMaxValue','FanStepValue'];
   const hvacNumericSuffixes = new Set(['ComfortMinC','ComfortMaxC','EnergyDeviationC','HeatingActivationBelowC','CoolingActivationAboveC','ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW','FanMinValue','FanMaxValue','FanStepValue']);
   const hvacBooleanSuffixes = new Set(['Enabled','AutomaticControlEnabled','AllowOnBattery','UsePvSurplus','AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl']);
@@ -1921,6 +1926,12 @@ async function onHomeyReady(Homey) {
     return Math.max(0, Math.min(1, Math.round(Number(q('boilerCount')?.value) || 0)));
   }
 
+  function configuredBatteryCount() {
+    const raw = q('batteryCount')?.value;
+    const value = raw === '' || raw === null || raw === undefined ? 0 : Number(raw);
+    return Math.max(0, Math.min(8, Math.round(Number.isFinite(value) ? value : 0)));
+  }
+
   function configuredName(kind, instance) {
     const stem = instanceStem(kind, instance);
     const name = String(q(`${stem}Name`)?.value || '').trim();
@@ -2056,6 +2067,7 @@ async function onHomeyReady(Homey) {
   }
 
   function updateModuleUi() {
+    updateBatteryConfigurationUi();
     const evCount = configuredCount('ev');
     const hvacCount = configuredCount('hvac');
     const boilerCount = configuredBoilerCount();
@@ -2572,7 +2584,7 @@ async function onHomeyReady(Homey) {
 
   function updateIndividualBatteryLimitsUi() {
     const enabled = Boolean(q('individualBatteryPowerLimitsEnabled')?.checked);
-    const count = Math.max(1, Math.min(8, Math.round(Number(q('batteryCount')?.value) || 1)));
+    const count = configuredBatteryCount();
     for (const id of ['maxChargePerBatteryW','maxDischargePerBatteryW']) {
       const field = q(id);
       if (field) field.disabled = enabled;
@@ -2585,7 +2597,7 @@ async function onHomeyReady(Homey) {
   }
 
   function updateSplitBatteryUi() {
-    const count = Math.max(1, Math.min(8, Math.round(Number(q('batteryCount')?.value) || 1)));
+    const count = configuredBatteryCount();
     document.querySelectorAll('[data-split-battery]').forEach(card => {
       const battery = Number(card.dataset.splitBattery);
       card.classList.toggle('hidden', battery > count);
@@ -2593,6 +2605,27 @@ async function onHomeyReady(Homey) {
       const options = card.querySelector('.split-battery-options');
       if (options) options.classList.toggle('hidden', !enabled);
     });
+  }
+
+  function updateBatteryConfigurationUi() {
+    const count = configuredBatteryCount();
+    const hasBattery = count > 0;
+    q('batteryEmptyState')?.classList.toggle('hidden', hasBattery);
+    q('chargeTestCard')?.classList.toggle('hidden', !hasBattery);
+    const pvShare = q('evPvSharePercent');
+    if (pvShare) pvShare.disabled = !hasBattery;
+    const pvShareHelp = q('evPvShareHelp');
+    if (pvShareHelp) {
+      pvShareHelp.textContent = hasBattery
+        ? (uiLanguage === 'nl'
+          ? 'Globaal voor alle EV’s. HomeFlux vormt één PV-budget uit werkelijk resterend PV-overschot en PV-vermogen dat de thuisbatterij al aan het laden is. Dit percentage bepaalt welk deel de gezamenlijke EV-pool mag gebruiken. Het EV-budget wordt daarna verdeeld volgens de individuele EV-gewichten. De normale batterijregeling blijft ongewijzigd.'
+          : 'Global for all EVs. HomeFlux creates one PV budget from real residual PV export and PV power already charging the home battery. This percentage defines the share available to the combined EV pool, which is then distributed by the individual EV weights.')
+        : (uiLanguage === 'nl'
+          ? 'Geen thuisbatterij geconfigureerd: de EV-pool gebruikt automatisch 100% van het beschikbare flexibele PV-vermogen.'
+          : 'No home battery configured: the EV pool automatically uses 100% of the available flexible PV power.');
+    }
+    updateSplitBatteryUi();
+    updateIndividualBatteryLimitsUi();
   }
 
   function applySplitBatteryTranslations() {
@@ -2645,8 +2678,8 @@ async function onHomeyReady(Homey) {
     }
   }
 
-  q('batteryCount').addEventListener('input', () => { updateSplitBatteryUi(); updateIndividualBatteryLimitsUi(); });
-  q('batteryCount').addEventListener('change', () => { updateSplitBatteryUi(); updateIndividualBatteryLimitsUi(); });
+  q('batteryCount').addEventListener('input', updateBatteryConfigurationUi);
+  q('batteryCount').addEventListener('change', updateBatteryConfigurationUi);
   q('individualBatteryPowerLimitsEnabled').addEventListener('change', updateIndividualBatteryLimitsUi);
   for (let battery = 1; battery <= 8; battery += 1) {
     q(`splitCommandBattery${battery}Enabled`).addEventListener('change', updateSplitBatteryUi);
@@ -2671,6 +2704,7 @@ async function onHomeyReady(Homey) {
           else if (id === 'sunnyMonthsMinSoc') q(id).value = 20;
           else if (/^battery[1-8]MaxChargeW$/.test(id)) q(id).value = Number(snapshot.maxChargePerBatteryW) || 2300;
           else if (/^battery[1-8]MaxDischargeW$/.test(id)) q(id).value = Number(snapshot.maxDischargePerBatteryW) || 2400;
+          else if (/^ev(?:[2-4])?FeedbackTolerancePercent$/.test(id)) q(id).value = 15;
           else if (/^splitCommandBattery[1-8](ChargeMinSwitchSeconds|DischargeMinSwitchSeconds|MinBetweenSwitchSeconds)$/.test(id)) q(id).value = 60;
           else if (/^splitCommandBattery[1-8]SafetyModeResendMinutes$/.test(id)) q(id).value = 10;
           else if (/^splitCommandBattery[1-8]MinimumPowerW$/.test(id)) q(id).value = 100;
@@ -2689,8 +2723,7 @@ async function onHomeyReady(Homey) {
         const now = new Date();
         simulationTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       }
-      updateSplitBatteryUi();
-      updateIndividualBatteryLimitsUi();
+      updateBatteryConfigurationUi();
       rates = (storedRates || [defaultRate('Superdal','superdal',true),defaultRate('Dal','dal',false),defaultRate('Piek','piek',false)]).map(normalizeRate);
       tariffs = storedTariffs || [
         { rateId: 'superdal', start: '01:00', end: '07:00', days: [1,2,3,4,5,6,7] },
@@ -2738,7 +2771,8 @@ async function onHomeyReady(Homey) {
     try {
       // These two values define which outputs are being tested. Persist them
       // immediately so the test can never run against stale form values.
-      const batteryCount = Math.max(1, Math.min(8, Math.round(Number(q('batteryCount').value) || 1)));
+      const batteryCount = configuredBatteryCount();
+      if (batteryCount === 0) throw new Error(uiLanguage === 'nl' ? 'Geen thuisbatterij geconfigureerd. Een laadtest is niet nodig.' : 'No home battery configured. A charge test is not required.');
       q('batteryCount').value = batteryCount;
       await set('batteryCount', batteryCount);
       await set('invertBatteryCommand', q('invertBatteryCommand').checked);
@@ -3344,7 +3378,6 @@ async function onHomeyReady(Homey) {
     const supportW=Math.max(0,Number(ev.batterySupportAllocatedW)||0);
     const batteryW=Math.max(0,Number(ev.batteryDischargeW)||0);
     const gridTargetW=Math.max(0,Number(ev.evGridImportTargetW)||0);
-    const remaining=Math.max(0,Math.round(Number(ev.evGridImportGraceRemainingSeconds)||0));
     const desiredA=Math.max(0,Number(ev.desiredCurrentA)||0);
     if(supportW>0){
       return uiLanguage==='nl'
@@ -3358,8 +3391,8 @@ async function onHomeyReady(Homey) {
           : `Battery temporarily discharges ${evCoordinationPower(batteryW)} while the lower EV setpoint (${desiredA.toFixed(0)} A) is waiting to be sent.`;
       }
       return uiLanguage==='nl'
-        ? `Batterij ontlaadt tijdelijk ${evCoordinationPower(batteryW)} terwijl HomeFlux wacht tot de EV ${desiredA.toFixed(0)} A volgt${remaining?` · nog max. ${remaining} s`:''}.`
-        : `Battery temporarily discharges ${evCoordinationPower(batteryW)} while HomeFlux waits for the EV to follow ${desiredA.toFixed(0)} A${remaining?` · max. ${remaining} s remaining`:''}.`;
+        ? `Batterij ontlaadt tijdelijk ${evCoordinationPower(batteryW)} terwijl HomeFlux wacht op nieuwe EV-feedback die ${desiredA.toFixed(0)} A bevestigt.`
+        : `Battery temporarily discharges ${evCoordinationPower(batteryW)} while HomeFlux waits for fresh EV feedback confirming ${desiredA.toFixed(0)} A.`;
     }
     if(gridTargetW>0){
       return uiLanguage==='nl'
@@ -3389,12 +3422,28 @@ async function onHomeyReady(Homey) {
         if(!ev.enabled) continue;
         const input=evInputs[Number(ev.instance||1)-1]||{};
         const override=ev.override||{};
-        const output=String(ev.controlType||'current')==='mode'?String(ev.outputChargeMode||'stop'):`${Number(ev.outputCurrentA||0).toFixed(0)} A`;
+        const controlType=String(ev.controlType||'current');
+        const output=controlType==='mode'?String(ev.outputChargeMode||'stop'):`${Number(ev.outputCurrentA||0).toFixed(0)} A`;
         const detail=override.active?`${evModeLabel(override.mode)} · ${override.sessionStarted?(uiLanguage==='nl'?'actief':'active'):(uiLanguage==='nl'?'gewapend':'armed')}`:(uiLanguage==='nl'?'Geen override':'No override');
         const coordination=evBatteryCoordinationText(ev);
+        const nextOutput=controlType==='mode'?String(ev.nextOutputChargeMode||'stop'):`${Number(ev.nextOutputCurrentA||0).toFixed(0)} A`;
+        const nextAllowed=ev.nextOutputAllowed?(uiLanguage==='nl'?'toegestaan':'allowed'):(uiLanguage==='nl'?'niet toegestaan':'not allowed');
+        const nextDecision=`${nextOutput} · ${nextAllowed}`;
+        const remaining=Math.max(0,Math.round(Number(ev.nextOutputRemainingSeconds)||0));
+        let nextTiming='';
+        if(ev.nextOutputWaitingForInterval&&remaining>0){
+          nextTiming=uiLanguage==='nl'
+            ? `over ${remaining} s · min. tijd tussen EV-uitgangen`
+            : `in ${remaining} s · minimum time between EV outputs`;
+        } else if(ev.nextOutputPending){
+          nextTiming=uiLanguage==='nl'?'klaar voor eerstvolgende EV-uitvoer':'ready for the next EV output';
+        } else {
+          nextTiming=uiLanguage==='nl'?'reeds actief':'already active';
+        }
+        const nextReason=String(ev.nextOutputReason||ev.reason||'—');
         const card=document.createElement('div');
         card.className='card live-instance-card';
-        card.innerHTML=`<h3>${escapeHtml(ev.name||`EV ${ev.instance}`)}</h3><div class="status-grid"><div class="card"><div class="muted">SoC</div><div class="metric">${ev.socEnabled===false?(uiLanguage==='nl'?'UIT':'OFF'):(ev.soc===null||ev.soc===undefined?'—':`${Number(ev.soc).toFixed(1)}%`)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Aangesloten':'Connected'}</div><div class="metric">${ev.connected?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Werkelijke stroom':'Actual current'}</div><div class="metric">${Number(ev.actualCurrentA||0).toFixed(1)} A</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Uitgang':'Output'}</div><div class="metric">${escapeHtml(output)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Toegestaan':'Allowed'}</div><div class="metric">${ev.outputAllowed?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">Override</div><div class="metric">${escapeHtml(detail)}</div></div></div><div class="statusline">${escapeHtml(ev.reason||'—')}</div>${coordination?`<div class="statusline">${escapeHtml(coordination)}</div>`:''}<div class="muted">${uiLanguage==='nl'?'Normale modus':'Configured mode'}: ${escapeHtml(evModeLabel(ev.configuredMode||'smart'))}</div>`;
+        card.innerHTML=`<h3>${escapeHtml(ev.name||`EV ${ev.instance}`)}</h3><div class="status-grid"><div class="card"><div class="muted">SoC</div><div class="metric">${ev.socEnabled===false?(uiLanguage==='nl'?'UIT':'OFF'):(ev.soc===null||ev.soc===undefined?'—':`${Number(ev.soc).toFixed(1)}%`)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Aangesloten':'Connected'}</div><div class="metric">${ev.connected?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Werkelijke stroom':'Actual current'}</div><div class="metric">${Number(ev.actualCurrentA||0).toFixed(1)} A</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Uitgang':'Output'}</div><div class="metric">${escapeHtml(output)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Toegestaan':'Allowed'}</div><div class="metric">${ev.outputAllowed?(uiLanguage==='nl'?'Ja':'Yes'):(uiLanguage==='nl'?'Nee':'No')}</div></div><div class="card"><div class="muted">Override</div><div class="metric">${escapeHtml(detail)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Komende beslissing':'Next decision'}</div><div class="metric">${escapeHtml(nextDecision)}</div></div><div class="card"><div class="muted">${uiLanguage==='nl'?'Uitvoering':'Execution'}</div><div class="metric">${escapeHtml(nextTiming)}</div></div></div><div class="statusline"><strong>${uiLanguage==='nl'?'Waarom':'Why'}:</strong> ${escapeHtml(nextReason)}</div>${coordination?`<div class="statusline">${escapeHtml(coordination)}</div>`:''}<div class="muted">${uiLanguage==='nl'?'Normale modus':'Configured mode'}: ${escapeHtml(evModeLabel(ev.configuredMode||'smart'))}</div>`;
         evHost.appendChild(card);
       }
       if(!evHost.children.length) evHost.innerHTML=`<div class="muted">${uiLanguage==='nl'?'Geen actieve EV-lader.':'No active EV charger.'}</div>`;
@@ -3433,17 +3482,24 @@ async function onHomeyReady(Homey) {
       const testPassed = Boolean(chargeTest.passed);
       const testRunning = Boolean(chargeTest.running);
       const awaitingConfirmation = Boolean(chargeTest.awaitingConfirmation);
+      const hasHomeBattery = Math.max(0, Number(chargeTest.batteryCount) || 0) > 0;
       chargeTestPolling = testRunning;
-      q('controlEnabled').disabled = !testPassed || testRunning;
+      q('controlEnabled').disabled = (hasHomeBattery && !testPassed) || testRunning;
       q('batteryCount').disabled = testRunning;
-      q('invertBatteryCommand').disabled = testRunning;
+      q('invertBatteryCommand').disabled = testRunning || !hasHomeBattery;
       // Always mirror the actual backend state. Previously an invalidated test
       // forced the visible checkbox OFF without updating a stale stored ON value,
       // so Start charge test could incorrectly report that output was still on.
       q('controlEnabled').checked = Boolean(status.controlEnabled);
-      q('startChargeTest').disabled = testRunning || Boolean(status.controlEnabled);
-      q('confirmChargeTest').disabled = !awaitingConfirmation || testRunning;
-      if (testRunning) {
+      q('startChargeTest').disabled = !hasHomeBattery || testRunning || Boolean(status.controlEnabled);
+      q('confirmChargeTest').disabled = !hasHomeBattery || !awaitingConfirmation || testRunning;
+      q('chargeTestCard')?.classList.toggle('hidden', !hasHomeBattery);
+      if (!hasHomeBattery) {
+        q('chargeTestState').textContent = uiLanguage === 'nl' ? 'Niet nodig · geen thuisbatterij' : 'Not required · no home battery';
+        q('controlLockText').textContent = status.controlEnabled
+          ? (uiLanguage === 'nl' ? 'EMS-uitvoer actief · geen batterij-laadtest nodig.' : 'EMS output active · no battery charge test required.')
+          : (uiLanguage === 'nl' ? 'Geen thuisbatterij · batterij-laadtest niet nodig.' : 'No home battery · battery charge test not required.');
+      } else if (testRunning) {
         const command = Number(chargeTest.commandPerBatteryW) || 0;
         q('chargeTestState').textContent = `Test actief · ${command >= 0 ? '+' : ''}${Math.round(command)} W per batterij`;
         q('controlLockText').textContent = 'Laadtest actief. EMS-uitvoer blijft vergrendeld.';
@@ -3480,10 +3536,13 @@ async function onHomeyReady(Homey) {
       if (status.settings?.exportLimitEnabled) {
         const threshold = Math.round(Number.isFinite(Number(status.settings.pvCurtailMinBatterySoc)) ? Number(status.settings.pvCurtailMinBatterySoc) : 95);
         const avgSoc = Number(status.averageBatterySoc ?? status.avgSoc);
-        const allowed = Number.isFinite(avgSoc) && avgSoc >= threshold;
-        q('pvLimitDetail').textContent = allowed
-          ? `actief vanaf ${threshold}% · doel ~-${Math.round(Number(status.settings.minimumExportW) || 0)} W export · PV-doel ~${Math.round(Number(status.pvLimitTargetPowerW) || 0)} W`
-          : `wacht op batterij ≥ ${threshold}% · geen bewust exportdoel`;
+        const noHomeBattery = Math.max(0, Number(status.settings.batteryCount) || 0) === 0;
+        const allowed = noHomeBattery || (Number.isFinite(avgSoc) && avgSoc >= threshold);
+        q('pvLimitDetail').textContent = noHomeBattery
+          ? `geen thuisbatterij · doel ~-${Math.round(Number(status.settings.minimumExportW) || 0)} W export · PV-doel ~${Math.round(Number(status.pvLimitTargetPowerW) || 0)} W`
+          : (allowed
+            ? `actief vanaf ${threshold}% · doel ~-${Math.round(Number(status.settings.minimumExportW) || 0)} W export · PV-doel ~${Math.round(Number(status.pvLimitTargetPowerW) || 0)} W`
+            : `wacht op batterij ≥ ${threshold}% · geen bewust exportdoel`);
       } else {
         q('pvLimitDetail').textContent = 'PV-begrenzing uit';
       }

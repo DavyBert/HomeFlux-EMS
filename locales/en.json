@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.2 — Your energy, managed differently",
+    "subtitle": "v0.5.3 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -115,7 +115,7 @@
       "solarExpected": "PV still expected",
       "evBatterySupport": "Home battery intentionally supports the EV with {power} extra charging power",
       "evBatteryWaitingCommand": "Battery temporarily discharges {power} while the lower EV setpoint ({amps} A) is waiting to be sent",
-      "evBatteryWaitingResponse": "Battery temporarily discharges {power} while waiting for the EV to follow {amps} A · max. {seconds} s remaining",
+      "evBatteryWaitingResponse": "Battery temporarily discharges {power} while waiting for fresh EV feedback confirming {amps} A",
       "evGridImportTarget": "EV grid import allowed up to {target}; battery control does not compensate this EV share",
       "evGridImportTargetBattery": "EV grid import allowed up to {target}; battery control compensates only above this EV share · current battery discharge {power}",
       "reasonPeakGuard": "Peak Guard is intervening above the configured grid limit",
