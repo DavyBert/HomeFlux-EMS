@@ -26,7 +26,7 @@ const { DEFAULTS, evaluate, prepareControlContext } = require('../lib/ems-engine
     gridPowerW: 650,
     controlGridPowerW: 650,
     gridAverage5sW: 620,
-    controlGridSource: 'average_5s',
+    controlGridSource: 'average_5_inputs',
     pvPowerW: 3500,
     forecastRemainingKwh: 9,
     forecastDailyMaxKwh: 18,

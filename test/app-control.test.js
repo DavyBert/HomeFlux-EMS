@@ -107,16 +107,22 @@ function bareApp() {
   assert.equal(limit.targetGridW, -50);
 }
 
-// Time-weighted 5 s grid history, without any extra polling.
+// Grid smoothing uses the last N received meter inputs with equal weight, not elapsed time.
 {
   const app = bareApp();
   const now = 1_000_000;
   app.state.gridPowerW = 500;
-  for (let i = 5; i >= 0; i -= 1) app.recordGridSample((5 - i) * 100, now - (i * 1000));
-  assert.equal(Math.round(app.getGridAverage(5000, now)), 200);
+  app.recordGridSample(0, now - 10_000);
+  app.recordGridSample(100, now - 9_200);
+  app.recordGridSample(200, now - 5_000);
+  app.recordGridSample(300, now - 400);
+  app.recordGridSample(400, now - 100);
+  app.recordGridSample(500, now);
+  assert.equal(Math.round(app.getGridAverage(3, now)), 400);
+  assert.equal(Math.round(app.getGridAverage(5, now)), 300);
 }
 
-// Configurable PV delta: reaching the 100 W default switches to live grid; below it keeps the 5 s average.
+// Configurable PV delta: reaching the 100 W default switches to live grid; below it keeps the 5-input average.
 {
   const app = bareApp();
   const now = 2_000_000;
@@ -126,18 +132,19 @@ function bareApp() {
   app.inputUpdatedAt.batterySoc = [now, now, now, now, 0, 0, 0, 0];
 
   const averaged = app.getEvaluationState({ batteryCount: 4 }, now, 99);
-  assert.equal(averaged.controlGridSource, 'average_5s');
-  assert.equal(Math.round(averaged.controlGridPowerW), 200);
+  assert.equal(averaged.controlGridSource, 'average_5_inputs');
+  assert.equal(Math.round(averaged.controlGridPowerW), 300);
 
   const live = app.getEvaluationState({ batteryCount: 4 }, now, 100);
   assert.equal(live.controlGridSource, 'live_pv_delta');
   assert.equal(live.controlGridPowerW, 500);
 
   const disabled = app.getEvaluationState({ batteryCount: 4, pvDeltaThresholdW: 0 }, now, 500);
-  assert.equal(disabled.controlGridSource, 'average_5s');
+  assert.equal(disabled.controlGridSource, 'average_5_inputs');
 }
 
-// v0.4.18: grid control supports direct, 5 s, 7 s and 10 s baselines.
+// Grid control supports direct and 3/5/7/10 received-input baselines. The
+// historical setting key is retained so existing saved values migrate naturally.
 {
   const app = bareApp();
   const now = 2_500_000;
@@ -145,10 +152,20 @@ function bareApp() {
   for (let i = 10; i >= 0; i -= 1) app.recordGridSample((10 - i) * 100, now - (i * 1000));
   app.inputUpdatedAt.batterySoc = [now, now, now, now, 0, 0, 0, 0];
 
-  assert.equal(app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 0, pvDeltaThresholdW: 0 }, now, 0).controlGridSource, 'direct');
-  assert.equal(app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 5, pvDeltaThresholdW: 0 }, now, 0).controlGridSource, 'average_5s');
-  assert.equal(app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 7, pvDeltaThresholdW: 0 }, now, 0).controlGridSource, 'average_7s');
-  assert.equal(app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 10, pvDeltaThresholdW: 0 }, now, 0).controlGridSource, 'average_10s');
+  const direct = app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 0, pvDeltaThresholdW: 0 }, now, 0);
+  const avg3 = app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 3, pvDeltaThresholdW: 0 }, now, 0);
+  const avg5 = app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 5, pvDeltaThresholdW: 0 }, now, 0);
+  const avg7 = app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 7, pvDeltaThresholdW: 0 }, now, 0);
+  const avg10 = app.getEvaluationState({ batteryCount: 4, gridControlWindowSeconds: 10, pvDeltaThresholdW: 0 }, now, 0);
+  assert.equal(direct.controlGridSource, 'direct');
+  assert.equal(avg3.controlGridSource, 'average_3_inputs');
+  assert.equal(avg3.controlGridPowerW, 900);
+  assert.equal(avg5.controlGridSource, 'average_5_inputs');
+  assert.equal(avg5.controlGridPowerW, 800);
+  assert.equal(avg7.controlGridSource, 'average_7_inputs');
+  assert.equal(avg7.controlGridPowerW, 700);
+  assert.equal(avg10.controlGridSource, 'average_10_inputs');
+  assert.equal(avg10.controlGridPowerW, 550);
 }
 
 // v0.4.18: one isolated large load step keeps the selected averaged regulator,
@@ -174,7 +191,7 @@ function bareApp() {
   app.recordGridSample(2000, start + 1000);
   app.state.gridPowerW = 2000;
   assert.equal(app.updateAdaptiveSetpointDetection(2000, settings, start + 1000), false);
-  assert.equal(app.getEvaluationState(settings, start + 1000, 0).controlGridSource, 'average_5s');
+  assert.equal(app.getEvaluationState(settings, start + 1000, 0).controlGridSource, 'average_5_inputs');
 
   app.recordGridSample(0, start + 8000);
   app.state.gridPowerW = 0;
@@ -184,7 +201,7 @@ function bareApp() {
   assert.equal(live.controlGridPowerW, 0);
 
   const afterHold = app.getEvaluationState(settings, start + 23_001, 0);
-  assert.equal(afterHold.controlGridSource, 'average_5s');
+  assert.equal(afterHold.controlGridSource, 'average_5_inputs');
 }
 
 // A received SoC value never expires by age. Only batteries without any value are unavailable.
@@ -2210,7 +2227,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.5.3');
+  assert.equal(simulation.version, '0.5.4');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);

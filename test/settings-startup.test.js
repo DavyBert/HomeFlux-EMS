@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.5.3');
+  assert.equal(manifest.version, '0.5.4');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.5.3 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.5.3 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.5.4 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.5.4 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -68,6 +68,8 @@ assert(appJs.includes('if (schema < 51)'), 'global EV PV distribution migration 
 assert(html.includes('id="evPvSharePercent"'), 'global EV PV distribution setting missing');
 for (const id of ['evSmartPvPriority','ev2SmartPvPriority','ev3SmartPvPriority','ev4SmartPvPriority']) assert(!html.includes(`id="${id}"`), `${id} legacy per-EV PV priority must not remain visible`);
 for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW']) assert(html.includes(`id="${id}"`), `${id} v0.4.18 setting missing`);
+assert(html.includes('<option value="3">Gemiddelde laatste 3 netmetingen</option>'), '3-input grid smoothing option missing');
+assert(html.includes('Elke input telt één keer, ongeacht de tijd ertussen.'), 'grid smoothing must be described as input-count based');
 for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
 assert(html.includes('data-rate-k="evMaxGridImportW"'), 'TOU total EV grid import limit missing');
 assert(html.includes('id="planningMinIntervalMinutes"'), 'planning throttle setting missing');

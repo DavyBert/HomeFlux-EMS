@@ -456,7 +456,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.5.3 initialized');
+    this.log('HomeFlux EMS v0.5.4 initialized');
   }
 
   refreshSettingsCache() {
@@ -4188,47 +4188,28 @@ class HomeFluxEmsApp extends Homey.App {
     if (!Number.isFinite(numeric)) return;
     this.gridInputHistory.push({ at: Number(at) || Date.now(), value: numeric });
 
-    // Keep enough history for a time-weighted 5 s control average without
-    // accumulating an ever-growing list when the meter publishes frequently.
-    const cutoff = (Number(at) || Date.now()) - 15000;
-    while (this.gridInputHistory.length > 2 && this.gridInputHistory[1].at < cutoff) {
-      this.gridInputHistory.shift();
-    }
+    // Grid smoothing is input-based, not time-based. Keep a bounded number of
+    // received meter values so 3/5/7/10-input averages remain independent of
+    // the actual P1/Flow publication interval.
+    while (this.gridInputHistory.length > 32) this.gridInputHistory.shift();
   }
 
-  getGridAverage(windowMs = 5000, now = Date.now()) {
+  getGridAverage(sampleCount = 5, now = Date.now()) {
     const live = Number(this.state.gridPowerW);
     if (!Number.isFinite(live)) return 0;
-    const samples = this.gridInputHistory.filter(sample => sample.at <= now);
+    const count = Math.max(1, Math.round(Number(sampleCount) || 5));
+    const samples = this.gridInputHistory.filter(sample => sample.at <= now).slice(-count);
     if (!samples.length) return live;
-
-    const start = now - Math.max(1, Number(windowMs) || 5000);
-    let currentValue = samples[0].value;
-    for (const sample of samples) {
-      if (sample.at <= start) currentValue = sample.value;
-      else break;
-    }
-
-    let cursor = start;
-    let area = 0;
-    for (const sample of samples) {
-      if (sample.at <= start) continue;
-      const sampleAt = Math.min(now, sample.at);
-      if (sampleAt > cursor) area += currentValue * (sampleAt - cursor);
-      currentValue = sample.value;
-      cursor = sampleAt;
-      if (cursor >= now) break;
-    }
-    if (cursor < now) area += currentValue * (now - cursor);
-    return area / Math.max(1, now - start);
+    return samples.reduce((sum, sample) => sum + Number(sample.value || 0), 0) / samples.length;
   }
 
-  getGridControlWindowMs(settings = this.getSettings()) {
+  getGridControlSampleCount(settings = this.getSettings()) {
+    // Keep the historical settings key for upgrade compatibility. Its numeric
+    // values now mean number of received grid inputs rather than seconds.
     const configured = Number(settings.gridControlWindowSeconds);
     if (configured === 0) return 0;
-    if (configured === 7) return 7000;
-    if (configured === 10) return 10000;
-    return 5000;
+    if (configured === 3 || configured === 5 || configured === 7 || configured === 10) return configured;
+    return 5;
   }
 
   isAdaptiveLiveControlActive(settings = this.getSettings(), now = Date.now()) {
@@ -4270,14 +4251,14 @@ class HomeFluxEmsApp extends Homey.App {
     });
 
     const liveGridPowerW = Number.isFinite(Number(this.state.gridPowerW)) ? Number(this.state.gridPowerW) : 0;
-    const controlWindowMs = this.getGridControlWindowMs(settings);
-    const gridAverage5sW = this.getGridAverage(5000, now);
-    const smoothedGridW = controlWindowMs > 0 ? this.getGridAverage(controlWindowMs, now) : liveGridPowerW;
+    const controlSampleCount = this.getGridControlSampleCount(settings);
+    const gridAverage5sW = this.getGridAverage(5, now);
+    const smoothedGridW = controlSampleCount > 0 ? this.getGridAverage(controlSampleCount, now) : liveGridPowerW;
     const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
     const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW) ? Math.max(0, configuredPvDeltaThresholdW) : 100;
     const usePvLiveGrid = pvDeltaThresholdW > 0 && Math.abs(Number(pvDeltaW) || 0) >= pvDeltaThresholdW;
     const useAdaptiveLiveGrid = this.isAdaptiveLiveControlActive(settings, now);
-    const useLiveGrid = controlWindowMs === 0 || usePvLiveGrid || useAdaptiveLiveGrid;
+    const useLiveGrid = controlSampleCount === 0 || usePvLiveGrid || useAdaptiveLiveGrid;
     const selectedGridW = useLiveGrid ? liveGridPowerW : smoothedGridW;
     const evGridControl = this.getEvGridImportControlStatus(settings, now);
     const activeEvGridImportTargetW = Math.max(0, Number(evGridControl.activeTargetW) || 0);
@@ -4286,7 +4267,7 @@ class HomeFluxEmsApp extends Homey.App {
     // that EV allowance. Raw P1 remains untouched and Peak Guard still uses the
     // real meter, so this cannot hide an installation peak.
     const selectedControlGridW = selectedGridW - activeEvGridImportTargetW;
-    let controlGridSource = controlWindowMs === 0 ? 'direct' : `average_${Math.round(controlWindowMs / 1000)}s`;
+    let controlGridSource = controlSampleCount === 0 ? 'direct' : `average_${controlSampleCount}_inputs`;
     if (usePvLiveGrid) controlGridSource = 'live_pv_delta';
     else if (useAdaptiveLiveGrid) controlGridSource = 'live_adaptive_setpoint';
     if (activeEvGridImportTargetW > 0) controlGridSource += '_ev_grid_target';
@@ -7235,14 +7216,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (evaluationState && Number.isFinite(Number(evaluationState.controlGridPowerW))) {
       controlGridW = Number(evaluationState.controlGridPowerW);
     } else {
-      const controlWindowMs = this.getGridControlWindowMs(settings);
-      const averageGridW = controlWindowMs > 0 ? this.getGridAverage(controlWindowMs, now) : rawGridW;
+      const controlSampleCount = this.getGridControlSampleCount(settings);
+      const averageGridW = controlSampleCount > 0 ? this.getGridAverage(controlSampleCount, now) : rawGridW;
       const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
       const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW)
         ? Math.max(0, configuredPvDeltaThresholdW) : 100;
       const lastPvW = Number(this.pvAtLastControlW);
       const pvDeltaW = Number.isFinite(lastPvW) ? pvW - lastPvW : 0;
-      const useLiveGrid = controlWindowMs === 0
+      const useLiveGrid = controlSampleCount === 0
         || (pvDeltaThresholdW > 0 && Math.abs(pvDeltaW) >= pvDeltaThresholdW)
         || this.isAdaptiveLiveControlActive(settings, now);
       controlGridW = useLiveGrid ? rawGridW : averageGridW;
@@ -7948,7 +7929,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.5.3',
+      version: '0.5.4',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -8015,7 +7996,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.5.3',
+      version: '0.5.4',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -8285,7 +8266,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.5.3',
+      version: '0.5.4',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),
