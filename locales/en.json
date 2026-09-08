@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.4 — Your energy, managed differently",
+    "subtitle": "v0.5.5 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -131,7 +131,19 @@
       "batteryFullIn": "Full to target",
       "batterySafetyIn": "To Safety SoC",
       "batteryAtTarget": "Target reached",
-      "batteryAtSafety": "Safety SoC reached"
+      "batteryAtSafety": "Safety SoC reached",
+      "priceUnavailableFallback": "Unavailable · external fallback not ready",
+      "externalFallbackActive": "External fallback active · OK",
+      "homeyPrimaryOk": "Homey Energy primary · OK",
+      "externalFallbackReady": "fallback OK",
+      "externalFallbackNotReady": "fallback not ready",
+      "evAllowed": "allowed",
+      "evNotAllowed": "not allowed",
+      "evNextDecision": "Next",
+      "evWaitingOutputTimer": "waiting {seconds}s for minimum EV output interval",
+      "evReadyNextOutput": "ready for next EV output",
+      "evDecisionActive": "Current EV decision is active",
+      "evWaitingStopHold": "waiting {seconds}s for EV restart hold"
     }
   }
 }

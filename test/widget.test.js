@@ -19,14 +19,14 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.5.4');
-assert.equal(appCompose.version, '0.5.4');
-assert.equal(packageJson.version, '0.5.4');
-assert.equal(packageLock.version, '0.5.4');
-assert.equal(packageLock.packages[''].version, '0.5.4');
+assert.equal(manifest.version, '0.5.5');
+assert.equal(appCompose.version, '0.5.5');
+assert.equal(packageJson.version, '0.5.5');
+assert.equal(packageLock.version, '0.5.5');
+assert.equal(packageLock.packages[''].version, '0.5.5');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
 assert.deepEqual(manifest.widgets.status, { ...statusCompose, id: 'status' }, 'generated status widget manifest must match widget Compose');
-for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar']) {
+for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar', 'showEvPlanning']) {
   assert(statusCompose.settings.some(item => item.id === id), `status widget setting ${id} missing`);
 }
 assert(statusHtml.includes("enabled(settings, 'showTariff')"), 'status widget must allow current tariff to be selected');
@@ -157,6 +157,10 @@ for (const [name, expectedHash] of Object.entries(statusPreviewHashes)) {
   assert.equal(actualHash, expectedHash, `${name} must remain the approved text-free status preview`);
 }
 assert(statusHtml.includes('evBatteryCoordinationText(ev, Homey)'), 'status widget must explain EV/battery coordination');
+assert(statusHtml.includes("enabled(settings, 'showEvPlanning')"), 'status widget must allow EV next-decision planning to be selected');
+assert(statusHtml.includes('evNextDecisionText(ev, Homey)'), 'status widget must show the upcoming EV decision and wait state');
+assert(statusHtml.includes('externalFallbackActive'), 'status widget must show when the external price fallback is active');
+assert(statusHtml.includes('externalFallbackReady'), 'status widget must show whether the external fallback is ready');
 
 const widgetApi = require('../widgets/savings/api');
 (async () => {

@@ -2180,7 +2180,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 51);
+  assert.equal(stored.settingsSchemaVersion, 52);
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
   assert.equal(stored.lowForecastAutoSunnySoc, 90);
   assert.equal(stored.lowForecastAutoSunnyMinutes, 10);
@@ -2227,7 +2227,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.5.4');
+  assert.equal(simulation.version, '0.5.5');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2736,4 +2736,50 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(result.candidateTotalCommandW, -3000);
+}
+
+// v0.5.5: a dynamic contract keeps Homey Energy primary while it is fresh,
+// and automatically selects the generic external Flow curve when Homey data
+// becomes stale and the user enabled external fallback.
+{
+  const app = bareApp();
+  app.homey.clock.getTimezone = () => 'UTC';
+  app.homeyEnergyResampleCache = { key: '', value: [] };
+  app.externalEnergyResampleCache = { key: '', value: [] };
+  app.homeyEnergy = { available: true, refreshing: false, interval: 15, slots: [], lastUpdatedAt: 0, error: '' };
+  app.externalEnergy = { currentPrice: 0.18, currentUpdatedAt: 0, slots: [], curveUpdatedAt: 0, error: '', responseShape: '' };
+  const now = new Date('2026-09-08T12:05:00.000Z');
+  const nowMs = now.getTime();
+  const rows = Array.from({ length: 96 }, (_, index) => ({
+    dateKey: '2026-09-08',
+    minute: index * 15,
+    startMs: Date.parse('2026-09-08T00:00:00.000Z') + index * 15 * 60 * 1000,
+    price: 0.10 + index / 10000,
+    rawPrice: 0.10 + index / 10000,
+    userCostAdder: 0,
+  }));
+  app.homeyEnergy.slots = rows;
+  app.externalEnergy.slots = rows.map(row => ({ ...row, price: row.price + 0.05, rawPrice: row.rawPrice + 0.05 }));
+  app.externalEnergy.curveUpdatedAt = nowMs - 6 * 60 * 60 * 1000;
+  app.externalEnergy.currentUpdatedAt = nowMs - 2 * 60 * 1000;
+  const settings = { contractType: 'dynamic_quarter', dynamicPriceSource: 'homey_external_fallback', cheapHours: 3, expensiveHours: 3 };
+
+  app.homeyEnergy.lastUpdatedAt = nowMs - 5 * 60 * 1000;
+  let selection = app.getDynamicPriceSelection(settings, now);
+  assert.equal(selection.source, 'homey');
+  assert.equal(selection.homeyFresh, true);
+  assert.equal(selection.externalCurveReady, true);
+
+  app.homeyEnergy.lastUpdatedAt = nowMs - 25 * 60 * 1000;
+  app.homeyEnergyResampleCache = { key: '', value: [] };
+  selection = app.getDynamicPriceSelection(settings, now);
+  assert.equal(selection.source, 'external');
+  assert.equal(selection.homeyFresh, false);
+  assert.equal(selection.externalCurveReady, true);
+  const effective = app.getHomeyEnergyStatus(settings, now);
+  assert.equal(effective.fallbackActive, true);
+  assert.equal(effective.currentPrice, 0.18, 'fresh external current-price input should override the fallback curve current slot');
+
+  const homeyOnly = app.getDynamicPriceSelection({ ...settings, dynamicPriceSource: 'homey' }, now);
+  assert.equal(homeyOnly.source, 'none', 'external data must never be used unless fallback is enabled');
 }

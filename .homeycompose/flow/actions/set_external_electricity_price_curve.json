@@ -1,0 +1,24 @@
+{
+  "title": {
+    "en": "Set external electricity price curve",
+    "nl": "Stel externe elektriciteitsprijscurve in"
+  },
+  "hint": {
+    "en": "Send a JSON string containing hourly or 15-minute prices. ISO timestamps are recommended. HomeFlux accepts arrays, pricesPerInterval payloads and timestamp-to-price maps.",
+    "nl": "Stuur een JSON-tekst met uur- of kwartierprijzen. ISO-tijdstempels worden aanbevolen. HomeFlux accepteert arrays, pricesPerInterval-payloads en timestamp-naar-prijs maps."
+  },
+  "args": [
+    {
+      "name": "curve",
+      "type": "text",
+      "title": {
+        "en": "Price curve JSON",
+        "nl": "Prijscurve JSON"
+      }
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set external electricity price curve to [[curve]]",
+    "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]"
+  }
+}

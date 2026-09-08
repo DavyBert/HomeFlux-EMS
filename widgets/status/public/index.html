@@ -118,7 +118,11 @@
     function priceDataText(status, Homey) {
       const info = status.priceData || {};
       if (!info.required) return tr(Homey, 'widget.status.priceConfigured', 'Configured tariff');
-      if (!info.ready) return tr(Homey, 'widget.status.priceUnavailable', 'Unavailable');
+      const source = String(info.source || 'none');
+      if (!info.ready || source === 'none') {
+        if (info.fallbackEnabled) return tr(Homey, 'widget.status.priceUnavailableFallback', 'Unavailable · external fallback not ready');
+        return tr(Homey, 'widget.status.priceUnavailable', 'Unavailable');
+      }
 
       const ageSeconds = Number(info.ageSeconds);
       let ageText = '';
@@ -128,10 +132,17 @@
           ? tr(Homey, 'widget.status.updatedNow', 'updated just now')
           : tr(Homey, 'widget.status.updatedMinutes', 'updated {minutes} min ago').replace('{minutes}', minutes);
       }
-      const state = info.fresh
-        ? tr(Homey, 'widget.status.priceCurrent', 'Current')
-        : tr(Homey, 'widget.status.priceStale', 'Outdated');
-      return ageText ? `${state} · ${ageText}` : state;
+      if (source === 'external') {
+        const active = tr(Homey, 'widget.status.externalFallbackActive', 'External fallback active · OK');
+        return ageText ? `${active} · ${ageText}` : active;
+      }
+      const state = tr(Homey, 'widget.status.homeyPrimaryOk', 'Homey Energy primary · OK');
+      const fallback = info.fallbackEnabled
+        ? (info.fallbackReady
+          ? tr(Homey, 'widget.status.externalFallbackReady', 'fallback OK')
+          : tr(Homey, 'widget.status.externalFallbackNotReady', 'fallback not ready'))
+        : '';
+      return [state, fallback, ageText].filter(Boolean).join(' · ');
     }
 
     function nextChargeText(status, Homey) {
@@ -305,6 +316,36 @@
           .replace('{target}', coordinationPower(gridTargetW)).replace('{power}', coordinationPower(batteryW));
       }
       return '';
+    }
+
+    function evNextDecisionText(ev, Homey) {
+      if (!ev || !ev.enabled || !ev.connected) return '';
+      const parts = [];
+      const controlType = String(ev.controlType || 'current');
+      const nextValue = controlType === 'mode'
+        ? String(ev.nextOutputChargeMode || 'stop').toUpperCase()
+        : `${Math.max(0, Number(ev.nextOutputCurrentA) || 0)} A`;
+      const permission = ev.nextOutputAllowed
+        ? tr(Homey, 'widget.status.evAllowed', 'allowed')
+        : tr(Homey, 'widget.status.evNotAllowed', 'not allowed');
+      if (ev.nextOutputPending) {
+        parts.push(`${tr(Homey, 'widget.status.evNextDecision', 'Next')} ${nextValue} · ${permission}`);
+        if (ev.nextOutputWaitingForInterval) {
+          const seconds = Math.max(0, Math.ceil(Number(ev.nextOutputRemainingSeconds) || 0));
+          parts.push(tr(Homey, 'widget.status.evWaitingOutputTimer', 'waiting {seconds}s for minimum EV output interval').replace('{seconds}', seconds));
+        } else {
+          parts.push(tr(Homey, 'widget.status.evReadyNextOutput', 'ready for next EV output'));
+        }
+      } else {
+        parts.push(tr(Homey, 'widget.status.evDecisionActive', 'Current EV decision is active'));
+      }
+      const stopHold = Math.max(0, Math.ceil(Number(ev.stopHoldRemainingSeconds) || 0));
+      if (stopHold > 0) {
+        parts.push(tr(Homey, 'widget.status.evWaitingStopHold', 'waiting {seconds}s for EV restart hold').replace('{seconds}', stopHold));
+      }
+      const reason = String(ev.nextOutputReason || '').trim();
+      if (reason) parts.push(`${tr(Homey, 'widget.status.reason', 'Reason')}: ${reason}`);
+      return parts.join(' · ');
     }
 
     function evState(ev, Homey) {
@@ -490,6 +531,10 @@
             }
             const coordinationReason = evBatteryCoordinationText(ev, Homey);
             if (coordinationReason) reasons.push(coordinationReason);
+            if (enabled(settings, 'showEvPlanning')) {
+              const nextDecision = evNextDecisionText(ev, Homey);
+              if (nextDecision) reasons.push(nextDecision);
+            }
             addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), reasons.join(' · '));
           });
           content.appendChild(root);

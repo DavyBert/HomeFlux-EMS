@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -3865,6 +3865,59 @@
       },
       {
         "title": {
+          "en": "Set external electricity price",
+          "nl": "Stel externe elektriciteitsprijs in"
+        },
+        "hint": {
+          "en": "Generic fallback input in EUR/kWh. HomeFlux only uses it when external fallback is enabled for a dynamic contract. A full curve is still required for price-based planning.",
+          "nl": "Generieke fallback-ingang in EUR/kWh. HomeFlux gebruikt deze alleen wanneer externe fallback bij een dynamisch contract is ingeschakeld. Voor prijsgebaseerde planning blijft een volledige curve nodig."
+        },
+        "args": [
+          {
+            "name": "price",
+            "type": "number",
+            "title": {
+              "en": "Electricity price (EUR/kWh)",
+              "nl": "Elektriciteitsprijs (EUR/kWh)"
+            },
+            "min": -10,
+            "max": 50,
+            "step": 0.0001
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set external electricity price to [[price]] EUR/kWh",
+          "nl": "Stel externe elektriciteitsprijs in op [[price]] EUR/kWh"
+        },
+        "id": "set_external_electricity_price"
+      },
+      {
+        "title": {
+          "en": "Set external electricity price curve",
+          "nl": "Stel externe elektriciteitsprijscurve in"
+        },
+        "hint": {
+          "en": "Send a JSON string containing hourly or 15-minute prices. ISO timestamps are recommended. HomeFlux accepts arrays, pricesPerInterval payloads and timestamp-to-price maps.",
+          "nl": "Stuur een JSON-tekst met uur- of kwartierprijzen. ISO-tijdstempels worden aanbevolen. HomeFlux accepteert arrays, pricesPerInterval-payloads en timestamp-naar-prijs maps."
+        },
+        "args": [
+          {
+            "name": "curve",
+            "type": "text",
+            "title": {
+              "en": "Price curve JSON",
+              "nl": "Prijscurve JSON"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set external electricity price curve to [[curve]]",
+          "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]"
+        },
+        "id": "set_external_electricity_price_curve"
+      },
+      {
+        "title": {
           "en": "Set EMS mode",
           "nl": "Stel EMS-modus in"
         },
@@ -4726,6 +4779,62 @@
       },
       {
         "title": {
+          "en": "Set PBTH electricity price curve",
+          "nl": "Stel PBTH-elektriciteitsprijscurve in"
+        },
+        "hint": {
+          "en": "Connect the Prices token from Power by the Hour's 'Provide import prices JSON' card. Select the same period in both cards. HomeFlux derives 15- or 60-minute resolution from the configured dynamic contract.",
+          "nl": "Koppel de tag Prijzen van Power by the Hour's kaart 'Geef import prijzen JSON op'. Kies in beide kaarten dezelfde periode. HomeFlux leidt 15- of 60-minutenresolutie af uit het ingestelde dynamische contract."
+        },
+        "args": [
+          {
+            "name": "period",
+            "type": "dropdown",
+            "title": {
+              "en": "Period",
+              "nl": "Periode"
+            },
+            "values": [
+              {
+                "id": "this_day",
+                "label": {
+                  "en": "This day",
+                  "nl": "Deze dag"
+                }
+              },
+              {
+                "id": "tomorrow",
+                "label": {
+                  "en": "Tomorrow",
+                  "nl": "Morgen"
+                }
+              },
+              {
+                "id": "next_hours",
+                "label": {
+                  "en": "Next hours",
+                  "nl": "Komende uren"
+                }
+              }
+            ]
+          },
+          {
+            "name": "curve",
+            "type": "text",
+            "title": {
+              "en": "PBTH Prices JSON",
+              "nl": "PBTH Prijzen JSON"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set PBTH [[period]] electricity prices to [[curve]]",
+          "nl": "Stel PBTH-elektriciteitsprijzen voor [[period]] in op [[curve]]"
+        },
+        "id": "set_pbth_electricity_price_curve"
+      },
+      {
+        "title": {
           "en": "Set PV power",
           "nl": "Stel PV-vermogen in"
         },
@@ -5175,6 +5284,15 @@
           "title": {
             "en": "EV connection and charging value",
             "nl": "EV-aansluiting en laadwaarde"
+          },
+          "value": true
+        },
+        {
+          "id": "showEvPlanning",
+          "type": "checkbox",
+          "title": {
+            "en": "EV next decision and wait state",
+            "nl": "EV komende beslissing en wachtstatus"
           },
           "value": true
         },

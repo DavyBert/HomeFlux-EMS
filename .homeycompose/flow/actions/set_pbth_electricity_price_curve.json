@@ -1,0 +1,55 @@
+{
+  "title": {
+    "en": "Set PBTH electricity price curve",
+    "nl": "Stel PBTH-elektriciteitsprijscurve in"
+  },
+  "hint": {
+    "en": "Connect the Prices token from Power by the Hour's 'Provide import prices JSON' card. Select the same period in both cards. HomeFlux derives 15- or 60-minute resolution from the configured dynamic contract.",
+    "nl": "Koppel de tag Prijzen van Power by the Hour's kaart 'Geef import prijzen JSON op'. Kies in beide kaarten dezelfde periode. HomeFlux leidt 15- of 60-minutenresolutie af uit het ingestelde dynamische contract."
+  },
+  "args": [
+    {
+      "name": "period",
+      "type": "dropdown",
+      "title": {
+        "en": "Period",
+        "nl": "Periode"
+      },
+      "values": [
+        {
+          "id": "this_day",
+          "label": {
+            "en": "This day",
+            "nl": "Deze dag"
+          }
+        },
+        {
+          "id": "tomorrow",
+          "label": {
+            "en": "Tomorrow",
+            "nl": "Morgen"
+          }
+        },
+        {
+          "id": "next_hours",
+          "label": {
+            "en": "Next hours",
+            "nl": "Komende uren"
+          }
+        }
+      ]
+    },
+    {
+      "name": "curve",
+      "type": "text",
+      "title": {
+        "en": "PBTH Prices JSON",
+        "nl": "PBTH Prijzen JSON"
+      }
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set PBTH [[period]] electricity prices to [[curve]]",
+    "nl": "Stel PBTH-elektriciteitsprijzen voor [[period]] in op [[curve]]"
+  }
+}

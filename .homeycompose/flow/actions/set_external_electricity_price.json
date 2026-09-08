@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set external electricity price",
+    "nl": "Stel externe elektriciteitsprijs in"
+  },
+  "hint": {
+    "en": "Generic fallback input in EUR/kWh. HomeFlux only uses it when external fallback is enabled for a dynamic contract. A full curve is still required for price-based planning.",
+    "nl": "Generieke fallback-ingang in EUR/kWh. HomeFlux gebruikt deze alleen wanneer externe fallback bij een dynamisch contract is ingeschakeld. Voor prijsgebaseerde planning blijft een volledige curve nodig."
+  },
+  "args": [
+    {
+      "name": "price",
+      "type": "number",
+      "title": {
+        "en": "Electricity price (EUR/kWh)",
+        "nl": "Elektriciteitsprijs (EUR/kWh)"
+      },
+      "min": -10,
+      "max": 50,
+      "step": 0.0001
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set external electricity price to [[price]] EUR/kWh",
+    "nl": "Stel externe elektriciteitsprijs in op [[price]] EUR/kWh"
+  }
+}

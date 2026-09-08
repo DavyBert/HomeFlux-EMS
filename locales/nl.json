@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.4 — Jouw energie, anders geregeld",
+    "subtitle": "v0.5.5 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -131,7 +131,19 @@
       "batteryFullIn": "Vol tot doel",
       "batterySafetyIn": "Tot Safety SoC",
       "batteryAtTarget": "Doel bereikt",
-      "batteryAtSafety": "Safety SoC bereikt"
+      "batteryAtSafety": "Safety SoC bereikt",
+      "priceUnavailableFallback": "Niet beschikbaar · externe fallback niet gereed",
+      "externalFallbackActive": "Externe fallback actief · OK",
+      "homeyPrimaryOk": "Homey Energy primair · OK",
+      "externalFallbackReady": "fallback OK",
+      "externalFallbackNotReady": "fallback niet gereed",
+      "evAllowed": "toegestaan",
+      "evNotAllowed": "niet toegestaan",
+      "evNextDecision": "Komend",
+      "evWaitingOutputTimer": "wacht {seconds}s op minimumtijd tussen EV-uitgangen",
+      "evReadyNextOutput": "klaar voor eerstvolgende EV-uitvoer",
+      "evDecisionActive": "Huidige EV-beslissing is actief",
+      "evWaitingStopHold": "wacht {seconds}s op EV-herstartwachttijd"
     }
   }
 }

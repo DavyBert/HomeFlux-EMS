@@ -1,6 +1,15 @@
 {
   "language": "nl",
-  "exact": {},
+  "exact": {
+    "Alleen Homey Energy": "Alleen Homey Energy",
+    "Homey Energy + externe Flow fallback": "Homey Energy + externe Flow fallback",
+    "Homey Energy blijft primair. Met externe fallback gebruikt HomeFlux automatisch de aangeleverde curve wanneer Homey-prijzen ontbreken of verouderd zijn.": "Homey Energy blijft primair. Met externe fallback gebruikt HomeFlux automatisch de aangeleverde curve wanneer Homey-prijzen ontbreken of verouderd zijn.",
+    "Dynamische prijsbronnen": "Dynamische prijsbronnen",
+    "Externe Flow fallback": "Externe Flow fallback",
+    "Nog geen externe prijscurve ontvangen": "Nog geen externe prijscurve ontvangen",
+    "Veilige fallback: zonder bruikbare primaire of fallback-curve wordt niet van het net geladen en niet prijs-gestuurd ontladen. PV-overschot opvangen en Peak Guard blijven actief.": "Veilige fallback: zonder bruikbare primaire of fallback-curve wordt niet van het net geladen en niet prijs-gestuurd ontladen. PV-overschot opvangen en Peak Guard blijven actief.",
+    "PBTH: gebruik Stel PBTH-elektriciteitsprijscurve in met de tag Prijzen uit PBTH en kies dezelfde periode. Andere providers kunnen Externe actuele elektriciteitsprijs gebruiken voor een live prijs, of Externe elektriciteitsprijscurve voor JSON met tijdstempels.": "PBTH: gebruik Stel PBTH-elektriciteitsprijscurve in met de tag Prijzen uit PBTH en kies dezelfde periode. Andere providers kunnen Externe actuele elektriciteitsprijs gebruiken voor een live prijs, of Externe elektriciteitsprijscurve voor JSON met tijdstempels."
+  },
   "phrases": {},
   "strings": {
     "planning.forecastDecisionTomorrow": "Nachtplanning is actief. Zowel de energieplanning als de dagstrategie gebruiken nu de PV-voorspelling van morgen.",

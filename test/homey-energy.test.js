@@ -3,6 +3,8 @@
 const assert = require('assert');
 const {
   normalizeDynamicPriceResponse,
+  normalizeSequentialPriceArray,
+  sequentialPricePeriodInfo,
   inferIntervalMinutes,
   analyzePriceSlots,
   currentMatches,
@@ -126,3 +128,56 @@ assert.strictEqual(zeroNegativeSlots[1].price, -0.0001);
 }
 
 console.log('HomeFlux EMS official Homey Energy payload tests: OK');
+
+// v0.5.5 external Flow curves use the same tolerant normalizer after JSON.parse.
+{
+  const externalJson = JSON.stringify({
+    pricesPerInterval: [
+      { periodStart: '2026-09-08T10:00:00.000Z', value: 0.21 },
+      { periodStart: '2026-09-08T10:15:00.000Z', value: 0.19 },
+    ],
+  });
+  const externalSlots = normalizeDynamicPriceResponse(JSON.parse(externalJson), { timezone: 'UTC' });
+  assert.strictEqual(externalSlots.length, 2);
+  assert.strictEqual(externalSlots[0].price, 0.21);
+  assert.strictEqual(externalSlots[1].price, 0.19);
+}
+
+
+// v0.5.5 PBTH numeric arrays carry order but no timestamps. HomeFlux adds
+// timestamps from the selected period and configured dynamic-contract interval.
+{
+  const pbthHourly = Array.from({ length: 24 }, (_, index) => 0.10 + (index / 1000));
+  const hourlyInfo = sequentialPricePeriodInfo('this_day', 60, new Date('2026-09-08T10:23:00Z'), 'Europe/Brussels');
+  assert.strictEqual(hourlyInfo.expectedCount, 24);
+  const hourlySlots = normalizeSequentialPriceArray(pbthHourly, {
+    period: 'this_day', intervalMinutes: 60, now: new Date('2026-09-08T10:23:00Z'), timezone: 'Europe/Brussels',
+  });
+  assert.strictEqual(hourlySlots.length, 24);
+  assert.strictEqual(hourlySlots[0].dateKey, '2026-09-08');
+  assert.strictEqual(hourlySlots[0].minute, 0);
+  assert.strictEqual(hourlySlots[23].minute, 23 * 60);
+
+  const pbthQuarter = Array.from({ length: 96 }, (_, index) => 0.20 + (index / 10000));
+  const quarterSlots = normalizeSequentialPriceArray(pbthQuarter, {
+    period: 'tomorrow', intervalMinutes: 15, now: new Date('2026-09-08T10:23:00Z'), timezone: 'Europe/Brussels',
+  });
+  assert.strictEqual(quarterSlots.length, 96);
+  assert.strictEqual(quarterSlots[0].dateKey, '2026-09-09');
+  assert.strictEqual(quarterSlots[0].minute, 0);
+  assert.strictEqual(quarterSlots[1].minute, 15);
+
+  const nextHours = normalizeSequentialPriceArray([0.31, 0.30, 0.29], {
+    period: 'next_hours', intervalMinutes: 15, now: new Date('2026-09-08T10:23:00Z'), timezone: 'Europe/Brussels',
+  });
+  assert.strictEqual(nextHours.length, 3);
+  assert.strictEqual(nextHours[0].minute, 12 * 60 + 15, '10:23Z is 12:23 local; PBTH next-hours starts at the active 12:15 quarter');
+  assert.strictEqual(nextHours[1].minute, 12 * 60 + 30);
+
+  // Belgium's DST spring day contains 23 hours / 92 quarter-hour slots.
+  const springInfo = sequentialPricePeriodInfo('this_day', 15, new Date('2026-03-29T10:00:00Z'), 'Europe/Brussels');
+  assert.strictEqual(springInfo.expectedCount, 92);
+  const autumnInfo = sequentialPricePeriodInfo('this_day', 15, new Date('2026-10-25T10:00:00Z'), 'Europe/Brussels');
+  assert.strictEqual(autumnInfo.expectedCount, 100);
+}
+console.log('HomeFlux EMS PBTH price-array tests: OK');
