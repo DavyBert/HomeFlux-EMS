@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.5.5');
+  assert.equal(manifest.version, '0.6.1');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.5.5 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.5.5 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.6.1 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.6.1 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -56,7 +56,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 52"));
+assert(appJs.includes("settingsSchemaVersion', 55"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);
@@ -71,7 +71,7 @@ for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adapt
 assert(html.includes('<option value="3">Gemiddelde laatste 3 netmetingen</option>'), '3-input grid smoothing option missing');
 assert(html.includes('Elke input telt één keer, ongeacht de tijd ertussen.'), 'grid smoothing must be described as input-count based');
 for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
-assert(html.includes('data-rate-k="evMaxGridImportW"'), 'TOU total EV grid import limit missing');
+assert(html.includes('data-ev-grid-rate') && html.includes('evMaxGridImportW'), 'TOU total EV grid import limit missing from EV tab');
 assert(html.includes('id="planningMinIntervalMinutes"'), 'planning throttle setting missing');
 assert(apiJs.includes('async refreshPlanning({ homey })'), 'forced planning refresh API missing');
 assert(apiJs.includes('async simulatePlanning({ homey, body })'), 'planning simulation API handler missing');

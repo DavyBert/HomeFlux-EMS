@@ -72,5 +72,9 @@
   "0.5.5": {
     "en": "Added: optional external dynamic-price fallback through generic Flow cards for current price and JSON price curves. Updated: EMS status widget shows price fallback health and the next EV decision/wait state.",
     "nl": "Toegevoegd: optionele externe fallback voor dynamische prijzen via generieke Flow-kaarten voor actuele prijs en JSON-prijscurves. Bijgewerkt: EMS-statuswidget toont de fallbackstatus en de komende EV-beslissing/wachtstatus."
+  },
+  "0.6.1": {
+    "en": "Added: per-EV tariff selection, PV charging hysteresis and configurable grid top-up, Current/Mode/Hybrid EV control, deadline planning by SoC or required kWh with optional use of unselected tariffs and warning Flow output. Updated: EV planning is visible in Planning, Live status and the EMS widget. Moved EV and boiler tariff settings to their own tabs without losing existing settings. Added: configurable boiler tariff fallback day/night window. Peak Guard remains absolute.",
+    "nl": "Toegevoegd: tariefkeuze per EV, PV-laadhysterese en instelbare netaanvulling, EV-sturing via Stroom/Modus/Hybride, deadlineplanning op SoC of benodigde kWh met optioneel gebruik van niet-geselecteerde tarieven en een waarschuwing via Flow. Bijgewerkt: EV-planning is zichtbaar in Planning, Live status en de EMS-widget. EV- en boilertariefinstellingen zijn zonder instellingenverlies naar hun eigen tab verplaatst. Toegevoegd: instelbaar dag/nachtvenster voor boilertarieffallback. Peak Guard blijft absoluut."
   }
 }

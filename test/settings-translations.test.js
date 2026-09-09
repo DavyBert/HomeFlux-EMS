@@ -10,6 +10,15 @@ assert.equal(en.language, 'en');
 assert.equal(nl.language, 'nl');
 assert(Object.keys(en.exact || {}).length >= 500, 'English static UI translation map unexpectedly small');
 assert(Object.keys(en.phrases || {}).length >= 200, 'English dynamic phrase translation map unexpectedly small');
+for (const key of [
+  'Hybride (modus + laadstroom)',
+  'Netaanvulling tijdens PV-laden',
+  'Niet-geselecteerd/duurder tarief gebruiken als de deadline anders niet haalbaar is',
+  'EV-planning',
+  'Tarief-fallback toegestaan',
+]) {
+  assert.equal(typeof en.exact?.[key], 'string', 'English v0.6.1 settings translation missing: ' + key);
+}
 for (const key of ['planning.forecastDecisionTomorrow','planning.forecastDecisionToday']) {
   assert.equal(typeof en.strings?.[key], 'string', 'English translation missing: ' + key);
   assert.equal(typeof nl.strings?.[key], 'string', 'Dutch translation missing: ' + key);

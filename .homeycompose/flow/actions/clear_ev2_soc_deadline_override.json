@@ -1,0 +1,10 @@
+{
+  "title": {
+    "en": "Clear EV 2 SoC target override",
+    "nl": "Wis EV 2 SoC-doeloverride"
+  },
+  "hint": {
+    "en": "Clears the persistent Flow SoC target/time override for EV 2. HomeFlux immediately returns to the target SoC, deadline and guarantee settings configured in the app.",
+    "nl": "Wist de blijvende Flow-override voor SoC-doel/tijd van EV 2. HomeFlux gebruikt daarna onmiddellijk opnieuw de doel-SoC, deadline en garantie-instellingen uit de app."
+  }
+}

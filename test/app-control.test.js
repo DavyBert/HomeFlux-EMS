@@ -2180,7 +2180,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 52);
+  assert.equal(stored.settingsSchemaVersion, 55);
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
   assert.equal(stored.lowForecastAutoSunnySoc, 90);
   assert.equal(stored.lowForecastAutoSunnyMinutes, 10);
@@ -2227,7 +2227,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.5.5');
+  assert.equal(simulation.version, '0.6.1');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2235,6 +2235,46 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(simulation.decision.targetOverridden, true);
   assert.equal(JSON.stringify(app.state), stateBefore);
   assert.equal(JSON.stringify(app.lastEmittedCommands), outputBefore);
+}
+
+// v0.6.1: planning simulation can add a physical EV load to P1 while
+// preserving the production EV-grid-import rule. With a selected tariff and
+// an 8 kW EV import ceiling, a 16 A single-phase EV contributes 3680 W to raw
+// P1 but shifts the battery control target by the same 3680 W in steady state.
+{
+  const app = bareApp();
+  app.extraEvInstances = [];
+  app.getSettings = () => ({
+    batteryCount: 1, totalCapacityKwh: 10, minSoc: 10, safetySoc: 10, maxSoc: 100,
+    maxTotalChargeW: 3000, maxTotalDischargeW: 3000, maxChargePerBatteryW: 3000, maxDischargePerBatteryW: 3000,
+    contractType: 'tou',
+    touRates: [{ id: 'cheap', name: 'Dal', importPrice: 0.10, feedInPrice: 0, weekdayChargeMode: 'never', weekendChargeMode: 'never', nightChargeAllowed: false, dayChargeAllowed: false, avoidGridImport: false, evChargeAllowed: true, evPvChargeAllowed: true, evMaxGridImportW: 8000 }],
+    touSchedule: [{ rateId: 'cheap', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evCount: 1, evEnabled: true, evName: 'Test EV', evSocEnabled: false, evMode: 'smart', evControlType: 'hybrid',
+    evPhases: 1, evMinCurrentA: 1, evMaxCurrentA: 16, evStandardCurrentA: 16,
+    evWeight: 1, evPvSharePercent: 50, evSmartGridPriority: 'battery_first',
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  });
+  const simulation = app.simulatePlanning({
+    batterySoc: 80, targetSoc: 80, pvTodayKwh: 0, pvLiveW: 0, baseGridPowerW: 0, time: '12:00',
+    evs: [{ connected: true, socAvailable: false, currentA: 16 }],
+  });
+  assert.equal(simulation.evSimulation.totalActualEvPowerW, 3680);
+  assert.equal(simulation.evSimulation.rawGridPowerW, 3680);
+  assert.equal(simulation.evSimulation.evGridImportLimitW, 8000);
+  assert.equal(simulation.evSimulation.evGridImportTargetW, 3680);
+  assert.equal(simulation.evSimulation.controlGridPowerW, 0);
+  assert.equal(simulation.evSimulation.evs[0].allowed, true);
+  assert.equal(simulation.evSimulation.evs[0].desiredCurrentA, 16);
+  assert.equal(simulation.evSimulation.evs[0].modeCommand, 'standard');
+
+  const household = app.simulatePlanning({
+    batterySoc: 80, targetSoc: 80, pvTodayKwh: 0, pvLiveW: 0, baseGridPowerW: 1000, time: '12:00',
+    evs: [{ connected: true, socAvailable: false, currentA: 16 }],
+  });
+  assert.equal(household.evSimulation.rawGridPowerW, 4680);
+  assert.equal(household.evSimulation.evGridImportTargetW, 3680);
+  assert.equal(household.evSimulation.controlGridPowerW, 1000);
 }
 
 // Dynamic-price simulation reads raw cached Homey Energy slots without
@@ -2738,7 +2778,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(result.candidateTotalCommandW, -3000);
 }
 
-// v0.5.5: a dynamic contract keeps Homey Energy primary while it is fresh,
+// v0.6.1: a dynamic contract keeps Homey Energy primary while it is fresh,
 // and automatically selects the generic external Flow curve when Homey data
 // becomes stale and the user enabled external fallback.
 {
@@ -2782,4 +2822,148 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
 
   const homeyOnly = app.getDynamicPriceSelection({ ...settings, dynamicPriceSource: 'homey' }, now);
   assert.equal(homeyOnly.source, 'none', 'external data must never be used unless fallback is enabled');
+}
+
+// v0.6.1: hybrid EV control publishes both semantics: pure PV remains Smart,
+// tariff/grid top-up maps to Standard, and Peak Guard clamps current instead of
+// forcing STOP as long as the calculated current still meets the EV minimum.
+{
+  const app = bareApp();
+  const hybrid = { evEnabled: true, evControlType: 'hybrid', evMode: 'smart' };
+  assert.equal(app.getEvChargeMode({ connected: true, allowed: true, desiredCurrentA: 6, mode: 'smart', source: 'pv', peakLimited: false }, hybrid), 'smart');
+  assert.equal(app.getEvChargeMode({ connected: true, allowed: true, desiredCurrentA: 16, mode: 'smart', source: 'pv+topup', peakLimited: false }, hybrid), 'standard');
+  assert.equal(app.getEvChargeMode({ connected: true, allowed: true, desiredCurrentA: 13, mode: 'soc_target', source: 'soc_target', peakLimited: true }, hybrid), 'standard');
+  assert.equal(app.getEvChargeMode({ connected: true, allowed: false, desiredCurrentA: 0, mode: 'smart', source: 'off', peakLimited: true }, hybrid), 'stop');
+
+  const modeOnly = { ...hybrid, evControlType: 'mode' };
+  assert.equal(app.getEvChargeMode({ connected: true, allowed: true, desiredCurrentA: 13, mode: 'soc_target', source: 'soc_target', peakLimited: true }, modeOnly), 'stop');
+  assert.equal(app.getEvChargeMode({ connected: true, allowed: true, desiredCurrentA: 7, mode: 'soc_target', source: 'soc_target', peakLimited: true, effectiveChargeMode: 'smart', modeFallback: 'smart' }, modeOnly), 'smart');
+}
+
+// v0.6.1: boiler tariff fallback can be limited to configured day/night hours.
+// PV eligibility is handled separately and is intentionally not restricted here.
+{
+  const app = bareApp();
+  const settings = { timezone: 'Europe/Brussels', boilerTariffPeriod: 'day', boilerDayStartTime: '07:00', boilerDayEndTime: '23:00' };
+  assert.equal(app.isBoilerTariffPeriodAllowed(settings, new Date('2026-09-09T12:00:00+02:00').getTime()), true);
+  assert.equal(app.isBoilerTariffPeriodAllowed(settings, new Date('2026-09-09T02:00:00+02:00').getTime()), false);
+  settings.boilerTariffPeriod = 'night';
+  assert.equal(app.isBoilerTariffPeriodAllowed(settings, new Date('2026-09-09T12:00:00+02:00').getTime()), false);
+  assert.equal(app.isBoilerTariffPeriodAllowed(settings, new Date('2026-09-09T02:00:00+02:00').getTime()), true);
+}
+
+// v0.6.1: kWh deadline Flow rejects malformed clock values rather than silently
+// turning them into an unrelated +24h deadline.
+{
+  const app = bareApp();
+  app.evEnergyPlans = [{ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0 }];
+  app.evTargetWarningState = [''];
+  app.getSettings = () => ({ timezone: 'Europe/Brussels' });
+  app.requestContextEvaluate = () => {};
+  assert.equal(app.setEvEnergyPlan(0, 20, '7am'), false);
+  assert.equal(app.setEvEnergyPlan(0, 20, '07:00'), true);
+  assert.equal(app.evEnergyPlans[0].active, true);
+  assert.equal(app.evEnergyPlans[0].targetKwh, 20);
+}
+
+// v0.6.1: Flow can persistently override the saved SoC target/time. A kWh
+// plan may temporarily take precedence, but only the clear card deletes the override.
+{
+  const app = bareApp();
+  app.evEnergyPlans = [{ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0 }];
+  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0 }];
+  app.evTargetWarningState = [''];
+  app.getSettings = () => ({ timezone: 'Europe/Brussels' });
+  app.requestContextEvaluate = () => {};
+  assert.equal(app.setEvSocPlan(0, 80, '7am'), false);
+  assert.equal(app.setEvSocPlan(0, 101, '07:00'), false);
+  assert.equal(app.setEvSocPlan(0, 80, '07:00'), true);
+  assert.equal(app.evSocPlans[0].active, true);
+  assert.equal(app.evSocPlans[0].targetSoc, 80);
+  assert.equal(app.evEnergyPlans[0].active, false);
+  assert.equal(app.setEvEnergyPlan(0, 20, '07:00'), true);
+  assert.equal(app.evSocPlans[0].active, true);
+  assert.equal(app.evEnergyPlans[0].active, true);
+  assert.equal(app.clearEvSocPlan(0), true);
+  assert.equal(app.evSocPlans[0].active, false);
+}
+
+// v0.6.1: output timing must treat Hybrid as both a mode and current output.
+// A requested Hybrid STOP is a safety reduction and may bypass the normal
+// minimum command interval, just like pure mode/current control.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.lastEvPublishedAt = now;
+  app.lastPublishedEvCurrentA = 16;
+  app.lastPublishedEvChargeMode = 'standard';
+  app.lastPublishedEvAllowed = true;
+  app.evPeakGuardStopHoldUntil = 0;
+  const settings = {
+    evCount: 1, evEnabled: true, evControlType: 'hybrid', evMode: 'smart',
+    evCommandIntervalSeconds: 30, evPhases: 3, evMinCurrentA: 6, evMaxCurrentA: 16,
+  };
+  app.getSettings = () => settings;
+  app.getEvInstanceSettings = () => settings;
+  const timing = app.getEvOutputTimingStatus(0, {
+    connected: true, allowed: false, desiredCurrentA: 0, source: 'off', peakLimited: true,
+  }, settings, now + 1000);
+  assert.equal(timing.nextChargeMode, 'stop');
+  assert.equal(timing.nextAllowed, false);
+  assert.equal(timing.waitingForInterval, false);
+}
+
+// v0.6.1: Flow deadline cards carry their own explicit guarantee choice.
+// The runtime plan always enables pacing; only "yes" may leave selected tariffs.
+{
+  const app = bareApp();
+  app.evEnergyPlans = [{ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0,guarantee:false }];
+  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }];
+  app.evTargetWarningState = [''];
+  const stored = {
+    timezone: 'Europe/Brussels', evEnabled:true, evSocEnabled:true, evMode:'smart',
+    evGuaranteeTarget:false, evAllowUnselectedTariffForDeadline:true,
+    evTargetSoc:80, evTargetTime:'07:00', touRates:[],
+  };
+  app.getSettings = () => stored;
+  app.requestContextEvaluate = () => {};
+  app.evSessionOverride = { mode:null };
+  app.extraEvInstances = [];
+
+  assert.equal(app.setEvSocPlan(0, 80, '07:00', 'no'), true);
+  let runtime = app.getEvInstanceSettings(0, stored);
+  assert.equal(runtime.evGuaranteeTarget, true);
+  assert.equal(runtime.evAllowUnselectedTariffForDeadline, false);
+  assert.equal(app.evSocPlans[0].guarantee, false);
+
+  assert.equal(app.setEvEnergyPlan(0, 10, '07:00', 'yes'), true);
+  runtime = app.getEvInstanceSettings(0, stored);
+  assert.equal(runtime.evGuaranteeTarget, true);
+  assert.equal(runtime.evAllowUnselectedTariffForDeadline, true);
+  assert.equal(app.evEnergyPlans[0].guarantee, true);
+}
+
+// v0.6.1: mode-only EV power estimation follows the actually published Smart
+// or Standard charger mode, and becomes controller feedback when no current
+// telemetry is available yet.
+{
+  const app = bareApp();
+  const settings = {
+    evEnabled: true,
+    evControlType: 'mode',
+    evMode: 'smart',
+    evPhases: 1,
+    evMinCurrentA: 6,
+    evStandardCurrentA: 16,
+    evModeSmartCurrentA: 7,
+    evModeStandardCurrentA: 16,
+  };
+  app.lastPublishedEvChargeMode = 'smart';
+  app.lastPublishedEvCurrentA = 0;
+  assert.equal(app.getEvCommandedPowerW(0, settings), 7 * 230);
+  assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 7);
+
+  app.lastPublishedEvChargeMode = 'standard';
+  assert.equal(app.getEvCommandedPowerW(0, settings), 16 * 230);
+  assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 16);
 }

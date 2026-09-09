@@ -28,6 +28,16 @@ Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.6.1
+- Added **per-EV tariff selection** for fixed, dynamic and multi-rate contracts. Existing EV tariff values are retained while their controls move from Energy Contract to the EV tab.
+- Added EV **Current / Mode / Hybrid** control. Hybrid publishes both the charge mode and current setpoint; Stop remains a real stop/pause and Peak Guard remains absolute.
+- Added configurable PV charging **start/stop hysteresis** and grid top-up modes: off, minimum charging current or full requested EV setpoint. Grid top-up is only possible on tariffs explicitly allowed for that EV.
+- Added deadline planning using either **target SoC by HH:mm** or **required kWh by HH:mm**. HomeFlux accelerates within selected tariffs when needed and can optionally use a non-selected/more expensive tariff when the deadline would otherwise fail.
+- Added the Flow trigger **EV target cannot be reached** with a text message suitable for notifications, plus four `kWh needed by HH:mm` action cards.
+- EV planning is now visible in **Planning, Live status and the EMS status widget**, including remaining kWh, deadline and feasibility.
+- Moved boiler tariff controls to the **Boiler** tab without changing the existing PV-first/fallback logic. Tariff fallback can now be restricted to a configurable **day or night window**.
+- Existing settings migrate to schema 53 without resetting configured EV or boiler values.
+
 ### v0.4.6
 - Mixed-battery limits now expose only **Max charge per battery** and **Max discharge per battery** for each configured battery.
 - Individual battery maxima remain hard limits and the existing total charge/discharge limits remain authoritative for the whole battery group.

@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.5 — Jouw energie, anders geregeld",
+    "subtitle": "v0.6.1 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -143,7 +143,10 @@
       "evWaitingOutputTimer": "wacht {seconds}s op minimumtijd tussen EV-uitgangen",
       "evReadyNextOutput": "klaar voor eerstvolgende EV-uitvoer",
       "evDecisionActive": "Huidige EV-beslissing is actief",
-      "evWaitingStopHold": "wacht {seconds}s op EV-herstartwachttijd"
+      "evWaitingStopHold": "wacht {seconds}s op EV-herstartwachttijd",
+      "evTargetFeasible": "haalbaar",
+      "evTargetExtraTariff": "extra tarief nodig",
+      "evTargetNotFeasible": "niet haalbaar"
     }
   }
 }

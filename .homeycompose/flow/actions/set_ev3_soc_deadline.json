@@ -1,0 +1,60 @@
+{
+  "title": {
+    "en": "Set EV 3 target SoC by time",
+    "nl": "Stel EV 3: doel-SoC tegen tijd in"
+  },
+  "hint": {
+    "en": "Sets a persistent SoC target/time override for EV 3. It remains active until the dedicated clear SoC target override Flow card is run. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required. Peak Guard always remains absolute.",
+    "nl": "Stelt een blijvende SoC-doel/tijd-override voor EV 3 in. Deze blijft actief tot de aparte Flowkaart om de SoC-doeloverride te wissen wordt uitgevoerd. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken. Peak Guard blijft altijd absoluut."
+  },
+  "args": [
+    {
+      "name": "target_soc",
+      "type": "number",
+      "title": {
+        "en": "Target SoC (%)",
+        "nl": "Doel-SoC (%)"
+      },
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "name": "time",
+      "type": "text",
+      "title": {
+        "en": "Deadline (HH:mm)",
+        "nl": "Deadline (uu:mm)"
+      },
+      "placeholder": "07:00"
+    },
+    {
+      "name": "guarantee",
+      "type": "dropdown",
+      "title": {
+        "en": "Guarantee target?",
+        "nl": "Doel gegarandeerd?"
+      },
+      "values": [
+        {
+          "id": "no",
+          "title": {
+            "en": "No — selected tariffs only",
+            "nl": "Nee — alleen geselecteerde tarieven"
+          }
+        },
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes — use extra tariffs if required",
+            "nl": "Ja — extra tarieven gebruiken indien nodig"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "EV 3: [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+    "nl": "EV 3: [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+  }
+}

@@ -8,7 +8,12 @@
     "Externe Flow fallback": "Externe Flow fallback",
     "Nog geen externe prijscurve ontvangen": "Nog geen externe prijscurve ontvangen",
     "Veilige fallback: zonder bruikbare primaire of fallback-curve wordt niet van het net geladen en niet prijs-gestuurd ontladen. PV-overschot opvangen en Peak Guard blijven actief.": "Veilige fallback: zonder bruikbare primaire of fallback-curve wordt niet van het net geladen en niet prijs-gestuurd ontladen. PV-overschot opvangen en Peak Guard blijven actief.",
-    "PBTH: gebruik Stel PBTH-elektriciteitsprijscurve in met de tag Prijzen uit PBTH en kies dezelfde periode. Andere providers kunnen Externe actuele elektriciteitsprijs gebruiken voor een live prijs, of Externe elektriciteitsprijscurve voor JSON met tijdstempels.": "PBTH: gebruik Stel PBTH-elektriciteitsprijscurve in met de tag Prijzen uit PBTH en kies dezelfde periode. Andere providers kunnen Externe actuele elektriciteitsprijs gebruiken voor een live prijs, of Externe elektriciteitsprijscurve voor JSON met tijdstempels."
+    "PBTH: gebruik Stel PBTH-elektriciteitsprijscurve in met de tag Prijzen uit PBTH en kies dezelfde periode. Andere providers kunnen Externe actuele elektriciteitsprijs gebruiken voor een live prijs, of Externe elektriciteitsprijscurve voor JSON met tijdstempels.": "PBTH: gebruik Stel PBTH-elektriciteitsprijscurve in met de tag Prijzen uit PBTH en kies dezelfde periode. Andere providers kunnen Externe actuele elektriciteitsprijs gebruiken voor een live prijs, of Externe elektriciteitsprijscurve voor JSON met tijdstempels.",
+    "Geschatte laadstroom bij modus-sturing": "Geschatte laadstroom bij modus-sturing",
+    "Geschatte laadstroom Slim-modus (A)": "Geschatte laadstroom Slim-modus (A)",
+    "Geschatte laadstroom Standaard-modus (A)": "Geschatte laadstroom Standaard-modus (A)",
+    "HomeFlux gebruikt deze waarden voor Peak Guard, planning en vermogensverdeling zolang alleen Stop / Slim / Standaard kan worden gestuurd. Zodra een werkelijke laadstroom beschikbaar is, blijft die meting de waarheid.": "HomeFlux gebruikt deze waarden voor Peak Guard, planning en vermogensverdeling zolang alleen Stop / Slim / Standaard kan worden gestuurd. Zodra een werkelijke laadstroom beschikbaar is, blijft die meting de waarheid.",
+    "HomeFlux stuurt stop, smart of standard. De geschatte Slim-/Standaard-stroom wordt gebruikt voor Peak Guard en planning; werkelijke stroomfeedback blijft leidend. Stop is altijd een echte stop/pauze.": "HomeFlux stuurt stop, smart of standard. De geschatte Slim-/Standaard-stroom wordt gebruikt voor Peak Guard en planning; werkelijke stroomfeedback blijft leidend. Stop is altijd een echte stop/pauze."
   },
   "phrases": {},
   "strings": {

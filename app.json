@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.5.5",
+  "version": "0.6.1",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -638,6 +638,64 @@
           }
         ],
         "id": "ems_status_changed"
+      },
+      {
+        "title": {
+          "en": "EV target cannot be reached",
+          "nl": "EV-doel kan niet worden gehaald"
+        },
+        "hint": {
+          "en": "Fires once when HomeFlux determines that an EV deadline cannot be met with the currently available selected tariff windows, or cannot be met at all. The message token can be sent as a push notification.",
+          "nl": "Wordt één keer geactiveerd wanneer HomeFlux bepaalt dat een EV-deadline niet haalbaar is met de huidige geselecteerde tariefvensters, of helemaal niet haalbaar is. De teksttag kan rechtstreeks voor een pushmelding worden gebruikt."
+        },
+        "tokens": [
+          {
+            "name": "ev",
+            "type": "number",
+            "title": {
+              "en": "EV number",
+              "nl": "EV-nummer"
+            },
+            "example": 1
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "title": {
+              "en": "EV name",
+              "nl": "EV-naam"
+            },
+            "example": "EV 1"
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Warning",
+              "nl": "Waarschuwing"
+            },
+            "example": "EV target cannot be reached within selected tariffs"
+          },
+          {
+            "name": "energy_needed",
+            "type": "number",
+            "title": {
+              "en": "Energy still needed (kWh)",
+              "nl": "Nog nodige energie (kWh)"
+            },
+            "example": 20
+          },
+          {
+            "name": "deadline",
+            "type": "string",
+            "title": {
+              "en": "Deadline",
+              "nl": "Deadline"
+            },
+            "example": "10/09/2026 07:00"
+          }
+        ],
+        "id": "ev_target_cannot_be_reached"
       },
       {
         "title": {
@@ -3196,6 +3254,50 @@
     "actions": [
       {
         "title": {
+          "en": "Clear EV 1 SoC target override",
+          "nl": "Wis EV 1 SoC-doeloverride"
+        },
+        "hint": {
+          "en": "Clears the persistent Flow SoC target/time override for EV 1. HomeFlux immediately returns to the target SoC, deadline and guarantee settings configured in the app.",
+          "nl": "Wist de blijvende Flow-override voor SoC-doel/tijd van EV 1. HomeFlux gebruikt daarna onmiddellijk opnieuw de doel-SoC, deadline en garantie-instellingen uit de app."
+        },
+        "id": "clear_ev1_soc_deadline_override"
+      },
+      {
+        "title": {
+          "en": "Clear EV 2 SoC target override",
+          "nl": "Wis EV 2 SoC-doeloverride"
+        },
+        "hint": {
+          "en": "Clears the persistent Flow SoC target/time override for EV 2. HomeFlux immediately returns to the target SoC, deadline and guarantee settings configured in the app.",
+          "nl": "Wist de blijvende Flow-override voor SoC-doel/tijd van EV 2. HomeFlux gebruikt daarna onmiddellijk opnieuw de doel-SoC, deadline en garantie-instellingen uit de app."
+        },
+        "id": "clear_ev2_soc_deadline_override"
+      },
+      {
+        "title": {
+          "en": "Clear EV 3 SoC target override",
+          "nl": "Wis EV 3 SoC-doeloverride"
+        },
+        "hint": {
+          "en": "Clears the persistent Flow SoC target/time override for EV 3. HomeFlux immediately returns to the target SoC, deadline and guarantee settings configured in the app.",
+          "nl": "Wist de blijvende Flow-override voor SoC-doel/tijd van EV 3. HomeFlux gebruikt daarna onmiddellijk opnieuw de doel-SoC, deadline en garantie-instellingen uit de app."
+        },
+        "id": "clear_ev3_soc_deadline_override"
+      },
+      {
+        "title": {
+          "en": "Clear EV 4 SoC target override",
+          "nl": "Wis EV 4 SoC-doeloverride"
+        },
+        "hint": {
+          "en": "Clears the persistent Flow SoC target/time override for EV 4. HomeFlux immediately returns to the target SoC, deadline and guarantee settings configured in the app.",
+          "nl": "Wist de blijvende Flow-override voor SoC-doel/tijd van EV 4. HomeFlux gebruikt daarna onmiddellijk opnieuw de doel-SoC, deadline en garantie-instellingen uit de app."
+        },
+        "id": "clear_ev4_soc_deadline_override"
+      },
+      {
+        "title": {
           "en": "Get EMS status",
           "nl": "Haal EMS-status op"
         },
@@ -3353,6 +3455,67 @@
       },
       {
         "title": {
+          "en": "Set EV 1 energy needed by time",
+          "nl": "Stel EV 1: kWh nodig tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a temporary energy deadline for EV 1. Useful when vehicle SoC is unavailable. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required to meet the deadline. Peak Guard always remains absolute.",
+          "nl": "Stelt een tijdelijk energiedoel voor EV 1 in. Handig wanneer voertuig-SoC niet beschikbaar is. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken om de deadline te halen. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Energy needed (kWh)",
+              "nl": "Nodige energie (kWh)"
+            },
+            "min": 0,
+            "max": 250,
+            "step": 0.1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 1: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 1: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev1_energy_deadline"
+      },
+      {
+        "title": {
           "en": "Override EV 1 mode for one charging session",
           "nl": "Override EV 1-modus voor één laadbeurt"
         },
@@ -3429,6 +3592,67 @@
       },
       {
         "title": {
+          "en": "Set EV 1 target SoC by time",
+          "nl": "Stel EV 1: doel-SoC tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent SoC target/time override for EV 1. It remains active until the dedicated clear SoC target override Flow card is run. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required. Peak Guard always remains absolute.",
+          "nl": "Stelt een blijvende SoC-doel/tijd-override voor EV 1 in. Deze blijft actief tot de aparte Flowkaart om de SoC-doeloverride te wissen wordt uitgevoerd. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Doel-SoC (%)"
+            },
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 1: [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 1: [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev1_soc_deadline"
+      },
+      {
+        "title": {
           "en": "Set EV 1 status",
           "nl": "Stel EV 1-status in"
         },
@@ -3478,6 +3702,67 @@
           "nl": "Stel EV 1 in: [[connected]], [[charge_current]] A"
         },
         "id": "set_ev1_status"
+      },
+      {
+        "title": {
+          "en": "Set EV 2 energy needed by time",
+          "nl": "Stel EV 2: kWh nodig tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a temporary energy deadline for EV 2. Useful when vehicle SoC is unavailable. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required to meet the deadline. Peak Guard always remains absolute.",
+          "nl": "Stelt een tijdelijk energiedoel voor EV 2 in. Handig wanneer voertuig-SoC niet beschikbaar is. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken om de deadline te halen. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Energy needed (kWh)",
+              "nl": "Nodige energie (kWh)"
+            },
+            "min": 0,
+            "max": 250,
+            "step": 0.1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 2: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 2: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev2_energy_deadline"
       },
       {
         "title": {
@@ -3557,6 +3842,67 @@
       },
       {
         "title": {
+          "en": "Set EV 2 target SoC by time",
+          "nl": "Stel EV 2: doel-SoC tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent SoC target/time override for EV 2. It remains active until the dedicated clear SoC target override Flow card is run. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required. Peak Guard always remains absolute.",
+          "nl": "Stelt een blijvende SoC-doel/tijd-override voor EV 2 in. Deze blijft actief tot de aparte Flowkaart om de SoC-doeloverride te wissen wordt uitgevoerd. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Doel-SoC (%)"
+            },
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 2: [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 2: [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev2_soc_deadline"
+      },
+      {
+        "title": {
           "en": "Set EV 2 status",
           "nl": "Stel EV 2-status in"
         },
@@ -3606,6 +3952,67 @@
           "nl": "Stel EV 2 in: [[connected]], [[charge_current]] A"
         },
         "id": "set_ev2_status"
+      },
+      {
+        "title": {
+          "en": "Set EV 3 energy needed by time",
+          "nl": "Stel EV 3: kWh nodig tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a temporary energy deadline for EV 3. Useful when vehicle SoC is unavailable. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required to meet the deadline. Peak Guard always remains absolute.",
+          "nl": "Stelt een tijdelijk energiedoel voor EV 3 in. Handig wanneer voertuig-SoC niet beschikbaar is. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken om de deadline te halen. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Energy needed (kWh)",
+              "nl": "Nodige energie (kWh)"
+            },
+            "min": 0,
+            "max": 250,
+            "step": 0.1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 3: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 3: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev3_energy_deadline"
       },
       {
         "title": {
@@ -3685,6 +4092,67 @@
       },
       {
         "title": {
+          "en": "Set EV 3 target SoC by time",
+          "nl": "Stel EV 3: doel-SoC tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent SoC target/time override for EV 3. It remains active until the dedicated clear SoC target override Flow card is run. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required. Peak Guard always remains absolute.",
+          "nl": "Stelt een blijvende SoC-doel/tijd-override voor EV 3 in. Deze blijft actief tot de aparte Flowkaart om de SoC-doeloverride te wissen wordt uitgevoerd. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Doel-SoC (%)"
+            },
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 3: [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 3: [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev3_soc_deadline"
+      },
+      {
+        "title": {
           "en": "Set EV 3 status",
           "nl": "Stel EV 3-status in"
         },
@@ -3734,6 +4202,67 @@
           "nl": "Stel EV 3 in: [[connected]], [[charge_current]] A"
         },
         "id": "set_ev3_status"
+      },
+      {
+        "title": {
+          "en": "Set EV 4 energy needed by time",
+          "nl": "Stel EV 4: kWh nodig tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a temporary energy deadline for EV 4. Useful when vehicle SoC is unavailable. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required to meet the deadline. Peak Guard always remains absolute.",
+          "nl": "Stelt een tijdelijk energiedoel voor EV 4 in. Handig wanneer voertuig-SoC niet beschikbaar is. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken om de deadline te halen. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Energy needed (kWh)",
+              "nl": "Nodige energie (kWh)"
+            },
+            "min": 0,
+            "max": 250,
+            "step": 0.1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 4: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 4: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev4_energy_deadline"
       },
       {
         "title": {
@@ -3810,6 +4339,67 @@
           "nl": "Stel EV 4-SoC in op [[soc]]%"
         },
         "id": "set_ev4_soc"
+      },
+      {
+        "title": {
+          "en": "Set EV 4 target SoC by time",
+          "nl": "Stel EV 4: doel-SoC tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent SoC target/time override for EV 4. It remains active until the dedicated clear SoC target override Flow card is run. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required. Peak Guard always remains absolute.",
+          "nl": "Stelt een blijvende SoC-doel/tijd-override voor EV 4 in. Deze blijft actief tot de aparte Flowkaart om de SoC-doeloverride te wissen wordt uitgevoerd. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Doel-SoC (%)"
+            },
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — selected tariffs only",
+                  "nl": "Nee — alleen geselecteerde tarieven"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — use extra tariffs if required",
+                  "nl": "Ja — extra tarieven gebruiken indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EV 4: [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "EV 4: [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev4_soc_deadline"
       },
       {
         "title": {

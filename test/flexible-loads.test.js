@@ -96,6 +96,33 @@ function baseSettings(overrides = {}) {
 
 assert.equal(evPowerPerAmp(baseSettings({ evPhases: 1 })), 230);
 assert.equal(evPowerPerAmp(baseSettings({ evPhases: 3 })), 690);
+
+// v0.6.1: a Flow SoC deadline overrides the saved target/deadline for the
+// current runtime plan and feeds the same feasibility calculation.
+{
+  const now = new Date('2026-09-09T01:00:00+02:00');
+  const deadlineAt = now.getTime() + (3 * 3600000);
+  const settings = baseSettings({
+    peakShaveEnabled: false,
+    evTargetSoc: 90,
+    evTargetTime: '07:00',
+    evSocPlanActive: true,
+    evSocDeadlineAt: deadlineAt,
+    evGuaranteeTarget: true,
+  });
+  // getEvInstanceSettings applies the temporary target before calling the helper.
+  settings.evTargetSoc = 80;
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 20, actualCurrentA: 0, gridPowerW: 0,
+    currentBatteryCommandW: 0, nextBatteryCommandW: 0, now,
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+  });
+  assert.equal(d.planningType, 'soc_flow');
+  assert.equal(d.targetSoc, 80);
+  assert.equal(d.deadlineAt, deadlineAt);
+  assert.equal(d.energyNeedKwh, 36);
+}
+
 console.log('HomeFlux EMS flexible-load tests: OK');
 
 // v0.3.8: Smart mode remains usable for chargers without EV SoC.
@@ -118,12 +145,40 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   assert.equal(d.source, 'pv');
 }
 
-// v0.3.8: SoC-target mode is unavailable when SoC support is disabled.
+// v0.6.1: SoC-target falls back to tariff/PV control when SoC is unavailable.
 {
   const settings = baseSettings({ evSocEnabled: false, evMode: 'soc_target', peakShaveEnabled: false });
-  const d = calculateEvDecision({ settings, connected: true, soc: NaN, actualCurrentA: 0, gridPowerW: 0, now: new Date('2026-08-23T12:00:00Z') });
-  assert.equal(d.allowed, false);
-  assert.match(d.reason, /SoC-doelmodus niet beschikbaar/);
+  const d = calculateEvDecision({
+    settings, connected: true, soc: NaN, actualCurrentA: 0, gridPowerW: 0,
+    now: new Date('2026-08-24T00:30:00+02:00'),
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+  });
+  assert.equal(d.socFallbackActive, true);
+  assert.equal(d.allowed, true);
+  assert.equal(d.desiredCurrentA, 16);
+  assert.match(d.reason, /kWh nodig tegen tijd/);
+}
+
+// v0.6.1: a stale SoC uses the same fallback, while a fresh SoC keeps SoC planning.
+{
+  const settings = baseSettings({ evSocEnabled: true, evSocFreshnessMinutes: 15, evMode: 'soc_target', peakShaveEnabled: false });
+  const stale = calculateEvDecision({
+    settings, connected: true, soc: NaN, socSeen: true, socFresh: false, socAgeMinutes: 16,
+    actualCurrentA: 0, gridPowerW: 0, now: new Date('2026-08-24T00:30:00+02:00'),
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+  });
+  assert.equal(stale.socFallbackActive, true);
+  assert.equal(stale.energyNeedKwh, null);
+  assert.equal(stale.desiredCurrentA, 16);
+  assert.match(stale.reason, /ouder dan 15 min/);
+
+  const fresh = calculateEvDecision({
+    settings, connected: true, soc: 20, socSeen: true, socFresh: true, socAgeMinutes: 1,
+    actualCurrentA: 0, gridPowerW: 0, now: new Date('2026-08-24T00:30:00+02:00'),
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+  });
+  assert.equal(fresh.socFallbackActive, false);
+  assert.equal(fresh.energyNeedKwh, 36);
 }
 
 // v0.3.8: Emergency charge ignores tariff and SoC but still obeys Peak Guard.
@@ -287,4 +342,227 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   });
   assert.equal(pv.allowed, true);
   assert.equal(pv.source, 'pv');
+}
+
+// v0.6.1: an energy deadline works without vehicle SoC and accelerates within
+// selected tariffs even when expensive/unselected tariff override is disabled.
+{
+  const now = new Date('2026-09-09T01:00:00+02:00');
+  const settings = baseSettings({
+    peakShaveEnabled: false,
+    evSocEnabled: false,
+    evEnergyPlanActive: true,
+    evEnergyNeedKwh: 12,
+    evEnergyDeadlineAt: now.getTime() + (2 * 3600000),
+    evAllowUnselectedTariffForDeadline: false,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, actualCurrentA: 0, gridPowerW: 0,
+    currentBatteryCommandW: 0, nextBatteryCommandW: 0, now,
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+  });
+  assert.equal(d.planningType, 'energy');
+  assert.equal(d.energyNeedKwh, 12);
+  assert.ok(d.desiredCurrentA > 16, 'deadline should raise current above standard current inside selected tariff');
+  assert.equal(d.targetReachable, true);
+}
+
+// v0.6.1: outside selected tariffs the default is warning-only; the explicit
+// opt-in may use the more expensive tariff when the deadline is otherwise lost.
+{
+  const now = new Date('2026-09-09T12:00:00+02:00');
+  const common = {
+    peakShaveEnabled: false,
+    evSocEnabled: false,
+    evEnergyPlanActive: true,
+    evEnergyNeedKwh: 7,
+    evEnergyDeadlineAt: now.getTime() + 3600000,
+  };
+  const tariff = { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' };
+  const warningOnly = calculateEvDecision({ settings: baseSettings({ ...common, evAllowUnselectedTariffForDeadline: false }), connected: true, actualCurrentA: 0, gridPowerW: 0, currentBatteryCommandW: 0, nextBatteryCommandW: 0, now, tariff });
+  assert.equal(warningOnly.allowed, false);
+  assert.equal(warningOnly.targetReachableOnSelectedTariffs, false);
+  assert.match(warningOnly.targetWarning, /niet haalbaar binnen geselecteerde tarieven/);
+
+  const override = calculateEvDecision({ settings: baseSettings({ ...common, evAllowUnselectedTariffForDeadline: true }), connected: true, actualCurrentA: 0, gridPowerW: 0, currentBatteryCommandW: 0, nextBatteryCommandW: 0, now, tariff });
+  assert.equal(override.allowed, true);
+  assert.equal(override.source, 'guarantee');
+  assert.equal(override.desiredCurrentA, 32);
+}
+
+// v0.6.1: PV charging uses per-EV start/stop hysteresis and selectable grid top-up.
+{
+  const tariff = { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' };
+  const common = {
+    peakShaveEnabled: false,
+    evGuaranteeTarget: false,
+    evPvStartSurplusW: 1500,
+    evPvStopSurplusW: 800,
+    evPvStopDelaySeconds: 60,
+    touRates: [{ id: 'normal', name: 'Normal', importPrice: 0.3, evChargeAllowed: false, evPvChargeAllowed: true, evPvGridTopUpAllowed: true, evPvMinSurplusW: 0 }],
+  };
+  const off = calculateEvDecision({ settings: baseSettings({ ...common, evPvGridTopUpMode: 'off' }), connected: true, soc: 50, actualCurrentA: 0, gridPowerW: -1500, currentBatteryCommandW: 0, nextBatteryCommandW: 0, tariff, pvAvailableWOverride: 1500, now: new Date('2026-09-09T12:00:00+02:00') });
+  assert.equal(off.desiredCurrentA, 6);
+  assert.equal(off.source, 'pv');
+  assert.equal(off.pvTariffStopSurplusW, 800);
+  assert.equal(off.pvTariffStopDelaySeconds, 60);
+
+  const full = calculateEvDecision({ settings: baseSettings({ ...common, evPvGridTopUpMode: 'full' }), connected: true, soc: 50, actualCurrentA: 0, gridPowerW: -1500, currentBatteryCommandW: 0, nextBatteryCommandW: 0, tariff, pvAvailableWOverride: 1500, now: new Date('2026-09-09T12:00:00+02:00') });
+  assert.equal(full.desiredCurrentA, 16);
+  assert.equal(full.source, 'pv+topup');
+  assert.ok(full.gridRequestPowerW > 0);
+}
+
+// v0.6.1: SoC-target mode obeys the same per-EV tariff policy as Smart mode.
+// Outside a selected tariff it waits unless PV or an explicit guaranteed
+// deadline provides a valid charging reason.
+{
+  const now = new Date('2026-09-09T12:00:00+02:00');
+  const tariff = { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' };
+  const common = {
+    evMode: 'soc_target',
+    peakShaveEnabled: false,
+    evTargetSoc: 80,
+    evTargetTime: '13:00',
+    evGuaranteeTarget: true,
+  };
+
+  const tariffOnly = calculateEvDecision({
+    settings: baseSettings({ ...common, evAllowUnselectedTariffForDeadline: false }),
+    connected: true, soc: 20, actualCurrentA: 0, gridPowerW: 0,
+    currentBatteryCommandW: 0, nextBatteryCommandW: 0, now, tariff,
+  });
+  assert.equal(tariffOnly.allowed, false);
+  assert.equal(tariffOnly.source, 'off');
+  assert.match(tariffOnly.reason, /SoC-doel wacht/);
+
+  const guaranteed = calculateEvDecision({
+    settings: baseSettings({ ...common, evAllowUnselectedTariffForDeadline: true }),
+    connected: true, soc: 20, actualCurrentA: 0, gridPowerW: 0,
+    currentBatteryCommandW: 0, nextBatteryCommandW: 0, now, tariff,
+  });
+  assert.equal(guaranteed.allowed, true);
+  assert.equal(guaranteed.source, 'guarantee');
+}
+
+// v0.6.1: SoC-target mode still uses PV outside selected grid tariffs when the
+// current tariff explicitly permits PV charging.
+{
+  const settings = baseSettings({
+    evMode: 'soc_target', evGuaranteeTarget: false, peakShaveEnabled: false,
+    touRates: [{ id: 'normal', name: 'Normal', importPrice: 0.3, evChargeAllowed: false, evPvChargeAllowed: true, evPvMinSurplusW: 1000 }],
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 20, actualCurrentA: 0, gridPowerW: -1800,
+    currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    pvAvailableWOverride: 1800,
+    now: new Date('2026-09-09T12:00:00+02:00'),
+  });
+  assert.equal(d.allowed, true);
+  assert.equal(d.source, 'pv');
+  assert.ok(d.desiredCurrentA >= 6);
+}
+
+// v0.6.1: mode-only chargers use explicit Smart/Standard current estimates.
+{
+  const settings = baseSettings({
+    evControlType: 'mode',
+    evModeSmartCurrentA: 7,
+    evModeStandardCurrentA: 16,
+    peakShaveEnabled: false,
+    evGuaranteeTarget: false,
+  });
+  const pv = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: -4000, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    now: new Date('2026-08-23T12:00:00Z'),
+  });
+  assert.equal(pv.source, 'pv');
+  assert.equal(pv.desiredCurrentA, 7);
+  assert.equal(pv.requestedCurrentA, 7);
+
+  const tariff = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: 0, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+    now: new Date('2026-08-24T00:30:00+02:00'),
+  });
+  assert.equal(tariff.source, 'tariff');
+  assert.equal(tariff.desiredCurrentA, 16);
+  assert.equal(tariff.requestedCurrentA, 16);
+}
+
+// v0.6.1: mode-only Peak Guard falls back Standard -> Smart -> Stop.
+// HomeFlux cannot continuously clamp a mode-only charger, but it can select
+// the lower configured Smart mode whenever that discrete step still fits.
+{
+  const settings = baseSettings({
+    evControlType: 'mode',
+    evModeSmartCurrentA: 6,
+    evModeStandardCurrentA: 16,
+    evGuaranteeTarget: false,
+    peakShaveEnabled: true,
+    peakLimitW: 3200,
+    peakSoftMarginW: 100,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: 0, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+    now: new Date('2026-08-24T00:30:00+02:00'),
+  });
+  assert.equal(d.requestedCurrentA, 16);
+  assert.equal(d.desiredCurrentA, 6);
+  assert.equal(d.allowed, true);
+  assert.equal(d.peakLimited, true);
+  assert.equal(d.requestedChargeMode, 'standard');
+  assert.equal(d.effectiveChargeMode, 'smart');
+  assert.equal(d.modeFallback, 'smart');
+  assert.match(d.reason, /Standaard \(16 A\).*Slim \(6 A\)/);
+}
+
+// If even Smart no longer fits, mode-only still stops.
+{
+  const settings = baseSettings({
+    evControlType: 'mode',
+    evModeSmartCurrentA: 7,
+    evModeStandardCurrentA: 32,
+    evGuaranteeTarget: false,
+    peakShaveEnabled: true,
+    peakLimitW: 1500,
+    peakSoftMarginW: 100,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: 0, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+    now: new Date('2026-08-24T00:30:00+02:00'),
+  });
+  assert.equal(d.requestedCurrentA, 32);
+  assert.equal(d.desiredCurrentA, 0);
+  assert.equal(d.allowed, false);
+  assert.equal(d.peakLimited, true);
+  assert.equal(d.effectiveChargeMode, 'stop');
+}
+
+// v0.6.1: mode-only Emergency uses the estimated Standard mode current instead
+// of pretending the hidden ampere-control maximum can be commanded.
+{
+  const settings = baseSettings({
+    evControlType: 'mode',
+    evMode: 'emergency',
+    evModeSmartCurrentA: 5,
+    evModeStandardCurrentA: 11,
+    evMaxCurrentA: 32,
+    peakShaveEnabled: false,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: NaN, actualCurrentA: 0, gridPowerW: 0,
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    now: new Date('2026-08-23T12:00:00Z'),
+  });
+  assert.equal(d.desiredCurrentA, 11);
+  assert.equal(d.requestedCurrentA, 11);
 }

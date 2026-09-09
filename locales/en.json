@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.5.5 — Your energy, managed differently",
+    "subtitle": "v0.6.1 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -143,7 +143,10 @@
       "evWaitingOutputTimer": "waiting {seconds}s for minimum EV output interval",
       "evReadyNextOutput": "ready for next EV output",
       "evDecisionActive": "Current EV decision is active",
-      "evWaitingStopHold": "waiting {seconds}s for EV restart hold"
+      "evWaitingStopHold": "waiting {seconds}s for EV restart hold",
+      "evTargetFeasible": "feasible",
+      "evTargetExtraTariff": "extra tariff needed",
+      "evTargetNotFeasible": "not feasible"
     }
   }
 }

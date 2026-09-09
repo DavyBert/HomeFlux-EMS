@@ -324,7 +324,9 @@
       const controlType = String(ev.controlType || 'current');
       const nextValue = controlType === 'mode'
         ? String(ev.nextOutputChargeMode || 'stop').toUpperCase()
-        : `${Math.max(0, Number(ev.nextOutputCurrentA) || 0)} A`;
+        : controlType === 'hybrid'
+          ? `${String(ev.nextOutputChargeMode || 'stop').toUpperCase()} · ${Math.max(0, Number(ev.nextOutputCurrentA) || 0)} A`
+          : `${Math.max(0, Number(ev.nextOutputCurrentA) || 0)} A`;
       const permission = ev.nextOutputAllowed
         ? tr(Homey, 'widget.status.evAllowed', 'allowed')
         : tr(Homey, 'widget.status.evNotAllowed', 'not allowed');
@@ -342,6 +344,17 @@
       const stopHold = Math.max(0, Math.ceil(Number(ev.stopHoldRemainingSeconds) || 0));
       if (stopHold > 0) {
         parts.push(tr(Homey, 'widget.status.evWaitingStopHold', 'waiting {seconds}s for EV restart hold').replace('{seconds}', stopHold));
+      }
+      const need = Number(ev.energyNeedKwh);
+      if (Number.isFinite(need)) {
+        const deadline = Number(ev.deadlineAt);
+        const deadlineText = Number.isFinite(deadline) && deadline > 0 ? new Date(deadline).toLocaleString([], { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+        const feasible = ev.targetReachable === false
+          ? tr(Homey, 'widget.status.evTargetNotFeasible', 'not feasible')
+          : ev.targetReachableOnSelectedTariffs === false
+            ? tr(Homey, 'widget.status.evTargetExtraTariff', 'extra tariff needed')
+            : tr(Homey, 'widget.status.evTargetFeasible', 'feasible');
+        parts.push(`${need.toFixed(1)} kWh · ${deadlineText} · ${feasible}`);
       }
       const reason = String(ev.nextOutputReason || '').trim();
       if (reason) parts.push(`${tr(Homey, 'widget.status.reason', 'Reason')}: ${reason}`);

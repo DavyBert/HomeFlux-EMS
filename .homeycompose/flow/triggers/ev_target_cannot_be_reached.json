@@ -1,0 +1,57 @@
+{
+  "title": {
+    "en": "EV target cannot be reached",
+    "nl": "EV-doel kan niet worden gehaald"
+  },
+  "hint": {
+    "en": "Fires once when HomeFlux determines that an EV deadline cannot be met with the currently available selected tariff windows, or cannot be met at all. The message token can be sent as a push notification.",
+    "nl": "Wordt één keer geactiveerd wanneer HomeFlux bepaalt dat een EV-deadline niet haalbaar is met de huidige geselecteerde tariefvensters, of helemaal niet haalbaar is. De teksttag kan rechtstreeks voor een pushmelding worden gebruikt."
+  },
+  "tokens": [
+    {
+      "name": "ev",
+      "type": "number",
+      "title": {
+        "en": "EV number",
+        "nl": "EV-nummer"
+      },
+      "example": 1
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "title": {
+        "en": "EV name",
+        "nl": "EV-naam"
+      },
+      "example": "EV 1"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "title": {
+        "en": "Warning",
+        "nl": "Waarschuwing"
+      },
+      "example": "EV target cannot be reached within selected tariffs"
+    },
+    {
+      "name": "energy_needed",
+      "type": "number",
+      "title": {
+        "en": "Energy still needed (kWh)",
+        "nl": "Nog nodige energie (kWh)"
+      },
+      "example": 20
+    },
+    {
+      "name": "deadline",
+      "type": "string",
+      "title": {
+        "en": "Deadline",
+        "nl": "Deadline"
+      },
+      "example": "10/09/2026 07:00"
+    }
+  ]
+}
