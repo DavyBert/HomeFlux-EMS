@@ -480,7 +480,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.6.4 initialized');
+    this.log('HomeFlux EMS v0.6.5 initialized');
   }
 
   refreshSettingsCache() {
@@ -2138,6 +2138,34 @@ class HomeFluxEmsApp extends Homey.App {
       return Boolean(settings.boilerDynamicNormalEnabled);
     }
     return Boolean(settings.boilerFixedChargeWindowEnabled) && tariff.className === 'cheap';
+  }
+
+  getBoilerPeakGuardReserveW(settings = this.getSettings(), now = Date.now()) {
+    // v0.6.5: tariff boiler heating is an essential flexible load. When it is
+    // due to start, reserve its expected grid power BEFORE calculating the
+    // battery setpoint. Peak Guard can then reduce planned grid charging first
+    // instead of starting the boiler and immediately switching it off again.
+    // Once the boiler is running its load is already present in P1, so no extra
+    // virtual reserve is added. Hard Peak Guard remains authoritative.
+    if (this.getBoilerCount(settings) <= 0 || !Boolean(settings.boilerEnabled)) return 0;
+    if (Boolean(this.boilerState?.outputOn)) return 0;
+    if (this.isBoilerCompletedToday(now, settings)) return 0;
+
+    const fallbackDays = Math.max(0, Math.min(30, Number(settings.boilerFallbackDays) || 0));
+    if (fallbackDays <= 0 || this.getBoilerDaysWithoutCycle(now) < fallbackDays) return 0;
+    if (!this.isBoilerTariffPeriodAllowed(settings, now)) return 0;
+
+    const tariff = findCurrentTariff(new Date(now), settings);
+    if (!this.isBoilerTariffSelected(settings, tariff)) return 0;
+
+    const batteryCount = this.getBatteryCount(settings);
+    if (batteryCount > 0) {
+      const avgSoc = this.getAverageBatterySoc(settings);
+      const minSoc = Math.max(0, Math.min(100, Number.isFinite(Number(settings.boilerTariffMinBatterySoc)) ? Number(settings.boilerTariffMinBatterySoc) : 40));
+      if (avgSoc === null || avgSoc < minSoc) return 0;
+    }
+
+    return Math.max(0, Math.min(20000, Number(settings.boilerPowerW) || 1800));
   }
 
   getPlanningBlockMs(settings = this.getSettings()) {
@@ -5626,6 +5654,7 @@ class HomeFluxEmsApp extends Homey.App {
       planningDecisionSource: this.state.nightPlanningDecisionSource || '',
       nightPlanningActive: this.isNightPlanningPhase(now),
       lowForecastSunnyOverrideActive: this.isLowForecastSunnyOverrideActive(settings, now),
+      peakGuardExtraLoadW: this.getBoilerPeakGuardReserveW(settings, now),
     };
   }
 
@@ -9695,7 +9724,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.6.4',
+      version: '0.6.5',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -9772,7 +9801,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.6.4',
+      version: '0.6.5',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -10051,7 +10080,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.6.4',
+      version: '0.6.5',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),

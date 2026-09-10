@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.6.4');
+  assert.equal(manifest.version, '0.6.5');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -23,8 +23,8 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.refreshAutoTune, { method: 'POST', path: '/auto-tune/refresh' });
   assert.deepStrictEqual(manifest.api.setAutoTunePermission, { method: 'PUT', path: '/auto-tune/permission' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.6.4 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.6.4 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.6.5 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.6.5 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(apiJs.includes('async getAutoTune({ homey })'));

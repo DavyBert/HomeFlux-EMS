@@ -254,6 +254,15 @@
       if (base === 'manual_charge') return tr(Homey, 'widget.status.reasonManualCharge', 'Manual charging mode is active');
       if (base === 'avoid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
       if (base === 'standby') return tr(Homey, 'widget.status.reasonStandby', 'Standby mode is active');
+
+      const pauseReason = String(status.batteryPauseReason || '').trim();
+      const pauseCode = String(status.batteryPauseCode || '');
+      const pauseSoc = Number(status.batteryDischargeFloorSoc);
+      const pauseSocText = Number.isFinite(pauseSoc) ? `${pauseSoc.toFixed(1)}%` : '';
+      if (pauseCode === 'planning_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedPlanning', 'Discharge paused at protected planning target')} ${pauseSocText}`.trim();
+      if (pauseCode === 'discharge_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedFloor', 'Discharge paused at configured discharge SoC')} ${pauseSocText}`.trim();
+      if (pauseCode === 'minimum_soc') return `${tr(Homey, 'widget.status.reasonDischargePausedMinimum', 'Discharge paused at minimum SoC')} ${pauseSocText}`.trim();
+      if (pauseReason) return pauseReason;
       return tr(Homey, 'widget.status.reasonBalanced', 'Grid balance is around the configured target');
     }
 

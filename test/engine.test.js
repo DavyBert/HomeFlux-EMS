@@ -2457,3 +2457,57 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(selectedNightEnabled.peakReserveNightActive, true);
   assert.equal(selectedNightEnabled.targetSoc, 60);
 }
+
+// v0.6.5: an essential tariff boiler can reserve Peak Guard headroom before it
+// starts. Planned/manual battery charging must yield first instead of consuming
+// the headroom the boiler needs.
+{
+  const settings = baseSettings({
+    batteryCount: 1,
+    maxChargePerBatteryW: 8000,
+    maxDischargePerBatteryW: 8000,
+    maxTotalChargeW: 8000,
+    maxTotalDischargeW: 8000,
+    forcedMode: 'manual_charge',
+    peakShaveEnabled: true,
+    peakLimitW: 2500,
+    peakSoftMarginW: 100,
+  });
+  const withoutBoilerReserve = evaluate(
+    state({ gridPowerW: 500, batterySoc: [50], peakGuardExtraLoadW: 0 }),
+    settings,
+    new Date('2026-08-25T02:00:00+02:00'),
+  );
+  const withBoilerReserve = evaluate(
+    state({ gridPowerW: 500, batterySoc: [50], peakGuardExtraLoadW: 1800 }),
+    settings,
+    new Date('2026-08-25T02:00:00+02:00'),
+  );
+  assert.equal(withoutBoilerReserve.totalCommandW, -1900);
+  assert.equal(withBoilerReserve.totalCommandW, -100);
+  assert.equal(withBoilerReserve.peakGuardExtraLoadW, 1800);
+}
+
+// v0.6.5: when self-consumption wants to discharge but the applicable SoC
+// floor blocks it, expose the real pause reason instead of claiming the meter is
+// simply balanced.
+{
+  const settings = baseSettings({
+    batteryCount: 1,
+    forcedMode: 'auto',
+    contractType: 'tou',
+    safetySoc: 20,
+    peakReserveEnabled: false,
+    peakShaveEnabled: false,
+    touRates: [{ id: 'day', label: 'Dal', start: '00:00', end: '23:59', chargeEnabled: false, avoidGridImport: false }],
+  });
+  const result = evaluate(
+    state({ gridPowerW: 800, batterySoc: [20], lastTotalCommandW: 0 }),
+    settings,
+    new Date('2026-08-25T12:00:00+02:00'),
+  );
+  assert.equal(result.baseMode, 'self_consumption');
+  assert.equal(result.action, 'idle');
+  assert.match(result.batteryPauseReason, /Ontladen gepauzeerd/);
+  assert.equal(result.batteryDischargeFloorSoc, 20);
+}

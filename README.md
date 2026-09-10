@@ -28,6 +28,12 @@ Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.6.5
+
+- Self-consumption status now explains when battery discharge is paused by the active SoC floor instead of reporting a generic balanced-grid reason.
+- Essential tariff boiler heating now has priority over planned battery grid charging. HomeFlux reserves boiler headroom inside Peak Guard and dynamically reduces battery charging before the boiler starts.
+- Once the boiler finishes, normal battery grid charging automatically uses the newly available headroom again. Peak Guard remains absolute.
+
 ### v0.6.4
 - Expanded **Automatic Finetuning** to cover more non-hard-limit control parameters while keeping safety limits and user intent protected.
 - Added compact planning learning with a strict maximum of **14 daily summaries**; raw P1, PV, battery and EV measurement history is not stored.
