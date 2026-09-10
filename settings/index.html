@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.3 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.4 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -1476,20 +1476,23 @@
 <section class="panel" id="panel-finetuning">
 <div class="card">
 <div class="statusline">Automatic Finetuning</div>
-<p class="muted">HomeFlux observeert alleen metingen die het EMS toch al ontvangt. Er wordt geen extra polling, seconde-timer of extra EMS-regelcyclus toegevoegd. Alleen parameters waarvoor een betekenisvolle afwijking is gevonden worden hieronder getoond.</p>
-<p class="muted"><strong>Een vinkje betekent toestemming.</strong> Zodra je een aanbeveling aanvinkt, mag HomeFlux die specifieke parameter automatisch beheren. Veiligheidsgrenzen en gebruikerskeuzes zoals Peak Guard, minimum-SoC, maximale laad-/ontlaadvermogens, tarieven, EV-deadlines, comforttemperaturen en prioriteiten worden nooit automatisch gewijzigd.</p>
+<p class="muted">HomeFlux observeert alleen metingen die het EMS toch al ontvangt. Er wordt geen extra polling, seconde-timer of extra EMS-regelcyclus toegevoegd. Voor planning bewaart HomeFlux maximaal 14 compacte dagsamenvattingen; ruwe P1-, PV-, batterij- en EV-metingen worden niet als historie opgeslagen. Alleen parameters waarvoor een betekenisvolle afwijking is gevonden worden hieronder getoond.</p>
+<p class="muted"><strong>Planning krijgt extra aandacht.</strong> HomeFlux leert de lage-PV-drempel uit forecast versus werkelijk behaalde SoC en leert de verwachte niet-EV-energiebehoefte uit het dagelijkse verbruik. Het doel is overdag met beschikbare PV zo vaak mogelijk de 90–100%-zone te bereiken, terwijl onnodig nachtelijk netladen wordt verminderd zodat de batterij 's morgens zo laag mogelijk eindigt binnen de ingestelde veiligheidsgrenzen.</p>
+<p class="muted"><strong>Een vinkje betekent toestemming.</strong> Zodra je een aanbeveling aanvinkt, mag HomeFlux die specifieke parameter automatisch beheren. Harde grenzen en gebruikersintenties zoals Peak Guard, minimum-/veiligheids-/maximum-SoC, maximale laad-/ontlaadvermogens, tarieven, EV-deadlines, comforttemperaturen, prioriteiten en handmatige tijdvensters worden nooit automatisch gewijzigd.</p>
 <div class="savebar" style="margin-top:10px"><button class="homey-button-secondary" id="refreshAutoTune" type="button">Aanbevelingen opnieuw berekenen</button><span class="ok" id="autoTuneRefreshState"></span></div>
 </div>
 <div class="status-grid">
 <div class="card"><div class="muted">P1-observaties</div><div class="metric" id="autoTuneGridSamples">—</div><div class="muted" id="autoTuneGridVariation">—</div></div>
 <div class="card"><div class="muted">PV-observaties</div><div class="metric" id="autoTunePvSamples">—</div><div class="muted" id="autoTunePvVariation">—</div></div>
+<div class="card"><div class="muted">Planning leren</div><div class="metric" id="autoTunePlanningDays">—</div><div class="muted" id="autoTunePlanningDetail">—</div></div>
+<div class="card"><div class="muted">Batterijbalans</div><div class="metric" id="autoTuneBalanceSamples">—</div><div class="muted" id="autoTuneBalanceDetail">—</div></div>
 <div class="card"><div class="muted">EV-feedback</div><div class="metric" id="autoTuneEvSamples">—</div><div class="muted" id="autoTuneEvDetail">—</div></div>
 </div>
 <div id="autoTuneRecommendations"></div>
 <div class="card hidden" id="autoTuneNoRecommendations"><div class="statusline">Geen aanbevelingen op dit moment</div><div class="muted">De huidige waarden liggen binnen de geleerde marges, of HomeFlux heeft nog te weinig observaties. Parameters zonder relevante afwijking worden bewust niet getoond.</div></div>
 <div class="card hidden" id="autoTuneManagedCard"><div class="statusline">Automatisch beheerd</div><div class="muted">Deze parameters heb je expliciet aan HomeFlux toevertrouwd. Je kunt de toestemming hier opnieuw uitschakelen.</div><div id="autoTuneManaged"></div></div>
 <div class="card hidden" id="autoTuneHistoryCard"><div class="statusline">Recente automatische aanpassingen</div><div id="autoTuneHistory"></div></div>
-<p class="muted">Automatische controle van goedgekeurde parameters gebruikt alleen de bestaande één-minuut-heartbeat en wordt maximaal één keer per 30 minuten geëvalueerd. Dezelfde parameter wordt normaal maximaal één keer per 6 uur aangepast.</p>
+<p class="muted">Automatische controle van goedgekeurde parameters gebruikt alleen de bestaande één-minuut-heartbeat en wordt maximaal één keer per 30 minuten geëvalueerd. Technische regelparameters worden normaal maximaal één keer per 6 uur aangepast; geleerde planningsparameters zoals lage-PV-drempel, energiebehoefte en Battery Save-ontlaadgrens maximaal één keer per 24 uur.</p>
 </section>
 <section class="panel" id="panel-planning">
 <div class="card">
@@ -2307,12 +2310,23 @@ async function onHomeyReady(Homey) {
     const obs = data.observations || {};
     q('autoTuneGridSamples').textContent = String(Number(obs.gridSamples) || 0);
     q('autoTuneGridVariation').textContent = (Number(obs.gridSamples) || 0) > 0
-      ? `${uiLanguage === 'nl' ? 'snelle variatie' : 'rapid variation'} ~${Math.round(Number(obs.gridVariationW) || 0)} W`
+      ? `${uiLanguage === 'nl' ? 'snelle variatie' : 'rapid variation'} ~${Math.round(Number(obs.gridVariationW) || 0)} W · ${uiLanguage === 'nl' ? 'cadans' : 'cadence'} ~${Number(obs.gridCadenceSeconds) || 0} s`
       : (uiLanguage === 'nl' ? 'Nog aan het observeren' : 'Still observing');
     q('autoTunePvSamples').textContent = String(Number(obs.pvSamples) || 0);
     q('autoTunePvVariation').textContent = (Number(obs.pvSamples) || 0) > 0
-      ? `${uiLanguage === 'nl' ? 'snelle variatie' : 'rapid variation'} ~${Math.round(Number(obs.pvVariationW) || 0)} W`
+      ? `${uiLanguage === 'nl' ? 'snelle variatie' : 'rapid variation'} ~${Math.round(Number(obs.pvVariationW) || 0)} W · ${uiLanguage === 'nl' ? 'cadans' : 'cadence'} ~${Number(obs.pvCadenceSeconds) || 0} s`
       : (uiLanguage === 'nl' ? 'Nog aan het observeren' : 'Still observing');
+    q('autoTunePlanningDays').textContent = `${Number(obs.planningDays) || 0}/14`;
+    const planningParts = [];
+    if ((Number(obs.demandDays) || 0) > 0) planningParts.push(`${Number(obs.demandDays) || 0} ${uiLanguage === 'nl' ? 'bruikbare verbruiksdagen' : 'usable demand days'}`);
+    if ((Number(obs.currentPlanningHours) || 0) > 0) planningParts.push(`${uiLanguage === 'nl' ? 'vandaag' : 'today'} ${Number(obs.currentPlanningHours).toFixed(1)} h · ~${Number(obs.currentPlanningDemandKwh || 0).toFixed(1)} kWh`);
+    if (obs.currentPlanningForecastKwh !== null && obs.currentPlanningForecastKwh !== undefined) planningParts.push(`${uiLanguage === 'nl' ? 'forecast' : 'forecast'} ${Number(obs.currentPlanningForecastKwh).toFixed(1)} kWh`);
+    if (obs.currentPlanningPeakSoc !== null && obs.currentPlanningPeakSoc !== undefined) planningParts.push(`${uiLanguage === 'nl' ? 'piek-SoC' : 'peak SoC'} ${Number(obs.currentPlanningPeakSoc).toFixed(1)}%`);
+    q('autoTunePlanningDetail').textContent = planningParts.length ? planningParts.join(' · ') : (uiLanguage === 'nl' ? 'Dagsamenvattingen worden geleidelijk opgebouwd' : 'Daily summaries build up gradually');
+    q('autoTuneBalanceSamples').textContent = String(Number(obs.balanceSamples) || 0);
+    q('autoTuneBalanceDetail').textContent = (Number(obs.balanceSamples) || 0) > 0
+      ? `${uiLanguage === 'nl' ? 'gemiddelde SoC-spreiding' : 'average SoC spread'} ~${Number(obs.balanceSpreadPct || 0).toFixed(1)}%`
+      : (uiLanguage === 'nl' ? 'Alleen actief met meerdere batterij-SoC’s' : 'Only active with multiple battery SoCs');
     const evObs = Array.isArray(obs.ev) ? obs.ev : [];
     const evResponseSamples = evObs.reduce((sum,item)=>sum + (Number(item.responseSamples)||0),0);
     q('autoTuneEvSamples').textContent = String(evResponseSamples);

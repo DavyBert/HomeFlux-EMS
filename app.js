@@ -143,7 +143,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.settingsCache = null;
     this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0, timer: null, timerAt: 0 };
 
-    // v0.6.3: Automatic Finetuning piggybacks on measurements HomeFlux already
+    // v0.6.4: Automatic Finetuning piggybacks on measurements HomeFlux already
     // receives. Only tiny rolling aggregates are kept in RAM; there is no new
     // polling loop and no raw sample history beyond the existing grid buffer.
     this.autoTuneRuntime = this.createAutoTuneRuntime();
@@ -317,6 +317,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.restoreForecastState();
     this.restoreLowForecastSunnyState();
     this.restoreSavingsState();
+    this.restoreAutoTuneLearning();
     await this.syncTokens();
     this.registerFlowCards();
     this.setupInputRequestSchedule();
@@ -479,7 +480,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.6.3 initialized');
+    this.log('HomeFlux EMS v0.6.4 initialized');
   }
 
   refreshSettingsCache() {
@@ -751,7 +752,14 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   createAutoTuneRuntime() {
-    const signal = () => ({ lastAt: 0, lastValue: null, samples: 0, ewmaAbsDelta: 0 });
+    const signal = () => ({
+      lastAt: 0,
+      lastValue: null,
+      samples: 0,
+      ewmaAbsDelta: 0,
+      gapSamples: 0,
+      ewmaGapMs: 0,
+    });
     const ev = () => ({
       pendingCurrent: null,
       responseSamples: 0,
@@ -768,6 +776,8 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       grid: signal(),
       pv: signal(),
+      balance: { samples: 0, ewmaSpreadPct: 0 },
+      planning: { days: [], currentDay: null },
       ev: Array.from({ length: 4 }, ev),
       lastAutoManageCheckAt: 0,
       permissions: null,
@@ -782,6 +792,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (Number.isFinite(Number(bucket.lastValue)) && Number(bucket.lastAt) > 0) {
       const gap = Math.max(0, now - Number(bucket.lastAt));
       const delta = Math.abs(numeric - Number(bucket.lastValue));
+      if (gap >= 150 && gap <= 60000) {
+        const gapCount = Number(bucket.gapSamples || 0);
+        const gapAlpha = gapCount < 10 ? 0.2 : 0.08;
+        bucket.ewmaGapMs = gapCount > 0
+          ? (Number(bucket.ewmaGapMs || 0) * (1 - gapAlpha)) + (gap * gapAlpha)
+          : gap;
+        bucket.gapSamples = Math.min(100000, gapCount + 1);
+      }
       // Only rapid, bounded changes are useful as a proxy for control noise.
       // Large appliance steps are intentionally ignored.
       if (gap >= 150 && gap <= 15000 && delta <= maxDelta) {
@@ -804,6 +822,175 @@ class HomeFluxEmsApp extends Homey.App {
   noteAutoTunePvSample(value, at = Date.now()) {
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     this.updateAutoTuneSignal(this.autoTuneRuntime.pv, value, at, 2500);
+  }
+
+
+  restoreAutoTuneLearning() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const raw = this.homey.settings.get('_autoTuneLearning');
+    const days = Array.isArray(raw?.days) ? raw.days : [];
+    // v0.6.4 persists only compact daily summaries. No second/minute/raw
+    // measurement history is stored. Fourteen days is enough for a useful
+    // planning trend while keeping storage tiny.
+    this.autoTuneRuntime.planning.days = days
+      .filter(day => day && typeof day === 'object' && String(day.dateKey || ''))
+      .slice(-14)
+      .map(day => ({ ...day }));
+    this.autoTuneRuntime.planning.currentDay = null;
+  }
+
+  persistAutoTuneLearning() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const days = Array.isArray(this.autoTuneRuntime.planning?.days)
+      ? this.autoTuneRuntime.planning.days.slice(-14)
+      : [];
+    this.setSetting('_autoTuneLearning', { days });
+  }
+
+  finalizeAutoTunePlanningDay(day) {
+    if (!day || !String(day.dateKey || '')) return;
+    const sampleHours = Math.max(0, Number(day.sampleMillis || 0) / 3600000);
+    const demandKwh = Math.max(0, Number(day.estimatedDemandKwh) || 0);
+    const optionalNumber = value => {
+      if (value === null || value === undefined || value === '') return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    const forecastKwh = optionalNumber(day.forecastKwh);
+    const peakSoc = optionalNumber(day.peakSoc);
+    const solarTargetSoc = optionalNumber(day.solarTargetSoc);
+    const nightTargetSoc = optionalNumber(day.nightTargetSoc);
+    const maxSocLimit = optionalNumber(day.maxSocLimit);
+    const summary = {
+      dateKey: String(day.dateKey),
+      sampleHours: Math.round(sampleHours * 10) / 10,
+      estimatedDemandKwh: Math.round(demandKwh * 100) / 100,
+      forecastKwh: forecastKwh !== null && forecastKwh >= 0 ? Math.round(forecastKwh * 100) / 100 : null,
+      peakSoc: peakSoc !== null ? Math.round(peakSoc * 10) / 10 : null,
+      solarTargetSoc: solarTargetSoc !== null ? Math.round(solarTargetSoc * 10) / 10 : null,
+      nightTargetSoc: nightTargetSoc !== null ? Math.round(nightTargetSoc * 10) / 10 : null,
+      maxSocLimit: maxSocLimit !== null ? Math.round(maxSocLimit * 10) / 10 : null,
+      lowForecastPromoted: Boolean(day.lowForecastPromoted),
+    };
+    if (summary.forecastKwh === null && summary.peakSoc === null && sampleHours < 6) return;
+    const days = Array.isArray(this.autoTuneRuntime.planning?.days) ? this.autoTuneRuntime.planning.days : [];
+    const filtered = days.filter(item => String(item?.dateKey || '') !== summary.dateKey);
+    filtered.push(summary);
+    this.autoTuneRuntime.planning.days = filtered.slice(-14);
+    this.persistAutoTuneLearning();
+  }
+
+  getAutoTuneMeasuredEvPowerW(settings = this.getSettings(), now = Date.now()) {
+    let total = 0;
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const input = this.getEvInputSnapshot(index);
+      if (!input?.seen?.chargeCurrent) continue;
+      const updatedAt = Number(input.updatedAt?.chargeCurrent) || 0;
+      if (updatedAt > 0 && now - updatedAt > 15 * 60 * 1000) continue;
+      const currentA = Math.max(0, Number(input.chargeCurrentA) || 0);
+      if (currentA <= 0.05) continue;
+      const evSettings = this.getEvInstanceSettings(index, settings);
+      total += currentA * evPowerPerAmp(evSettings);
+    }
+    return Math.max(0, total);
+  }
+
+  recordAutoTunePlanningSample(now = Date.now(), settings = this.getSettings()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    if (!this.autoTuneRuntime.planning) this.autoTuneRuntime.planning = { days: [], currentDay: null };
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const parts = localParts(new Date(now), timezone);
+    const dateKey = String(parts.dateKey || '');
+    if (!dateKey) return;
+
+    let day = this.autoTuneRuntime.planning.currentDay;
+    if (!day || day.dateKey !== dateKey) {
+      if (day) this.finalizeAutoTunePlanningDay(day);
+      day = {
+        dateKey,
+        lastAt: Number(now) || Date.now(),
+        sampleMillis: 0,
+        estimatedDemandKwh: 0,
+        forecastKwh: null,
+        peakSoc: null,
+        solarTargetSoc: null,
+        nightTargetSoc: null,
+        maxSocLimit: Math.max(0, Math.min(100, Number(settings.maxSoc) || 100)),
+        lowForecastPromoted: false,
+      };
+      this.autoTuneRuntime.planning.currentDay = day;
+    }
+
+    const dailyForecast = Number(this.state?.forecastDailyMaxKwh);
+    const dailyForecastDate = String(this.state?.forecastDailyMaxDate || '');
+    if (Number.isFinite(dailyForecast) && dailyForecast >= 0 && (!dailyForecastDate || dailyForecastDate === dateKey)) {
+      day.forecastKwh = Math.max(Number(day.forecastKwh) || 0, dailyForecast);
+    }
+    if (String(this.lowForecastSunnyOverrideDate || '') === dateKey) day.lowForecastPromoted = true;
+
+    const avgSoc = this.getAverageBatterySoc(settings);
+    if (avgSoc !== null && Number.isFinite(Number(avgSoc))) {
+      day.peakSoc = day.peakSoc === null ? Number(avgSoc) : Math.max(Number(day.peakSoc), Number(avgSoc));
+      const minute = Number(parts.minuteOfDay);
+      const solarTarget = this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60);
+      const nightTarget = this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60);
+      const afterSolar = (minute - solarTarget + 1440) % 1440;
+      const afterNight = (minute - nightTarget + 1440) % 1440;
+      const beforeNight = (nightTarget - minute + 1440) % 1440;
+      if (day.solarTargetSoc === null && afterSolar <= 60) day.solarTargetSoc = Number(avgSoc);
+      // Prefer the latest quiet pre-target sample for the morning residual.
+      // In summer PV can already be producing at 07:00; learning from a SoC
+      // that solar has started raising would incorrectly conclude that night
+      // charging was excessive. If no pre-target sample exists, a quiet sample
+      // in the first hour after the target is still acceptable.
+      const pvNow = Number(this.state?.pvPowerW);
+      const pvQuiet = !this.inputSeen?.pv || !Number.isFinite(pvNow) || pvNow < 5;
+      if (pvQuiet && beforeNight <= 60) day.nightTargetSoc = Number(avgSoc);
+      else if (pvQuiet && day.nightTargetSoc === null && afterNight <= 60) day.nightTargetSoc = Number(avgSoc);
+    }
+
+    const batteryValues = [];
+    const batteryCount = this.getBatteryCount(settings);
+    for (let index = 0; index < batteryCount; index += 1) {
+      if (!this.inputSeen?.batterySoc?.[index]) continue;
+      const value = Number(this.state?.batterySoc?.[index]);
+      if (Number.isFinite(value)) batteryValues.push(value);
+    }
+    if (batteryValues.length >= 2) {
+      const spread = Math.max(...batteryValues) - Math.min(...batteryValues);
+      this.updateAutoTuneEwma(this.autoTuneRuntime.balance, 'samples', 'ewmaSpreadPct', spread, 0.08);
+    }
+
+    const previousAt = Number(day.lastAt) || 0;
+    day.lastAt = Number(now) || Date.now();
+    if (previousAt <= 0) return;
+    const gapMs = Math.max(0, day.lastAt - previousAt);
+    if (gapMs < 30000 || gapMs > 180000) return;
+    if (!this.inputSeen?.grid || !this.inputSeen?.pv) return;
+    const gridUpdatedAt = Number(this.inputUpdatedAt?.grid) || 0;
+    const pvUpdatedAt = Number(this.inputUpdatedAt?.pv) || 0;
+    // Never integrate a frozen Flow value for hours. A missing timestamp is
+    // tolerated for legacy/test inputs, but known timestamps must be fresh.
+    if (gridUpdatedAt > 0 && day.lastAt - gridUpdatedAt > 5 * 60 * 1000) return;
+    if (pvUpdatedAt > 0 && day.lastAt - pvUpdatedAt > 10 * 60 * 1000) return;
+    const gridW = Number(this.state?.gridPowerW);
+    const pvW = Number(this.state?.pvPowerW);
+    if (!Number.isFinite(gridW) || !Number.isFinite(pvW)) return;
+
+    let batteryW = Number(this.state?.lastTotalCommandW) || 0; // + discharge, - charge
+    if (avgSoc !== null) {
+      const minSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
+      const maxSoc = Math.max(minSoc, Math.min(100, Number(settings.maxSoc) || 100));
+      if (batteryW < 0 && avgSoc >= maxSoc - 0.5) batteryW = 0;
+      if (batteryW > 0 && avgSoc <= minSoc + 0.5) batteryW = 0;
+    }
+    const evW = this.getAutoTuneMeasuredEvPowerW(settings, now);
+    // EV is excluded because it already has its own tariff/deadline planner.
+    // This is especially important when the EV charges from grid while the
+    // house itself remains supported by the home battery.
+    const siteWithoutEvW = Math.max(0, Math.min(100000, gridW + Math.max(0, pvW) + batteryW - evW));
+    day.estimatedDemandKwh += siteWithoutEvW * (gapMs / 3600000) / 1000;
+    day.sampleMillis += gapMs;
   }
 
   getAutoTuneEvRuntime(index) {
@@ -900,8 +1087,21 @@ class HomeFluxEmsApp extends Homey.App {
     const key = String(settingKey || '');
     const global = {
       commandDeadbandW: { titleNl: 'Batterij-commandodeadband', titleEn: 'Battery command deadband', unit: 'W', scope: 'EMS' },
+      gridZeroMinW: { titleNl: 'Nulpunt ondergrens net', titleEn: 'Grid zero-band lower limit', unit: 'W', scope: 'EMS' },
+      gridZeroMaxW: { titleNl: 'Nulpunt bovengrens net', titleEn: 'Grid zero-band upper limit', unit: 'W', scope: 'EMS' },
       gridControlWindowSeconds: { titleNl: 'P1-middelingsvenster', titleEn: 'P1 averaging window', unit: 'metingen', scope: 'EMS' },
+      adaptiveSetpointDeltaW: { titleNl: 'Adaptieve grote-setpointdrempel', titleEn: 'Adaptive large-setpoint threshold', unit: 'W', scope: 'EMS' },
+      adaptiveSetpointWindowSeconds: { titleNl: 'Adaptief herhalingsvenster', titleEn: 'Adaptive repetition window', unit: 's', scope: 'EMS' },
+      commandIntervalSeconds: { titleNl: "Minimum tijd tussen batterijcommando's", titleEn: 'Minimum battery command interval', unit: 's', scope: 'Batterij' },
       pvDeltaThresholdW: { titleNl: 'PV-deltadrempel', titleEn: 'PV delta threshold', unit: 'W', scope: 'PV' },
+      pvCommandIntervalSeconds: { titleNl: 'Minimum tijd tussen PV-setpoints', titleEn: 'Minimum PV command interval', unit: 's', scope: 'PV' },
+      lowForecastSelfConsumptionMinKwh: { titleNl: 'Lage-PV-drempel', titleEn: 'Low-PV threshold', unit: 'kWh', scope: 'Planning' },
+      expectedEnergyNeedKwh: { titleNl: 'Verwachte energiebehoefte', titleEn: 'Expected energy need', unit: 'kWh', scope: 'Planning' },
+      batterySaveDischargeAboveSoc: { titleNl: 'Batterij sparen: ontlaadgrens', titleEn: 'Battery Save discharge floor', unit: '%', scope: 'Planning' },
+      lowForecastAutoSunnySoc: { titleNl: 'SoC-drempel voor zonnedag', titleEn: 'Sunny-day SoC threshold', unit: '%', scope: 'Planning' },
+      lowForecastAutoSunnyMinutes: { titleNl: 'Bevestigingstijd zonnedag', titleEn: 'Sunny-day confirmation time', unit: 'min', scope: 'Planning' },
+      balanceDeadbandPct: { titleNl: 'Battery Balance deadband', titleEn: 'Battery Balance deadband', unit: '%', scope: 'Batterij' },
+      balanceStrength: { titleNl: 'Battery Balance correctie', titleEn: 'Battery Balance correction', unit: '', scope: 'Batterij' },
     };
     if (global[key]) return { settingKey: key, ...global[key] };
     const match = /^ev([2-4])?(CommandIntervalSeconds|FeedbackTolerancePercent|ModeSmartCurrentA|ModeStandardCurrentA)$/.exec(key);
@@ -931,6 +1131,21 @@ class HomeFluxEmsApp extends Homey.App {
     const permissions = this.getAutoTunePermissions();
     const recommendations = [];
     const roundTo = (value, step = 1) => Math.round(Number(value) / step) * step;
+    const percentile = (values, q = 0.5) => {
+      const sorted = values.map(Number).filter(Number.isFinite).sort((a,b) => a-b);
+      if (!sorted.length) return null;
+      if (sorted.length === 1) return sorted[0];
+      const pos = Math.max(0, Math.min(1, Number(q) || 0)) * (sorted.length - 1);
+      const low = Math.floor(pos); const high = Math.ceil(pos);
+      if (low === high) return sorted[low];
+      return sorted[low] + ((sorted[high] - sorted[low]) * (pos - low));
+    };
+    const median = values => percentile(values, 0.5);
+    const optionalNumber = value => {
+      if (value === null || value === undefined || value === '') return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
     const confidence = samples => Math.max(0.5, Math.min(0.97, 0.52 + Math.log10(Math.max(1, Number(samples) || 1)) * 0.2));
     const push = (settingKey, titleNl, titleEn, current, recommended, unit, reasonNl, reasonEn, conf, samples, scope = 'EMS') => {
       const cur = Number(current); const next = Number(recommended);
@@ -944,6 +1159,7 @@ class HomeFluxEmsApp extends Homey.App {
       });
     };
 
+    // Meter-driven regulator tuning.
     const grid = this.autoTuneRuntime.grid || {};
     if (Number(grid.samples) >= 24) {
       const noise = Math.max(0, Number(grid.ewmaAbsDelta) || 0);
@@ -955,6 +1171,35 @@ class HomeFluxEmsApp extends Homey.App {
           `Snelle P1-variatie is gemiddeld ongeveer ${Math.round(noise)} W. Deze deadband vermindert onnodige kleine batterijcorrecties zonder Peak Guard te verzwakken.`,
           `Rapid P1 variation averages about ${Math.round(noise)} W. This deadband reduces unnecessary small battery corrections without weakening Peak Guard.`,
           confidence(grid.samples), grid.samples);
+      }
+
+      // Preserve the user's chosen import/export bias (the midpoint), but let
+      // Finetuning adjust the width of the neutral zone to measured P1 noise.
+      // This changes regulator calmness only; it never changes Peak Guard.
+      const currentZeroMin = Number(settings.gridZeroMinW);
+      const currentZeroMax = Number(settings.gridZeroMaxW);
+      if (Number.isFinite(currentZeroMin) && Number.isFinite(currentZeroMax) && currentZeroMin <= currentZeroMax) {
+        const midpoint = (currentZeroMin + currentZeroMax) / 2;
+        const currentHalfWidth = Math.max(0, (currentZeroMax - currentZeroMin) / 2);
+        const desiredHalfWidth = Math.max(10, Math.min(250, roundTo(Math.max(10, noise * 0.22), 5)));
+        if (Math.abs(desiredHalfWidth - currentHalfWidth) >= Math.max(10, currentHalfWidth * 0.45)) {
+          const desiredMin = Math.max(-1000, Math.min(1000, roundTo(midpoint - desiredHalfWidth, 1)));
+          const desiredMax = Math.max(-1000, Math.min(1000, roundTo(midpoint + desiredHalfWidth, 1)));
+          if (desiredMin <= desiredMax) {
+            if (Math.abs(desiredMin - currentZeroMin) >= 5) {
+              push('gridZeroMinW', 'Nulpunt ondergrens net', 'Grid zero-band lower limit', currentZeroMin, desiredMin, 'W',
+                `De P1-ruis is ongeveer ${Math.round(noise)} W. De middenwaarde van je huidige netdoel blijft ${midpoint.toFixed(0)} W; alleen de regelband wordt aangepast om pendelen te beperken.`,
+                `P1 noise is about ${Math.round(noise)} W. The midpoint of your current grid target remains ${midpoint.toFixed(0)} W; only the control band is adjusted to reduce hunting.`,
+                confidence(grid.samples), grid.samples);
+            }
+            if (Math.abs(desiredMax - currentZeroMax) >= 5) {
+              push('gridZeroMaxW', 'Nulpunt bovengrens net', 'Grid zero-band upper limit', currentZeroMax, desiredMax, 'W',
+                `De P1-ruis is ongeveer ${Math.round(noise)} W. De middenwaarde van je huidige netdoel blijft ${midpoint.toFixed(0)} W; alleen de regelband wordt aangepast om pendelen te beperken.`,
+                `P1 noise is about ${Math.round(noise)} W. The midpoint of your current grid target remains ${midpoint.toFixed(0)} W; only the control band is adjusted to reduce hunting.`,
+                confidence(grid.samples), grid.samples);
+            }
+          }
+        }
       }
 
       const currentWindow = Number(settings.gridControlWindowSeconds);
@@ -969,8 +1214,41 @@ class HomeFluxEmsApp extends Homey.App {
           `Measured rapid P1 variation (${Math.round(noise)} W) fits better with an average over ${desiredWindow || 1} input sample(s).`,
           confidence(grid.samples), grid.samples);
       }
+
+      if (Number(grid.gapSamples || 0) >= 24) {
+        const gapSeconds = Math.max(0.2, Number(grid.ewmaGapMs || 0) / 1000);
+        const currentInterval = Math.max(1, Number(settings.commandIntervalSeconds) || 10);
+        const desiredInterval = Math.max(10, Math.min(60, Math.ceil(Math.max(10, gapSeconds * 3) / 5) * 5));
+        if (desiredInterval >= currentInterval + 5
+          || (Number(grid.gapSamples) >= 160 && currentInterval >= desiredInterval * 2 && currentInterval - desiredInterval >= 10)) {
+          push('commandIntervalSeconds', "Minimum tijd tussen batterijcommando's", 'Minimum battery command interval', currentInterval, desiredInterval, 's',
+            `P1 wordt gemiddeld elke ${gapSeconds.toFixed(1)} s bijgewerkt. Dit geeft de batterijregelkring voldoende verse feedback zonder vaker te sturen dan zinvol is.`,
+            `P1 updates arrive about every ${gapSeconds.toFixed(1)} s. This gives the battery controller enough fresh feedback without sending commands more often than useful.`,
+            confidence(grid.gapSamples), grid.gapSamples, 'Batterij');
+        }
+
+        if (Boolean(settings.adaptiveLiveControlEnabled)) {
+          const currentDelta = Math.max(100, Number(settings.adaptiveSetpointDeltaW) || 1000);
+          const desiredDelta = Math.max(300, Math.min(3000, roundTo(Math.max(300, noise * 4), 100)));
+          if (Math.abs(desiredDelta - currentDelta) >= Math.max(200, currentDelta * 0.35)) {
+            push('adaptiveSetpointDeltaW', 'Adaptieve grote-setpointdrempel', 'Adaptive large-setpoint threshold', currentDelta, desiredDelta, 'W',
+              `Normale snelle P1-variatie is ongeveer ${Math.round(noise)} W. De drempel hoort daar duidelijk boven te liggen zodat gewone ruis de tijdelijke live-sturing niet activeert.`,
+              `Normal rapid P1 variation is about ${Math.round(noise)} W. The threshold should sit clearly above that noise floor so ordinary variation does not trigger temporary live control.`,
+              confidence(grid.samples), grid.samples);
+          }
+          const currentAdaptiveWindow = Math.max(2, Number(settings.adaptiveSetpointWindowSeconds) || 15);
+          const desiredAdaptiveWindow = Math.max(8, Math.min(45, Math.round(Math.max(10, gapSeconds * 4))));
+          if (Math.abs(desiredAdaptiveWindow - currentAdaptiveWindow) >= Math.max(5, currentAdaptiveWindow * 0.4)) {
+            push('adaptiveSetpointWindowSeconds', 'Adaptief herhalingsvenster', 'Adaptive repetition window', currentAdaptiveWindow, desiredAdaptiveWindow, 's',
+              `Met een P1-cadans van ongeveer ${gapSeconds.toFixed(1)} s geeft ${desiredAdaptiveWindow} s genoeg nieuwe meetpunten om een herhalende vermogenssprong van één losse stap te onderscheiden.`,
+              `With a P1 cadence of about ${gapSeconds.toFixed(1)} s, ${desiredAdaptiveWindow} s gives enough fresh samples to distinguish repeating load steps from a single event.`,
+              confidence(grid.gapSamples), grid.gapSamples);
+          }
+        }
+      }
     }
 
+    // PV control tuning.
     const pv = this.autoTuneRuntime.pv || {};
     if (Number(pv.samples) >= 24) {
       const variation = Math.max(0, Number(pv.ewmaAbsDelta) || 0);
@@ -983,8 +1261,190 @@ class HomeFluxEmsApp extends Homey.App {
           `Rapid PV changes average about ${Math.round(variation)} W. The suggested threshold limits overreaction to small cloud fluctuations.`,
           confidence(pv.samples), pv.samples, 'PV');
       }
+
+      if (Number(pv.gapSamples || 0) >= 24) {
+        const gapSeconds = Math.max(0.2, Number(pv.ewmaGapMs || 0) / 1000);
+        const currentInterval = Math.max(1, Number(settings.pvCommandIntervalSeconds) || 10);
+        let desiredInterval = Math.max(10, Math.min(120, Math.ceil(Math.max(10, gapSeconds * 2.5) / 5) * 5));
+        if (variation < 150) desiredInterval = Math.max(desiredInterval, 30);
+        else if (variation < 500) desiredInterval = Math.max(desiredInterval, 20);
+        else desiredInterval = Math.min(desiredInterval, 30);
+        if (desiredInterval >= currentInterval + 10
+          || (Number(pv.gapSamples) >= 160 && currentInterval >= desiredInterval * 2 && currentInterval - desiredInterval >= 15)) {
+          push('pvCommandIntervalSeconds', 'Minimum tijd tussen PV-setpoints', 'Minimum PV command interval', currentInterval, desiredInterval, 's',
+            `PV-feedback komt gemiddeld elke ${gapSeconds.toFixed(1)} s binnen en verandert snel ongeveer ${Math.round(variation)} W. Dit tempo vermijdt nutteloze tussencommando's en blijft snel genoeg voor echte overschotwijzigingen.`,
+            `PV feedback arrives about every ${gapSeconds.toFixed(1)} s and rapid changes average ${Math.round(variation)} W. This rate avoids pointless intermediate commands while remaining responsive to real surplus changes.`,
+            confidence(pv.gapSamples), pv.gapSamples, 'PV');
+        }
+      }
+
+      if (Boolean(settings.lowForecastAutoSunnyEnabled) && Number(pv.samples) >= 80) {
+        const currentMinutes = Math.max(1, Number(settings.lowForecastAutoSunnyMinutes) || 10);
+        const desiredMinutes = variation >= 1000 ? 15 : variation >= 500 ? 10 : 5;
+        if (Math.abs(desiredMinutes - currentMinutes) >= 5) {
+          push('lowForecastAutoSunnyMinutes', 'Bevestigingstijd zonnedag', 'Sunny-day confirmation time', currentMinutes, desiredMinutes, 'min',
+            `De gemeten PV-variatie is ongeveer ${Math.round(variation)} W. Deze bevestigingstijd voorkomt dat een korte zonnige piek een lage-PV-dag te snel vrijgeeft.`,
+            `Measured PV variation is about ${Math.round(variation)} W. This confirmation time prevents a short sunny spike from releasing a low-PV day too quickly.`,
+            confidence(pv.samples), pv.samples, 'Planning');
+        }
+      }
     }
 
+    // Multi-battery balancing quality.
+    const balance = this.autoTuneRuntime.balance || {};
+    if (Boolean(settings.balanceEnabled) && this.getBatteryCount(settings) >= 2 && Number(balance.samples) >= 30) {
+      const spread = Math.max(0, Number(balance.ewmaSpreadPct) || 0);
+      const currentDeadband = Math.max(0, Math.min(10, Number(settings.balanceDeadbandPct) || 0));
+      const desiredDeadband = spread >= 4 ? 0.5 : spread >= 2 ? 1 : spread < 0.7 ? 1.5 : 1;
+      if (Math.abs(desiredDeadband - currentDeadband) >= 0.5) {
+        push('balanceDeadbandPct', 'Battery Balance deadband', 'Battery Balance deadband', currentDeadband, desiredDeadband, '%',
+          `De gemiddelde SoC-spreiding is ongeveer ${spread.toFixed(1)}%. De voorgestelde deadband reageert eerder op echte onbalans en rustiger wanneer de batterijen al gelijk lopen.`,
+          `Average SoC spread is about ${spread.toFixed(1)}%. The suggested deadband reacts earlier to real imbalance and stays calmer when batteries already track closely.`,
+          confidence(balance.samples), balance.samples, 'Batterij');
+      }
+      const currentStrength = Math.max(0, Math.min(0.5, Number(settings.balanceStrength) || 0));
+      const desiredStrength = spread >= 8 ? 0.35 : spread >= 4 ? 0.25 : spread >= 2 ? 0.2 : spread < 0.8 ? 0.1 : 0.15;
+      if (Math.abs(desiredStrength - currentStrength) >= 0.1) {
+        push('balanceStrength', 'Battery Balance correctie', 'Battery Balance correction', currentStrength, desiredStrength, '',
+          `Een blijvende SoC-spreiding van ongeveer ${spread.toFixed(1)}% past beter bij correctiefactor ${desiredStrength.toFixed(2)}. De totale laad-/ontlaadlimieten veranderen niet.`,
+          `A persistent SoC spread of about ${spread.toFixed(1)}% fits correction factor ${desiredStrength.toFixed(2)} better. Total charge/discharge limits remain unchanged.`,
+          confidence(balance.samples), balance.samples, 'Batterij');
+      }
+    }
+
+    // Planning learning. Daily summaries are deliberately capped at 14.
+    const planningDays = Array.isArray(this.autoTuneRuntime.planning?.days)
+      ? this.autoTuneRuntime.planning.days.slice(-14)
+      : [];
+    const currentDay = this.autoTuneRuntime.planning?.currentDay;
+    const batteryPresent = this.getBatteryCount(settings) > 0;
+    const lowForecastPolicyEnabled = Boolean(settings.lowForecastFixedEnabled)
+      || Boolean(settings.lowForecastDynamicCheapEnabled)
+      || Boolean(settings.lowForecastDynamicNormalEnabled)
+      || Boolean(settings.lowForecastDynamicExpensiveEnabled)
+      || (Array.isArray(settings.touRates) && settings.touRates.some(rate => Boolean(rate?.lowForecastBatterySave)));
+    const liveHours = Math.max(0, Number(currentDay?.sampleMillis || 0) / 3600000);
+    if (currentDay && (currentDay.solarTargetSoc !== null || liveHours >= 18)) {
+      planningDays.push({
+        dateKey: currentDay.dateKey,
+        sampleHours: liveHours,
+        estimatedDemandKwh: Math.max(0, Number(currentDay.estimatedDemandKwh) || 0),
+        forecastKwh: optionalNumber(currentDay.forecastKwh),
+        peakSoc: optionalNumber(currentDay.peakSoc),
+        solarTargetSoc: optionalNumber(currentDay.solarTargetSoc),
+        nightTargetSoc: optionalNumber(currentDay.nightTargetSoc),
+        maxSocLimit: optionalNumber(currentDay.maxSocLimit) ?? Number(settings.maxSoc),
+      });
+    }
+
+    // Expected energy need: estimate non-EV site consumption. EV is removed
+    // from the integration because it has its own planner and may deliberately
+    // charge from grid while the home battery keeps supporting the house.
+    const demandDays = planningDays.filter(day => Number(day?.sampleHours) >= 18 && Number(day?.estimatedDemandKwh) > 0);
+    const normalizedDemand = demandDays.map(day => {
+      const coverage = Math.max(18, Math.min(24, Number(day.sampleHours) || 24));
+      return Number(day.estimatedDemandKwh) * (24 / coverage);
+    }).filter(value => Number.isFinite(value) && value > 0 && value <= 100);
+    if (batteryPresent && normalizedDemand.length >= 2) {
+      const learnedNeed = median(normalizedDemand);
+      const currentNeed = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
+      let desiredNeed = Math.max(0, Math.min(100, roundTo(learnedNeed, 0.5)));
+      const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
+      const morningSoc = median(morningSocValues);
+      const capacity = Math.max(0, Number(settings.totalCapacityKwh) || 0);
+      const morningFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
+      if (morningSoc !== null && capacity > 0 && morningSoc > morningFloor + 5) {
+        const excessKwh = capacity * ((morningSoc - (morningFloor + 2)) / 100);
+        desiredNeed = Math.max(0, roundTo(desiredNeed - Math.min(excessKwh * 0.35, desiredNeed * 0.2), 0.5));
+      }
+      if (Math.abs(desiredNeed - currentNeed) >= Math.max(1, currentNeed * 0.08)) {
+        const residualNl = morningSoc !== null ? ` Gemiddelde SoC rond het ochtenddoel is ${morningSoc.toFixed(1)}%.` : '';
+        const residualEn = morningSoc !== null ? ` Average SoC around the morning target is ${morningSoc.toFixed(1)}%.` : '';
+        push('expectedEnergyNeedKwh', 'Verwachte energiebehoefte', 'Expected energy need', currentNeed, desiredNeed, 'kWh',
+          `Het geschatte dagelijkse niet-EV-verbruik is ongeveer ${learnedNeed.toFixed(1)} kWh uit ${normalizedDemand.length} bruikbare dagen.${residualNl} Hiermee kan HomeFlux overdag richting 90–100% mikken zonder 's nachts structureel te veel netenergie in de batterij te stoppen.`,
+          `Estimated daily non-EV demand is about ${learnedNeed.toFixed(1)} kWh from ${normalizedDemand.length} usable days.${residualEn} This helps HomeFlux aim for 90–100% during the day without systematically putting too much grid energy into the battery overnight.`,
+          confidence(normalizedDemand.length), normalizedDemand.length, 'Planning');
+      }
+    }
+
+    // Battery Save discharge floor is not a hard SoC limit. If the battery
+    // repeatedly carries clearly unnecessary energy into the morning, suggest
+    // a lower save floor. Min/Safety SoC and peak-reserve floors remain fully
+    // authoritative, so this can never teach HomeFlux to cross a hard limit.
+    if (batteryPresent && lowForecastPolicyEnabled && demandDays.length >= 3) {
+      const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
+      const morningSoc = median(morningSocValues);
+      const hardFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
+      const currentSaveFloor = Math.max(hardFloor, Math.min(100, Number(settings.batterySaveDischargeAboveSoc) || 0));
+      if (morningSoc !== null && morningSoc > hardFloor + 8 && currentSaveFloor > hardFloor + 5) {
+        const learnedFloor = Math.max(hardFloor + 3, Math.min(100, roundTo(morningSoc - 5, 1)));
+        // One recommendation may move at most 20 percentage points. Planning
+        // parameters are also rate-limited to one automatic change per day.
+        const desiredSaveFloor = Math.max(learnedFloor, currentSaveFloor - 20);
+        if (currentSaveFloor - desiredSaveFloor >= 3) {
+          push('batterySaveDischargeAboveSoc', 'Batterij sparen: ontlaadgrens', 'Battery Save discharge floor', currentSaveFloor, desiredSaveFloor, '%',
+            `Rond het ochtenddoel blijft gemiddeld ${morningSoc.toFixed(1)}% SoC over, terwijl de harde veiligheidsvloer ${hardFloor.toFixed(0)}% is. Een iets lagere spaargrens kan meer opgeslagen energie 's nachts benutten; harde SoC- en piekreserves blijven beschermd.`,
+            `Average SoC around the morning target remains ${morningSoc.toFixed(1)}%, while the hard safety floor is ${hardFloor.toFixed(0)}%. A slightly lower save floor can use more stored energy overnight; hard SoC and peak reserves remain protected.`,
+            confidence(morningSocValues.length), morningSocValues.length, 'Planning');
+        }
+      }
+    }
+
+    // Low-PV threshold: correlate the full-day forecast with whether the
+    // battery actually reached the desired 90%+ zone around the daytime target.
+    const outcomeDays = planningDays.filter(day => {
+      const forecast = optionalNumber(day?.forecastKwh);
+      const soc = optionalNumber(day?.solarTargetSoc) ?? optionalNumber(day?.peakSoc);
+      return forecast !== null && forecast >= 0 && soc !== null;
+    });
+    if (batteryPresent && lowForecastPolicyEnabled && outcomeDays.length >= 2) {
+      const successes = [];
+      const failures = [];
+      for (const day of outcomeDays) {
+        const maxLimit = optionalNumber(day.maxSocLimit) ?? Math.max(0, Number(settings.maxSoc) || 100);
+        const desiredFullZone = Math.min(maxLimit, 90);
+        const outcomeSoc = optionalNumber(day.solarTargetSoc) ?? optionalNumber(day.peakSoc);
+        const forecast = optionalNumber(day.forecastKwh);
+        if (outcomeSoc === null || forecast === null) continue;
+        (outcomeSoc >= desiredFullZone - 0.5 ? successes : failures).push(forecast);
+      }
+      const currentLowPv = Math.max(0, Number(settings.lowForecastSelfConsumptionMinKwh) || 0);
+      let desiredLowPv = null;
+      if (successes.length >= 1 && failures.length >= 1) {
+        const successMid = median(successes);
+        const failureMid = median(failures);
+        if (successMid !== null && failureMid !== null && successMid > failureMid + 0.25) desiredLowPv = (successMid + failureMid) / 2;
+      } else if (successes.length >= 3) {
+        const lowSuccess = percentile(successes, 0.25);
+        if (lowSuccess !== null && currentLowPv > lowSuccess * 1.12) desiredLowPv = lowSuccess * 0.95;
+      } else if (failures.length >= 3) {
+        const highFailure = percentile(failures, 0.75);
+        if (highFailure !== null && currentLowPv < highFailure * 0.9) desiredLowPv = highFailure * 1.05;
+      }
+      if (desiredLowPv !== null) {
+        desiredLowPv = Math.max(0, Math.min(100, roundTo(desiredLowPv, 0.5)));
+        if (Math.abs(desiredLowPv - currentLowPv) >= Math.max(0.5, currentLowPv * 0.08)) {
+          push('lowForecastSelfConsumptionMinKwh', 'Lage-PV-drempel', 'Low-PV threshold', currentLowPv, desiredLowPv, 'kWh',
+            `Van ${outcomeDays.length} dagen met forecast/SoC-data bereikten ${successes.length} dagen de 90%-zone rond het dagdoel en ${failures.length} dagen niet. Deze grens onderscheidt beter wanneer PV waarschijnlijk voldoende is en wanneer Batterij sparen zinvol blijft.`,
+            `Across ${outcomeDays.length} days with forecast/SoC data, ${successes.length} days reached the 90% zone around the daytime target and ${failures.length} did not. This threshold better distinguishes when PV is likely sufficient and when Battery Save remains useful.`,
+            confidence(outcomeDays.length), outcomeDays.length, 'Planning');
+        }
+      }
+
+      if (Boolean(settings.lowForecastAutoSunnyEnabled)) {
+        const maxSoc = Math.max(0, Math.min(100, Number(settings.maxSoc) || 100));
+        const currentSunnySoc = Math.max(0, Math.min(100, Number(settings.lowForecastAutoSunnySoc) || 0));
+        const desiredSunnySoc = Math.min(maxSoc, 90);
+        if (Math.abs(desiredSunnySoc - currentSunnySoc) >= 3) {
+          push('lowForecastAutoSunnySoc', 'SoC-drempel voor zonnedag', 'Sunny-day SoC threshold', currentSunnySoc, desiredSunnySoc, '%',
+            `De vrijgave van een voorspelde lage-PV-dag hoort pas te gebeuren wanneer de batterij aantoonbaar in de gewenste 90–100%-zone zit. Maximum-SoC (${maxSoc.toFixed(0)}%) blijft onaangeroerd.`,
+            `A forecast low-PV day should only be released after the battery demonstrably reaches the desired 90–100% zone. Maximum SoC (${maxSoc.toFixed(0)}%) remains untouched.`,
+            confidence(outcomeDays.length), outcomeDays.length, 'Planning');
+        }
+      }
+    }
+
+    // EV-specific response/feedback tuning.
     for (let index = 0; index < this.getEvCount(settings); index += 1) {
       const evSettings = this.getEvInstanceSettings(index, settings);
       if (!Boolean(evSettings.evEnabled)) continue;
@@ -997,9 +1457,10 @@ class HomeFluxEmsApp extends Homey.App {
         const responseSeconds = Math.max(1, Number(runtime.responseEwmaMs) / 1000);
         const currentInterval = Math.max(1, Number(evSettings.evCommandIntervalSeconds) || 10);
         const desiredInterval = Math.max(5, Math.min(300, Math.ceil((responseSeconds + 2) / 5) * 5));
-        if (desiredInterval >= currentInterval + Math.max(5, currentInterval * 0.35)) {
+        if (desiredInterval >= currentInterval + Math.max(5, currentInterval * 0.35)
+          || (Number(runtime.responseSamples) >= 80 && currentInterval >= desiredInterval * 2 && currentInterval - desiredInterval >= 10)) {
           push(key('CommandIntervalSeconds'), `${name} · minimum stuurtijd`, `${name} · minimum command interval`, currentInterval, desiredInterval, 's',
-            `Nieuwe laadstroom wordt gemiddeld pas na ongeveer ${Math.round(responseSeconds)} s door verse feedback bevestigd. Veiligheidsverlagingen blijven onmiddellijk.`,
+            `Nieuwe laadstroom wordt gemiddeld na ongeveer ${Math.round(responseSeconds)} s door verse feedback bevestigd. Veiligheidsverlagingen blijven onmiddellijk.`,
             `A new charging current is confirmed by fresh feedback after about ${Math.round(responseSeconds)} s on average. Safety reductions remain immediate.`,
             confidence(runtime.responseSamples), runtime.responseSamples, name);
         }
@@ -1028,13 +1489,7 @@ class HomeFluxEmsApp extends Homey.App {
           const rawObserved = Math.max(1, Math.min(64, Math.round(Number(runtime[`${mode}EwmaA`]) || 0)));
           const suffix = mode === 'smart' ? 'ModeSmartCurrentA' : 'ModeStandardCurrentA';
           const current = mode === 'smart' ? currentSmartA : currentStandardA;
-          // Keep the learned pair valid even when charger telemetry is noisy or
-          // the two modes were sampled under different circumstances. Standard
-          // must never be estimated below Smart, otherwise Peak Guard could
-          // underestimate the stronger mode.
-          const observed = mode === 'smart'
-            ? Math.min(rawObserved, currentStandardA)
-            : Math.max(rawObserved, recommendedSmartA);
+          const observed = mode === 'smart' ? Math.min(rawObserved, currentStandardA) : Math.max(rawObserved, recommendedSmartA);
           if (mode === 'smart') recommendedSmartA = observed;
           if (Math.abs(observed - current) >= Math.max(1, current * 0.12)) {
             const titleModeNl = mode === 'smart' ? 'Slim-modus' : 'Standaard-modus';
@@ -1057,6 +1512,14 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     const recommendations = this.getAutoTuneRecommendations();
     const recommendationKeys = new Set(recommendations.map(item => item.settingKey));
+    const planningDays = Array.isArray(runtime.planning?.days) ? runtime.planning.days.slice(-14) : [];
+    const currentDay = runtime.planning?.currentDay || null;
+    const demandDays = planningDays.filter(day => Number(day?.sampleHours) >= 18 && Number(day?.estimatedDemandKwh) > 0);
+    const optionalNumber = value => {
+      if (value === null || value === undefined || value === '') return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
     return {
       recommendations,
       permissions,
@@ -1069,8 +1532,18 @@ class HomeFluxEmsApp extends Homey.App {
       observations: {
         gridSamples: Math.max(0, Number(runtime.grid?.samples) || 0),
         gridVariationW: Math.round(Math.max(0, Number(runtime.grid?.ewmaAbsDelta) || 0)),
+        gridCadenceSeconds: Math.round(Math.max(0, Number(runtime.grid?.ewmaGapMs) || 0) / 100) / 10,
         pvSamples: Math.max(0, Number(runtime.pv?.samples) || 0),
         pvVariationW: Math.round(Math.max(0, Number(runtime.pv?.ewmaAbsDelta) || 0)),
+        pvCadenceSeconds: Math.round(Math.max(0, Number(runtime.pv?.ewmaGapMs) || 0) / 100) / 10,
+        balanceSamples: Math.max(0, Number(runtime.balance?.samples) || 0),
+        balanceSpreadPct: Math.round(Math.max(0, Number(runtime.balance?.ewmaSpreadPct) || 0) * 10) / 10,
+        planningDays: planningDays.length,
+        demandDays: demandDays.length,
+        currentPlanningHours: Math.round(Math.max(0, Number(currentDay?.sampleMillis || 0) / 3600000) * 10) / 10,
+        currentPlanningDemandKwh: Math.round(Math.max(0, Number(currentDay?.estimatedDemandKwh) || 0) * 10) / 10,
+        currentPlanningForecastKwh: optionalNumber(currentDay?.forecastKwh) !== null ? Math.round(optionalNumber(currentDay.forecastKwh) * 10) / 10 : null,
+        currentPlanningPeakSoc: optionalNumber(currentDay?.peakSoc) !== null ? Math.round(optionalNumber(currentDay.peakSoc) * 10) / 10 : null,
         ev: Array.from({ length: this.getEvCount() }, (_, index) => {
           const item = runtime.ev?.[index] || {};
           return {
@@ -1089,7 +1562,9 @@ class HomeFluxEmsApp extends Homey.App {
         extraPolling: false,
         autoCheckMinutes: 30,
         changeCooldownHours: 6,
-        protected: ['Peak Guard','minimum SoC','maximum charge/discharge power','tariffs','EV deadlines','comfort temperatures','priorities'],
+        planningChangeCooldownHours: 24,
+        dailySummariesMax: 14,
+        protected: ['Peak Guard','minimum/maximum/safety SoC','maximum charge/discharge power','tariffs','EV deadlines','comfort temperatures','priorities','manual time windows'],
       },
     };
   }
@@ -1112,7 +1587,9 @@ class HomeFluxEmsApp extends Homey.App {
       const key = recommendation.settingKey;
       if (onlyKey && key !== onlyKey) continue;
       if (!recommendation.canAutoManage || !permissions[key] || recommendation.confidence < 70) continue;
-      if (!force && now - Number(lastApplied[key] || 0) < 6 * 60 * 60 * 1000) continue;
+      const dailyLearnedKeys = new Set(['lowForecastSelfConsumptionMinKwh','expectedEnergyNeedKwh','batterySaveDischargeAboveSoc','lowForecastAutoSunnySoc']);
+      const cooldownMs = dailyLearnedKeys.has(key) ? 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
+      if (!force && now - Number(lastApplied[key] || 0) < cooldownMs) continue;
       const current = Number(this.getSettings()[key]);
       const next = Number(recommendation.recommended);
       if (!Number.isFinite(current) || !Number.isFinite(next) || Math.abs(current - next) < 1e-9) continue;
@@ -1330,7 +1807,8 @@ class HomeFluxEmsApp extends Homey.App {
   runContextHeartbeat() {
     const now = Date.now();
     const settings = this.getSettings();
-    // v0.6.3: no extra timer; approved finetuning checks reuse this heartbeat.
+    // v0.6.4: planning/balance learning piggybacks on the same heartbeat.
+    this.recordAutoTunePlanningSample(now, settings);
     this.maybeRunAutoTune(now);
     this.recordSavingsSample(now);
     if ((now - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) this.persistSavingsState(now, true);
@@ -2380,7 +2858,14 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('_autoTuneLastAppliedAt') === null) this.setSetting('_autoTuneLastAppliedAt', {});
     }
 
-    this.setSetting('settingsSchemaVersion', 56);
+    if (schema < 57) {
+      // v0.6.4: persist only compact daily planning outcomes so low-PV and
+      // expected-energy recommendations can learn across restarts. Raw meter,
+      // PV, battery and EV samples remain RAM-only.
+      if (this.homey.settings.get('_autoTuneLearning') === null) this.setSetting('_autoTuneLearning', { days: [] });
+    }
+
+    this.setSetting('settingsSchemaVersion', 57);
   }
 
   async ensureDefaults() {
@@ -9210,7 +9695,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.6.3',
+      version: '0.6.4',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -9287,7 +9772,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.6.3',
+      version: '0.6.4',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -9566,7 +10051,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.6.3',
+      version: '0.6.4',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),
