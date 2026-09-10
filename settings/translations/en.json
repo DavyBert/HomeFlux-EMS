@@ -1060,5 +1060,7 @@
   "PV-aandeel EV-pool": "EV pool PV share",
   "PV-verdeling EV": "PV distribution EV",
   "batterij": "battery",
-  "verdeeld volgens EV-gewicht": "distributed by EV weight"
+  "verdeeld volgens EV-gewicht": "distributed by EV weight",
+  "Batterij gebruiken om boiler te ondersteunen bij Peak Guard": "Use battery to support boiler during Peak Guard",
+  "Uit: de boiler wordt gestopt wanneer zijn tarieflading niet binnen Peak Guard past. Aan: gepland batterij-netladen wijkt eerst en de batterij mag tijdelijk ontladen om de essentiële boiler onder Peak Guard te houden. Minimum-SoC, boiler stop-SoC en maximale ontlaadvermogens blijven altijd gelden.": "Off: the boiler is stopped when tariff heating does not fit within Peak Guard. On: planned battery grid charging yields first and the battery may temporarily discharge to keep the essential boiler within Peak Guard. Minimum SoC, boiler stop SoC and maximum discharge limits always remain in effect."
 }

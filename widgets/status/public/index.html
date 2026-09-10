@@ -410,12 +410,14 @@
     function boilerState(boiler, Homey) {
       if (!boiler || !boiler.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
       const reason = String(boiler.reason || '').toLowerCase();
-      if (reason.includes('peak guard')) return tr(Homey, 'widget.status.boilerPeakGuard', 'Disabled by Peak Guard');
+      // Running state wins over a textual Peak Guard mention: the reason can
+      // describe successful battery support rather than a shutdown.
       if (boiler.outputOn || boiler.running) {
         return String(boiler.activeSource || '') === 'tariff'
           ? tr(Homey, 'widget.status.boilerTariff', 'Heating on tariff')
           : tr(Homey, 'widget.status.boilerPv', 'Heating from solar');
       }
+      if (reason.includes('peak guard')) return tr(Homey, 'widget.status.boilerPeakGuard', 'Disabled by Peak Guard');
       if (boiler.warm) return tr(Homey, 'widget.status.boilerWarm', 'Heated');
       const fallbackDays = Math.max(0, Math.round(Number(boiler.fallbackDays) || 0));
       const daysWithoutCycle = Math.max(0, Math.round(Number(boiler.daysWithoutCycle) || 0));

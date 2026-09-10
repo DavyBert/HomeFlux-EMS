@@ -2180,7 +2180,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 57);
+  assert.equal(stored.settingsSchemaVersion, 58);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
   assert.equal(stored.lowForecastAutoSunnySoc, 90);
@@ -2228,7 +2228,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.6.5');
+  assert.equal(simulation.version, '0.6.6');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);

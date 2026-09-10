@@ -259,6 +259,7 @@ class HomeFluxEmsApp extends Homey.App {
       latestDecision: null,
       lastPublishedOutput: null,
       lastPublishedWarmed: null,
+      peakSupportRequestedAt: 0,
     };
     this.flexiblePriorityState = { nextEvaluationAt: 0, lastStartedId: '', lastEvaluationAt: 0 };
 
@@ -480,7 +481,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.6.5 initialized');
+    this.log('HomeFlux EMS v0.6.6 initialized');
   }
 
   refreshSettingsCache() {
@@ -2893,7 +2894,14 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('_autoTuneLearning') === null) this.setSetting('_autoTuneLearning', { days: [] });
     }
 
-    this.setSetting('settingsSchemaVersion', 57);
+    if (schema < 58) {
+      // v0.6.6: optional battery support keeps essential tariff boiler heating
+      // running while Peak Guard asks the battery to absorb the excess import.
+      // Disabled by default so existing installations keep their previous behaviour.
+      if (this.homey.settings.get('boilerPeakGuardBatterySupportEnabled') === null) this.setSetting('boilerPeakGuardBatterySupportEnabled', false);
+    }
+
+    this.setSetting('settingsSchemaVersion', 58);
   }
 
   async ensureDefaults() {
@@ -8204,6 +8212,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.boilerState.lastCompletedDate = this.getLocalDateKey(new Date(now));
     this.boilerState.lastCompletedSource = String(source || this.boilerState.activeSource || '');
     this.boilerState.activeSource = '';
+    this.boilerState.peakSupportRequestedAt = 0;
     this.boilerState.lastTickAt = now;
     this.persistBoilerRuntime();
   }
@@ -8255,6 +8264,13 @@ class HomeFluxEmsApp extends Homey.App {
     const peakLimitW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500);
     const peakGuardActive = Boolean(settings.peakShaveEnabled)
       && (String(result?.action || '') === 'peak_shave' || String(result?.override || '') === 'peak_shave');
+    const peakGuardBatterySupportEnabled = hasHomeBattery && Boolean(settings.boilerPeakGuardBatterySupportEnabled);
+    const configuredMinSoc = Number(settings.minSoc);
+    const hardMinSoc = Math.max(0, Math.min(100, Number.isFinite(configuredMinSoc) ? configuredMinSoc : 10));
+    const configuredMaxDischargeW = Number(settings.maxTotalDischargeW);
+    const maxBatteryDischargeW = Math.max(0, Number.isFinite(configuredMaxDischargeW) ? configuredMaxDischargeW : 0);
+    const additionalBatterySupportW = Math.max(0, maxBatteryDischargeW - nextBatteryCommandW);
+    const batterySupportSocReady = avgSoc !== null && avgSoc > Math.max(hardMinSoc, tariffStopBatterySoc) + 0.05;
     // gridW already contains the effect of the currently applied battery command.
     // Predict the meter value after the next battery command by removing the
     // old command contribution and applying the new one. This lets tariff boiler
@@ -8311,6 +8327,9 @@ class HomeFluxEmsApp extends Homey.App {
       tariffBatteryReady,
       tariffAllowed,
       peakGuardActive,
+      peakGuardBatterySupportEnabled,
+      peakGuardBatterySupportActive: false,
+      peakGuardBatterySupportNeededW: 0,
       peakLimitW,
       currentBatteryCommandW: Math.round(currentBatteryCommandW),
       nextBatteryCommandW: Math.round(nextBatteryCommandW),
@@ -8359,6 +8378,31 @@ class HomeFluxEmsApp extends Homey.App {
         decision.reason = 'Peak Guard · boiler onmiddellijk uit';
       } else if (source === 'tariff' && peakGuardActive
         && (predictedGridAfterBatteryW === null || predictedGridAfterBatteryW > peakLimitW)) {
+        const supportNeededW = predictedGridAfterBatteryW === null ? Infinity : Math.max(0, predictedGridAfterBatteryW - peakLimitW);
+        const supportFeasible = peakGuardBatterySupportEnabled
+          && batterySupportSocReady
+          && maxBatteryDischargeW > 0
+          && Number.isFinite(supportNeededW)
+          && supportNeededW <= additionalBatterySupportW + 0.5;
+        // Give the battery controller enough time to publish and physically react
+        // before shedding the essential boiler. This does not raise Peak Guard:
+        // if the meter still cannot be brought below the hard limit after the
+        // bounded grace window, the boiler is switched off as before.
+        const supportGraceMs = Math.min(60000, Math.max(15000, ((Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 2) + 5) * 1000));
+        if (supportFeasible) {
+          if (!Number(this.boilerState.peakSupportRequestedAt)) this.boilerState.peakSupportRequestedAt = now;
+          const supportElapsedMs = Math.max(0, now - Number(this.boilerState.peakSupportRequestedAt));
+          if (supportElapsedMs <= supportGraceMs) {
+            decision.peakGuardBatterySupportActive = true;
+            decision.peakGuardBatterySupportNeededW = Math.round(supportNeededW);
+            decision.reason = `Boiler verwarmt tijdens geselecteerd tarief · batterij ondersteunt Peak Guard (${Math.round(supportNeededW)} W extra nodig)`;
+            this.boilerState.latestDecision = decision;
+            // The normal meter-driven Peak Guard remains the authority and will
+            // recalculate the battery command from fresh P1 data.
+            return decision;
+          }
+        }
+        this.boilerState.peakSupportRequestedAt = 0;
         decision.on = false;
         decision.outputCommand = false;
         decision.reason = predictedGridAfterBatteryW === null
@@ -8379,6 +8423,7 @@ class HomeFluxEmsApp extends Homey.App {
           ? 'Wachten op batterij-SoC voor boilertariefladen'
           : `Batterij-SoC ${avgSoc.toFixed(1)}% · boilertariefladen stopt op/onder ${tariffStopBatterySoc}%`;
       } else {
+        this.boilerState.peakSupportRequestedAt = 0;
         decision.reason = source === 'tariff'
           ? (peakGuardActive
             ? `Boiler verwarmt tijdens geselecteerd tarief · Peak Guard ondersteund door batterij (${Math.round(predictedGridAfterBatteryW)} W verwacht)`
@@ -8389,6 +8434,7 @@ class HomeFluxEmsApp extends Homey.App {
       }
       this.boilerState.outputOn = false;
       this.boilerState.activeSource = '';
+      this.boilerState.peakSupportRequestedAt = 0;
       this.persistBoilerRuntime();
       this.boilerState.latestDecision = decision;
       return decision;
@@ -8430,6 +8476,7 @@ class HomeFluxEmsApp extends Homey.App {
     decision.reason = source === 'tariff' ? 'Boiler gestart tijdens geselecteerd tarief' : 'Boiler gestart met PV-overschot';
     this.boilerState.outputOn = true;
     this.boilerState.activeSource = source;
+    this.boilerState.peakSupportRequestedAt = 0;
     this.boilerState.lastTickAt = now;
     this.persistBoilerRuntime();
     this.boilerState.latestDecision = decision;
@@ -9724,7 +9771,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.6.5',
+      version: '0.6.6',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -9801,7 +9848,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.6.5',
+      version: '0.6.6',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -10080,7 +10127,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.6.5',
+      version: '0.6.6',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),

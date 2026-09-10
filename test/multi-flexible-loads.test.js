@@ -235,9 +235,9 @@ function makeApp() {
   decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (13 * 60000), allowStart: true, gridPowerW: 0 });
   assert.equal(decision.on, true);
 
-  // Peak Guard remains authoritative. If the battery's next command still
-  // leaves the predicted import above the configured hard limit, tariff boiler
-  // heating is shed immediately.
+  // Peak Guard remains authoritative. Without the explicit battery-support
+  // option, tariff boiler heating is still shed immediately when the predicted
+  // meter position cannot stay below the configured hard limit.
   decision = app.calculateBoilerDecision(
     { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
     tariffSettings,
@@ -246,6 +246,61 @@ function makeApp() {
   assert.equal(decision.on, false);
   assert.equal(decision.predictedGridAfterBatteryW, 2800);
   assert.match(decision.reason, /niet haalbaar/);
+
+  // v0.6.6: when explicitly enabled, the battery may support an essential
+  // tariff boiler instead of shedding it while Peak Guard is asking for more
+  // discharge. The support window is bounded; if P1 still cannot be brought
+  // under the hard limit after the battery had time to react, the boiler yields.
+  app.boilerState.outputOn = true;
+  app.boilerState.activeSource = 'tariff';
+  app.boilerState.peakSupportRequestedAt = 0;
+  app.state.batterySoc[0] = 50;
+  const supportedTariffSettings = {
+    ...tariffSettings,
+    boilerPeakGuardBatterySupportEnabled: true,
+    maxTotalDischargeW: 4000,
+    minSoc: 10,
+    commandIntervalSeconds: 10,
+  };
+  const supportAt = start + (15 * 60000);
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt, allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 0, nextBatteryCommandW: 500 },
+  );
+  assert.equal(decision.on, true);
+  assert.equal(decision.peakGuardBatterySupportActive, true);
+  assert.equal(decision.peakGuardBatterySupportNeededW, 300);
+  assert.match(decision.reason, /batterij ondersteunt Peak Guard/);
+
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt + 20000, allowStart: true, gridPowerW: 3200, currentBatteryCommandW: 500, nextBatteryCommandW: 800 },
+  );
+  assert.equal(decision.on, true, 'boiler must stay on while battery support is converging');
+
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt + 40000, allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 500, nextBatteryCommandW: 800 },
+  );
+  assert.equal(decision.on, false, 'hard Peak Guard still sheds boiler after the bounded support window');
+  assert.match(decision.reason, /niet haalbaar/);
+
+  // If the battery is already at/below the boiler tariff stop reserve, support
+  // is never attempted even when the option is enabled.
+  app.boilerState.outputOn = true;
+  app.boilerState.activeSource = 'tariff';
+  app.boilerState.peakSupportRequestedAt = 0;
+  app.state.batterySoc[0] = 30;
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt + 50000, allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 0, nextBatteryCommandW: 500 },
+  );
+  assert.equal(decision.on, false);
+  assert.equal(decision.peakGuardBatterySupportActive, false);
 
   // Boiler warmed status is a separate boolean output and also changes
   // independently when the configured warm-hold expires.

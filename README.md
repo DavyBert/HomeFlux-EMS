@@ -464,6 +464,14 @@ HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy info
 
 ## Changelog
 
+### v0.6.6
+- Added optional battery support for essential tariff boiler heating during Peak Guard.
+- Planned battery grid charging yields first; when needed and explicitly enabled, the battery may temporarily discharge to support the boiler.
+- Boiler support respects the boiler tariff stop-SoC, hard minimum SoC and configured battery discharge limits.
+- Peak Guard remains absolute: if battery support cannot restore the meter below the hard limit within the bounded response window, the boiler is switched off.
+- Fixed the status widget so a running boiler that mentions Peak Guard support is shown as heating instead of disabled.
+
+
 ### v0.3.57
 
 - Separated the meter-driven battery regulator from the slow EMS context loop.
