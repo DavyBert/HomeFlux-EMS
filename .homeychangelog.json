@@ -1,4 +1,8 @@
 {
+  "0.6.2": {
+    "en": "Fixed battery planning minimum SoC handling. During day planning, the selected-month minimum is now a hard floor only in selected months, while non-selected months use the separate sunny-month minimum only when that option is enabled. When night minimums are enabled, the same applicable monthly minimum is also enforced in night planning. PV forecasts can no longer reduce these absolute minimum floors.",
+    "nl": "Opgelost: minimum-SoC in de batterijplanning. Tijdens de dagplanning is het minimum voor geselecteerde maanden nu een harde ondergrens, uitsluitend in geselecteerde maanden. Niet-geselecteerde maanden gebruiken het aparte zonnemaandminimum alleen wanneer die optie aan staat. Wanneer minimum-SoC ook voor nachtplanning is ingeschakeld, geldt hetzelfde toepasselijke maandminimum ook daar. PV-forecast kan deze absolute minimumgrenzen niet meer verlagen."
+  },
   "0.3.85": {
     "en": "Rework of schedules, better and more control."
   },

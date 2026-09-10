@@ -898,8 +898,8 @@ function state(overrides = {}) {
   assert.equal(plan.targetSoc, 100);
 }
 
-// v0.3.88 remains PV-first: an absolute 100% day minimum does not blindly
-// force grid charging when remaining PV can still provide part of that target.
+// v0.6.2: an enabled selected-month minimum is an absolute daytime floor.
+// Forecast PV remains visible, but it may not lower the configured minimum.
 {
   const plan = buildSocPlan(
     state({ forecastRemainingKwh: 10, forecastDailyMaxKwh: 10, batterySoc: [30,30,30,30] }),
@@ -917,7 +917,7 @@ function state(overrides = {}) {
   assert.equal(plan.selectedMonthsMinSoc, 100);
   assert.equal(plan.peakReservePvCreditKwh, 10);
   assert.equal(plan.peakReserveShortfallAfterPvKwh, 8);
-  assert.equal(plan.peakReserveTargetSoc, 50);
+  assert.equal(plan.peakReserveTargetSoc, 100);
 }
 
 console.log('HomeFlux EMS engine tests: OK');
@@ -1480,8 +1480,8 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.energyNeedKwh, 8);
 }
 
-// v0.3.17: peak reserve is PV-first. If remaining PV can fully provide the
-// configured reserve, it must not create a higher SoC target or grid charge.
+// v0.6.2: an enabled selected-month minimum remains a hard daytime floor even
+// when forecast PV could theoretically provide it later.
 {
   const plan = buildSocPlan(
     state({ forecastRemainingKwh: 25, forecastDailyMaxKwh: 25, batterySoc: [30,30,30,30] }),
@@ -1504,14 +1504,13 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.peakReservePercent, 40);
   assert.equal(plan.peakReservePvCreditKwh, 8);
   assert.equal(plan.peakReserveShortfallAfterPvKwh, 0);
-  assert.equal(plan.peakReserveTargetSoc, 15);
-  assert.equal(plan.targetSoc, 15);
-  assert.equal(plan.energyNeedKwh, 0);
+  assert.equal(plan.peakReserveTargetSoc, 50);
+  assert.equal(plan.targetSoc, 50);
+  assert.equal(plan.energyNeedKwh, 4);
 }
 
-// v0.3.80: in a non-selected sunny month, the optional minimum SoC is
-// PV-first. With a 20 kWh battery, min SoC 10%, sunny minimum 50% and 2 kWh
-// remaining PV, only 6 of the 8 kWh reserve remains protected: target 40%.
+// v0.6.2: in a non-selected month, the optional sunny-month minimum is an
+// absolute daytime floor when its option is enabled. Forecast PV does not lower it.
 {
   const plan = buildSocPlan(
     state({ forecastRemainingKwh: 2, forecastDailyMaxKwh: 12, batterySoc: [20,20,20,20] }),
@@ -1536,8 +1535,8 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.peakReserveStrategyKwh, 8);
   assert.equal(plan.peakReservePvCreditKwh, 2);
   assert.equal(plan.peakReserveShortfallAfterPvKwh, 6);
-  assert.equal(plan.peakReserveTargetSoc, 40);
-  assert.equal(plan.targetSoc, 40);
+  assert.equal(plan.peakReserveTargetSoc, 50);
+  assert.equal(plan.targetSoc, 50);
 }
 
 // v0.3.80: a selected month always keeps the original kWh strategy, even when
@@ -1555,7 +1554,7 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   );
   assert.equal(plan.peakReserveStrategy, 'selected_month_min_soc');
   assert.equal(plan.sunnyMonthsMinSocActive, false);
-  assert.equal(plan.peakReserveTargetSoc, 40);
+  assert.equal(plan.peakReserveTargetSoc, 50);
 }
 
 // v0.3.80: upgrades preserve prior behavior because the new sunny-month option
@@ -1601,10 +1600,8 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.targetSoc, 15);
 }
 
-// v0.3.17: exactly the intended PV-first case. At 16:00 a 70% battery with
-// 8 kWh still expected from PV must not grid-charge merely because the desired
-// peak reserve is 17 kWh. Remaining PV is subtracted from BOTH forward energy
-// need and the peak-reserve fallback before a charge target is formed.
+// v0.6.2: an enabled selected-month minimum remains an absolute daytime floor.
+// Forecast PV is still reported, but it no longer lowers the minimum target.
 {
   const dynamicSlots = [];
   for (let m = 16 * 60; m < 18 * 60; m += 15) {
@@ -1636,10 +1633,10 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.forecastUsedSource, 'today_remaining');
   assert.equal(plan.peakReservePvCreditKwh, 8);
   assert.equal(plan.peakReserveShortfallAfterPvKwh, 9);
-  assert.ok(plan.targetSoc < 70, `target ${plan.targetSoc}% should remain below current 70% SoC`);
-  assert.equal(plan.energyNeedKwh, 0);
-  assert.equal(plan.nextNetChargeAt, null);
-  assert.ok(plan.rows.every(row => row.plannedNetCharge === false));
+  assert.ok(plan.targetSoc > 70, `target ${plan.targetSoc}% should enforce the selected-month minimum above current 70% SoC`);
+  assert.ok(plan.energyNeedKwh > 0);
+  assert.notEqual(plan.nextNetChargeAt, null);
+  assert.ok(plan.rows.some(row => row.plannedNetCharge === true));
 }
 
 // v0.3.17: at night there is no active sun, but tomorrow's PV is still future
@@ -1719,9 +1716,10 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.peakReserveTargetSoc, 15);
 }
 
-// v0.3.17: only the reserve shortfall AFTER remaining PV is protected outside
-// expensive periods. Once the expensive period starts, that protected reserve
-// becomes available for normal discharge.
+// v0.6.2: while the applicable selected-month minimum is active during the
+// day, it is a hard floor and may trigger charging in an allowed window even
+// when forecast PV remains. Once the expensive period starts, that reserve can
+// be used normally according to the existing tariff strategy.
 {
   const common = baseSettings({
     forcedMode: 'auto',
@@ -1753,9 +1751,9 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   );
   assert.equal(beforePeak.peakReservePvCreditKwh, 3);
   assert.equal(beforePeak.peakReserveShortfallAfterPvKwh, 5);
-  assert.equal(beforePeak.peakReserveTargetSoc, 35);
+  assert.equal(beforePeak.peakReserveTargetSoc, 50);
   assert.equal(beforePeak.peakReserveProtected, true);
-  assert.equal(beforePeak.totalCommandW, 0);
+  assert.ok(beforePeak.totalCommandW < 0);
 
   const inPeak = evaluate(
     state({ gridPowerW: 1000, controlGridPowerW: 1000, forecastRemainingKwh: 3, forecastDailyMaxKwh: 20, batterySoc: [35,35,35,35] }),
@@ -1788,7 +1786,7 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(winterPlan.peakReserveSeason, 'winter');
   assert.equal(winterPlan.peakReservePvCreditKwh, 2);
   assert.equal(winterPlan.peakReserveShortfallAfterPvKwh, 6);
-  assert.equal(winterPlan.peakReserveTargetSoc, 40);
+  assert.equal(winterPlan.peakReserveTargetSoc, 50);
 
   const augustEnabled = buildSocPlan(
     state({ forecastRemainingKwh: 2, forecastDailyMaxKwh: 8, batterySoc: [30,30,30,30] }),
@@ -1864,8 +1862,9 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.ok(plan.peakReserveNightCombinedGapKwh > 19.44);
 }
 
-// v0.3.84: sufficient PV remains PV-first in night planning. Forecast energy
-// first covers expected demand and only the surplus is credited to the reserve.
+// v0.6.1: the configured monthly minimum is a hard floor in night planning.
+// Tomorrow's PV is still useful for forward energy planning, but it cannot
+// reduce the SoC that must already be present at the configured morning target.
 {
   const plan = buildSocPlan(
     state({
@@ -1889,10 +1888,11 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
     new Date('2026-08-28T21:00:00+02:00'),
   );
   assert.equal(plan.peakReserveNightActive, true);
-  assert.equal(plan.peakReservePvCreditKwh, 8);
-  assert.equal(plan.peakReserveShortfallAfterPvKwh, 0);
+  assert.equal(plan.peakReservePvCreditKwh, 0);
+  assert.equal(plan.peakReserveShortfallAfterPvKwh, 8);
   assert.equal(plan.peakReserveNightCombinedGapKwh, 0);
-  assert.equal(plan.targetSoc, 15);
+  assert.equal(plan.peakReserveNightTargetSoc, 50);
+  assert.equal(plan.targetSoc, 50);
 }
 
 // v0.3.84: the non-selected sunny-month minimum uses the same optional night
@@ -2362,4 +2362,98 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(result.baseMode, 'avoid_import');
   assert.equal(result.peakReserveProtected, false);
   assert.ok(result.totalCommandW >= 995 && result.totalCommandW <= 1005, `expected about 1000 W discharge after leaving a 2000 W charge, got ${result.totalCommandW}`);
+}
+
+// v0.6.2: monthly minimum SoC selection is explicit and phase-aware.
+// Selected months use the selected minimum during day planning. Non-selected
+// months use the separate sunny-month minimum only when its option is enabled.
+// Night planning applies the same applicable minimum only when the night option
+// is enabled. Forecast PV may not reduce these absolute minimum floors.
+{
+  const selectedDay = buildSocPlan(
+    state({ forecastRemainingKwh: 50, forecastDailyMaxKwh: 50, batterySoc: [20,20,20,20] }),
+    baseSettings({
+      expectedEnergyNeedKwh: 0,
+      totalCapacityKwh: 20,
+      minSoc: 10,
+      safetySoc: 15,
+      peakReserveTargetSoc: 60,
+      peakReserveMonth8: true,
+      sunnyMonthsMinSocEnabled: true,
+      sunnyMonthsMinSoc: 35,
+    }),
+    new Date('2026-08-25T12:00:00+02:00'),
+  );
+  assert.equal(selectedDay.peakReserveStrategy, 'selected_month_min_soc');
+  assert.equal(selectedDay.peakReserveActive, true);
+  assert.equal(selectedDay.targetSoc, 60);
+
+  const nonSelectedDisabled = buildSocPlan(
+    state({ forecastRemainingKwh: 50, forecastDailyMaxKwh: 50, batterySoc: [20,20,20,20] }),
+    baseSettings({
+      expectedEnergyNeedKwh: 0,
+      totalCapacityKwh: 20,
+      minSoc: 10,
+      safetySoc: 15,
+      peakReserveTargetSoc: 60,
+      peakReserveMonth8: false,
+      sunnyMonthsMinSocEnabled: false,
+      sunnyMonthsMinSoc: 35,
+    }),
+    new Date('2026-08-25T12:00:00+02:00'),
+  );
+  assert.equal(nonSelectedDisabled.peakReserveStrategy, 'none');
+  assert.equal(nonSelectedDisabled.peakReserveActive, false);
+  assert.equal(nonSelectedDisabled.targetSoc, 15);
+
+  const nonSelectedEnabled = buildSocPlan(
+    state({ forecastRemainingKwh: 50, forecastDailyMaxKwh: 50, batterySoc: [20,20,20,20] }),
+    baseSettings({
+      expectedEnergyNeedKwh: 0,
+      totalCapacityKwh: 20,
+      minSoc: 10,
+      safetySoc: 15,
+      peakReserveTargetSoc: 60,
+      peakReserveMonth8: false,
+      sunnyMonthsMinSocEnabled: true,
+      sunnyMonthsMinSoc: 35,
+    }),
+    new Date('2026-08-25T12:00:00+02:00'),
+  );
+  assert.equal(nonSelectedEnabled.peakReserveStrategy, 'sunny_month_min_soc');
+  assert.equal(nonSelectedEnabled.peakReserveActive, true);
+  assert.equal(nonSelectedEnabled.targetSoc, 35);
+
+  const selectedNightDisabled = buildSocPlan(
+    state({ planningForecastDay: 'tomorrow', nightPlanningActive: true, forecastTomorrowKwh: 50, batterySoc: [20,20,20,20] }),
+    baseSettings({
+      expectedEnergyNeedKwh: 0,
+      totalCapacityKwh: 20,
+      minSoc: 10,
+      safetySoc: 15,
+      peakReserveTargetSoc: 60,
+      peakReserveMonth8: true,
+      peakReserveNightEnabled: false,
+    }),
+    new Date('2026-08-24T22:00:00+02:00'),
+  );
+  assert.equal(selectedNightDisabled.peakReserveActive, false);
+  assert.equal(selectedNightDisabled.targetSoc, 15);
+
+  const selectedNightEnabled = buildSocPlan(
+    state({ planningForecastDay: 'tomorrow', nightPlanningActive: true, forecastTomorrowKwh: 50, batterySoc: [20,20,20,20] }),
+    baseSettings({
+      expectedEnergyNeedKwh: 0,
+      totalCapacityKwh: 20,
+      minSoc: 10,
+      safetySoc: 15,
+      peakReserveTargetSoc: 60,
+      peakReserveMonth8: true,
+      peakReserveNightEnabled: true,
+    }),
+    new Date('2026-08-24T22:00:00+02:00'),
+  );
+  assert.equal(selectedNightEnabled.peakReserveActive, true);
+  assert.equal(selectedNightEnabled.peakReserveNightActive, true);
+  assert.equal(selectedNightEnabled.targetSoc, 60);
 }

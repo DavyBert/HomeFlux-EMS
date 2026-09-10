@@ -28,6 +28,13 @@ Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.6.2
+- Fixed monthly minimum-SoC handling in battery planning.
+- During **day planning**, the selected-month minimum is an absolute floor only when the current month is selected.
+- In **non-selected months**, the separate sunny-month minimum is used only when **Use a separate minimum SoC in non-selected months** is enabled.
+- When **Also use minimum SoCs for night planning** is enabled, the same applicable monthly minimum is enforced in the night plan as well.
+- PV forecasts remain available for energy forecasting, but can no longer reduce an enabled absolute monthly minimum SoC.
+
 ### v0.6.1
 - Added **per-EV tariff selection** for fixed, dynamic and multi-rate contracts. Existing EV tariff values are retained while their controls move from Energy Contract to the EV tab.
 - Added EV **Current / Mode / Hybrid** control. Hybrid publishes both the charge mode and current setpoint; Stop remains a real stop/pause and Peak Guard remains absolute.

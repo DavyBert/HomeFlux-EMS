@@ -2227,7 +2227,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.6.1');
+  assert.equal(simulation.version, '0.6.2');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2550,7 +2550,13 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     evCount: 1, evEnabled: true, evControlType: 'current', evCommandIntervalSeconds: 3600,
     evSkipFeedbackValidation: true, evFeedbackTolerancePercent: 5,
   };
-  const coordination = app.getEvGridImportControlStatus(settings, now + 1000);
+  // No physical import is visible yet, so ignoring slow charger telemetry may
+  // trust the command but may not create a synthetic EV grid allowance.
+  let coordination = app.getEvGridImportControlStatus(settings, now + 1000);
+  assert.equal(coordination.state, 'waiting_load');
+  assert.equal(coordination.activeTargetW, 0);
+  app.state.gridPowerW = 4900;
+  coordination = app.getEvGridImportControlStatus(settings, now + 1001);
   assert.equal(coordination.state, 'active');
   assert.equal(coordination.activeTargetW, 4900);
 }
@@ -2966,4 +2972,134 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.lastPublishedEvChargeMode = 'standard';
   assert.equal(app.getEvCommandedPowerW(0, settings), 16 * 230);
   assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 16);
+}
+
+// v0.6.2 settings audit: the global EV/PV ratio is a priority split, not a
+// permanent reservation. If the battery candidate cannot use its nominal 90%
+// share, the unused physical PV budget is released to the EV pool.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: Date.now(), chargeCurrent: Date.now() };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = -5000;
+  app.state.lastTotalCommandW = 0;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 1, evCount: 1,
+    touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true, evPvMinSurplusW: 0 }],
+    touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evPvSharePercent: 10, evWeight: 1,
+    evPhases: 1, evMinCurrentA: 6, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    candidateCommands: [0], candidateTotalCommandW: 0,
+    calculatedCommands: [0], calculatedTotalCommandW: 0,
+    commands: [0], totalCommandW: 0,
+    gridChargeAssistW: 0,
+    // Battery is full/limited and therefore has no PV charge candidate.
+    pvChargeW: 0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.pvSharePercent, 10);
+  assert.equal(ev.pvConfiguredShareBudgetW, 500);
+  assert.equal(ev.pvReleasedBatteryBudgetW, 4500);
+  assert.equal(ev.pvPoolBudgetW, 5000);
+  assert.equal(ev.desiredCurrentA, 21); // 21 A = 4830 W, largest whole amp under 5 kW.
+  assert.equal(ev.pvAllocatedW, 4830);
+  assert.match(ev.reason, /ongebruikt batterijbudget vrijgegeven aan EV/);
+}
+
+// If the battery can still consume its nominal 90% share, the configured
+// 90/10 preference remains effective and is not silently converted to EV-first.
+{
+  const app = bareApp();
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = -500;
+  app.state.lastTotalCommandW = -4500;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 1, evCount: 1,
+    touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true, evPvMinSurplusW: 0 }],
+    touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+    evEnabled: true, evSocEnabled: false, evMode: 'smart', evPvSharePercent: 10, evWeight: 1,
+    evPhases: 1, evMinCurrentA: 1, evMaxCurrentA: 32, evStandardCurrentA: 16,
+    peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    candidateCommands: [-4500], candidateTotalCommandW: -4500,
+    calculatedCommands: [-4500], calculatedTotalCommandW: -4500,
+    commands: [-4500], totalCommandW: -4500,
+    gridChargeAssistW: 0, pvChargeW: 4500,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.pvConfiguredShareBudgetW, 500);
+  assert.equal(ev.pvReleasedBatteryBudgetW, 0);
+  assert.equal(ev.pvPoolBudgetW, 500);
+  assert.equal(ev.desiredCurrentA, 2); // 460 W within the 500 W EV preference.
+}
+
+// EV grid-import allowance is physical, never synthetic. Skipping slow charger
+// feedback may trust the published command, but with no P1/import or battery
+// compensation visible HomeFlux must still not create an artificial target.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now - 1000 };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 16;
+  app.state.gridPowerW = 0;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedEvCurrentA = 10;
+  app.lastEvPublishedAt = now;
+  app.latestEvDecision = { connected: true, selectedTariff: true, portfolioGridImportTargetW: 4900, desiredCurrentA: 10 };
+  const settings = {
+    evCount: 1, evEnabled: true, evControlType: 'current', evCommandIntervalSeconds: 3600,
+    evSkipFeedbackValidation: true, evFeedbackTolerancePercent: 5,
+  };
+  let coordination = app.getEvGridImportControlStatus(settings, now + 1000);
+  assert.equal(coordination.state, 'waiting_load');
+  assert.equal(coordination.activeTargetW, 0);
+
+  // As soon as real import is visible, only that physical amount may be left on
+  // the grid; the configured 4.9 kW allowance cannot exceed reality.
+  app.state.gridPowerW = 2300;
+  coordination = app.getEvGridImportControlStatus(settings, now + 1001);
+  assert.equal(coordination.state, 'active');
+  assert.equal(coordination.activeTargetW, 2300);
+}
+
+// With feedback validation enabled, never having received charger-current
+// telemetry is a real waiting state rather than implicit permission to import.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: false };
+  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: 0 };
+  app.state.evConnected = true;
+  app.state.gridPowerW = 5000;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedEvCurrentA = 10;
+  app.lastEvPublishedAt = now;
+  app.latestEvDecision = { connected: true, selectedTariff: true, portfolioGridImportTargetW: 4900, desiredCurrentA: 10 };
+  const settings = {
+    evCount: 1, evEnabled: true, evControlType: 'current', evCommandIntervalSeconds: 10,
+    evSkipFeedbackValidation: false, evFeedbackTolerancePercent: 15,
+  };
+  const coordination = app.getEvGridImportControlStatus(settings, now + 1000);
+  assert.equal(coordination.state, 'waiting_response');
+  assert.equal(coordination.activeTargetW, 0);
 }

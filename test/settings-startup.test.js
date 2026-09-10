@@ -15,13 +15,13 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.6.1');
+  assert.equal(manifest.version, '0.6.2');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.6.1 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.6.1 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.6.2 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.6.2 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert(appJs.includes('getSettingsSnapshot()'));
@@ -112,7 +112,7 @@ assert(html.includes('id="peakReserveTargetSoc"'), 'selected-month absolute mini
 assert(!html.includes('id="peakReserveKwh"'), 'legacy selected-month kWh input must be removed from UI');
 assert(!html.includes('id="peakReservePercent"'), 'legacy coupled reserve percentage input must be removed from UI');
 assert(html.includes('Minimum-SoC voor dagplanning in geselecteerde maanden (%)'), 'day-planning wording missing');
-assert(html.includes("Dit minimum geldt standaard niet 's nachts."), 'sunny-month night limitation must be explicit');
+assert(html.includes("Het geldt 's nachts alleen wanneer ook de nachtoptie is ingeschakeld."), 'sunny-month night limitation must be explicit');
 assert(html.includes('function validateNumericSettings()'), 'numeric save validation missing');
 assert(html.includes('Number.isFinite(value)'), 'numeric save validation must reject NaN/Infinity');
 assert(/id=\"lowForecastSelfConsumptionMinKwh\"(?![^>]*\bmax=)/.test(html), 'self-consumption PV threshold must not have a hard maximum');

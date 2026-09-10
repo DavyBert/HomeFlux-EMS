@@ -145,18 +145,24 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   assert.equal(d.source, 'pv');
 }
 
-// v0.6.1: SoC-target falls back to tariff/PV control when SoC is unavailable.
+// v0.6.1: when SoC support is disabled, SoC is completely outside EV planning.
+// Even a stale soc_target mode is treated as Smart: no freshness check or
+// missing-SoC recommendation is emitted, while tariff/PV charging still works.
 {
-  const settings = baseSettings({ evSocEnabled: false, evMode: 'soc_target', peakShaveEnabled: false });
+  const settings = baseSettings({ evSocEnabled: false, evMode: 'soc_target', evSocPlanActive: true, peakShaveEnabled: false });
   const d = calculateEvDecision({
     settings, connected: true, soc: NaN, actualCurrentA: 0, gridPowerW: 0,
     now: new Date('2026-08-24T00:30:00+02:00'),
     tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
   });
-  assert.equal(d.socFallbackActive, true);
+  assert.equal(d.socEnabled, false);
+  assert.equal(d.mode, 'smart');
+  assert.equal(d.socFallbackActive, false);
+  assert.equal(d.energyNeedKwh, null);
+  assert.equal(d.planningType, 'soc');
   assert.equal(d.allowed, true);
   assert.equal(d.desiredCurrentA, 16);
-  assert.match(d.reason, /kWh nodig tegen tijd/);
+  assert.doesNotMatch(d.reason, /kWh nodig tegen tijd|SoC ontbreekt|SoC niet beschikbaar/);
 }
 
 // v0.6.1: a stale SoC uses the same fallback, while a fresh SoC keeps SoC planning.
@@ -565,4 +571,61 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   });
   assert.equal(d.desiredCurrentA, 11);
   assert.equal(d.requestedCurrentA, 11);
+}
+
+// v0.6.2 audit: a configured zero-second PV stop delay means immediate stop;
+// it must not silently fall back to the historical 60-second default.
+{
+  const settings = baseSettings({
+    evGuaranteeTarget: false,
+    peakShaveEnabled: false,
+    evPvStartSurplusW: 1500,
+    evPvStopSurplusW: 800,
+    evPvStopDelaySeconds: 0,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: -2000, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    now: new Date('2026-08-23T12:00:00Z'),
+  });
+  assert.equal(d.pvTariffStopDelaySeconds, 0);
+}
+
+// v0.6.2 audit: imported/inverted PV hysteresis may not create a stop threshold
+// above the start threshold. Runtime normalisation must remain stable.
+{
+  const settings = baseSettings({
+    evGuaranteeTarget: false,
+    peakShaveEnabled: false,
+    evPvStartSurplusW: 1000,
+    evPvStopSurplusW: 2000,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: -2500, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
+    now: new Date('2026-08-23T12:00:00Z'),
+  });
+  assert.ok(d.pvTariffStopSurplusW <= d.pvTariffMinSurplusW);
+}
+
+// v0.6.2 audit: Smart is the lower-power mode-only fallback. If imported
+// settings invert Smart and Standard, HomeFlux must never underestimate Smart;
+// Standard is conservatively treated as at least the Smart estimate.
+{
+  const settings = baseSettings({
+    evControlType: 'mode',
+    evModeSmartCurrentA: 20,
+    evModeStandardCurrentA: 7,
+    evGuaranteeTarget: false,
+    peakShaveEnabled: false,
+  });
+  const d = calculateEvDecision({
+    settings, connected: true, soc: 50, actualCurrentA: 0,
+    gridPowerW: 0, currentBatteryCommandW: 0, nextBatteryCommandW: 0,
+    tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
+    now: new Date('2026-08-24T00:30:00+02:00'),
+  });
+  assert.equal(d.requestedCurrentA, 20);
 }

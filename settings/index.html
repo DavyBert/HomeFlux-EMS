@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.1 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.2 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -888,7 +888,7 @@
 <div class="setting-cluster full-width" id="energyPlanningSettings">
 <div class="cluster-header">
 <h4>Energieplanning en minimum-SoC</h4>
-<p class="muted">HomeFlux gebruikt maar één actieve planning tegelijk. Zodra PV-productie wordt gedetecteerd is de dagplanning actief; zonder PV blijft de nachtplanning voorrang houden. De minimum-SoC's hieronder gelden standaard alleen voor de dagplanning. Met de aparte nachtoptie kan je ze ook voor de nachtplanning laten gelden.</p>
+<p class="muted">HomeFlux gebruikt maar één actieve planning tegelijk. Zodra PV-productie wordt gedetecteerd is de dagplanning actief; zonder PV blijft de nachtplanning voorrang houden. Het minimum van een geselecteerde maand geldt als absolute ondergrens. In niet-geselecteerde maanden geldt het aparte minimum alleen wanneer die optie is ingeschakeld. Met de nachtoptie kan hetzelfde toepasselijke minimum ook voor de nachtplanning gelden.</p>
 </div>
 <div class="cluster-grid">
 <div class="setting-cluster full-width" data-setting-id="planningTargetTimes">
@@ -919,7 +919,7 @@
 <div class="homey-form-group cluster-item full-width" data-setting-id="peakReserveTargetSoc">
 <label class="homey-form-label" for="peakReserveTargetSoc">Minimum-SoC voor dagplanning in geselecteerde maanden (%)</label>
 <input class="homey-form-input" id="peakReserveTargetSoc" max="100" min="0" step="1" type="number"/>
-<div class="muted">Dit is een absoluut batterijpercentage tussen 0 en 100%. Het geldt tijdens de dagplanning, dus zodra HomeFlux werkelijke PV-productie ziet. Resterende PV krijgt eerst voorrang; alleen het deel dat PV naar verwachting niet meer kan leveren wordt via toegestane laadtarieven gepland. Zolang er geen PV-productie is, blijft de nachtplanning voorrang houden en wordt deze waarde niet gebruikt, tenzij je de nachtoptie hieronder inschakelt.</div>
+<div class="muted">Dit is een absoluut batterijpercentage tussen 0 en 100%. Tijdens de dagplanning geldt dit als harde ondergrens wanneer de betreffende kalendermaand geselecteerd is. Een PV-forecast mag dit minimum niet verlagen. Tijdens de nachtplanning wordt dit minimum alleen gebruikt wanneer de nachtoptie hieronder is ingeschakeld.</div>
 </div>
 <div class="homey-form-group cluster-item full-width" data-setting-id="peakReserveMonths">
 <label class="homey-form-label">Geselecteerde maanden voor dit minimum</label>
@@ -937,20 +937,20 @@
 <label class="homey-form-checkbox month-option"><input id="peakReserveMonth11" type="checkbox"/> <span>November</span></label>
 <label class="homey-form-checkbox month-option"><input id="peakReserveMonth12" type="checkbox"/> <span>December</span></label>
 </div>
-<div class="muted">In deze maanden gebruikt de dagplanning het minimum-SoC hierboven. De overige maanden kunnen hieronder een eigen minimum-SoC krijgen.</div>
+<div class="muted">Alleen in de geselecteerde maanden gebruikt de dagplanning het minimum-SoC hierboven. Niet-geselecteerde maanden gebruiken alleen het aparte minimum hieronder wanneer die optie is ingeschakeld.</div>
 </div>
 <div class="homey-form-group cluster-item full-width" data-setting-id="sunnyMonthsMinSocEnabled">
 <label class="homey-form-checkbox"><input id="sunnyMonthsMinSocEnabled" type="checkbox"/> <span>Apart minimum-SoC gebruiken in niet-geselecteerde maanden (zonnemaanden)</span></label>
-<div class="muted">Standaard geldt ook dit minimum alleen tijdens de dagplanning wanneer PV actief is. Zonder PV blijft de nachtplanning voorrang houden. De nachtoptie hieronder kan dit gedrag uitbreiden.</div>
+<div class="muted">Wanneer deze optie aan staat, gebruikt de dagplanning in niet-geselecteerde maanden het aparte minimum hieronder als harde ondergrens. Staat de optie uit, dan wordt dat minimum niet gebruikt. De nachtoptie hieronder kan hetzelfde minimum ook voor de nachtplanning activeren.</div>
 </div>
 <div class="homey-form-group cluster-item full-width" data-setting-id="sunnyMonthsMinSoc">
 <label class="homey-form-label" for="sunnyMonthsMinSoc">Minimum-SoC voor dagplanning in zonnemaanden (%)</label>
 <input class="homey-form-input" id="sunnyMonthsMinSoc" max="100" min="0" step="1" type="number"/>
-<div class="muted">Absoluut batterijpercentage voor maanden die hierboven niet geselecteerd zijn. Alleen tijdens de dagplanning wordt resterende PV eerst meegerekend en wordt zo nodig het verwachte tekort via toegestane laadtarieven aangevuld. Dit minimum geldt standaard niet 's nachts.</div>
+<div class="muted">Absoluut batterijpercentage voor maanden die hierboven niet geselecteerd zijn. Dit minimum geldt alleen wanneer de optie erboven is ingeschakeld en vormt dan een harde ondergrens in de dagplanning. Het geldt 's nachts alleen wanneer ook de nachtoptie is ingeschakeld.</div>
 </div>
 <div class="homey-form-group cluster-item full-width" data-setting-id="peakReserveNightEnabled">
 <label class="homey-form-checkbox"><input id="peakReserveNightEnabled" type="checkbox"/> <span>Minimum-SoC's ook gebruiken voor nachtplanning</span></label>
-<div class="muted">Uit: de maandminimums gelden alleen wanneer PV levert en de dagplanning actief is. Aan: HomeFlux gebruikt het minimum van de betreffende maand ook in de nachtplanning voor de volgende piek. Verwachte energiebehoefte en PV-forecast worden samen meegerekend; alleen het verwachte tekort wordt tijdens toegestane laadvensters uit het net gepland.</div>
+<div class="muted">Uit: het toepasselijke maandminimum geldt alleen in de dagplanning. Aan: de nachtplanning gebruikt hetzelfde minimum als harde ondergrens voor de doelmaand. In een geselecteerde maand is dat het geselecteerde minimum; in een niet-geselecteerde maand alleen het aparte minimum wanneer die optie aan staat. Forecast en energiebehoefte kunnen het doel verhogen, maar niet onder dit minimum verlagen.</div>
 </div>
 </div>
 </div>
@@ -1164,7 +1164,7 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="evSmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="evWeight">Verdelingsgewicht EV 1</label><input class="homey-form-input" id="evWeight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-<div class="homey-form-group" id="evSmartPvExportTargetGroup"><label class="homey-form-label" for="evSmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="evSmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
+</div>
 <div class="homey-form-group"><label class="homey-form-label" for="evSmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="evSmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="evPvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="evPvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="evPvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="evPvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1225,7 +1225,7 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev2SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev2Weight">Verdelingsgewicht EV 2</label><input class="homey-form-input" id="ev2Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-<div class="homey-form-group" id="ev2SmartPvExportTargetGroup"><label class="homey-form-label" for="ev2SmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="ev2SmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
+</div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev2SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2PvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="ev2PvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2PvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="ev2PvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1286,7 +1286,7 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev3SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev3Weight">Verdelingsgewicht EV 3</label><input class="homey-form-input" id="ev3Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-<div class="homey-form-group" id="ev3SmartPvExportTargetGroup"><label class="homey-form-label" for="ev3SmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="ev3SmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
+</div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev3SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3PvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="ev3PvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3PvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="ev3PvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1347,7 +1347,7 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev4SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev4Weight">Verdelingsgewicht EV 4</label><input class="homey-form-input" id="ev4Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-<div class="homey-form-group" id="ev4SmartPvExportTargetGroup"><label class="homey-form-label" for="ev4SmartPvExportTargetW">EV-eerst exportmarge (W)</label><input class="homey-form-input" id="ev4SmartPvExportTargetW" max="5000" min="0" step="50" type="number"/><div class="muted">Alleen bij modus-sturing en werkelijke EV-laadstroom. De marge kan nooit zelf export creëren.</div></div>
+</div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev4SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4PvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="ev4PvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4PvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="ev4PvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1494,9 +1494,9 @@
 <div class="forecast-note muted" id="planningForecastDecisionDetail">—</div>
 </div><div class="card planning-strategy-card"><div class="statusline">Laadstrategie</div><div class="muted" id="planningStrategyText">—</div><div class="status-grid" style="margin-top:10px"><div class="card"><div class="muted">Energiebehoefte vanaf nu</div><div class="metric" id="planningExpectedEnergySetting">—</div></div>
 <div class="card"><div class="muted">Actief minimum-SoC voor volgende piek</div><div class="metric" id="planningPeakReserveSetting">—</div><div class="muted" id="planningPeakReserveState">—</div></div>
-<div class="card"><div class="muted">Berekend minimumdoel na PV</div><div class="metric" id="planningPeakReserveTargetSoc">—</div></div>
-<div class="card"><div class="muted">PV meegerekend voor minimum-SoC</div><div class="metric" id="planningPeakReservePvCredit">—</div></div>
-<div class="card"><div class="muted">Nog te laden/beschermen na PV</div><div class="metric" id="planningPeakReserveShortfall">—</div></div>
+<div class="card"><div class="muted">Actief minimum-SoC-doel</div><div class="metric" id="planningPeakReserveTargetSoc">—</div></div>
+<div class="card"><div class="muted">Verwachte PV-bijdrage (informatief)</div><div class="metric" id="planningPeakReservePvCredit">—</div></div>
+<div class="card"><div class="muted">Reserve na verwachte PV (informatief)</div><div class="metric" id="planningPeakReserveShortfall">—</div></div>
 <div class="card"><div class="muted">Goedkoopste laaduren</div><div class="metric" id="planningCheapHoursSetting">—</div></div></div></div>
 <div class="status-grid">
 <div class="card"><div class="muted">Huidige gemiddelde SoC</div><div class="metric" id="planningCurrentSoc">—</div></div>
@@ -1823,8 +1823,8 @@ async function onHomeyReady(Homey) {
   const numeric = new Set(['batteryCount','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','evPvSharePercent','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
   const boolean = new Set(['balanceEnabled','balanceWarningEnabled','controlEnabled','adaptiveLiveControlEnabled','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandPauseEnabled','exportLimitEnabled','peakShaveEnabled','overrideResumeOnTariffChange','dynamicUseBatteryNormalHours','lowForecastAutoSunnyEnabled','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','peakReserveNightEnabled','boilerEnabled','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled']);
   const jsonArray = new Set(['flexibleLoadPriorityOrder']);
-  const evSuffixes = ['Enabled','Name','SocEnabled','SocFreshnessMinutes','Mode','ControlType','SmartPvExportTargetW','SmartGridPriority','Weight','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
-  const evNumericSuffixes = new Set(['SocFreshnessMinutes','SmartPvExportTargetW','Weight','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','PeakGuardStopHoldSeconds']);
+  const evSuffixes = ['Enabled','Name','SocEnabled','SocFreshnessMinutes','Mode','ControlType','SmartGridPriority','Weight','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
+  const evNumericSuffixes = new Set(['SocFreshnessMinutes','Weight','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','PeakGuardStopHoldSeconds']);
   const evBooleanSuffixes = new Set(['Enabled','SocEnabled','GuaranteeTarget','AllowUnselectedTariffForDeadline','SkipFeedbackValidation','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled']);
   const hvacSuffixes = ['Enabled','Name','AutomaticControlEnabled','AllowOnBattery','UsePvSurplus','ComfortMinC','ComfortMaxC','EnergyDeviationC','HeatingActivationBelowC','CoolingActivationAboveC','Priority','CoolingFanProfile','HeatingFanProfile','ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW','AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl','FanMinValue','FanMaxValue','FanStepValue'];
   const hvacNumericSuffixes = new Set(['ComfortMinC','ComfortMaxC','EnergyDeviationC','HeatingActivationBelowC','CoolingActivationAboveC','ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW','FanMinValue','FanMaxValue','FanStepValue']);
@@ -2056,7 +2056,6 @@ async function onHomeyReady(Homey) {
     const controlType = q(`${stem}ControlType`)?.value || 'current';
     panel.classList.toggle('ev-mode-control', controlType === 'mode');
     panel.classList.toggle('instance-disabled', !enabled);
-    q(`${stem}SmartPvExportTargetGroup`)?.classList.toggle('hidden', mode !== 'smart' || !['mode','hybrid'].includes(controlType));
     q(`${stem}PeakGuardStopHoldGroup`)?.classList.toggle('hidden', !['mode','hybrid'].includes(controlType));
     panel.querySelectorAll('.ev-current-setting').forEach(el => el.classList.toggle('hidden', controlType === 'mode'));
     panel.querySelector('.ev-current-control-cluster')?.classList.toggle('hidden', controlType === 'mode');
@@ -3041,6 +3040,30 @@ async function onHomeyReady(Homey) {
         return { field, message: uiLanguage === 'nl' ? `${label}: maximum is ${max}.` : `${label}: maximum is ${max}.` };
       }
     }
+
+    const relationError = (fieldId, nl, en) => ({ field: q(fieldId), message: uiLanguage === 'nl' ? nl : en });
+    const num = id => Number(q(id)?.value);
+
+    if (num('minSoc') > num('safetySoc')) return relationError('safetySoc', 'Veiligheids-SoC moet gelijk aan of hoger dan Minimum-SoC zijn.', 'Safety SoC must be equal to or higher than Minimum SoC.');
+    if (num('safetySoc') > num('maxSoc')) return relationError('safetySoc', 'Veiligheids-SoC moet gelijk aan of lager dan Maximum-SoC zijn.', 'Safety SoC must be equal to or lower than Maximum SoC.');
+    if (num('gridZeroMinW') > num('gridZeroMaxW')) return relationError('gridZeroMinW', 'Ondergrens van de nulpuntzone mag niet hoger zijn dan de bovengrens.', 'The zero-band lower limit may not be higher than the upper limit.');
+    if (num('boilerStopSoc') > num('boilerStartSoc')) return relationError('boilerStopSoc', 'Boiler stop-SoC mag niet hoger zijn dan start-SoC.', 'Boiler stop SoC may not be higher than start SoC.');
+    if (num('boilerTariffStopBatterySoc') > num('boilerTariffMinBatterySoc')) return relationError('boilerTariffStopBatterySoc', 'Boiler stop-SoC bij tariefladen mag niet hoger zijn dan de start-SoC.', 'Boiler tariff stop SoC may not be higher than its start SoC.');
+
+    for (let instance = 1; instance <= MAX_FLEX_INSTANCES; instance += 1) {
+      const evStem = instanceStem('ev', instance);
+      const evMin = num(`${evStem}MinCurrentA`), evMax = num(`${evStem}MaxCurrentA`), evStandard = num(`${evStem}StandardCurrentA`);
+      if (evMin > evMax) return relationError(`${evStem}MinCurrentA`, `EV ${instance}: minimum laadstroom mag niet hoger zijn dan maximum laadstroom.`, `EV ${instance}: minimum charging current may not be higher than maximum charging current.`);
+      if (evStandard < evMin || evStandard > evMax) return relationError(`${evStem}StandardCurrentA`, `EV ${instance}: standaard laadstroom moet tussen minimum en maximum liggen.`, `EV ${instance}: standard charging current must be between minimum and maximum.`);
+      if (num(`${evStem}PvStopSurplusW`) > num(`${evStem}PvStartSurplusW`)) return relationError(`${evStem}PvStopSurplusW`, `EV ${instance}: PV-stopdrempel mag niet hoger zijn dan de startdrempel.`, `EV ${instance}: PV stop threshold may not be higher than the start threshold.`);
+      if (num(`${evStem}ModeSmartCurrentA`) > num(`${evStem}ModeStandardCurrentA`)) return relationError(`${evStem}ModeSmartCurrentA`, `EV ${instance}: geschatte Slim-stroom mag niet hoger zijn dan Standaard.`, `EV ${instance}: estimated Smart current may not be higher than Standard.`);
+
+      const hvacStem = instanceStem('hvac', instance);
+      if (num(`${hvacStem}SurplusStopW`) > num(`${hvacStem}SurplusStartW`)) return relationError(`${hvacStem}SurplusStopW`, `HVAC ${instance}: stopdrempel voor PV-overschot mag niet hoger zijn dan de startdrempel.`, `HVAC ${instance}: PV surplus stop threshold may not be higher than the start threshold.`);
+      if (num(`${hvacStem}StopBatterySoc`) > num(`${hvacStem}MinBatterySoc`)) return relationError(`${hvacStem}StopBatterySoc`, `HVAC ${instance}: stop-SoC mag niet hoger zijn dan de start-SoC.`, `HVAC ${instance}: stop SoC may not be higher than start SoC.`);
+      if (num(`${hvacStem}HeatingActivationBelowC`) > num(`${hvacStem}CoolingActivationAboveC`)) return relationError(`${hvacStem}HeatingActivationBelowC`, `HVAC ${instance}: verwarmingsgrens mag niet hoger zijn dan de koelgrens.`, `HVAC ${instance}: heating activation threshold may not be higher than the cooling threshold.`);
+      if (num(`${hvacStem}FanMinValue`) > num(`${hvacStem}FanMaxValue`)) return relationError(`${hvacStem}FanMinValue`, `HVAC ${instance}: minimale ventilatorwaarde mag niet hoger zijn dan de maximale waarde.`, `HVAC ${instance}: minimum fan value may not be higher than maximum.`);
+    }
     return null;
   }
 
@@ -3224,12 +3247,12 @@ async function onHomeyReady(Homey) {
     if (q('planningStrategyText')) {
       if (planningContract.startsWith('dynamic')) {
         q('planningStrategyText').textContent = uiLanguage === 'nl'
-          ? `Bij dynamische prijzen gebruikt HomeFlux de goedkoopste bekende prijs-slots alleen voor het tekort dat na PV overblijft. De voorwaartse energiebehoefte is ${configuredNeed.toFixed(1)} kWh. In geselecteerde maanden is het dagminimum ${configuredSelectedMinSoc.toFixed(1)}%; in niet-geselecteerde maanden kan het aparte zonnemaandminimum van ${configuredSunnyMinSoc.toFixed(1)}% gelden. Zonder PV blijft de nachtplanning voorrang houden, tenzij de nachtoptie is ingeschakeld.`
-          : `With dynamic prices, HomeFlux uses the cheapest known price slots only for the shortfall that remains after PV. Forward energy need is ${configuredNeed.toFixed(1)} kWh. Selected months use a ${configuredSelectedMinSoc.toFixed(1)}% daytime minimum; non-selected months can use the separate ${configuredSunnyMinSoc.toFixed(1)}% sunny-month minimum. Without PV, night planning remains authoritative unless the night option is enabled.`;
+          ? `Bij dynamische prijzen gebruikt HomeFlux de goedkoopste bekende prijs-slots voor het berekende laadtekort. Het toepasselijke maandminimum blijft tijdens de dagplanning een harde ondergrens: ${configuredSelectedMinSoc.toFixed(1)}% in geselecteerde maanden, of ${configuredSunnyMinSoc.toFixed(1)}% in niet-geselecteerde maanden wanneer die optie aan staat. Met de nachtoptie geldt hetzelfde minimum ook in de nachtplanning.`
+          : `With dynamic prices, HomeFlux uses the cheapest known price slots for the calculated charging shortfall. The applicable monthly minimum remains a hard floor during day planning: ${configuredSelectedMinSoc.toFixed(1)}% in selected months, or ${configuredSunnyMinSoc.toFixed(1)}% in non-selected months when that option is enabled. With the night option enabled, the same minimum also applies to night planning.`;
       } else {
         q('planningStrategyText').textContent = uiLanguage === 'nl'
-          ? `Bij vaste of tijdstarieven plant HomeFlux netladen alleen binnen toegestane laadvensters. Tijdens de dagplanning krijgt resterende PV altijd voorrang op het ingestelde minimum-SoC. Zonder PV blijft de nachtplanning voorrang houden; alleen wanneer de nachtoptie aan staat gebruikt die planning hetzelfde maandminimum.`
-          : `With fixed or time-of-use tariffs, HomeFlux plans grid charging only inside allowed charging windows. During day planning, remaining PV always has priority over the configured minimum SoC. Without PV, night planning remains authoritative; only when the night option is enabled does it use the same monthly minimum.`;
+          ? `Bij vaste of tijdstarieven plant HomeFlux netladen alleen binnen toegestane laadvensters. Tijdens de dagplanning is het toepasselijke maandminimum een harde ondergrens en kan een PV-forecast dit niet verlagen. De nachtplanning gebruikt dit minimum alleen wanneer de nachtoptie aan staat.`
+          : `With fixed or time-of-use tariffs, HomeFlux plans grid charging only inside allowed charging windows. During day planning, the applicable monthly minimum is a hard floor and a PV forecast cannot lower it. Night planning uses that minimum only when the night option is enabled.`;
       }
     }
 
