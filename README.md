@@ -28,6 +28,13 @@ Het resultaat is eenvoudig: **gebruik meer van je eigen energie, koop stroom op 
 HomeFlux EMS requests `homey:manager:api` only to access Homey's own Energy information for dynamic electricity contracts. The app creates a local Homey API client to read the configured electricity price type/zone and to fetch Homey Energy dynamic electricity prices. Battery, PV, EV and HVAC integrations are not discovered or controlled through this permission; those integrations use explicit Homey Flow cards. HomeFlux EMS does not require an external HomeFlux cloud service for this functionality.
 
 ## Patch notes
+### v0.6.3
+- Added **Automatic Finetuning** with transparent, opt-in recommendations.
+- Finetuning reuses existing P1/PV/EV inputs and the existing one-minute heartbeat; it adds no polling loop.
+- Only parameters with a meaningful detected deviation are shown. Each recommendation can be individually approved for automatic management.
+- Automatic management is limited to non-safety tuning parameters; Peak Guard, SoC limits, power limits, tariffs, deadlines, comfort settings and priorities are never changed.
+- Added compact finetuning change history and passive observations for grid/PV behaviour and EV response/mode estimates.
+
 ### v0.6.2
 - Fixed monthly minimum-SoC handling in battery planning.
 - During **day planning**, the selected-month minimum is an absolute floor only when the current month is selected.

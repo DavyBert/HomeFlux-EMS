@@ -143,6 +143,11 @@ class HomeFluxEmsApp extends Homey.App {
     this.settingsCache = null;
     this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0, timer: null, timerAt: 0 };
 
+    // v0.6.3: Automatic Finetuning piggybacks on measurements HomeFlux already
+    // receives. Only tiny rolling aggregates are kept in RAM; there is no new
+    // polling loop and no raw sample history beyond the existing grid buffer.
+    this.autoTuneRuntime = this.createAutoTuneRuntime();
+
     // v0.4.9: savings accounting piggybacks on the existing meter/command
     // updates and the existing one-minute heartbeat. Raw samples are never
     // stored; only one compact aggregate per day and a tiny battery-origin
@@ -341,7 +346,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings')) return;
+        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache();
         this.markFlexibleLoadsDirty();
@@ -474,7 +479,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.6.2 initialized');
+    this.log('HomeFlux EMS v0.6.3 initialized');
   }
 
   refreshSettingsCache() {
@@ -745,6 +750,413 @@ class HomeFluxEmsApp extends Homey.App {
     return this.getSettings();
   }
 
+  createAutoTuneRuntime() {
+    const signal = () => ({ lastAt: 0, lastValue: null, samples: 0, ewmaAbsDelta: 0 });
+    const ev = () => ({
+      pendingCurrent: null,
+      responseSamples: 0,
+      responseEwmaMs: 0,
+      errorSamples: 0,
+      errorEwmaPercent: 0,
+      smartSamples: 0,
+      smartEwmaA: 0,
+      standardSamples: 0,
+      standardEwmaA: 0,
+      lastMode: '',
+      lastModeAt: 0,
+    });
+    return {
+      grid: signal(),
+      pv: signal(),
+      ev: Array.from({ length: 4 }, ev),
+      lastAutoManageCheckAt: 0,
+      permissions: null,
+    };
+  }
+
+  updateAutoTuneSignal(bucket, value, at = Date.now(), maxDelta = 1000) {
+    if (!bucket) return;
+    const numeric = Number(value);
+    const now = Number(at) || Date.now();
+    if (!Number.isFinite(numeric)) return;
+    if (Number.isFinite(Number(bucket.lastValue)) && Number(bucket.lastAt) > 0) {
+      const gap = Math.max(0, now - Number(bucket.lastAt));
+      const delta = Math.abs(numeric - Number(bucket.lastValue));
+      // Only rapid, bounded changes are useful as a proxy for control noise.
+      // Large appliance steps are intentionally ignored.
+      if (gap >= 150 && gap <= 15000 && delta <= maxDelta) {
+        const alpha = bucket.samples < 10 ? 0.2 : 0.08;
+        bucket.ewmaAbsDelta = bucket.samples > 0
+          ? (Number(bucket.ewmaAbsDelta) * (1 - alpha)) + (delta * alpha)
+          : delta;
+        bucket.samples = Math.min(100000, Number(bucket.samples || 0) + 1);
+      }
+    }
+    bucket.lastValue = numeric;
+    bucket.lastAt = now;
+  }
+
+  noteAutoTuneGridSample(value, at = Date.now()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.updateAutoTuneSignal(this.autoTuneRuntime.grid, value, at, 800);
+  }
+
+  noteAutoTunePvSample(value, at = Date.now()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.updateAutoTuneSignal(this.autoTuneRuntime.pv, value, at, 2500);
+  }
+
+  getAutoTuneEvRuntime(index) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    return this.autoTuneRuntime.ev?.[Math.max(0, Math.min(3, Number(index) || 0))] || null;
+  }
+
+  noteAutoTuneEvCurrentCommand(index, currentA, at = Date.now()) {
+    const runtime = this.getAutoTuneEvRuntime(index);
+    const desiredA = Math.max(0, Number(currentA) || 0);
+    if (!runtime) return;
+    runtime.pendingCurrent = desiredA > 0 ? { currentA: desiredA, at: Number(at) || Date.now() } : null;
+  }
+
+  noteAutoTuneEvModeCommand(index, mode, at = Date.now()) {
+    const runtime = this.getAutoTuneEvRuntime(index);
+    if (!runtime) return;
+    runtime.lastMode = String(mode || '');
+    runtime.lastModeAt = Number(at) || Date.now();
+  }
+
+  updateAutoTuneEwma(runtime, countKey, valueKey, value, alpha = 0.18) {
+    const numeric = Number(value);
+    if (!runtime || !Number.isFinite(numeric)) return;
+    const count = Number(runtime[countKey] || 0);
+    runtime[valueKey] = count > 0 ? (Number(runtime[valueKey] || 0) * (1 - alpha)) + (numeric * alpha) : numeric;
+    runtime[countKey] = Math.min(100000, count + 1);
+  }
+
+  noteAutoTuneEvFeedback(index, currentA, at = Date.now()) {
+    const runtime = this.getAutoTuneEvRuntime(index);
+    const actualA = Math.max(0, Number(currentA) || 0);
+    const now = Number(at) || Date.now();
+    if (!runtime) return;
+
+    const pending = runtime.pendingCurrent;
+    if (pending && now > Number(pending.at || 0)) {
+      const ageMs = now - Number(pending.at || 0);
+      const desiredA = Math.max(0, Number(pending.currentA) || 0);
+      if (desiredA > 0 && actualA > 0 && ageMs <= 30 * 60 * 1000) {
+        const errorPct = Math.abs(actualA - desiredA) / desiredA * 100;
+        // Ignore clearly unrelated stale values, but retain enough mismatch to
+        // learn whether the configured feedback tolerance is too tight.
+        if (errorPct <= 50) {
+          this.updateAutoTuneEwma(runtime, 'errorSamples', 'errorEwmaPercent', errorPct, 0.16);
+          if (Math.abs(actualA - desiredA) <= Math.max(1.0, desiredA * 0.25)) {
+            this.updateAutoTuneEwma(runtime, 'responseSamples', 'responseEwmaMs', ageMs, 0.18);
+            runtime.pendingCurrent = null;
+          }
+        }
+      }
+      if (ageMs > 30 * 60 * 1000) runtime.pendingCurrent = null;
+    }
+
+    // EV feedback can arrive frequently. Read the control type directly from
+    // the RAM settings cache so finetuning adds no settings snapshot/allocation
+    // on every charger update.
+    const controlKey = this.getEvSettingKey(index, 'ControlType');
+    const cachedControlType = String(this.settingsCache?.[controlKey] ?? 'current');
+    if (cachedControlType === 'mode' && actualA > 0.5) {
+      const publishedMode = index === 0
+        ? String(this.lastPublishedEvChargeMode || runtime.lastMode || '')
+        : String(this.getExtraEv(index)?.lastPublishedChargeMode || runtime.lastMode || '');
+      const modeAt = Number(runtime.lastModeAt || 0);
+      if (['smart', 'standard'].includes(publishedMode) && modeAt > 0 && now - modeAt >= 1000 && now - modeAt <= 30 * 60 * 1000) {
+        const prefix = publishedMode === 'smart' ? 'smart' : 'standard';
+        this.updateAutoTuneEwma(runtime, `${prefix}Samples`, `${prefix}EwmaA`, actualA, 0.14);
+      }
+    }
+  }
+
+  getAutoTunePermissions() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    if (this.autoTuneRuntime.permissions && typeof this.autoTuneRuntime.permissions === 'object' && !Array.isArray(this.autoTuneRuntime.permissions)) {
+      return { ...this.autoTuneRuntime.permissions };
+    }
+    const raw = this.homey.settings.get('_autoTunePermissions');
+    const permissions = raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+    this.autoTuneRuntime.permissions = { ...permissions };
+    return permissions;
+  }
+
+  getAutoTuneHistory() {
+    const raw = this.homey.settings.get('_autoTuneHistory');
+    return Array.isArray(raw) ? raw.slice(-30) : [];
+  }
+
+  getAutoTuneLastApplied() {
+    const raw = this.homey.settings.get('_autoTuneLastAppliedAt');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }
+
+  getAutoTuneSettingDescriptor(settingKey) {
+    const key = String(settingKey || '');
+    const global = {
+      commandDeadbandW: { titleNl: 'Batterij-commandodeadband', titleEn: 'Battery command deadband', unit: 'W', scope: 'EMS' },
+      gridControlWindowSeconds: { titleNl: 'P1-middelingsvenster', titleEn: 'P1 averaging window', unit: 'metingen', scope: 'EMS' },
+      pvDeltaThresholdW: { titleNl: 'PV-deltadrempel', titleEn: 'PV delta threshold', unit: 'W', scope: 'PV' },
+    };
+    if (global[key]) return { settingKey: key, ...global[key] };
+    const match = /^ev([2-4])?(CommandIntervalSeconds|FeedbackTolerancePercent|ModeSmartCurrentA|ModeStandardCurrentA)$/.exec(key);
+    if (!match) return null;
+    const index = match[1] ? Number(match[1]) - 1 : 0;
+    const name = this.getEvInstanceName(index);
+    const suffix = match[2];
+    const labels = {
+      CommandIntervalSeconds: ['minimum stuurtijd', 'minimum command interval', 's'],
+      FeedbackTolerancePercent: ['feedbacktolerantie', 'feedback tolerance', '%'],
+      ModeSmartCurrentA: ['geschatte stroom Slim-modus', 'estimated Smart mode current', 'A'],
+      ModeStandardCurrentA: ['geschatte stroom Standaard-modus', 'estimated Standard mode current', 'A'],
+    };
+    const label = labels[suffix];
+    return {
+      settingKey: key,
+      titleNl: `${name} · ${label[0]}`,
+      titleEn: `${name} · ${label[1]}`,
+      unit: label[2],
+      scope: name,
+    };
+  }
+
+  getAutoTuneRecommendations() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const settings = this.getSettings();
+    const permissions = this.getAutoTunePermissions();
+    const recommendations = [];
+    const roundTo = (value, step = 1) => Math.round(Number(value) / step) * step;
+    const confidence = samples => Math.max(0.5, Math.min(0.97, 0.52 + Math.log10(Math.max(1, Number(samples) || 1)) * 0.2));
+    const push = (settingKey, titleNl, titleEn, current, recommended, unit, reasonNl, reasonEn, conf, samples, scope = 'EMS') => {
+      const cur = Number(current); const next = Number(recommended);
+      if (!Number.isFinite(cur) || !Number.isFinite(next) || Math.abs(cur - next) < 1e-9) return;
+      recommendations.push({
+        id: settingKey, settingKey, scope, titleNl, titleEn,
+        current: cur, recommended: next, unit: unit || '',
+        reasonNl, reasonEn, confidence: Math.round(Math.max(0, Math.min(1, Number(conf) || 0)) * 100),
+        samples: Math.max(0, Math.round(Number(samples) || 0)),
+        autoManaged: Boolean(permissions[settingKey]), canAutoManage: true,
+      });
+    };
+
+    const grid = this.autoTuneRuntime.grid || {};
+    if (Number(grid.samples) >= 24) {
+      const noise = Math.max(0, Number(grid.ewmaAbsDelta) || 0);
+      const currentDeadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
+      const desiredDeadband = Math.max(25, Math.min(250, roundTo(noise * 0.38, 5)));
+      if (desiredDeadband >= currentDeadband + Math.max(10, currentDeadband * 0.3)
+        || (Number(grid.samples) >= 160 && currentDeadband >= desiredDeadband * 2.2 && currentDeadband - desiredDeadband >= 25)) {
+        push('commandDeadbandW', 'Batterij-commandodeadband', 'Battery command deadband', currentDeadband, desiredDeadband, 'W',
+          `Snelle P1-variatie is gemiddeld ongeveer ${Math.round(noise)} W. Deze deadband vermindert onnodige kleine batterijcorrecties zonder Peak Guard te verzwakken.`,
+          `Rapid P1 variation averages about ${Math.round(noise)} W. This deadband reduces unnecessary small battery corrections without weakening Peak Guard.`,
+          confidence(grid.samples), grid.samples);
+      }
+
+      const currentWindow = Number(settings.gridControlWindowSeconds);
+      let desiredWindow = currentWindow;
+      if (noise >= 320 && currentWindow < 7) desiredWindow = 7;
+      else if (noise >= 180 && currentWindow < 5) desiredWindow = 5;
+      else if (noise >= 90 && currentWindow < 3) desiredWindow = 3;
+      else if (noise < 35 && Number(grid.samples) >= 200 && currentWindow > 3) desiredWindow = 3;
+      if ([0,3,5,7,10].includes(desiredWindow) && desiredWindow !== currentWindow) {
+        push('gridControlWindowSeconds', 'P1-middelingsvenster', 'P1 averaging window', currentWindow, desiredWindow, 'metingen',
+          `De gemeten snelle P1-variatie (${Math.round(noise)} W) past beter bij een gemiddelde over ${desiredWindow || 1} meting(en).`,
+          `Measured rapid P1 variation (${Math.round(noise)} W) fits better with an average over ${desiredWindow || 1} input sample(s).`,
+          confidence(grid.samples), grid.samples);
+      }
+    }
+
+    const pv = this.autoTuneRuntime.pv || {};
+    if (Number(pv.samples) >= 24) {
+      const variation = Math.max(0, Number(pv.ewmaAbsDelta) || 0);
+      const currentThreshold = Math.max(0, Number(settings.pvDeltaThresholdW) || 0);
+      const desiredThreshold = Math.max(50, Math.min(500, roundTo(variation * 0.7, 10)));
+      if (desiredThreshold >= currentThreshold + Math.max(30, currentThreshold * 0.4)
+        || (Number(pv.samples) >= 160 && currentThreshold >= desiredThreshold * 2.4 && currentThreshold - desiredThreshold >= 50)) {
+        push('pvDeltaThresholdW', 'PV-deltadrempel', 'PV delta threshold', currentThreshold, desiredThreshold, 'W',
+          `Snelle PV-veranderingen zijn gemiddeld ongeveer ${Math.round(variation)} W. De voorgestelde drempel beperkt overreactie op kleine wolkenfluctuaties.`,
+          `Rapid PV changes average about ${Math.round(variation)} W. The suggested threshold limits overreaction to small cloud fluctuations.`,
+          confidence(pv.samples), pv.samples, 'PV');
+      }
+    }
+
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const evSettings = this.getEvInstanceSettings(index, settings);
+      if (!Boolean(evSettings.evEnabled)) continue;
+      const runtime = this.getAutoTuneEvRuntime(index) || {};
+      const name = this.getEvInstanceName(index, settings);
+      const key = suffix => this.getEvSettingKey(index, suffix);
+      const controlType = this.getEvControlType(evSettings);
+
+      if (['current','hybrid'].includes(controlType) && !this.shouldSkipEvFeedbackValidation(evSettings) && Number(runtime.responseSamples) >= 5) {
+        const responseSeconds = Math.max(1, Number(runtime.responseEwmaMs) / 1000);
+        const currentInterval = Math.max(1, Number(evSettings.evCommandIntervalSeconds) || 10);
+        const desiredInterval = Math.max(5, Math.min(300, Math.ceil((responseSeconds + 2) / 5) * 5));
+        if (desiredInterval >= currentInterval + Math.max(5, currentInterval * 0.35)) {
+          push(key('CommandIntervalSeconds'), `${name} · minimum stuurtijd`, `${name} · minimum command interval`, currentInterval, desiredInterval, 's',
+            `Nieuwe laadstroom wordt gemiddeld pas na ongeveer ${Math.round(responseSeconds)} s door verse feedback bevestigd. Veiligheidsverlagingen blijven onmiddellijk.`,
+            `A new charging current is confirmed by fresh feedback after about ${Math.round(responseSeconds)} s on average. Safety reductions remain immediate.`,
+            confidence(runtime.responseSamples), runtime.responseSamples, name);
+        }
+      }
+
+      if (['current','hybrid'].includes(controlType) && Number(runtime.errorSamples) >= 8) {
+        const observedError = Math.max(0, Number(runtime.errorEwmaPercent) || 0);
+        const currentTolerance = Math.max(1, Number(evSettings.evFeedbackTolerancePercent) || 15);
+        const desiredTolerance = Math.max(5, Math.min(30, Math.ceil(observedError * 1.7 + 3)));
+        if (desiredTolerance > currentTolerance + 2
+          || (Number(runtime.errorSamples) >= 80 && currentTolerance > Math.max(10, desiredTolerance * 1.8))) {
+          push(key('FeedbackTolerancePercent'), `${name} · feedbacktolerantie`, `${name} · feedback tolerance`, currentTolerance, desiredTolerance, '%',
+            `De gemeten afwijking tussen gevraagd en teruggekoppeld ampèrage is gemiddeld ${observedError.toFixed(1)}%.`,
+            `Measured deviation between requested and reported current averages ${observedError.toFixed(1)}%.`,
+            confidence(runtime.errorSamples), runtime.errorSamples, name);
+        }
+      }
+
+      if (controlType === 'mode') {
+        const currentSmartA = Math.max(1, Math.min(64, Math.round(Number(evSettings.evModeSmartCurrentA) || 6)));
+        const currentStandardA = Math.max(currentSmartA, Math.min(64, Math.round(Number(evSettings.evModeStandardCurrentA) || 16)));
+        let recommendedSmartA = currentSmartA;
+        for (const mode of ['smart','standard']) {
+          const count = Number(runtime[`${mode}Samples`] || 0);
+          if (count < 6) continue;
+          const rawObserved = Math.max(1, Math.min(64, Math.round(Number(runtime[`${mode}EwmaA`]) || 0)));
+          const suffix = mode === 'smart' ? 'ModeSmartCurrentA' : 'ModeStandardCurrentA';
+          const current = mode === 'smart' ? currentSmartA : currentStandardA;
+          // Keep the learned pair valid even when charger telemetry is noisy or
+          // the two modes were sampled under different circumstances. Standard
+          // must never be estimated below Smart, otherwise Peak Guard could
+          // underestimate the stronger mode.
+          const observed = mode === 'smart'
+            ? Math.min(rawObserved, currentStandardA)
+            : Math.max(rawObserved, recommendedSmartA);
+          if (mode === 'smart') recommendedSmartA = observed;
+          if (Math.abs(observed - current) >= Math.max(1, current * 0.12)) {
+            const titleModeNl = mode === 'smart' ? 'Slim-modus' : 'Standaard-modus';
+            const titleModeEn = mode === 'smart' ? 'Smart mode' : 'Standard mode';
+            push(key(suffix), `${name} · geschatte stroom ${titleModeNl}`, `${name} · estimated ${titleModeEn} current`, current, observed, 'A',
+              `Tijdens ${titleModeNl} meet HomeFlux gemiddeld ongeveer ${Number(runtime[`${mode}EwmaA`]).toFixed(1)} A. Een betere schatting maakt Peak Guard en EV-planning nauwkeuriger.`,
+              `During ${titleModeEn}, HomeFlux measures about ${Number(runtime[`${mode}EwmaA`]).toFixed(1)} A on average. A better estimate improves Peak Guard and EV planning.`,
+              confidence(count), count, name);
+          }
+        }
+      }
+    }
+
+    return recommendations.sort((a,b) => b.confidence - a.confidence || a.scope.localeCompare(b.scope));
+  }
+
+  getAutoTuneStatus() {
+    const runtime = this.autoTuneRuntime || this.createAutoTuneRuntime();
+    const permissions = this.getAutoTunePermissions();
+    const settings = this.getSettings();
+    const recommendations = this.getAutoTuneRecommendations();
+    const recommendationKeys = new Set(recommendations.map(item => item.settingKey));
+    return {
+      recommendations,
+      permissions,
+      managed: Object.keys(permissions).filter(key => permissions[key] && !recommendationKeys.has(key)).map(key => {
+        const descriptor = this.getAutoTuneSettingDescriptor(key);
+        if (!descriptor) return null;
+        return { ...descriptor, current: settings[key], autoManaged: true };
+      }).filter(Boolean),
+      history: this.getAutoTuneHistory().slice().reverse(),
+      observations: {
+        gridSamples: Math.max(0, Number(runtime.grid?.samples) || 0),
+        gridVariationW: Math.round(Math.max(0, Number(runtime.grid?.ewmaAbsDelta) || 0)),
+        pvSamples: Math.max(0, Number(runtime.pv?.samples) || 0),
+        pvVariationW: Math.round(Math.max(0, Number(runtime.pv?.ewmaAbsDelta) || 0)),
+        ev: Array.from({ length: this.getEvCount() }, (_, index) => {
+          const item = runtime.ev?.[index] || {};
+          return {
+            instance: index + 1,
+            name: this.getEvInstanceName(index),
+            responseSamples: Math.max(0, Number(item.responseSamples) || 0),
+            responseMs: Math.round(Math.max(0, Number(item.responseEwmaMs) || 0)),
+            errorSamples: Math.max(0, Number(item.errorSamples) || 0),
+            errorPercent: Math.round(Math.max(0, Number(item.errorEwmaPercent) || 0) * 10) / 10,
+            smartSamples: Math.max(0, Number(item.smartSamples) || 0),
+            standardSamples: Math.max(0, Number(item.standardSamples) || 0),
+          };
+        }),
+      },
+      policy: {
+        extraPolling: false,
+        autoCheckMinutes: 30,
+        changeCooldownHours: 6,
+        protected: ['Peak Guard','minimum SoC','maximum charge/discharge power','tariffs','EV deadlines','comfort temperatures','priorities'],
+      },
+    };
+  }
+
+  appendAutoTuneHistory(entry) {
+    const history = this.getAutoTuneHistory();
+    history.push(entry);
+    while (history.length > 30) history.shift();
+    this.setSetting('_autoTuneHistory', history);
+  }
+
+  async applyAutoTuneRecommendations({ onlyKey = '', force = false } = {}) {
+    const permissions = this.getAutoTunePermissions();
+    const recommendations = this.getAutoTuneRecommendations();
+    const lastApplied = this.getAutoTuneLastApplied();
+    const now = Date.now();
+    let lastAppliedChanged = false;
+    let applied = 0;
+    for (const recommendation of recommendations) {
+      const key = recommendation.settingKey;
+      if (onlyKey && key !== onlyKey) continue;
+      if (!recommendation.canAutoManage || !permissions[key] || recommendation.confidence < 70) continue;
+      if (!force && now - Number(lastApplied[key] || 0) < 6 * 60 * 60 * 1000) continue;
+      const current = Number(this.getSettings()[key]);
+      const next = Number(recommendation.recommended);
+      if (!Number.isFinite(current) || !Number.isFinite(next) || Math.abs(current - next) < 1e-9) continue;
+      this.setSetting(key, next);
+      lastApplied[key] = now;
+      lastAppliedChanged = true;
+      applied += 1;
+      this.appendAutoTuneHistory({
+        at: now, settingKey: key, scope: recommendation.scope,
+        titleNl: recommendation.titleNl, titleEn: recommendation.titleEn,
+        from: current, to: next, unit: recommendation.unit,
+        confidence: recommendation.confidence,
+      });
+    }
+    if (lastAppliedChanged) this.setSetting('_autoTuneLastAppliedAt', lastApplied);
+    return applied;
+  }
+
+  async setAutoTunePermission(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const allowed = Boolean(body.allowed);
+    const currentRecommendations = this.getAutoTuneRecommendations();
+    const recommendation = currentRecommendations.find(item => item.settingKey === settingKey);
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor || (allowed && (!recommendation || !recommendation.canAutoManage))) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+    const permissions = this.getAutoTunePermissions();
+    if (allowed) permissions[settingKey] = true;
+    else delete permissions[settingKey];
+    this.setSetting('_autoTunePermissions', permissions);
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.autoTuneRuntime.permissions = { ...permissions };
+    if (allowed) await this.applyAutoTuneRecommendations({ onlyKey: settingKey, force: true });
+    return this.getAutoTuneStatus();
+  }
+
+  maybeRunAutoTune(now = Date.now()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const permissions = this.getAutoTunePermissions();
+    if (!Object.values(permissions).some(Boolean)) return;
+    if (now - Number(this.autoTuneRuntime.lastAutoManageCheckAt || 0) < 30 * 60 * 1000) return;
+    this.autoTuneRuntime.lastAutoManageCheckAt = now;
+    this.applyAutoTuneRecommendations().catch(err => this.error('Automatic finetuning failed', err));
+  }
+
   getSlowControlIntervalMs(settings = this.getSettings()) {
     const seconds = Math.max(15, Math.min(300, Number(settings.slowControlIntervalSeconds) || 60));
     return Math.round(seconds * 1000);
@@ -918,6 +1330,8 @@ class HomeFluxEmsApp extends Homey.App {
   runContextHeartbeat() {
     const now = Date.now();
     const settings = this.getSettings();
+    // v0.6.3: no extra timer; approved finetuning checks reuse this heartbeat.
+    this.maybeRunAutoTune(now);
     this.recordSavingsSample(now);
     if ((now - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) this.persistSavingsState(now, true);
     else this.syncEmsDevices().catch(err => this.error('EMS device savings sync failed', err));
@@ -1958,7 +2372,15 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    this.setSetting('settingsSchemaVersion', 55);
+    if (schema < 56) {
+      // v0.6.3: Automatic Finetuning permissions are opt-in. Observation uses
+      // RAM-only aggregates and therefore requires no migration of sample data.
+      if (this.homey.settings.get('_autoTunePermissions') === null) this.setSetting('_autoTunePermissions', {});
+      if (this.homey.settings.get('_autoTuneHistory') === null) this.setSetting('_autoTuneHistory', []);
+      if (this.homey.settings.get('_autoTuneLastAppliedAt') === null) this.setSetting('_autoTuneLastAppliedAt', {});
+    }
+
+    this.setSetting('settingsSchemaVersion', 56);
   }
 
   async ensureDefaults() {
@@ -2911,6 +3333,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.inputSeen.pv = true;
       this.inputUpdatedAt.pv = now;
       this.updatePvPlanningState(this.state.pvPowerW, now);
+      this.noteAutoTunePvSample(this.state.pvPowerW, now);
       this.requestEvaluate();
       const contextPvDelta = this.lastContextPvInputW === null ? Infinity : Math.abs(this.state.pvPowerW - this.lastContextPvInputW);
       const pvSettings = this.getSettings();
@@ -2980,6 +3403,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.inputSeen.ev.chargeCurrent = true;
       this.inputUpdatedAt.ev.connected = now;
       this.inputUpdatedAt.ev.chargeCurrent = now;
+      this.noteAutoTuneEvFeedback(0, normalizedCurrent, now);
       if (connectionChanged) this.handleEvSessionConnectionTransition(wasConnected, nextConnected);
       if (connectionChanged || currentChanged) this.requestContextEvaluate(connectionChanged, 'ev1_status');
       return true;
@@ -3132,6 +3556,7 @@ class HomeFluxEmsApp extends Homey.App {
         runtime.seen.chargeCurrent = true;
         runtime.updatedAt.connected = now;
         runtime.updatedAt.chargeCurrent = now;
+        this.noteAutoTuneEvFeedback(index, normalizedCurrent, now);
         if (connectionChanged) this.handleEvSessionConnectionTransitionFor(index, wasConnected, nextConnected);
         if (connectionChanged || currentChanged) this.requestContextEvaluate(connectionChanged, `ev${instance}_status`);
         return true;
@@ -4610,6 +5035,7 @@ class HomeFluxEmsApp extends Homey.App {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return;
     this.gridInputHistory.push({ at: Number(at) || Date.now(), value: numeric });
+    this.noteAutoTuneGridSample(numeric, at);
 
     // Grid smoothing is input-based, not time-based. Keep a bounded number of
     // received meter values so 3/5/7/10-input averages remain independent of
@@ -6432,6 +6858,7 @@ class HomeFluxEmsApp extends Homey.App {
           });
         }
         this.lastPublishedEvCurrentA = desiredA;
+        this.noteAutoTuneEvCurrentCommand(0, desiredA, Date.now());
       }
       if (modeChanged) {
         const token = this.tokens.get('emsevmode');
@@ -6443,6 +6870,7 @@ class HomeFluxEmsApp extends Homey.App {
           }, { charge_mode: chargeMode });
         }
         this.lastPublishedEvChargeMode = chargeMode;
+        this.noteAutoTuneEvModeCommand(0, chargeMode, Date.now());
         if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
           this.armEvPeakGuardStopHold(settings);
         }
@@ -6574,10 +7002,12 @@ class HomeFluxEmsApp extends Homey.App {
           target_soc: Number(decision.targetSoc) || 0,
         });
         runtime.lastPublishedCurrentA = desiredA;
+        this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
       }
       if (modeChanged && triggers.mode) {
         await triggers.mode.trigger({ charge_mode: chargeMode, reason: String(decision.reason || '') }, { charge_mode: chargeMode });
         runtime.lastPublishedChargeMode = chargeMode;
+        this.noteAutoTuneEvModeCommand(index, chargeMode, Date.now());
         if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
           this.armEvStopHoldFor(index, settings);
         }
@@ -8780,7 +9210,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.6.2',
+      version: '0.6.3',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -8857,7 +9287,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.6.2',
+      version: '0.6.3',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -9136,7 +9566,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.6.2',
+      version: '0.6.3',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),
@@ -9304,6 +9734,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.inputSeen.pv = true;
       this.inputUpdatedAt.pv = now;
       this.updatePvPlanningState(this.state.pvPowerW, now);
+      this.noteAutoTunePvSample(this.state.pvPowerW, now);
       fastInputChanged = true;
       const inputSettings = this.getSettings();
       const contextPvDelta = this.lastContextPvInputW === null
@@ -9340,7 +9771,7 @@ class HomeFluxEmsApp extends Homey.App {
       const wasConnected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
       if (Number.isFinite(Number(body.ev.soc))) { this.state.evSoc = Math.max(0, Math.min(100, Number(body.ev.soc))); this.inputSeen.ev.soc = true; this.inputUpdatedAt.ev.soc = now; contextInputChanged = true; }
       if (body.ev.connected !== undefined) { this.state.evConnected = Boolean(body.ev.connected); this.inputSeen.ev.connected = true; this.inputUpdatedAt.ev.connected = now; contextInputChanged = true; }
-      if (Number.isFinite(Number(body.ev.chargeCurrentA))) { this.state.evChargeCurrentA = Math.max(0, Number(body.ev.chargeCurrentA)); this.inputSeen.ev.chargeCurrent = true; this.inputUpdatedAt.ev.chargeCurrent = now; contextInputChanged = true; }
+      if (Number.isFinite(Number(body.ev.chargeCurrentA))) { this.state.evChargeCurrentA = Math.max(0, Number(body.ev.chargeCurrentA)); this.inputSeen.ev.chargeCurrent = true; this.inputUpdatedAt.ev.chargeCurrent = now; this.noteAutoTuneEvFeedback(0, this.state.evChargeCurrentA, now); contextInputChanged = true; }
       if (body.ev.connected !== undefined) this.handleEvSessionConnectionTransition(wasConnected, this.state.evConnected);
     }
     if (body.hvac && typeof body.hvac === 'object') {
@@ -9360,7 +9791,7 @@ class HomeFluxEmsApp extends Homey.App {
         const wasConnected = Boolean(runtime.seen.connected) && Boolean(runtime.state.connected);
         if (Number.isFinite(Number(value.soc))) { runtime.state.soc = Math.max(0, Math.min(100, Number(value.soc))); runtime.seen.soc = true; runtime.updatedAt.soc = now; contextInputChanged = true; }
         if (value.connected !== undefined) { runtime.state.connected = Boolean(value.connected); runtime.seen.connected = true; runtime.updatedAt.connected = now; contextInputChanged = true; }
-        if (Number.isFinite(Number(value.chargeCurrentA))) { runtime.state.chargeCurrentA = Math.max(0, Number(value.chargeCurrentA)); runtime.seen.chargeCurrent = true; runtime.updatedAt.chargeCurrent = now; contextInputChanged = true; }
+        if (Number.isFinite(Number(value.chargeCurrentA))) { runtime.state.chargeCurrentA = Math.max(0, Number(value.chargeCurrentA)); runtime.seen.chargeCurrent = true; runtime.updatedAt.chargeCurrent = now; this.noteAutoTuneEvFeedback(index, runtime.state.chargeCurrentA, now); contextInputChanged = true; }
         if (value.connected !== undefined) this.handleEvSessionConnectionTransitionFor(index, wasConnected, runtime.state.connected);
       });
     }

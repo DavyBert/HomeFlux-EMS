@@ -17,6 +17,30 @@ module.exports = {
     return homey.app.getSavingsStatus({ period: String(query?.period || 'day') });
   },
 
+  async getAutoTune({ homey }) {
+    return homey.app.getAutoTuneStatus();
+  },
+
+  async refreshAutoTune({ homey }) {
+    return homey.app.getAutoTuneStatus({ force: true });
+  },
+
+  async setAutoTunePermission({ homey, body }) {
+    return homey.app.setAutoTunePermission(body || {});
+  },
+
+  async getAutoTune({ homey }) {
+    return homey.app.getAutoTuneStatus();
+  },
+
+  async refreshAutoTune({ homey }) {
+    return homey.app.getAutoTuneStatus({ force: true });
+  },
+
+  async setAutoTunePermission({ homey, body }) {
+    return homey.app.setAutoTunePermission(body || {});
+  },
+
   async refreshPlanning({ homey }) {
     return homey.app.getPlanningStatus({ force: true });
   },

@@ -755,7 +755,22 @@
     "Actief minimum-SoC-doel": "Active minimum SoC target",
     "Verwachte PV-bijdrage (informatief)": "Expected PV contribution (informational)",
     "Reserve na verwachte PV (informatief)": "Reserve after expected PV (informational)",
-    "v0.6.2 — Jouw energie, anders geregeld": "v0.6.2 — Your energy, managed differently"
+    "v0.6.2 — Jouw energie, anders geregeld": "v0.6.2 — Your energy, managed differently",
+    "Finetuning": "Finetuning",
+    "HomeFlux observeert alleen metingen die het EMS toch al ontvangt. Er wordt geen extra polling, seconde-timer of extra EMS-regelcyclus toegevoegd. Alleen parameters waarvoor een betekenisvolle afwijking is gevonden worden hieronder getoond.": "HomeFlux only observes measurements the EMS already receives. No extra polling, per-second timer or additional EMS control cycle is added. Only parameters with a meaningful detected deviation are shown below.",
+    "Een vinkje betekent toestemming.": "A checkmark means permission.",
+    "Zodra je een aanbeveling aanvinkt, mag HomeFlux die specifieke parameter automatisch beheren. Veiligheidsgrenzen en gebruikerskeuzes zoals Peak Guard, minimum-SoC, maximale laad-/ontlaadvermogens, tarieven, EV-deadlines, comforttemperaturen en prioriteiten worden nooit automatisch gewijzigd.": "Once you check a recommendation, HomeFlux may automatically manage that specific parameter. Safety limits and user choices such as Peak Guard, minimum SoC, maximum charge/discharge power, tariffs, EV deadlines, comfort temperatures and priorities are never changed automatically.",
+    "Aanbevelingen opnieuw berekenen": "Recalculate recommendations",
+    "P1-observaties": "P1 observations",
+    "PV-observaties": "PV observations",
+    "EV-feedback": "EV feedback",
+    "Geen aanbevelingen op dit moment": "No recommendations right now",
+    "De huidige waarden liggen binnen de geleerde marges, of HomeFlux heeft nog te weinig observaties. Parameters zonder relevante afwijking worden bewust niet getoond.": "The current values are within the learned margins, or HomeFlux does not yet have enough observations. Parameters without a relevant deviation are intentionally hidden.",
+    "Automatisch beheerd": "Automatically managed",
+    "Deze parameters heb je expliciet aan HomeFlux toevertrouwd. Je kunt de toestemming hier opnieuw uitschakelen.": "You explicitly entrusted these parameters to HomeFlux. You can revoke permission here at any time.",
+    "Recente automatische aanpassingen": "Recent automatic adjustments",
+    "Automatische controle van goedgekeurde parameters gebruikt alleen de bestaande één-minuut-heartbeat en wordt maximaal één keer per 30 minuten geëvalueerd. Dezelfde parameter wordt normaal maximaal één keer per 6 uur aangepast.": "Automatic checking of approved parameters only reuses the existing one-minute heartbeat and is evaluated at most once every 30 minutes. The same parameter is normally adjusted at most once every 6 hours.",
+    "v0.6.3 — Jouw energie, anders geregeld": "v0.6.3 — Your energy, managed differently"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

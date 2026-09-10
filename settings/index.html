@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.2 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.3 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -619,6 +619,7 @@
 <button class="tab" data-tab="hvac" type="button">HVAC</button>
 <button class="tab" data-tab="boiler" type="button">Boiler</button>
 <button class="tab" data-tab="priority" type="button">Prioriteiten</button>
+<button class="tab" data-tab="finetuning" type="button">Finetuning</button>
 <button class="tab" data-tab="planning" type="button">Planning</button>
 <button class="tab" data-tab="planning-simulation" type="button">Planning simulatie</button>
 <button class="tab" data-tab="status" type="button">Live status</button>
@@ -1472,6 +1473,24 @@
 <div class="card"><h3>Startvolgorde</h3><p class="muted">Alleen de ingeschakelde boiler en HVAC’s verschijnen. Per prioriteitsmoment wordt maximaal één nieuw thermisch apparaat vrijgegeven. Een reeds actief apparaat wordt niet uitgezet omdat een hoger geplaatst apparaat later beschikbaar wordt.</p><div class="priority-list" id="priorityList"></div><input id="flexibleLoadPriorityOrder" type="hidden"/></div>
 <div class="card"><h3>Actuele prioriteitsstatus</h3><div class="status-grid"><div class="card"><div class="muted">Volgende beoordeling</div><div class="metric" id="priorityLiveNext">—</div></div><div class="card"><div class="muted">Laatst gestart</div><div class="metric" id="priorityLiveLastStarted">—</div></div></div><div class="muted" id="priorityLiveOrder">—</div></div>
 </section>
+<section class="panel" id="panel-finetuning">
+<div class="card">
+<div class="statusline">Automatic Finetuning</div>
+<p class="muted">HomeFlux observeert alleen metingen die het EMS toch al ontvangt. Er wordt geen extra polling, seconde-timer of extra EMS-regelcyclus toegevoegd. Alleen parameters waarvoor een betekenisvolle afwijking is gevonden worden hieronder getoond.</p>
+<p class="muted"><strong>Een vinkje betekent toestemming.</strong> Zodra je een aanbeveling aanvinkt, mag HomeFlux die specifieke parameter automatisch beheren. Veiligheidsgrenzen en gebruikerskeuzes zoals Peak Guard, minimum-SoC, maximale laad-/ontlaadvermogens, tarieven, EV-deadlines, comforttemperaturen en prioriteiten worden nooit automatisch gewijzigd.</p>
+<div class="savebar" style="margin-top:10px"><button class="homey-button-secondary" id="refreshAutoTune" type="button">Aanbevelingen opnieuw berekenen</button><span class="ok" id="autoTuneRefreshState"></span></div>
+</div>
+<div class="status-grid">
+<div class="card"><div class="muted">P1-observaties</div><div class="metric" id="autoTuneGridSamples">—</div><div class="muted" id="autoTuneGridVariation">—</div></div>
+<div class="card"><div class="muted">PV-observaties</div><div class="metric" id="autoTunePvSamples">—</div><div class="muted" id="autoTunePvVariation">—</div></div>
+<div class="card"><div class="muted">EV-feedback</div><div class="metric" id="autoTuneEvSamples">—</div><div class="muted" id="autoTuneEvDetail">—</div></div>
+</div>
+<div id="autoTuneRecommendations"></div>
+<div class="card hidden" id="autoTuneNoRecommendations"><div class="statusline">Geen aanbevelingen op dit moment</div><div class="muted">De huidige waarden liggen binnen de geleerde marges, of HomeFlux heeft nog te weinig observaties. Parameters zonder relevante afwijking worden bewust niet getoond.</div></div>
+<div class="card hidden" id="autoTuneManagedCard"><div class="statusline">Automatisch beheerd</div><div class="muted">Deze parameters heb je expliciet aan HomeFlux toevertrouwd. Je kunt de toestemming hier opnieuw uitschakelen.</div><div id="autoTuneManaged"></div></div>
+<div class="card hidden" id="autoTuneHistoryCard"><div class="statusline">Recente automatische aanpassingen</div><div id="autoTuneHistory"></div></div>
+<p class="muted">Automatische controle van goedgekeurde parameters gebruikt alleen de bestaande één-minuut-heartbeat en wordt maximaal één keer per 30 minuten geëvalueerd. Dezelfde parameter wordt normaal maximaal één keer per 6 uur aangepast.</p>
+</section>
 <section class="panel" id="panel-planning">
 <div class="card">
 <div class="statusline">Laadplanning</div>
@@ -2277,6 +2296,104 @@ async function onHomeyReady(Homey) {
     helpCatalogRendered = true;
   }
 
+  function formatAutoTuneValue(value, unit) {
+    if (value === null || value === undefined || value === '') return '—';
+    const number = Number(value);
+    const shown = Number.isFinite(number) ? (Math.abs(number % 1) < 1e-9 ? String(Math.round(number)) : number.toFixed(1)) : String(value);
+    return `${shown}${unit ? ` ${unit}` : ''}`;
+  }
+
+  function renderAutoTune(data = {}) {
+    const obs = data.observations || {};
+    q('autoTuneGridSamples').textContent = String(Number(obs.gridSamples) || 0);
+    q('autoTuneGridVariation').textContent = (Number(obs.gridSamples) || 0) > 0
+      ? `${uiLanguage === 'nl' ? 'snelle variatie' : 'rapid variation'} ~${Math.round(Number(obs.gridVariationW) || 0)} W`
+      : (uiLanguage === 'nl' ? 'Nog aan het observeren' : 'Still observing');
+    q('autoTunePvSamples').textContent = String(Number(obs.pvSamples) || 0);
+    q('autoTunePvVariation').textContent = (Number(obs.pvSamples) || 0) > 0
+      ? `${uiLanguage === 'nl' ? 'snelle variatie' : 'rapid variation'} ~${Math.round(Number(obs.pvVariationW) || 0)} W`
+      : (uiLanguage === 'nl' ? 'Nog aan het observeren' : 'Still observing');
+    const evObs = Array.isArray(obs.ev) ? obs.ev : [];
+    const evResponseSamples = evObs.reduce((sum,item)=>sum + (Number(item.responseSamples)||0),0);
+    q('autoTuneEvSamples').textContent = String(evResponseSamples);
+    const activeEv = evObs.filter(item => (Number(item.responseSamples)||0) + (Number(item.smartSamples)||0) + (Number(item.standardSamples)||0) > 0);
+    q('autoTuneEvDetail').textContent = activeEv.length
+      ? activeEv.map(item => `${escapeHtml(item.name || `EV ${item.instance}`)}: ${Number(item.responseSamples)||0} ${uiLanguage==='nl'?'responsmetingen':'response samples'}`).join(' · ')
+      : (uiLanguage === 'nl' ? 'Nog geen bruikbare EV-respons gemeten' : 'No usable EV response measured yet');
+
+    const host = q('autoTuneRecommendations');
+    host.innerHTML = '';
+    const recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    recommendations.forEach(item => {
+      const card = document.createElement('div'); card.className='card';
+      const title = uiLanguage === 'nl' ? item.titleNl : item.titleEn;
+      const reason = uiLanguage === 'nl' ? item.reasonNl : item.reasonEn;
+      const confidence = Math.max(0, Math.min(100, Number(item.confidence)||0));
+      card.innerHTML = `<div class="row"><div><div class="muted">${escapeHtml(item.scope || '')}</div><div class="statusline">${escapeHtml(title || item.settingKey || '')}</div></div><div style="text-align:right"><div class="muted">${uiLanguage==='nl'?'Huidig → voorstel':'Current → suggested'}</div><div class="metric">${escapeHtml(formatAutoTuneValue(item.current,item.unit))} → ${escapeHtml(formatAutoTuneValue(item.recommended,item.unit))}</div></div></div><div class="muted" style="margin-top:8px">${escapeHtml(reason || '')}</div><div class="muted" style="margin-top:5px">${uiLanguage==='nl'?'Vertrouwen':'Confidence'}: ${confidence}% · ${Number(item.samples)||0} ${uiLanguage==='nl'?'observaties':'observations'}</div><label class="homey-form-checkbox" style="margin-top:10px"><input type="checkbox" data-auto-tune-permission="${escapeHtml(item.settingKey)}" ${item.autoManaged?'checked':''}> <span>${uiLanguage==='nl'?'HomeFlux mag deze parameter automatisch aanpassen':'Allow HomeFlux to adjust this parameter automatically'}</span></label>`;
+      host.appendChild(card);
+    });
+    q('autoTuneNoRecommendations').classList.toggle('hidden', recommendations.length > 0);
+
+    const managed = Array.isArray(data.managed) ? data.managed : [];
+    const managedHost = q('autoTuneManaged'); managedHost.innerHTML='';
+    managed.forEach(item => {
+      const row=document.createElement('div'); row.className='logic-row';
+      const title=uiLanguage==='nl'?item.titleNl:item.titleEn;
+      row.innerHTML=`<div><div class="statusline">${escapeHtml(title||item.settingKey||'')}</div><div class="muted">${escapeHtml(formatAutoTuneValue(item.current,item.unit))}</div></div><label class="homey-form-checkbox"><input type="checkbox" data-auto-tune-permission="${escapeHtml(item.settingKey)}" checked> <span>${uiLanguage==='nl'?'Automatisch beheren':'Auto-manage'}</span></label>`;
+      managedHost.appendChild(row);
+    });
+    q('autoTuneManagedCard').classList.toggle('hidden', managed.length === 0);
+
+    const history = Array.isArray(data.history) ? data.history : [];
+    const historyHost=q('autoTuneHistory'); historyHost.innerHTML='';
+    history.slice(0,12).forEach(item=>{
+      const row=document.createElement('div'); row.className='logic-row';
+      const title=uiLanguage==='nl'?item.titleNl:item.titleEn;
+      const when = item.at ? new Date(Number(item.at)).toLocaleString() : '';
+      row.innerHTML=`<div><div class="statusline">${escapeHtml(title||item.settingKey||'')}</div><div class="muted">${escapeHtml(when)}</div></div><div style="text-align:right"><div>${escapeHtml(formatAutoTuneValue(item.from,item.unit))} → ${escapeHtml(formatAutoTuneValue(item.to,item.unit))}</div><div class="muted">${uiLanguage==='nl'?'vertrouwen':'confidence'} ${Number(item.confidence)||0}%</div></div>`;
+      historyHost.appendChild(row);
+    });
+    q('autoTuneHistoryCard').classList.toggle('hidden', history.length === 0);
+
+    document.querySelectorAll('[data-auto-tune-permission]').forEach(input => {
+      input.addEventListener('change', async () => {
+        const settingKey=String(input.dataset.autoTunePermission||'');
+        const allowed=Boolean(input.checked);
+        input.disabled=true;
+        q('autoTuneRefreshState').textContent = allowed
+          ? (uiLanguage==='nl'?'Toestemming opslaan…':'Saving permission…')
+          : (uiLanguage==='nl'?'Toestemming verwijderen…':'Removing permission…');
+        try {
+          const updated=await api('PUT','/auto-tune/permission',{settingKey,allowed});
+          renderAutoTune(updated);
+          q('autoTuneRefreshState').textContent = allowed
+            ? (uiLanguage==='nl'?'Automatisch beheer actief':'Automatic management enabled')
+            : (uiLanguage==='nl'?'Automatisch beheer uit':'Automatic management disabled');
+          setTimeout(()=>{ if(q('autoTuneRefreshState')) q('autoTuneRefreshState').textContent=''; },1800);
+        } catch(err) {
+          input.disabled=false; input.checked=!allowed;
+          q('autoTuneRefreshState').textContent=''; Homey.alert(err.message||String(err));
+        }
+      });
+    });
+  }
+
+  async function refreshAutoTune(force = false) {
+    const button=q('refreshAutoTune');
+    if (button) button.disabled=true;
+    q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Analyseren…':'Analysing…';
+    try {
+      const data=await api(force?'POST':'GET', force?'/auto-tune/refresh':'/auto-tune');
+      renderAutoTune(data||{});
+      q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Bijgewerkt':'Updated';
+      setTimeout(()=>{ if(q('autoTuneRefreshState')) q('autoTuneRefreshState').textContent=''; },1500);
+    } catch(err) {
+      q('autoTuneRefreshState').textContent=''; Homey.alert(err.message||String(err));
+    } finally { if(button) button.disabled=false; }
+  }
+
+  q('refreshAutoTune')?.addEventListener('click',()=>refreshAutoTune(true));
+
   function switchTab(name) {
     if (activeMainTab === 'planning-simulation' && name !== 'planning-simulation') clearPlanningSimulationResult();
     activeMainTab = name;
@@ -2285,6 +2402,7 @@ async function onHomeyReady(Homey) {
     if (name === 'help') ensureHelpCatalogRendered();
     if (name === 'status' || name === 'ev' || name === 'hvac' || name === 'boiler' || name === 'priority' || (name === 'contract' && q('contractType').value.startsWith('dynamic'))) refreshStatus();
     if (name === 'savings') refreshSavings();
+    if (name === 'finetuning') refreshAutoTune();
     if (name === 'planning') refreshPlanning();
   }
 
