@@ -1,3 +1,5 @@
+v0.6.7: Finetuning now supports one-off apply, do-not-check-again and persistent parameter permission.
+
 # HomeFlux EMS
 
 **Your energy, managed differently**  

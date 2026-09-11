@@ -609,7 +609,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.6 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.6.7 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -1479,7 +1479,7 @@
 <div class="statusline">Automatic Finetuning</div>
 <p class="muted">HomeFlux observeert alleen metingen die het EMS toch al ontvangt. Er wordt geen extra polling, seconde-timer of extra EMS-regelcyclus toegevoegd. Voor planning bewaart HomeFlux maximaal 14 compacte dagsamenvattingen; ruwe P1-, PV-, batterij- en EV-metingen worden niet als historie opgeslagen. Alleen parameters waarvoor een betekenisvolle afwijking is gevonden worden hieronder getoond.</p>
 <p class="muted"><strong>Planning krijgt extra aandacht.</strong> HomeFlux leert de lage-PV-drempel uit forecast versus werkelijk behaalde SoC en leert de verwachte niet-EV-energiebehoefte uit het dagelijkse verbruik. Het doel is overdag met beschikbare PV zo vaak mogelijk de 90–100%-zone te bereiken, terwijl onnodig nachtelijk netladen wordt verminderd zodat de batterij 's morgens zo laag mogelijk eindigt binnen de ingestelde veiligheidsgrenzen.</p>
-<p class="muted"><strong>Een vinkje betekent toestemming.</strong> Zodra je een aanbeveling aanvinkt, mag HomeFlux die specifieke parameter automatisch beheren. Harde grenzen en gebruikersintenties zoals Peak Guard, minimum-/veiligheids-/maximum-SoC, maximale laad-/ontlaadvermogens, tarieven, EV-deadlines, comforttemperaturen, prioriteiten en handmatige tijdvensters worden nooit automatisch gewijzigd.</p>
+<p class="muted"><strong>Een vinkje betekent toestemming.</strong> Toestemming hoort bij de parameter en blijft bewaard, ook wanneer een tijdelijke aanbeveling later verdwijnt. Met Deze keer toepassen voer je alleen de huidige aanbeveling uit zonder automatisch beheer in te schakelen. Met Niet meer controleren sluit je die parameter uit van toekomstige aanbevelingen totdat je hem onderaan opnieuw activeert. Harde grenzen en gebruikersintenties zoals Peak Guard, minimum-/veiligheids-/maximum-SoC, maximale laad-/ontlaadvermogens, tarieven, EV-deadlines, comforttemperaturen, prioriteiten en handmatige tijdvensters worden nooit automatisch gewijzigd.</p>
 <div class="savebar" style="margin-top:10px"><button class="homey-button-secondary" id="refreshAutoTune" type="button">Aanbevelingen opnieuw berekenen</button><span class="ok" id="autoTuneRefreshState"></span></div>
 </div>
 <div class="status-grid">
@@ -1492,7 +1492,8 @@
 <div id="autoTuneRecommendations"></div>
 <div class="card hidden" id="autoTuneNoRecommendations"><div class="statusline">Geen aanbevelingen op dit moment</div><div class="muted">De huidige waarden liggen binnen de geleerde marges, of HomeFlux heeft nog te weinig observaties. Parameters zonder relevante afwijking worden bewust niet getoond.</div></div>
 <div class="card hidden" id="autoTuneManagedCard"><div class="statusline">Automatisch beheerd</div><div class="muted">Deze parameters heb je expliciet aan HomeFlux toevertrouwd. Je kunt de toestemming hier opnieuw uitschakelen.</div><div id="autoTuneManaged"></div></div>
-<div class="card hidden" id="autoTuneHistoryCard"><div class="statusline">Recente automatische aanpassingen</div><div id="autoTuneHistory"></div></div>
+<div class="card hidden" id="autoTuneHistoryCard"><div class="statusline">Recente finetuning-aanpassingen</div><div id="autoTuneHistory"></div></div>
+<div class="card hidden" id="autoTuneIgnoredCard"><div class="statusline">Niet meer controleren</div><div class="muted">Deze parameters worden niet meer geëvalueerd of aanbevolen. Je kunt controle hier opnieuw inschakelen.</div><div id="autoTuneIgnored"></div></div>
 <p class="muted">Automatische controle van goedgekeurde parameters gebruikt alleen de bestaande één-minuut-heartbeat en wordt maximaal één keer per 30 minuten geëvalueerd. Technische regelparameters worden normaal maximaal één keer per 6 uur aangepast; geleerde planningsparameters zoals lage-PV-drempel, energiebehoefte en Battery Save-ontlaadgrens maximaal één keer per 24 uur.</p>
 </section>
 <section class="panel" id="panel-planning">
@@ -2344,7 +2345,7 @@ async function onHomeyReady(Homey) {
       const title = uiLanguage === 'nl' ? item.titleNl : item.titleEn;
       const reason = uiLanguage === 'nl' ? item.reasonNl : item.reasonEn;
       const confidence = Math.max(0, Math.min(100, Number(item.confidence)||0));
-      card.innerHTML = `<div class="row"><div><div class="muted">${escapeHtml(item.scope || '')}</div><div class="statusline">${escapeHtml(title || item.settingKey || '')}</div></div><div style="text-align:right"><div class="muted">${uiLanguage==='nl'?'Huidig → voorstel':'Current → suggested'}</div><div class="metric">${escapeHtml(formatAutoTuneValue(item.current,item.unit))} → ${escapeHtml(formatAutoTuneValue(item.recommended,item.unit))}</div></div></div><div class="muted" style="margin-top:8px">${escapeHtml(reason || '')}</div><div class="muted" style="margin-top:5px">${uiLanguage==='nl'?'Vertrouwen':'Confidence'}: ${confidence}% · ${Number(item.samples)||0} ${uiLanguage==='nl'?'observaties':'observations'}</div><label class="homey-form-checkbox" style="margin-top:10px"><input type="checkbox" data-auto-tune-permission="${escapeHtml(item.settingKey)}" ${item.autoManaged?'checked':''}> <span>${uiLanguage==='nl'?'HomeFlux mag deze parameter automatisch aanpassen':'Allow HomeFlux to adjust this parameter automatically'}</span></label>`;
+      card.innerHTML = `<div class="row"><div><div class="muted">${escapeHtml(item.scope || '')}</div><div class="statusline">${escapeHtml(title || item.settingKey || '')}</div></div><div style="text-align:right"><div class="muted">${uiLanguage==='nl'?'Huidig → voorstel':'Current → suggested'}</div><div class="metric">${escapeHtml(formatAutoTuneValue(item.current,item.unit))} → ${escapeHtml(formatAutoTuneValue(item.recommended,item.unit))}</div></div></div><div class="muted" style="margin-top:8px">${escapeHtml(reason || '')}</div><div class="muted" style="margin-top:5px">${uiLanguage==='nl'?'Vertrouwen':'Confidence'}: ${confidence}% · ${Number(item.samples)||0} ${uiLanguage==='nl'?'observaties':'observations'}</div><label class="homey-form-checkbox" style="margin-top:10px"><input type="checkbox" data-auto-tune-permission="${escapeHtml(item.settingKey)}" ${item.autoManaged?'checked':''}> <span>${uiLanguage==='nl'?'HomeFlux mag deze parameter automatisch aanpassen':'Allow HomeFlux to adjust this parameter automatically'}</span></label><div class="savebar" style="margin-top:10px;justify-content:flex-start;gap:8px;flex-wrap:wrap"><button class="homey-button-secondary" type="button" data-auto-tune-apply="${escapeHtml(item.settingKey)}">${uiLanguage==='nl'?'Deze keer toepassen':'Apply this time'}</button><button class="homey-button-secondary" type="button" data-auto-tune-ignore="${escapeHtml(item.settingKey)}">${uiLanguage==='nl'?'Niet meer controleren':'Do not check again'}</button></div>`;
       host.appendChild(card);
     });
     q('autoTuneNoRecommendations').classList.toggle('hidden', recommendations.length > 0);
@@ -2365,10 +2366,22 @@ async function onHomeyReady(Homey) {
       const row=document.createElement('div'); row.className='logic-row';
       const title=uiLanguage==='nl'?item.titleNl:item.titleEn;
       const when = item.at ? new Date(Number(item.at)).toLocaleString() : '';
-      row.innerHTML=`<div><div class="statusline">${escapeHtml(title||item.settingKey||'')}</div><div class="muted">${escapeHtml(when)}</div></div><div style="text-align:right"><div>${escapeHtml(formatAutoTuneValue(item.from,item.unit))} → ${escapeHtml(formatAutoTuneValue(item.to,item.unit))}</div><div class="muted">${uiLanguage==='nl'?'vertrouwen':'confidence'} ${Number(item.confidence)||0}%</div></div>`;
+      const source = item.source === 'manual-once' ? (uiLanguage==='nl'?'eenmalig toegepast':'applied once') : (uiLanguage==='nl'?'automatisch':'automatic');
+      row.innerHTML=`<div><div class="statusline">${escapeHtml(title||item.settingKey||'')}</div><div class="muted">${escapeHtml(when)} · ${escapeHtml(source)}</div></div><div style="text-align:right"><div>${escapeHtml(formatAutoTuneValue(item.from,item.unit))} → ${escapeHtml(formatAutoTuneValue(item.to,item.unit))}</div><div class="muted">${uiLanguage==='nl'?'vertrouwen':'confidence'} ${Number(item.confidence)||0}%</div></div>`;
       historyHost.appendChild(row);
     });
     q('autoTuneHistoryCard').classList.toggle('hidden', history.length === 0);
+
+    const ignored = Array.isArray(data.ignored) ? data.ignored : [];
+    const ignoredHost=q('autoTuneIgnored'); ignoredHost.innerHTML='';
+    ignored.forEach(item=>{
+      const row=document.createElement('div'); row.className='logic-row';
+      const title=uiLanguage==='nl'?item.titleNl:item.titleEn;
+      const when = Number(item.ignoredAt) > 0 ? new Date(Number(item.ignoredAt)).toLocaleString() : '';
+      row.innerHTML=`<div><div class="statusline">${escapeHtml(title||item.settingKey||'')}</div><div class="muted">${escapeHtml(formatAutoTuneValue(item.current,item.unit))}${when ? ` · ${escapeHtml(when)}` : ''}</div></div><button class="homey-button-secondary" type="button" data-auto-tune-resume="${escapeHtml(item.settingKey)}">${uiLanguage==='nl'?'Opnieuw controleren':'Check again'}</button>`;
+      ignoredHost.appendChild(row);
+    });
+    q('autoTuneIgnoredCard').classList.toggle('hidden', ignored.length === 0);
 
     document.querySelectorAll('[data-auto-tune-permission]').forEach(input => {
       input.addEventListener('change', async () => {
@@ -2387,6 +2400,57 @@ async function onHomeyReady(Homey) {
           setTimeout(()=>{ if(q('autoTuneRefreshState')) q('autoTuneRefreshState').textContent=''; },1800);
         } catch(err) {
           input.disabled=false; input.checked=!allowed;
+          q('autoTuneRefreshState').textContent=''; Homey.alert(err.message||String(err));
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-auto-tune-apply]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const settingKey=String(button.dataset.autoTuneApply||'');
+        button.disabled=true;
+        q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Aanbeveling toepassen…':'Applying recommendation…';
+        try {
+          const updated=await api('POST','/auto-tune/apply',{settingKey});
+          renderAutoTune(updated);
+          q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Eenmalig toegepast':'Applied once';
+          setTimeout(()=>{ if(q('autoTuneRefreshState')) q('autoTuneRefreshState').textContent=''; },1800);
+        } catch(err) {
+          button.disabled=false;
+          q('autoTuneRefreshState').textContent=''; Homey.alert(err.message||String(err));
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-auto-tune-ignore]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const settingKey=String(button.dataset.autoTuneIgnore||'');
+        button.disabled=true;
+        q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Controle uitschakelen…':'Disabling check…';
+        try {
+          const updated=await api('PUT','/auto-tune/ignored',{settingKey,ignored:true});
+          renderAutoTune(updated);
+          q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Wordt niet meer gecontroleerd':'No longer checked';
+          setTimeout(()=>{ if(q('autoTuneRefreshState')) q('autoTuneRefreshState').textContent=''; },1800);
+        } catch(err) {
+          button.disabled=false;
+          q('autoTuneRefreshState').textContent=''; Homey.alert(err.message||String(err));
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-auto-tune-resume]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const settingKey=String(button.dataset.autoTuneResume||'');
+        button.disabled=true;
+        q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Controle opnieuw inschakelen…':'Re-enabling check…';
+        try {
+          const updated=await api('PUT','/auto-tune/ignored',{settingKey,ignored:false});
+          renderAutoTune(updated);
+          q('autoTuneRefreshState').textContent = uiLanguage==='nl'?'Controle opnieuw actief':'Check enabled again';
+          setTimeout(()=>{ if(q('autoTuneRefreshState')) q('autoTuneRefreshState').textContent=''; },1800);
+        } catch(err) {
+          button.disabled=false;
           q('autoTuneRefreshState').textContent=''; Homey.alert(err.message||String(err));
         }
       });

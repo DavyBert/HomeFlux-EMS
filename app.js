@@ -481,7 +481,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.6.6 initialized');
+    this.log('HomeFlux EMS v0.6.7 initialized');
   }
 
   refreshSettingsCache() {
@@ -1074,6 +1074,11 @@ class HomeFluxEmsApp extends Homey.App {
     return permissions;
   }
 
+  getAutoTuneIgnored() {
+    const raw = this.homey.settings.get('_autoTuneIgnored');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }
+
   getAutoTuneHistory() {
     const raw = this.homey.settings.get('_autoTuneHistory');
     return Array.isArray(raw) ? raw.slice(-30) : [];
@@ -1130,6 +1135,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     const settings = this.getSettings();
     const permissions = this.getAutoTunePermissions();
+    const ignored = this.getAutoTuneIgnored();
     const recommendations = [];
     const roundTo = (value, step = 1) => Math.round(Number(value) / step) * step;
     const percentile = (values, q = 0.5) => {
@@ -1149,6 +1155,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
     const confidence = samples => Math.max(0.5, Math.min(0.97, 0.52 + Math.log10(Math.max(1, Number(samples) || 1)) * 0.2));
     const push = (settingKey, titleNl, titleEn, current, recommended, unit, reasonNl, reasonEn, conf, samples, scope = 'EMS') => {
+      if (ignored[settingKey]) return;
       const cur = Number(current); const next = Number(recommended);
       if (!Number.isFinite(cur) || !Number.isFinite(next) || Math.abs(cur - next) < 1e-9) return;
       recommendations.push({
@@ -1510,6 +1517,7 @@ class HomeFluxEmsApp extends Homey.App {
   getAutoTuneStatus() {
     const runtime = this.autoTuneRuntime || this.createAutoTuneRuntime();
     const permissions = this.getAutoTunePermissions();
+    const ignored = this.getAutoTuneIgnored();
     const settings = this.getSettings();
     const recommendations = this.getAutoTuneRecommendations();
     const recommendationKeys = new Set(recommendations.map(item => item.settingKey));
@@ -1528,6 +1536,11 @@ class HomeFluxEmsApp extends Homey.App {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
         if (!descriptor) return null;
         return { ...descriptor, current: settings[key], autoManaged: true };
+      }).filter(Boolean),
+      ignored: Object.keys(ignored).filter(key => ignored[key]).map(key => {
+        const descriptor = this.getAutoTuneSettingDescriptor(key);
+        if (!descriptor) return null;
+        return { ...descriptor, current: settings[key], ignoredAt: Number(ignored[key]) || 0 };
       }).filter(Boolean),
       history: this.getAutoTuneHistory().slice().reverse(),
       observations: {
@@ -1602,7 +1615,7 @@ class HomeFluxEmsApp extends Homey.App {
         at: now, settingKey: key, scope: recommendation.scope,
         titleNl: recommendation.titleNl, titleEn: recommendation.titleEn,
         from: current, to: next, unit: recommendation.unit,
-        confidence: recommendation.confidence,
+        confidence: recommendation.confidence, source: 'automatic',
       });
     }
     if (lastAppliedChanged) this.setSetting('_autoTuneLastAppliedAt', lastApplied);
@@ -1612,17 +1625,79 @@ class HomeFluxEmsApp extends Homey.App {
   async setAutoTunePermission(body = {}) {
     const settingKey = String(body.settingKey || '').trim();
     const allowed = Boolean(body.allowed);
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+
+    // Permission belongs to the parameter, not to one transient recommendation.
+    // A recommendation may disappear between rendering the tab and clicking the
+    // checkbox; in that case the permission is still saved and becomes useful
+    // again if HomeFlux later detects a meaningful deviation for the same key.
     const currentRecommendations = this.getAutoTuneRecommendations();
     const recommendation = currentRecommendations.find(item => item.settingKey === settingKey);
-    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
-    if (!descriptor || (allowed && (!recommendation || !recommendation.canAutoManage))) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
     const permissions = this.getAutoTunePermissions();
-    if (allowed) permissions[settingKey] = true;
-    else delete permissions[settingKey];
+    const ignored = this.getAutoTuneIgnored();
+    if (allowed) {
+      permissions[settingKey] = true;
+      if (ignored[settingKey]) {
+        delete ignored[settingKey];
+        this.setSetting('_autoTuneIgnored', ignored);
+      }
+    } else {
+      delete permissions[settingKey];
+    }
     this.setSetting('_autoTunePermissions', permissions);
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     this.autoTuneRuntime.permissions = { ...permissions };
-    if (allowed) await this.applyAutoTuneRecommendations({ onlyKey: settingKey, force: true });
+    if (allowed && recommendation?.canAutoManage) await this.applyAutoTuneRecommendations({ onlyKey: settingKey, force: true });
+    return this.getAutoTuneStatus();
+  }
+
+  async applyAutoTuneRecommendationOnce(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+    const recommendation = this.getAutoTuneRecommendations().find(item => item.settingKey === settingKey);
+    if (!recommendation) throw new Error('Deze aanbeveling is intussen niet meer actief. Vernieuw Finetuning en probeer opnieuw.');
+
+    const current = Number(this.getSettings()[settingKey]);
+    const next = Number(recommendation.recommended);
+    if (!Number.isFinite(current) || !Number.isFinite(next)) throw new Error('Deze finetuningwaarde kan niet veilig worden toegepast.');
+    if (Math.abs(current - next) < 1e-9) return this.getAutoTuneStatus();
+
+    const now = Date.now();
+    this.setSetting(settingKey, next);
+    const lastApplied = this.getAutoTuneLastApplied();
+    lastApplied[settingKey] = now;
+    this.setSetting('_autoTuneLastAppliedAt', lastApplied);
+    this.appendAutoTuneHistory({
+      at: now, settingKey, scope: recommendation.scope,
+      titleNl: recommendation.titleNl, titleEn: recommendation.titleEn,
+      from: current, to: next, unit: recommendation.unit,
+      confidence: recommendation.confidence, source: 'manual-once',
+    });
+    return this.getAutoTuneStatus();
+  }
+
+  async setAutoTuneIgnored(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const shouldIgnore = Boolean(body.ignored);
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+
+    const ignored = this.getAutoTuneIgnored();
+    const permissions = this.getAutoTunePermissions();
+    if (shouldIgnore) {
+      ignored[settingKey] = Date.now();
+      // "Do not check again" is stronger than automatic permission: stop both
+      // recommending and automatic management until the user re-enables checks.
+      delete permissions[settingKey];
+    } else {
+      delete ignored[settingKey];
+    }
+    this.setSetting('_autoTuneIgnored', ignored);
+    this.setSetting('_autoTunePermissions', permissions);
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.autoTuneRuntime.permissions = { ...permissions };
     return this.getAutoTuneStatus();
   }
 
@@ -2901,7 +2976,13 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('boilerPeakGuardBatterySupportEnabled') === null) this.setSetting('boilerPeakGuardBatterySupportEnabled', false);
     }
 
-    this.setSetting('settingsSchemaVersion', 58);
+    if (schema < 59) {
+      // v0.6.7: users can permanently suppress individual finetuning checks.
+      // Store only parameter keys + timestamp; no observation history is added.
+      if (this.homey.settings.get('_autoTuneIgnored') === null) this.setSetting('_autoTuneIgnored', {});
+    }
+
+    this.setSetting('settingsSchemaVersion', 59);
   }
 
   async ensureDefaults() {
@@ -9771,7 +9852,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.6.6',
+      version: '0.6.7',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -9848,7 +9929,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.6.6',
+      version: '0.6.7',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -10127,7 +10208,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.6.6',
+      version: '0.6.7',
       settings: {
         batteryCount: storedSettings.batteryCount,
         evCount: this.getEvCount(storedSettings),

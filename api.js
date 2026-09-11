@@ -29,16 +29,12 @@ module.exports = {
     return homey.app.setAutoTunePermission(body || {});
   },
 
-  async getAutoTune({ homey }) {
-    return homey.app.getAutoTuneStatus();
+  async applyAutoTuneRecommendation({ homey, body }) {
+    return homey.app.applyAutoTuneRecommendationOnce(body || {});
   },
 
-  async refreshAutoTune({ homey }) {
-    return homey.app.getAutoTuneStatus({ force: true });
-  },
-
-  async setAutoTunePermission({ homey, body }) {
-    return homey.app.setAutoTunePermission(body || {});
+  async setAutoTuneIgnored({ homey, body }) {
+    return homey.app.setAutoTuneIgnored(body || {});
   },
 
   async refreshPlanning({ homey }) {

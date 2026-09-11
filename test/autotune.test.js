@@ -325,5 +325,44 @@ function appWithSettings(overrides = {}) {
   const disabled = await app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: false });
   assert.equal(Boolean(store._autoTunePermissions.commandDeadbandW), false);
   assert.equal(disabled.managed.some(item => item.settingKey === 'commandDeadbandW'), false);
+
+  // v0.6.7: permission is attached to a known tunable parameter, not to the
+  // recommendation snapshot that happened to be rendered in the browser.
+  // Simulate the recommendation disappearing before the user's click.
+  const stale = appWithSettings();
+  const staleResult = await stale.app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: true });
+  assert.equal(stale.store._autoTunePermissions.commandDeadbandW, true);
+  assert.ok(staleResult.managed.some(item => item.settingKey === 'commandDeadbandW'));
+
+  // One-off apply changes the value and records history without granting
+  // automatic permission.
+  const oneOff = appWithSettings();
+  for (let i = 0; i < 40; i += 1) oneOff.app.noteAutoTuneGridSample(i % 2 ? 320 : 0, 2_000_000 + i * 1000);
+  const before = oneOff.store.commandDeadbandW;
+  const oneOffResult = await oneOff.app.applyAutoTuneRecommendationOnce({ settingKey: 'commandDeadbandW' });
+  assert.notEqual(oneOff.store.commandDeadbandW, before);
+  assert.equal(Boolean(oneOff.store._autoTunePermissions?.commandDeadbandW), false);
+  assert.equal(oneOff.store._autoTuneHistory.at(-1).source, 'manual-once');
+  assert.ok(!oneOffResult.recommendations.some(item => item.settingKey === 'commandDeadbandW'));
+
+  // Do-not-check-again suppresses both recommendations and auto-management,
+  // keeps the parameter visible in the ignored list, and can be reversed.
+  const suppressed = appWithSettings();
+  for (let i = 0; i < 40; i += 1) suppressed.app.noteAutoTuneGridSample(i % 2 ? 320 : 0, 3_000_000 + i * 1000);
+  await suppressed.app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: true });
+  // Recreate a deviation after the automatic apply so the ignore action has a
+  // real recommendation to suppress.
+  suppressed.store.commandDeadbandW = 25;
+  suppressed.app.settingsCache.commandDeadbandW = 25;
+  assert.ok(suppressed.app.getAutoTuneRecommendations().some(item => item.settingKey === 'commandDeadbandW'));
+  const ignoredStatus = await suppressed.app.setAutoTuneIgnored({ settingKey: 'commandDeadbandW', ignored: true });
+  assert.ok(suppressed.store._autoTuneIgnored.commandDeadbandW > 0);
+  assert.equal(Boolean(suppressed.store._autoTunePermissions.commandDeadbandW), false);
+  assert.equal(ignoredStatus.recommendations.some(item => item.settingKey === 'commandDeadbandW'), false);
+  assert.ok(ignoredStatus.ignored.some(item => item.settingKey === 'commandDeadbandW'));
+  const resumed = await suppressed.app.setAutoTuneIgnored({ settingKey: 'commandDeadbandW', ignored: false });
+  assert.equal(Boolean(suppressed.store._autoTuneIgnored.commandDeadbandW), false);
+  assert.ok(resumed.recommendations.some(item => item.settingKey === 'commandDeadbandW'));
+
   console.log('automatic finetuning tests passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });
