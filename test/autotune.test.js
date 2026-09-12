@@ -364,5 +364,15 @@ function appWithSettings(overrides = {}) {
   assert.equal(Boolean(suppressed.store._autoTuneIgnored.commandDeadbandW), false);
   assert.ok(resumed.recommendations.some(item => item.settingKey === 'commandDeadbandW'));
 
-  console.log('automatic finetuning tests passed');
+  // v0.7.1: once Autotune is allowed to manage the battery command interval,
+  // it may never leave that interval below 3 seconds. Faster automatic
+  // steering can introduce oscillation, even when a legacy/manual value was 1 s.
+  const intervalFloor = appWithSettings({ commandIntervalSeconds: 1 });
+  const floorStatus = await intervalFloor.app.setAutoTunePermission({ settingKey: 'commandIntervalSeconds', allowed: true });
+  assert.equal(intervalFloor.store._autoTunePermissions.commandIntervalSeconds, true);
+  assert.ok(intervalFloor.store.commandIntervalSeconds >= 3, 'Autotune command interval must never be below 3 seconds');
+  assert.ok(intervalFloor.store._autoTuneHistory.some(item => item.settingKey === 'commandIntervalSeconds' && item.to >= 3));
+  assert.ok(floorStatus.managed.some(item => item.settingKey === 'commandIntervalSeconds'));
+
+  console.log('automatic Autotune tests passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });

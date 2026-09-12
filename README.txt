@@ -1,11 +1,7 @@
-v0.6.7: Finetuning now supports one-off apply, do-not-check-again and persistent parameter permission.
-
 Your energy, managed differently
 
-HomeFlux EMS brings your home’s energy together in one smart system. It decides when to charge or use your home battery, when to make the most of solar power, and when flexible loads such as EV charging, heating, cooling or hot water can run most efficiently.
+HomeFlux EMS coordinates batteries, solar production and flexible loads around the energy contract you actually use. It supports dynamic pricing, but is equally designed for fixed contracts with two or more time-of-use tariff periods such as peak/off-peak and multi-rate schedules.
 
-Instead of being tied to one brand or one type of installation, HomeFlux works around the devices you already have and the energy contract you use. It supports both dynamic energy contracts and fixed contracts with different tariff periods, such as peak, off-peak or multi-rate schedules.
+HomeFlux combines tariff periods, PV forecasts, battery reserve, self-consumption, grid limits and user priorities in one control strategy. Hardware integrations remain independent through explicit Homey Flow cards, while Peak Guard remains a hard safety layer.
 
-It continuously balances comfort, self-consumption, battery reserve, electricity prices and grid limits, while Peak Guard keeps peak consumption under control.
-
-The result is simple: use more of your own energy, buy from the grid at better moments, avoid unnecessary peaks and let HomeFlux coordinate everything automatically.
+The goal: increase useful self-consumption, buy energy at the right moments, protect reserve for later and avoid unnecessary grid peaks.

@@ -565,8 +565,8 @@ function bareApp() {
     assert.equal(started.batteryCount, 1);
   }
 
-  // Full charge-test lifecycle: run, automatic 0 W, then explicit user
-  // confirmation unlocks output for the exact tested configuration.
+  // Full battery-test lifecycle: charge remains active until confirmed, then
+  // discharge remains active until confirmed. Only both directions unlock output.
   {
     const stored = {
       batteryCount: 2,
@@ -581,8 +581,6 @@ function bareApp() {
     };
     tested.getSettings = () => ({ ...stored, commandIntervalSeconds: 10 });
     tested.syncTokens = async () => {};
-    let timerCallback = null;
-    tested.homey.setTimeout = callback => { timerCallback = callback; return 123; };
     const writes = [];
     tested.tokens.set('battery1command', { setValue: async value => { writes.push(['b1', value]); } });
     tested.tokens.set('battery2command', { setValue: async value => { writes.push(['b2', value]); } });
@@ -591,18 +589,45 @@ function bareApp() {
 
     const started = await tested.startChargeTest();
     assert.equal(started.commandPerBatteryW, 100);
+    assert.equal(started.stage, 'charge');
     assert.equal(tested.chargeTestRunning, true);
-    assert.ok(typeof timerCallback === 'function');
-    await timerCallback();
-    assert.equal(tested.chargeTestRunning, false);
     assert.equal(tested.chargeTestAwaitingConfirmation, true);
+    assert.equal(tested.chargeTestStage, 'charge');
+
+    const discharge = await tested.confirmChargeTest({ ok: true });
+    assert.equal(discharge.stage, 'discharge');
+    assert.equal(discharge.commandPerBatteryW, -100);
+    assert.equal(tested.chargeTestRunning, true);
+    assert.equal(tested.chargeTestStage, 'discharge');
+    assert.ok(writes.some(item => item[0] === 'b1' && item[1] === -100));
+    assert.ok(writes.some(item => item[0] === 'b2' && item[1] === -100));
+
+    const passed = await tested.confirmChargeTest({ ok: true });
+    assert.equal(passed.passed, true);
+    assert.equal(tested.chargeTestRunning, false);
+    assert.equal(tested.chargeTestAwaitingConfirmation, false);
+    assert.equal(tested.chargeTestStage, 'passed');
     assert.ok(writes.some(item => item[0] === 'b1' && item[1] === 0));
     assert.ok(writes.some(item => item[0] === 'b2' && item[1] === 0));
-
-    await tested.confirmChargeTest();
     assert.equal(stored.chargeTestPassed, true);
     assert.equal(stored._chargeTestSignature, tested.getChargeTestSignature(tested.getSettings()));
     assert.equal(tested.isChargeTestValid(tested.getSettings()), true);
+  }
+
+  // A user can reject either stage and the outputs immediately return to 0 W.
+  {
+    const stored = { batteryCount: 1, invertBatteryCommand: false, chargeTestPassed: false, controlEnabled: false };
+    const tested = bareApp();
+    tested.homey.settings = { get: key => Object.prototype.hasOwnProperty.call(stored,key) ? stored[key] : null, set: (key,value) => { stored[key]=value; } };
+    tested.getSettings = () => ({ ...stored, commandIntervalSeconds: 10 });
+    tested.syncTokens = async () => {};
+    tested.publishChargeTestCommands = async commands => ({ commands, total: commands.reduce((a,b)=>a+b,0) });
+    await tested.startChargeTest();
+    const failed = await tested.confirmChargeTest({ ok: false });
+    assert.equal(failed.failed, true);
+    assert.equal(tested.chargeTestRunning, false);
+    assert.equal(tested.chargeTestStage, 'failed');
+    assert.equal(Boolean(stored.chargeTestPassed), false);
   }
 
   // The manual charge test itself publishes 100 W charge in the configured
@@ -1707,6 +1732,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commandDeadbandW: 1000,
     gridZeroMinW: -5,
     gridZeroMaxW: 25,
+    hybridWatchdogMinW: -300,
+    hybridWatchdogMaxW: 300,
     splitCommandBattery1Enabled: true,
     splitCommandBattery1ChargePowerPositive: true,
     splitCommandBattery1KeepMinimumPower: true,
@@ -2180,7 +2207,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 59);
+  assert.equal(stored.settingsSchemaVersion, 60);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
@@ -2229,7 +2256,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.6.7');
+  assert.equal(simulation.version, '0.7.1');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -3104,4 +3131,572 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   const coordination = app.getEvGridImportControlStatus(settings, now + 1000);
   assert.equal(coordination.state, 'waiting_response');
   assert.equal(coordination.activeTargetW, 0);
+}
+
+
+// v0.7.1: the Hybrid settings page uses a lightweight live-status snapshot.
+// It must support the complete 1..8 battery group and only expose current
+// ownership/watchdog state; reading it must not run a new EMS evaluation.
+{
+  const app = bareApp();
+  app.hybridEmsRuntime = {
+    delegated: true, takeover: false, externalSetpointW: 1250, externalSetpointAt: 12345,
+    retrySentAt: 0, status: 'external_control',
+  };
+  const status = app.getHybridEmsStatus({
+    batteryCount: 4, hybridEmsEnabled: true, hybridWatchdogMinW: -300, hybridWatchdogMaxW: 300,
+  });
+  assert.equal(status.available, true);
+  assert.equal(status.configured, true);
+  assert.equal(status.delegated, true);
+  assert.equal(status.externalSetpointW, 1250);
+  assert.equal(status.gridBandMinW, -300);
+  assert.equal(status.gridBandMaxW, 300);
+  assert.equal(app.getHybridEmsStatus({ batteryCount: 8, hybridEmsEnabled: true }).available, true);
+  assert.equal(app.getHybridEmsStatus({ batteryCount: 0, hybridEmsEnabled: true }).available, false);
+}
+
+
+// v0.7.1: Hybrid EMS delegates normal self-consumption and avoid-import with one or more
+// batteries. Any HomeFlux planning intervention immediately keeps/returns control
+// to HomeFlux. A stalled external controller gets one retry after five minutes
+// and HomeFlux takes over after another five minutes without a real correction.
+{
+  const app = bareApp();
+  let externalRequests = 0;
+  let fastTakeovers = 0;
+  let contextTakeovers = 0;
+  app.externalEmsSelfConsumptionTrigger = {
+    trigger: async () => { externalRequests += 1; return true; },
+  };
+  app.requestEvaluate = () => { fastTakeovers += 1; };
+  app.requestContextEvaluate = () => { contextTakeovers += 1; };
+  app.hybridEmsRuntime = {
+    delegated: false,
+    takeover: false,
+    externalSetpointW: null,
+    externalSetpointAt: 0,
+    externalSetpointChangedAt: 0,
+    staleOutsideSince: 0,
+    retrySentAt: 0,
+    retryReferenceSetpointW: null,
+    modeRequestedAt: 0,
+    status: 'inactive',
+  };
+  const settings = {
+    batteryCount: 4,
+    hybridEmsEnabled: true,
+    gridZeroMinW: -5,
+    gridZeroMaxW: 25,
+    hybridWatchdogMinW: -300,
+    hybridWatchdogMaxW: 300,
+    commandIntervalSeconds: 10,
+    batteryCommandStepW: 100,
+  };
+  const pure = {
+    inputReady: true,
+    controlEnabled: true,
+    baseMode: 'self_consumption',
+    override: null,
+    gridChargeAssistW: 0,
+    lowForecastBatterySaveActive: false,
+    lowForecastDischargeToTargetActive: false,
+    statusText: 'Zelfconsumptie',
+  };
+
+  const enteredAt = 1_000_000;
+  assert.equal(app.updateHybridEmsDelegation({ ...pure }, settings, enteredAt), true);
+  assert.equal(app.hybridEmsRuntime.delegated, true);
+  assert.equal(app.hybridEmsRuntime.takeover, false);
+  assert.equal(externalRequests, 1);
+
+  // Netimport vermijden is also delegated to the same external native
+  // self-consumption/zero-import controller when no HomeFlux strategy intervenes.
+  const avoidImport = { ...pure, baseMode: 'avoid_import', statusText: 'Netimport vermijden' };
+  assert.equal(app.updateHybridEmsDelegation(avoidImport, settings, enteredAt + 500), true);
+  assert.equal(app.hybridEmsRuntime.delegated, true);
+
+  const netCharge = { ...pure, gridChargeAssistW: 500, statusText: 'Netladen' };
+  assert.equal(app.updateHybridEmsDelegation(netCharge, settings, enteredAt + 1000), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
+
+  // Missing/stale P1 and every explicit override are hard HomeFlux/safety
+  // boundaries. Hybrid must never retain authority through either condition.
+  const staleGrid = { ...pure, inputReady: false, statusText: 'P1 ontbreekt' };
+  assert.equal(app.updateHybridEmsDelegation(staleGrid, settings, enteredAt + 1200), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
+  const peakGuard = { ...pure, override: 'peak_guard', statusText: 'Peak Guard' };
+  assert.equal(app.updateHybridEmsDelegation(peakGuard, settings, enteredAt + 1400), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
+
+  const lowPv = { ...pure, lowForecastDischargeToTargetActive: true, statusText: 'Lage PV' };
+  assert.equal(app.updateHybridEmsDelegation(lowPv, settings, enteredAt + 2000), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
+
+  // Planning reserves and HomeFlux SoC boundaries are not plain
+  // self-consumption. The external EMS must never be allowed to overrule them.
+  const protectedReserve = { ...pure, peakReserveProtected: true, statusText: 'Planning reserve' };
+  assert.equal(app.updateHybridEmsDelegation(protectedReserve, settings, enteredAt + 2200), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
+  const atFloor = { ...pure, batteryPauseCode: 'minimum_soc', statusText: 'Minimum SoC' };
+  assert.equal(app.updateHybridEmsDelegation(atFloor, settings, enteredAt + 2400), false);
+  const atMeasuredFloor = { ...pure, avgSoc: 20, batteryDischargeFloorSoc: 20, statusText: 'Safety floor' };
+  assert.equal(app.updateHybridEmsDelegation(atMeasuredFloor, settings, enteredAt + 2500), false);
+  const atMax = { ...pure, avgSoc: 95, statusText: 'Maximum SoC' };
+  assert.equal(app.updateHybridEmsDelegation(atMax, { ...settings, maxSoc: 95 }, enteredAt + 2600), false);
+
+  // Hybrid supports a complete external battery group. Only zero configured
+  // batteries makes the feature invalid.
+  assert.equal(app.isHybridEmsConfigured({ ...settings, batteryCount: 1 }), true);
+  assert.equal(app.isHybridEmsConfigured({ ...settings, batteryCount: 8 }), true);
+  assert.equal(app.updateHybridEmsDelegation({ ...pure }, { ...settings, batteryCount: 0 }, enteredAt + 3000), false);
+  assert.equal(app.hybridEmsRuntime.delegated, false);
+
+  // Re-enter valid Hybrid control and simulate one initial external feedback.
+  app.updateHybridEmsDelegation({ ...pure }, settings, enteredAt + 4000);
+  app.hybridEmsRuntime.externalSetpointW = 0;
+  app.hybridEmsRuntime.externalSetpointAt = enteredAt + 5000;
+  app.hybridEmsRuntime.externalSetpointChangedAt = enteredAt + 5000;
+  // The Hybrid watchdog uses its own configurable band, independent from the
+  // much tighter HomeFlux zero band. 250 W is therefore still acceptable here.
+  app.state.gridPowerW = 250;
+  const staleAt = enteredAt + 5000 + 120000;
+  app.monitorHybridExternalControl(settings, staleAt);
+  assert.equal(app.hybridEmsRuntime.staleOutsideSince, 0);
+
+  app.state.gridPowerW = 500; // outside Hybrid -300..+300 W band
+
+  // Once the unchanged external setpoint has been stale/out-of-band long
+  // enough, the first watchdog stage asks the external EMS to re-enter auto.
+  app.monitorHybridExternalControl(settings, staleAt);
+  assert.equal(app.hybridEmsRuntime.staleOutsideSince, staleAt);
+  app.monitorHybridExternalControl(settings, staleAt + (5 * 60 * 1000));
+  assert.equal(app.hybridEmsRuntime.status, 'retry_external_auto');
+  assert.equal(app.hybridEmsRuntime.retrySentAt, staleAt + (5 * 60 * 1000));
+  assert.equal(externalRequests, 3); // first entry, re-entry after priority mode, watchdog retry
+
+  // Repeated identical feedback does not count as an adjustment. After the
+  // second five-minute window HomeFlux resumes its own battery setpoints.
+  app.hybridEmsRuntime.externalSetpointAt = staleAt + (7 * 60 * 1000);
+  app.monitorHybridExternalControl(settings, staleAt + (10 * 60 * 1000) + 1);
+  assert.equal(app.hybridEmsRuntime.takeover, true);
+  assert.equal(app.hybridEmsRuntime.delegated, false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_fallback');
+  assert.equal(fastTakeovers, 1);
+  assert.equal(contextTakeovers, 1);
+}
+
+// v0.7.1: Peak Guard must use the REAL P1 value while Hybrid owns the
+// batteries. The normal engine may calculate a HomeFlux candidate that would
+// bring the predicted grid below the limit, but that candidate is deliberately
+// not published during external ownership and therefore cannot be used to keep
+// Hybrid delegated.
+{
+  const app = bareApp();
+  let externalRequests = 0;
+  app.externalEmsSelfConsumptionTrigger = { trigger: async () => { externalRequests += 1; return true; } };
+  app.hybridEmsRuntime = {
+    delegated: false, takeover: false, externalSetpointW: 50,
+    externalSetpointAt: 1_000_000, externalSetpointChangedAt: 1_000_000,
+    staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null,
+    modeRequestedAt: 0, status: 'inactive',
+  };
+  const settings = {
+    batteryCount: 4, hybridEmsEnabled: true, maxSoc: 95,
+    peakShaveEnabled: true, peakLimitW: 650, peakSoftMarginW: 100,
+  };
+  const normal = {
+    inputReady: true, controlEnabled: true, baseMode: 'self_consumption',
+    override: null, gridChargeAssistW: 0, lowForecastBatterySaveActive: false,
+    lowForecastDischargeToTargetActive: false, peakReserveProtected: false,
+    batteryPauseCode: '', avgSoc: 50, batteryDischargeFloorSoc: 20,
+    liveGridPowerW: 200, peakGuardExtraLoadW: 0, statusText: 'Zelfconsumptie',
+  };
+  assert.equal(app.updateHybridEmsDelegation({ ...normal }, settings, 1_100_000), true);
+  assert.equal(app.hybridEmsRuntime.delegated, true);
+
+  // Reproduce the reported case: Peak Guard 650 W, real P1 700 W. Even if the
+  // engine's hypothetical HomeFlux candidate predicts a safe result, HomeFlux
+  // must take ownership because that candidate is not being sent in Hybrid.
+  const breached = { ...normal, liveGridPowerW: 700, predictedGridW: 0, override: null };
+  assert.equal(app.isHybridPeakGuardRequired(breached, settings), true);
+  assert.equal(app.updateHybridEmsDelegation(breached, settings, 1_100_100), false);
+  assert.equal(app.hybridEmsRuntime.delegated, false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_peak_guard');
+
+  // Release uses the same configured Peak Guard safety margin. With a 650 W
+  // limit and 100 W margin, 500 W is outside the Peak Guard zone. HomeFlux must
+  // nevertheless keep ownership for five FULL stable minutes after recovery.
+  const recovered = { ...normal, liveGridPowerW: 500 };
+  const recoveredAt = 1_100_200;
+  assert.equal(app.isHybridPeakGuardRequired(recovered, settings), false);
+  assert.equal(app.updateHybridEmsDelegation(recovered, settings, recoveredAt), false);
+  assert.equal(app.hybridEmsRuntime.delegated, false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_peak_guard_cooldown');
+  assert.equal(app.hybridEmsRuntime.peakGuardCooldownUntil, recoveredAt + (5 * 60 * 1000));
+  assert.equal(externalRequests, 1);
+
+  // Just before five minutes have elapsed, HomeFlux still owns the batteries.
+  assert.equal(app.updateHybridEmsDelegation(recovered, settings, recoveredAt + (5 * 60 * 1000) - 1), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_peak_guard_cooldown');
+  assert.equal(externalRequests, 1);
+
+  // A fresh Peak Guard event during cooldown cancels that release window. The
+  // next recovery starts a NEW five-minute stable period from zero.
+  const rebreachAt = recoveredAt + (2 * 60 * 1000);
+  assert.equal(app.updateHybridEmsDelegation(breached, settings, rebreachAt), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_peak_guard');
+  assert.equal(app.hybridEmsRuntime.peakGuardCooldownUntil, 0);
+  const secondRecoveryAt = rebreachAt + 1000;
+  assert.equal(app.updateHybridEmsDelegation(recovered, settings, secondRecoveryAt), false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_peak_guard_cooldown');
+  assert.equal(app.hybridEmsRuntime.peakGuardCooldownUntil, secondRecoveryAt + (5 * 60 * 1000));
+
+  // Only after five uninterrupted minutes outside Peak Guard may the external
+  // EMS receive ownership again.
+  assert.equal(app.updateHybridEmsDelegation(recovered, settings, secondRecoveryAt + (5 * 60 * 1000)), true);
+  assert.equal(app.hybridEmsRuntime.delegated, true);
+  assert.equal(app.hybridEmsRuntime.status, 'external_control');
+  assert.equal(externalRequests, 2);
+}
+
+
+// v0.7.1 Hybrid ownership hardening: once delegation is ACTIVE, every HomeFlux
+// battery-output path stays silent. Pending pre-handover commands are dropped,
+// the calculated-setpoint Flow is suppressed, split safety resends are blocked,
+// and a watchdog/HomeFlux-priority takeover can publish again.
+(async () => {
+  const settings = {
+    batteryCount: 1,
+    hybridEmsEnabled: true,
+    commandIntervalSeconds: 3,
+    commandDeadbandW: 0,
+    gridZeroMinW: -5,
+    gridZeroMaxW: 25,
+    maxSoc: 95,
+    controlEnabled: true,
+    chargeTestPassed: true,
+    invertBatteryCommand: false,
+  };
+  const makeRuntime = (overrides = {}) => ({
+    delegated: true,
+    takeover: false,
+    externalSetpointW: 200,
+    externalSetpointAt: Date.now(),
+    externalSetpointChangedAt: Date.now(),
+    staleOutsideSince: 0,
+    retrySentAt: 0,
+    retryReferenceSetpointW: null,
+    modeRequestedAt: Date.now(),
+    status: 'external_control',
+    ...overrides,
+  });
+  const result = {
+    canPublishCommands: true,
+    controlEnabled: true,
+    inputReady: true,
+    candidateCommands: [700],
+    candidateTotalCommandW: 700,
+    calculatedCommands: [700],
+    calculatedTotalCommandW: 700,
+    outputTotalCommandW: 200,
+    baseMode: 'self_consumption',
+    modeLabel: 'Zelfconsumptie',
+    override: null,
+    overrideLabel: '',
+    statusText: 'Zelfconsumptie',
+    nextEventText: '',
+    _runFlexibleLoadPass: false,
+  };
+
+  // Entering delegation atomically drops a command that was waiting from the
+  // previous HomeFlux-owned pass.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime({ delegated: false, status: 'inactive' });
+    app.pendingResult = { ...result };
+    app.pendingCommandBypassInterval = true;
+    app.externalEmsSelfConsumptionTrigger = { trigger: async () => true };
+    const delegated = app.updateHybridEmsDelegation({
+      ...result,
+      avgSoc: 50,
+      gridChargeAssistW: 0,
+      lowForecastBatterySaveActive: false,
+      lowForecastDischargeToTargetActive: false,
+      peakReserveProtected: false,
+      batteryPauseCode: '',
+    }, settings, Date.now());
+    assert.equal(delegated, true);
+    assert.equal(app.pendingResult, null);
+    assert.equal(app.pendingCommandBypassInterval, false);
+  }
+
+  // No actual battery command/token/Flow may be emitted while delegated, even
+  // if a caller tries to queue or directly flush a stale result.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime();
+    let commandTriggers = 0;
+    let tokenWrites = 0;
+    app.commandTrigger = { trigger: async () => { commandTriggers += 1; } };
+    app.tokens = new Map([
+      ['battery1command', { setValue: async () => { tokenWrites += 1; } }],
+      ['emstotalcommand', { setValue: async () => { tokenWrites += 1; } }],
+    ]);
+    assert.equal(app.queueCommandEmit({ ...result }, true), false);
+    assert.equal(app.pendingResult, null);
+    app.pendingResult = { ...result };
+    await app.emitPending();
+    assert.equal(app.pendingResult, null);
+    assert.equal(commandTriggers, 0);
+    assert.equal(tokenWrites, 0);
+  }
+
+  // The informational calculated-setpoint Flow also remains silent during
+  // external ownership, because users could otherwise accidentally wire it as
+  // a battery adapter. It resumes immediately after HomeFlux takeover.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime();
+    let calculatedTriggers = 0;
+    app.calculatedSetpointTrigger = { trigger: async () => { calculatedTriggers += 1; } };
+    await app.triggerCalculatedSetpoint({ ...result });
+    assert.equal(calculatedTriggers, 0);
+    assert.equal(app.lastCalculatedSetpointSignature, null);
+    app.hybridEmsRuntime.takeover = true;
+    app.hybridEmsRuntime.delegated = false;
+    await app.triggerCalculatedSetpoint({ ...result });
+    assert.equal(calculatedTriggers, 1);
+  }
+
+  // Split-command's periodic mode safety resend is a separate output path and
+  // must obey the same ownership lock.
+  {
+    const app = bareApp();
+    const timers = [];
+    let modeResends = 0;
+    const splitSettings = {
+      ...settings,
+      splitCommandBattery1Enabled: true,
+      splitCommandBattery1SafetyModeResendEnabled: true,
+      splitCommandBattery1SafetyModeResendMinutes: 10,
+    };
+    app.getSettings = () => splitSettings;
+    app.hybridEmsRuntime = makeRuntime();
+    app.isChargeTestValid = () => true;
+    app.getBatteryCommandPauseInfo = () => ({ active: false });
+    app.homey.setTimeout = (callback, delay) => { const timer = { callback, delay }; timers.push(timer); return timer; };
+    app.splitCommandState = Array.from({ length: 8 }, (_, index) => ({ currentMode: index === 0 ? 'discharge' : null, chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: index === 0 ? 500 : null, lastSafetyModeResendAt: 0 }));
+    app.splitCommandTriggers = Array.from({ length: 8 }, (_, index) => index === 0
+      ? { chargeMode: null, dischargeMode: { trigger: async () => { modeResends += 1; } }, chargePower: null, dischargePower: null }
+      : { chargeMode: null, dischargeMode: null, chargePower: null, dischargePower: null });
+    app.scheduleSplitSafetyModeResend(0);
+    assert.equal(timers.length, 1);
+    await timers.shift().callback();
+    assert.equal(modeResends, 0);
+    const directSplit = await app.publishSplitBatteryCommands([900], splitSettings);
+    assert.equal(modeResends, 0);
+    assert.deepEqual(directSplit, [0]);
+  }
+
+  // If a command is already being published, Hybrid waits rather than taking
+  // ownership halfway through the async publication.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime({ delegated: false, status: 'inactive' });
+    app.commandPublishing = true;
+    let requests = 0;
+    app.externalEmsSelfConsumptionTrigger = { trigger: async () => { requests += 1; } };
+    const eligible = {
+      ...result,
+      avgSoc: 50,
+      gridChargeAssistW: 0,
+      lowForecastBatterySaveActive: false,
+      lowForecastDischargeToTargetActive: false,
+      peakReserveProtected: false,
+      batteryPauseCode: '',
+    };
+    app.pendingResult = { ...result };
+    assert.equal(app.updateHybridEmsDelegation(eligible, settings, Date.now()), false);
+    assert.equal(app.hybridEmsRuntime.status, 'handover_wait');
+    assert.equal(app.pendingResult, null);
+    assert.equal(requests, 0);
+    assert.equal(app.queueCommandEmit({ ...result }, true), false);
+    assert.equal(app.pendingResult, null);
+    app.commandPublishing = false;
+    assert.equal(app.updateHybridEmsDelegation(eligible, settings, Date.now() + 1), true);
+    assert.equal(requests, 1);
+  }
+
+  // A watchdog takeover re-opens the exact same output path. This proves
+  // Hybrid does not permanently suppress HomeFlux commands.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime({ delegated: false, takeover: true, status: 'homeflux_fallback' });
+    let commandTriggers = 0;
+    let batteryToken = null;
+    app.commandTrigger = { trigger: async () => { commandTriggers += 1; } };
+    app.tokens = new Map([
+      ['battery1command', { setValue: async value => { batteryToken = value; } }],
+      ['emstotalcommand', { setValue: async () => {} }],
+    ]);
+    app.recordSavingsSample = () => {};
+    app.publishSplitBatteryCommands = async commands => commands;
+    app.requestContextEvaluate = () => {};
+    app.pendingResult = { ...result };
+    await app.emitPending();
+    assert.equal(commandTriggers, 1);
+    assert.equal(batteryToken, 700);
+    assert.deepEqual(app.lastEmittedCommands, [700]);
+  }
+
+  // The same is true when Hybrid becomes ineligible because HomeFlux needs a
+  // higher-priority strategy (for example grid charging). Leaving delegation
+  // must reopen normal output immediately; external feedback may not retain
+  // authority merely because Hybrid was active one evaluation earlier.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime();
+    app.lastEmittedCommands = [200];
+    app.lastEmittedMode = 'external_self_consumption';
+    app.lastEmittedOverride = '';
+    let commandTriggers = 0;
+    let batteryToken = null;
+    app.commandTrigger = { trigger: async () => { commandTriggers += 1; } };
+    app.tokens = new Map([
+      ['battery1command', { setValue: async value => { batteryToken = value; } }],
+      ['emstotalcommand', { setValue: async () => {} }],
+    ]);
+    app.recordSavingsSample = () => {};
+    app.publishSplitBatteryCommands = async commands => commands;
+    app.requestContextEvaluate = () => {};
+    const priorityResult = {
+      ...result,
+      baseMode: 'self_consumption',
+      gridChargeAssistW: 500,
+      avgSoc: 50,
+      lowForecastBatterySaveActive: false,
+      lowForecastDischargeToTargetActive: false,
+      peakReserveProtected: false,
+      batteryPauseCode: '',
+    };
+    assert.equal(app.updateHybridEmsDelegation(priorityResult, settings, Date.now()), false);
+    assert.equal(app.hybridEmsRuntime.delegated, false);
+    assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
+    app.pendingResult = priorityResult;
+    await app.emitPending();
+    assert.equal(commandTriggers, 1);
+    assert.equal(batteryToken, 700);
+  }
+
+  // handover_wait is also output-locked for any stale/direct emit attempt. The
+  // already-running command is allowed to finish inside its own publication,
+  // but a second command can never start behind it.
+  {
+    const app = bareApp();
+    app.getSettings = () => settings;
+    app.hybridEmsRuntime = makeRuntime({ delegated: false, status: 'handover_wait' });
+    let commandTriggers = 0;
+    app.commandTrigger = { trigger: async () => { commandTriggers += 1; } };
+    app.tokens = new Map([['battery1command', { setValue: async () => {} }]]);
+    app.pendingResult = { ...result };
+    await app.emitPending();
+    assert.equal(app.pendingResult, null);
+    assert.equal(commandTriggers, 0);
+  }
+})().catch(err => {
+  console.error(err);
+  process.exitCode = 1;
+});
+
+// v0.7.1: the generic /input endpoint must not influence Hybrid EMS ownership.
+// The Hybrid watchdog is intentionally driven only by the supported live P1
+// Flow input (set_grid_power).
+{
+  const app = bareApp();
+  const settings = { batteryCount: 1, hybridEmsEnabled: true, controlEnabled: true, commandIntervalSeconds: 3 };
+  let watchdogCalls = 0;
+  app.getSettings = () => settings;
+  app.getInputReadiness = () => ({ ready: true });
+  app.recordSavingsSample = () => {};
+  app.needsSlowMeterContext = () => false;
+  app.monitorHybridExternalControl = () => { watchdogCalls += 1; };
+  app.checkFlexibleSafetyFromGrid = () => {};
+  app.requestEvaluate = () => true;
+  app.requestContextEvaluate = () => true;
+  app.setInput({ gridPowerW: 450 });
+  assert.equal(watchdogCalls, 0);
+}
+
+// v0.7.1: external EMS setpoint feedback is a true no-op while HomeFlux owns
+// the battery. Background feedback must not create Hybrid bookkeeping, savings
+// work or forced evaluations in the normal HomeFlux control loop.
+{
+  const app = bareApp();
+  let savingsSamples = 0;
+  let evaluations = 0;
+  app.recordSavingsSample = () => { savingsSamples += 1; };
+  app.requestEvaluate = () => { evaluations += 1; };
+  app.getSettings = () => ({ batteryCommandStepW: 100 });
+  app.hybridEmsRuntime = {
+    delegated: false, takeover: false, externalSetpointW: 111,
+    externalSetpointAt: 123, externalSetpointChangedAt: 123,
+    staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null,
+    modeRequestedAt: 0, status: 'homeflux_priority',
+  };
+  app.state.lastTotalCommandW = 700;
+  app.lastEmittedCommands = [700];
+  app.lastEmittedMode = 'self_consumption';
+
+  assert.equal(app.handleExternalEmsSetpoint(250, 2_000_000), true);
+  assert.equal(app.hybridEmsRuntime.externalSetpointW, 111);
+  assert.equal(app.hybridEmsRuntime.externalSetpointAt, 123);
+  assert.equal(app.state.lastTotalCommandW, 700);
+  assert.deepEqual(app.lastEmittedCommands, [700]);
+  assert.equal(app.lastEmittedMode, 'self_consumption');
+  assert.equal(savingsSamples, 0);
+  assert.equal(evaluations, 0);
+
+  // The same feedback becomes meaningful immediately after real delegation.
+  app.hybridEmsRuntime.delegated = true;
+  app.hybridEmsRuntime.status = 'external_control';
+  assert.equal(app.handleExternalEmsSetpoint(250, 2_000_100), true);
+  assert.equal(app.hybridEmsRuntime.externalSetpointW, 250);
+  assert.equal(app.hybridEmsRuntime.externalSetpointAt, 2_000_100);
+  assert.equal(app.state.lastTotalCommandW, 250);
+  assert.deepEqual(app.lastEmittedCommands, [250]);
+  assert.equal(app.lastEmittedMode, 'external_self_consumption');
+  assert.equal(savingsSamples, 1);
+  assert.equal(evaluations, 0, 'external feedback must not force an extra EMS evaluation');
+}
+
+// v0.7.1: recovering inside the Hybrid watchdog band fully clears an earlier
+// retry. A later deviation must start a new 5 + 5 minute cycle, not inherit an
+// old retry timestamp and trigger an immediate HomeFlux takeover.
+{
+  const app = bareApp();
+  const settings = {
+    batteryCount: 1, hybridEmsEnabled: true, hybridWatchdogMinW: -300,
+    hybridWatchdogMaxW: 300, commandIntervalSeconds: 10, batteryCommandStepW: 100,
+  };
+  app.getSettings = () => settings;
+  app.hybridEmsRuntime = {
+    delegated: true, takeover: false, externalSetpointW: 0,
+    externalSetpointAt: 1_000_000, externalSetpointChangedAt: 1_000_000,
+    staleOutsideSince: 900_000, retrySentAt: 950_000,
+    retryReferenceSetpointW: 0, modeRequestedAt: 800_000,
+    status: 'retry_external_auto',
+  };
+  app.state.gridPowerW = 250;
+  app.monitorHybridExternalControl(settings, 1_300_000);
+  assert.equal(app.hybridEmsRuntime.retrySentAt, 0);
+  assert.equal(app.hybridEmsRuntime.retryReferenceSetpointW, null);
+  assert.equal(app.hybridEmsRuntime.staleOutsideSince, 0);
+  assert.equal(app.hybridEmsRuntime.status, 'external_control');
 }

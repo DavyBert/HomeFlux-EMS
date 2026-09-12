@@ -5,6 +5,10 @@ module.exports = {
     return homey.app.getPublicStatus();
   },
 
+  async getHybridStatus({ homey }) {
+    return homey.app.getHybridEmsStatus();
+  },
+
   async getSettingsSnapshot({ homey }) {
     return homey.app.getSettingsSnapshot();
   },
@@ -57,8 +61,8 @@ module.exports = {
     return homey.app.startChargeTest();
   },
 
-  async confirmChargeTest({ homey }) {
-    return homey.app.confirmChargeTest();
+  async confirmChargeTest({ homey, body }) {
+    return homey.app.confirmChargeTest(body || {});
   },
 
   async testEvOutput({ homey, body }) {

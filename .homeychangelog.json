@@ -1,4 +1,8 @@
 {
+  "0.7.1": {
+    "en": "Reorganized EMS configuration, added two-step battery direction testing, renamed Finetuning to Autotune, introduced Hybrid EMS for external self-consumption control with one or multiple batteries, and changed the license to GPL-3.0-only.",
+    "nl": "EMS-configuratie heringedeeld, tweestaps batterijrichtingtest toegevoegd, Finetuning hernoemd naar Autotune, Hybrid EMS voor externe zelfconsumptiesturing met één of meerdere batterijen toegevoegd en de licentie gewijzigd naar GPL-3.0-only."
+  },
   "0.6.7": {
     "en": "Improved Automatic Finetuning interaction. Permission now belongs to the parameter itself, so a recommendation that disappears between rendering and clicking no longer causes an invalid-parameter error. Each recommendation now has Apply this time for a one-off adjustment and Do not check again to suppress future checks. Suppressed parameters are listed at the bottom of the Finetuning tab and can be re-enabled at any time.",
     "nl": "Automatic Finetuning verbeterd. Toestemming hoort nu bij de parameter zelf, zodat een aanbeveling die tussen weergave en klik verdwijnt geen fout over een ongeldige parameter meer veroorzaakt. Elke aanbeveling heeft nu Deze keer toepassen voor een eenmalige aanpassing en Niet meer controleren om toekomstige controles uit te schakelen. Uitgesloten parameters staan onderaan de Finetuning-tab en kunnen daar opnieuw geactiveerd worden."

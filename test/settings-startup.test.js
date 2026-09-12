@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.6.7');
+  assert.equal(manifest.version, '0.7.1');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -25,10 +25,19 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.6.7 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.6.7 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.1 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.1 — Your energy, managed differently');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
+assert.deepStrictEqual(composeJson.api.getHybridStatus, { method: 'GET', path: '/hybrid-status' });
+assert.deepStrictEqual(appJson.api.getHybridStatus, composeJson.api.getHybridStatus);
+assert(apiJs.includes('async getHybridStatus({ homey })'));
+assert(apiJs.includes('homey.app.getHybridEmsStatus()'));
+assert(appJs.includes('getHybridEmsStatus(settings = this.getSettings())'));
+assert(html.includes("Homey.api('GET', '/hybrid-status'"), 'Hybrid live status must use the lightweight endpoint');
+assert(html.includes("if (name === 'hybrid-ems') refreshHybridStatus();"), 'opening Hybrid tab must refresh live state');
+assert(html.includes("if (hybridTabOpen) refreshHybridStatus();"), 'open Hybrid tab must live-refresh');
+assert(!html.includes("if(q('hybridEmsEnabled')) q('hybridEmsEnabled').checked=Boolean(hybridStatus.enabled);"), 'live status refresh must not overwrite unsaved Hybrid settings');
 assert(apiJs.includes('async getAutoTune({ homey })'));
 assert(apiJs.includes('async refreshAutoTune({ homey })'));
 assert(apiJs.includes('async setAutoTunePermission({ homey, body })'));
@@ -79,7 +88,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 59"));
+assert(appJs.includes("settingsSchemaVersion', 60"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);

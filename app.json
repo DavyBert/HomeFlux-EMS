@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.6.7",
+  "version": "0.7.1",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -44,6 +44,10 @@
     "getStatus": {
       "method": "GET",
       "path": "/status"
+    },
+    "getHybridStatus": {
+      "method": "GET",
+      "path": "/hybrid-status"
     },
     "getSettingsSnapshot": {
       "method": "GET",
@@ -334,8 +338,8 @@
           "nl": "Nieuw batterij-setpoint berekend"
         },
         "hint": {
-          "en": "Fires when HomeFlux EMS calculates a different battery setpoint, before the minimum command interval decides when it may be published.",
-          "nl": "Start wanneer HomeFlux EMS een ander batterij-setpoint berekent, vóór het minimum stuurinterval bepaalt wanneer dit werkelijk gepubliceerd mag worden."
+          "en": "Fires when HomeFlux EMS calculates a different battery setpoint, before the minimum command interval decides when it may be published. It stays silent while Hybrid EMS has delegated battery control to an external EMS.",
+          "nl": "Start wanneer HomeFlux EMS een ander batterij-setpoint berekent, vóór het minimum stuurinterval bepaalt wanneer dit werkelijk gepubliceerd mag worden. De kaart blijft stil zolang Hybrid EMS de batterijregeling aan een externe EMS heeft gedelegeerd."
         },
         "tokens": [
           {
@@ -1216,6 +1220,37 @@
           }
         ],
         "id": "ev4_charging_allowed_updated"
+      },
+      {
+        "title": {
+          "en": "Set external EMS to self consumption",
+          "nl": "Stel externe EMS in op zelfconsumptie"
+        },
+        "hint": {
+          "en": "Fires when Hybrid EMS delegates pure self-consumption to the external EMS, and once more if the watchdog requests a retry.",
+          "nl": "Start wanneer Hybrid EMS pure zelfconsumptie overdraagt aan de externe EMS en nogmaals wanneer de watchdog een nieuwe poging vraagt."
+        },
+        "tokens": [
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "pure_self_consumption"
+          },
+          {
+            "name": "retry",
+            "type": "number",
+            "title": {
+              "en": "Retry (0/1)",
+              "nl": "Nieuwe poging (0/1)"
+            },
+            "example": 0
+          }
+        ],
+        "id": "external_ems_self_consumption_requested"
       },
       {
         "title": {
@@ -4525,6 +4560,34 @@
           "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]"
         },
         "id": "set_external_electricity_price_curve"
+      },
+      {
+        "title": {
+          "en": "Set external EMS battery setpoint",
+          "nl": "Stel batterijsetpoint externe EMS in"
+        },
+        "hint": {
+          "en": "Feed the actual battery setpoint used by the external EMS back to HomeFlux while Hybrid EMS is delegated. Positive = discharge, negative = charge.",
+          "nl": "Geef tijdens Hybrid EMS het werkelijk gebruikte batterijsetpoint van de externe EMS terug aan HomeFlux. Positief = ontladen, negatief = laden."
+        },
+        "args": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "External EMS setpoint (W)",
+              "nl": "Setpoint externe EMS (W)"
+            },
+            "min": -50000,
+            "max": 50000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set external EMS battery setpoint to [[power]] W",
+          "nl": "Stel batterijsetpoint externe EMS in op [[power]] W"
+        },
+        "id": "set_external_ems_setpoint"
       },
       {
         "title": {

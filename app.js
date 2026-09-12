@@ -74,9 +74,11 @@ class HomeFluxEmsApp extends Homey.App {
     this.pendingCommandBypassInterval = false;
     this.chargeTestRunning = false;
     this.chargeTestAwaitingConfirmation = false;
+    this.chargeTestStage = '';
     this.chargeTestTimer = null;
     this.chargeTestLastRunAt = 0;
     this.chargeTestSignatureAtRun = '';
+    this.hybridEmsRuntime = { delegated: false, takeover: false, externalSetpointW: null, externalSetpointAt: 0, externalSetpointChangedAt: 0, staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: 0, peakGuardWasActive: false, peakGuardCooldownUntil: 0, status: 'inactive' };
     this.controlTimer = null;
     // v0.3.57: the fast battery regulator is separated from slower context work.
     // P1/PV changes only run the battery path. EV, HVAC, boiler, tariffs, status
@@ -376,6 +378,8 @@ class HomeFluxEmsApp extends Homey.App {
             this.pendingCommandBypassInterval = false;
             this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
           }
+          if (this.getBatteryCount() === 0 && Boolean(this.getSettings().hybridEmsEnabled)) this.setSetting('hybridEmsEnabled', false);
+          this.resetHybridEmsRuntime('battery_count_changed');
           await this.syncTokens();
         } else if (key === 'evCount' || key === 'hvacCount') {
           await this.syncTokens();
@@ -424,6 +428,11 @@ class HomeFluxEmsApp extends Homey.App {
               this.setSetting(this.getEvSettingKey(index, 'Mode'), 'smart');
             }
           }
+        }
+        if (key === 'hybridEmsEnabled') {
+          const hybridSettings = this.getSettings();
+          if (Boolean(hybridSettings.hybridEmsEnabled) && this.getBatteryCount(hybridSettings) === 0) this.setSetting('hybridEmsEnabled', false);
+          this.resetHybridEmsRuntime('hybrid_setting_changed');
         }
         if (key === 'batteryCount' || key === 'invertBatteryCommand') {
           await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
@@ -481,7 +490,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.6.7 initialized');
+    this.log('HomeFlux EMS v0.7.1 initialized');
   }
 
   refreshSettingsCache() {
@@ -1605,7 +1614,8 @@ class HomeFluxEmsApp extends Homey.App {
       const cooldownMs = dailyLearnedKeys.has(key) ? 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
       if (!force && now - Number(lastApplied[key] || 0) < cooldownMs) continue;
       const current = Number(this.getSettings()[key]);
-      const next = Number(recommendation.recommended);
+      let next = Number(recommendation.recommended);
+      if (key === 'commandIntervalSeconds') next = Math.max(3, next);
       if (!Number.isFinite(current) || !Number.isFinite(next) || Math.abs(current - next) < 1e-9) continue;
       this.setSetting(key, next);
       lastApplied[key] = now;
@@ -1626,7 +1636,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settingKey = String(body.settingKey || '').trim();
     const allowed = Boolean(body.allowed);
     const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
-    if (!descriptor) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
 
     // Permission belongs to the parameter, not to one transient recommendation.
     // A recommendation may disappear between rendering the tab and clicking the
@@ -1648,6 +1658,13 @@ class HomeFluxEmsApp extends Homey.App {
     this.setSetting('_autoTunePermissions', permissions);
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     this.autoTuneRuntime.permissions = { ...permissions };
+    if (allowed && settingKey === 'commandIntervalSeconds') {
+      const currentInterval = Number(this.getSettings().commandIntervalSeconds);
+      if (Number.isFinite(currentInterval) && currentInterval < 3) {
+        this.setSetting('commandIntervalSeconds', 3);
+        this.appendAutoTuneHistory({ at: Date.now(), settingKey, scope: descriptor.scope, titleNl: descriptor.titleNl, titleEn: descriptor.titleEn, from: currentInterval, to: 3, unit: descriptor.unit, confidence: 100, source: 'automatic-safety-floor' });
+      }
+    }
     if (allowed && recommendation?.canAutoManage) await this.applyAutoTuneRecommendations({ onlyKey: settingKey, force: true });
     return this.getAutoTuneStatus();
   }
@@ -1655,13 +1672,13 @@ class HomeFluxEmsApp extends Homey.App {
   async applyAutoTuneRecommendationOnce(body = {}) {
     const settingKey = String(body.settingKey || '').trim();
     const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
-    if (!descriptor) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
     const recommendation = this.getAutoTuneRecommendations().find(item => item.settingKey === settingKey);
-    if (!recommendation) throw new Error('Deze aanbeveling is intussen niet meer actief. Vernieuw Finetuning en probeer opnieuw.');
+    if (!recommendation) throw new Error('Deze aanbeveling is intussen niet meer actief. Vernieuw Autotune en probeer opnieuw.');
 
     const current = Number(this.getSettings()[settingKey]);
     const next = Number(recommendation.recommended);
-    if (!Number.isFinite(current) || !Number.isFinite(next)) throw new Error('Deze finetuningwaarde kan niet veilig worden toegepast.');
+    if (!Number.isFinite(current) || !Number.isFinite(next)) throw new Error('Deze Autotune-waarde kan niet veilig worden toegepast.');
     if (Math.abs(current - next) < 1e-9) return this.getAutoTuneStatus();
 
     const now = Date.now();
@@ -1682,7 +1699,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settingKey = String(body.settingKey || '').trim();
     const shouldIgnore = Boolean(body.ignored);
     const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
-    if (!descriptor) throw new Error('Onbekende of niet-beheerbare finetuningparameter.');
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
 
     const ignored = this.getAutoTuneIgnored();
     const permissions = this.getAutoTunePermissions();
@@ -1707,7 +1724,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (!Object.values(permissions).some(Boolean)) return;
     if (now - Number(this.autoTuneRuntime.lastAutoManageCheckAt || 0) < 30 * 60 * 1000) return;
     this.autoTuneRuntime.lastAutoManageCheckAt = now;
-    this.applyAutoTuneRecommendations().catch(err => this.error('Automatic finetuning failed', err));
+    this.applyAutoTuneRecommendations().catch(err => this.error('Automatic Autotune failed', err));
   }
 
   getSlowControlIntervalMs(settings = this.getSettings()) {
@@ -2982,7 +2999,12 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('_autoTuneIgnored') === null) this.setSetting('_autoTuneIgnored', {});
     }
 
-    this.setSetting('settingsSchemaVersion', 59);
+    if (schema < 60) {
+      // v0.7.1: Hybrid EMS is opt-in and requires at least one configured battery.
+      if (this.homey.settings.get('hybridEmsEnabled') === null) this.setSetting('hybridEmsEnabled', false);
+    }
+
+    this.setSetting('settingsSchemaVersion', 60);
   }
 
   async ensureDefaults() {
@@ -3287,7 +3309,7 @@ class HomeFluxEmsApp extends Homey.App {
         // value. It is only a periodic retry of the currently active mode Flow.
         const outputActive = Boolean(latestSettings.controlEnabled) && this.isChargeTestValid(latestSettings);
         const pauseInfo = this.getBatteryCommandPauseInfo(Date.now(), latestSettings);
-        if (outputActive && !pauseInfo.active) {
+        if (outputActive && !pauseInfo.active && !this.isHybridExternalControlActive(latestSettings)) {
           const triggers = this.splitCommandTriggers[index] || {};
           const modeTrigger = state.currentMode === 'charge' ? triggers.chargeMode : triggers.dischargeMode;
           if (modeTrigger) {
@@ -3339,6 +3361,12 @@ class HomeFluxEmsApp extends Homey.App {
   async publishSplitBatteryCommands(internalCommands, settings = this.getSettings(), options = {}) {
     this.ensureSplitCommandState();
     const count = this.getBatteryCount(settings);
+    // Defense in depth: split-command cards are a separate physical battery
+    // output surface. Even a future/direct caller must not bypass Hybrid
+    // ownership just because emitPending() already has its own guard.
+    if (this.isHybridExternalControlActive(settings)) {
+      return Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0);
+    }
     const now = Date.now();
     const effectiveInternalCommands = internalCommands.slice(0, count);
     const publishJobs = [];
@@ -3488,94 +3516,98 @@ class HomeFluxEmsApp extends Homey.App {
 
   async startChargeTest() {
     const settings = this.getSettings();
-    if (this.getBatteryCount(settings) === 0) throw new Error('Geen thuisbatterij geconfigureerd. Een laadtest is niet nodig.');
+    if (this.getBatteryCount(settings) === 0) throw new Error('Geen thuisbatterij geconfigureerd. Een batterijtest is niet nodig.');
     if (Boolean(settings.controlEnabled)) {
-      // Defensive self-heal for upgrades from versions that could leave the
-      // stored switch ON while the charge-test signature had already become
-      // invalid. Effective output is already blocked in that state, so make
-      // the persisted value match reality and allow the required retest.
       if (!this.isChargeTestValid(settings)) {
         this.setSetting('controlEnabled', false);
         settings.controlEnabled = false;
       } else {
-        throw new Error('Schakel EMS-uitvoer eerst uit voordat je de laadtest start.');
+        throw new Error('Schakel EMS-uitvoer eerst uit voordat je de batterijtest start.');
       }
     }
-    if (this.chargeTestRunning) throw new Error('De laadtest is al actief.');
+    if (this.chargeTestRunning) throw new Error('De batterijtest is al actief.');
     if (this.commandPublishing) throw new Error('Er wordt momenteel al een batterijcommando gepubliceerd. Probeer opnieuw zodra dat klaar is.');
 
     await this.invalidateChargeTest();
+    // A battery direction test is an explicit manual diagnostic and must own
+    // the battery output while it runs. Drop any active Hybrid delegation first
+    // so the test command path (including split command) cannot be suppressed
+    // or compete with the external-control ownership latch.
+    this.resetHybridEmsRuntime('battery_test');
     this.pendingResult = null;
     this.pendingCommandBypassInterval = false;
-    if (this.emitTimer) {
-      clearTimeout(this.emitTimer);
-      this.emitTimer = null;
-    }
-    if (this.controlTimer) {
-      clearTimeout(this.controlTimer);
-      this.controlTimer = null;
-    }
-    if (this.chargeTestTimer) {
-      clearTimeout(this.chargeTestTimer);
-      this.chargeTestTimer = null;
-    }
+    if (this.emitTimer) { clearTimeout(this.emitTimer); this.emitTimer = null; }
+    if (this.controlTimer) { clearTimeout(this.controlTimer); this.controlTimer = null; }
+    if (this.chargeTestTimer) { clearTimeout(this.chargeTestTimer); this.chargeTestTimer = null; }
 
     await this.syncTokens();
     const current = this.getSettings();
     const count = this.getBatteryCount(current);
-    const testInternalCommands = Array(count).fill(-100); // Internal convention: negative = charge.
     this.chargeTestRunning = true;
-    this.chargeTestAwaitingConfirmation = false;
+    this.chargeTestAwaitingConfirmation = true;
+    this.chargeTestStage = 'charge';
     this.chargeTestLastRunAt = Date.now();
     this.chargeTestSignatureAtRun = this.getChargeTestSignature(current);
     let published;
     try {
-      published = await this.publishChargeTestCommands(testInternalCommands, 'Laadtest · 100 W laden per batterij');
+      published = await this.publishChargeTestCommands(Array(count).fill(-100), 'Batterijtest · laadtest 100 W per batterij · wacht op bevestiging');
     } catch (err) {
-      // If the start publication is only partially successful, immediately make
-      // a best-effort attempt to put every output back at 0 W.
-      try { await this.publishChargeTestCommands(Array(count).fill(0), 'Laadtest afgebroken · 0 W'); } catch (_) {}
+      try { await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest afgebroken · 0 W'); } catch (_) {}
       this.chargeTestRunning = false;
       this.chargeTestAwaitingConfirmation = false;
+      this.chargeTestStage = '';
       throw err;
     }
-
-    this.chargeTestTimer = this.homey.setTimeout(async () => {
-      this.chargeTestTimer = null;
-      try {
-        await this.publishChargeTestCommands(Array(count).fill(0), 'Laadtest beëindigd · controleer of alle batterijen laadden');
-        this.chargeTestRunning = false;
-        this.chargeTestAwaitingConfirmation = this.chargeTestSignatureAtRun === this.getChargeTestSignature(this.getSettings());
-      } catch (err) {
-        this.chargeTestRunning = false;
-        this.chargeTestAwaitingConfirmation = false;
-        this.error('Laadtest kon niet veilig naar 0 W terugkeren', err);
-      }
-    }, 10000);
-
-    return {
-      ok: true,
-      running: true,
-      durationSeconds: 10,
-      batteryCount: count,
-      commandPerBatteryW: published.commands[0] || 0,
-      inverted: Boolean(current.invertBatteryCommand),
-    };
+    return { ok: true, running: true, stage: 'charge', batteryCount: count, commandPerBatteryW: published.commands[0] || 0, inverted: Boolean(current.invertBatteryCommand) };
   }
 
-  async confirmChargeTest() {
-    if (this.chargeTestRunning) throw new Error('De laadtest is nog actief. Wacht tot de test automatisch op 0 W is teruggezet.');
-    if (!this.chargeTestAwaitingConfirmation) throw new Error('Voer eerst de laadtest uit voordat je ze als geslaagd bevestigt.');
+  async confirmChargeTest(body = {}) {
+    const accepted = body.ok !== false;
+    if (!this.chargeTestRunning || !this.chargeTestAwaitingConfirmation || !['charge','discharge'].includes(this.chargeTestStage)) {
+      throw new Error('Start eerst de batterijtest.');
+    }
     const settings = this.getSettings();
+    const count = this.getBatteryCount(settings);
     const currentSignature = this.getChargeTestSignature(settings);
     if (!this.chargeTestSignatureAtRun || this.chargeTestSignatureAtRun !== currentSignature) {
+      try { await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest afgebroken · configuratie gewijzigd'); } catch (_) {}
+      this.chargeTestRunning = false;
       this.chargeTestAwaitingConfirmation = false;
-      throw new Error('De batterijconfiguratie of tekenrichting wijzigde sinds de laadtest. Voer de test opnieuw uit.');
+      this.chargeTestStage = '';
+      throw new Error('De batterijconfiguratie of tekenrichting wijzigde tijdens de test. Voer de batterijtest opnieuw uit.');
     }
+
+    if (!accepted) {
+      await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest niet geslaagd · 0 W');
+      this.chargeTestRunning = false;
+      this.chargeTestAwaitingConfirmation = false;
+      const failedStage = this.chargeTestStage;
+      this.chargeTestStage = 'failed';
+      return { ok: true, passed: false, failed: true, stage: failedStage };
+    }
+
+    if (this.chargeTestStage === 'charge') {
+      let published;
+      try {
+        published = await this.publishChargeTestCommands(Array(count).fill(100), 'Batterijtest · ontlaadtest 100 W per batterij · wacht op bevestiging');
+      } catch (err) {
+        try { await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest afgebroken · 0 W'); } catch (_) {}
+        this.chargeTestRunning = false;
+        this.chargeTestAwaitingConfirmation = false;
+        this.chargeTestStage = '';
+        throw err;
+      }
+      this.chargeTestStage = 'discharge';
+      return { ok: true, running: true, passed: false, stage: 'discharge', commandPerBatteryW: published.commands[0] || 0 };
+    }
+
+    await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest geslaagd · 0 W');
     this.setSetting('_chargeTestSignature', currentSignature);
     this.setSetting('chargeTestPassed', true);
+    this.chargeTestRunning = false;
     this.chargeTestAwaitingConfirmation = false;
-    return { ok: true, passed: true };
+    this.chargeTestStage = 'passed';
+    return { ok: true, passed: true, stage: 'passed' };
   }
 
   normalizeForcedMode(mode) {
@@ -3850,6 +3882,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.hvacFanTrigger = this.homey.flow.getTriggerCard('hvac1_fan_updated');
     this.boilerTrigger = this.homey.flow.getTriggerCard('boiler_power_updated');
     this.boilerWarmedTrigger = this.homey.flow.getTriggerCard('boiler_warmed_updated');
+    this.externalEmsSelfConsumptionTrigger = this.homey.flow.getTriggerCard('external_ems_self_consumption_requested');
     this.extraEvTriggers = Array.from({ length: 3 }, (_, offset) => {
       const instance = offset + 2;
       return {
@@ -3886,6 +3919,9 @@ class HomeFluxEmsApp extends Homey.App {
         this.homey.flow.getTriggerCard(`request_battery${index + 1}_soc_needed`)),
     };
 
+    this.homey.flow.getActionCard('set_external_ems_setpoint').registerRunListener(async args =>
+      this.handleExternalEmsSetpoint(args.power));
+
     this.homey.flow.getActionCard('set_grid_power').registerRunListener(async args => {
       const value = Number(args.power);
       if (!Number.isFinite(value)) return false;
@@ -3899,6 +3935,12 @@ class HomeFluxEmsApp extends Homey.App {
       this.recordGridSample(value, now);
       this.updateAdaptiveSetpointDetection(value, inputSettings, now);
       this.checkFlexibleSafetyFromGrid(now, inputSettings);
+      // Do not even enter the Hybrid watchdog while HomeFlux owns the battery.
+      // The external EMS may keep publishing feedback in the background, but
+      // that must not add Hybrid work to the normal HomeFlux control loop.
+      if (this.hybridEmsRuntime?.delegated && !this.hybridEmsRuntime?.takeover) {
+        this.monitorHybridExternalControl(inputSettings, now);
+      }
       const contextGridDelta = this.lastContextGridInputW === null ? Infinity : Math.abs(value - this.lastContextGridInputW);
       if (this.needsSlowMeterContext(inputSettings)
         && (contextGridDelta >= 100 || this.hasActiveFlexibleOutput(inputSettings))) {
@@ -9142,6 +9184,300 @@ class HomeFluxEmsApp extends Homey.App {
     return true;
   }
 
+  resetHybridEmsRuntime(reason = 'reset') {
+    const previous = this.hybridEmsRuntime || {};
+    this.hybridEmsRuntime = { delegated: false, takeover: false, externalSetpointW: previous.externalSetpointW ?? null, externalSetpointAt: Number(previous.externalSetpointAt) || 0, externalSetpointChangedAt: Number(previous.externalSetpointChangedAt) || 0, staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: 0, peakGuardWasActive: Boolean(previous.peakGuardWasActive), peakGuardCooldownUntil: Math.max(0, Number(previous.peakGuardCooldownUntil) || 0), status: reason === 'hybrid_setting_changed' ? 'inactive' : String(reason || 'inactive') };
+  }
+
+  isHybridEmsConfigured(settings = this.getSettings()) {
+    return Boolean(settings.hybridEmsEnabled) && this.getBatteryCount(settings) > 0;
+  }
+
+  isHybridExternalControlActive(settings = this.getSettings()) {
+    const runtime = this.hybridEmsRuntime || {};
+    return this.isHybridEmsConfigured(settings)
+      && Boolean(runtime.delegated)
+      && !Boolean(runtime.takeover);
+  }
+
+  getHybridEmsStatus(settings = this.getSettings()) {
+    const runtime = this.hybridEmsRuntime || {};
+    const batteryCount = this.getBatteryCount(settings);
+    const peakGuardCooldownUntil = Math.max(0, Number(runtime.peakGuardCooldownUntil) || 0);
+    const peakGuardCooldownRemainingSeconds = peakGuardCooldownUntil > Date.now()
+      ? Math.max(0, Math.ceil((peakGuardCooldownUntil - Date.now()) / 1000))
+      : 0;
+    const rawMin = Number(settings.hybridWatchdogMinW);
+    const rawMax = Number(settings.hybridWatchdogMaxW);
+    const minValue = Number.isFinite(rawMin) ? rawMin : -300;
+    const maxValue = Number.isFinite(rawMax) ? rawMax : 300;
+    return {
+      enabled: Boolean(settings.hybridEmsEnabled),
+      available: batteryCount > 0,
+      configured: this.isHybridEmsConfigured(settings),
+      delegated: Boolean(runtime.delegated) && !Boolean(runtime.takeover),
+      takeover: Boolean(runtime.takeover),
+      status: String(runtime.status || 'inactive'),
+      externalSetpointW: Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null,
+      externalSetpointAt: Number(runtime.externalSetpointAt) || 0,
+      retrySentAt: Number(runtime.retrySentAt) || 0,
+      peakGuardCooldownUntil,
+      peakGuardCooldownRemainingSeconds,
+      gridBandMinW: Math.min(minValue, maxValue),
+      gridBandMaxW: Math.max(minValue, maxValue),
+    };
+  }
+
+  isHybridPeakGuardRequired(result, settings = this.getSettings()) {
+    if (!Boolean(settings.peakShaveEnabled)) return false;
+    const liveGridW = Number(result?.liveGridPowerW);
+    if (!Number.isFinite(liveGridW)) return false;
+    const extraLoadW = Math.max(0, Number(result?.peakGuardExtraLoadW) || 0);
+    const configuredPeakLimitW = Number(settings.peakLimitW);
+    const peakLimitW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : Number(DEFAULTS.peakLimitW) || 2500);
+    const configuredSoftMarginW = Number(settings.peakSoftMarginW);
+    const softMarginW = Math.max(0, Number.isFinite(configuredSoftMarginW) ? configuredSoftMarginW : Number(DEFAULTS.peakSoftMarginW) || 100);
+    const softPeakW = Math.max(0, peakLimitW - softMarginW);
+    // During Hybrid ownership the ordinary HomeFlux candidate is NOT published.
+    // Therefore Peak Guard ownership must be decided from the real P1 import,
+    // not from the predicted grid after a hypothetical HomeFlux battery command.
+    return liveGridW + extraLoadW >= softPeakW;
+  }
+
+  updateHybridPeakGuardCooldown(result, settings = this.getSettings(), now = Date.now()) {
+    const runtime = this.hybridEmsRuntime || {};
+    const required = this.isHybridPeakGuardRequired(result, settings);
+    const fiveMinutes = 5 * 60 * 1000;
+    if (required) {
+      // A fresh Peak Guard event immediately gives HomeFlux ownership. Do not
+      // start the release timer yet: the user gets five FULL stable minutes
+      // only after the measured P1 has actually left the Peak Guard zone.
+      runtime.peakGuardWasActive = true;
+      runtime.peakGuardCooldownUntil = 0;
+      return { required: true, cooldownActive: false, cooldownUntil: 0 };
+    }
+    if (runtime.peakGuardWasActive) {
+      runtime.peakGuardWasActive = false;
+      runtime.peakGuardCooldownUntil = now + fiveMinutes;
+    }
+    const cooldownUntil = Math.max(0, Number(runtime.peakGuardCooldownUntil) || 0);
+    const cooldownActive = cooldownUntil > now;
+    if (!cooldownActive && cooldownUntil) runtime.peakGuardCooldownUntil = 0;
+    return { required: false, cooldownActive, cooldownUntil: cooldownActive ? cooldownUntil : 0 };
+  }
+
+  isHybridExternalControlEligible(result, settings = this.getSettings()) {
+    const baseMode = String(result?.baseMode || '');
+    const avgSoc = Number(result?.avgSoc);
+    const configuredMaxSoc = Number(settings.maxSoc);
+    const dischargeFloorSoc = Number(result?.batteryDischargeFloorSoc);
+    const atConfiguredLowerDischargeLimit = Number.isFinite(avgSoc)
+      && Number.isFinite(dischargeFloorSoc)
+      && avgSoc <= dischargeFloorSoc + 0.05;
+    const atConfiguredUpperSocLimit = Number.isFinite(avgSoc)
+      && Number.isFinite(configuredMaxSoc)
+      && avgSoc >= configuredMaxSoc - 0.05;
+    return this.isHybridEmsConfigured(settings)
+      && Boolean(result?.inputReady)
+      && Boolean(result?.controlEnabled)
+      && ['self_consumption', 'avoid_import'].includes(baseMode)
+      // Peak Guard is always a HomeFlux priority. In Hybrid mode this uses the
+      // measured P1 value because the calculated HomeFlux candidate is not sent
+      // while the external EMS owns the battery group.
+      && !this.isHybridPeakGuardRequired(result, settings)
+      && !result?.override
+      && Math.max(0, Number(result?.gridChargeAssistW) || 0) <= 0
+      && !Boolean(result?.lowForecastBatterySaveActive)
+      && !Boolean(result?.lowForecastDischargeToTargetActive)
+      // Hybrid may only own plain zero-import/self-consumption behaviour. Any
+      // HomeFlux reserve/floor decision must stay authoritative, otherwise a
+      // native EMS could discharge through a planning or safety boundary.
+      && !Boolean(result?.peakReserveProtected)
+      && !String(result?.batteryPauseCode || '')
+      && !atConfiguredLowerDischargeLimit
+      // At HomeFlux' configured upper SoC limit, keep control local as well so
+      // an external native EMS cannot keep charging past a HomeFlux limit that
+      // may be lower than the battery/BMS limit.
+      && !atConfiguredUpperSocLimit;
+  }
+
+  async requestExternalEmsSelfConsumption(reason = 'delegate', retry = false) {
+    if (!this.externalEmsSelfConsumptionTrigger) return false;
+    try {
+      await this.externalEmsSelfConsumptionTrigger.trigger({ reason: String(reason), retry: retry ? 1 : 0 }, {});
+      return true;
+    } catch (err) {
+      this.error('External EMS self-consumption trigger failed', err);
+      return false;
+    }
+  }
+
+  updateHybridEmsDelegation(result, settings, now = Date.now()) {
+    const runtime = this.hybridEmsRuntime;
+    const configured = this.isHybridEmsConfigured(settings);
+    const peakGuardState = configured
+      ? this.updateHybridPeakGuardCooldown(result, settings, now)
+      : { required: false, cooldownActive: false, cooldownUntil: 0 };
+    const peakGuardRequired = Boolean(peakGuardState.required);
+    const peakGuardCooldownActive = Boolean(peakGuardState.cooldownActive);
+    const eligible = this.isHybridExternalControlEligible(result, settings) && !peakGuardCooldownActive;
+    if (!configured) {
+      if (runtime.delegated || runtime.takeover) this.resetHybridEmsRuntime('inactive');
+    } else if (!eligible) {
+      runtime.delegated = false;
+      runtime.takeover = false;
+      runtime.staleOutsideSince = 0;
+      runtime.retrySentAt = 0;
+      runtime.retryReferenceSetpointW = null;
+      runtime.status = peakGuardRequired
+        ? 'homeflux_peak_guard'
+        : (peakGuardCooldownActive ? 'homeflux_peak_guard_cooldown' : 'homeflux_priority');
+    } else if (!runtime.takeover) {
+      if (!runtime.delegated) {
+        // Never switch ownership while a HomeFlux battery publication is in
+        // flight. That publication is allowed to finish atomically; a fresh
+        // context pass hands over immediately afterwards.
+        if (this.commandPublishing) {
+          // The current publication may finish, but nothing calculated behind
+          // it may queue. Once it completes, emitPending() schedules a fresh
+          // context pass and that pass performs the actual handover.
+          this.pendingResult = null;
+          this.pendingCommandBypassInterval = false;
+          runtime.status = 'handover_wait';
+        } else {
+          // Drop any command that was calculated before the handover. From this
+          // exact point onward no HomeFlux battery-output path may publish until
+          // delegation ends or the watchdog takes control back.
+          this.pendingResult = null;
+          this.pendingCommandBypassInterval = false;
+          runtime.delegated = true;
+          runtime.modeRequestedAt = now;
+          runtime.staleOutsideSince = 0;
+          runtime.retrySentAt = 0;
+          runtime.status = 'external_control';
+          this.lastCalculatedSetpointSignature = null;
+          this.requestExternalEmsSelfConsumption(String(result?.baseMode || '') === 'avoid_import' ? 'avoid_grid_import' : 'self_consumption', false);
+        }
+      }
+    } else {
+      runtime.status = 'homeflux_fallback';
+    }
+    const delegated = configured && eligible && runtime.delegated && !runtime.takeover;
+    result.hybridEms = {
+      enabled: Boolean(settings.hybridEmsEnabled), configured, delegated,
+      takeover: Boolean(runtime.takeover), status: runtime.status,
+      externalSetpointW: Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null,
+      externalSetpointAt: Number(runtime.externalSetpointAt) || 0,
+      retrySentAt: Number(runtime.retrySentAt) || 0,
+      peakGuardCooldownUntil: Math.max(0, Number(runtime.peakGuardCooldownUntil) || 0),
+      peakGuardCooldownRemainingSeconds: Math.max(0, Math.ceil(((Number(runtime.peakGuardCooldownUntil) || 0) - now) / 1000)),
+    };
+    if (delegated) result.statusText = `${result.statusText} · Hybrid EMS: externe EMS regelt ${String(result?.baseMode || '') === 'avoid_import' ? 'netimport vermijden' : 'zelfconsumptie'}`;
+    else if (configured && runtime.takeover) result.statusText = `${result.statusText} · Hybrid EMS fallback: HomeFlux heeft controle overgenomen`;
+    else if (configured && runtime.status === 'homeflux_peak_guard_cooldown') {
+      const remainingSeconds = Math.max(0, Math.ceil(((Number(runtime.peakGuardCooldownUntil) || 0) - now) / 1000));
+      result.statusText = `${result.statusText} · Hybrid EMS: Peak Guard cooldown ${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+    }
+    return delegated;
+  }
+
+  handleExternalEmsSetpoint(power, now = Date.now()) {
+    const value = Number(power);
+    if (!Number.isFinite(value)) return false;
+    const runtime = this.hybridEmsRuntime;
+
+    // External feedback only has meaning while the external EMS actually owns
+    // the battery. When HomeFlux has control, ignore background setpoints at the
+    // earliest possible point: no bookkeeping, no savings sample and no forced
+    // EMS evaluation. This keeps Hybrid completely out of the normal control loop.
+    if (!runtime?.delegated || runtime.takeover) return true;
+
+    const previous = Number(runtime.externalSetpointW);
+    runtime.externalSetpointW = value;
+    runtime.externalSetpointAt = now;
+    if (!Number.isFinite(previous) || Math.abs(previous - value) >= 1) runtime.externalSetpointChangedAt = now;
+
+    this.recordSavingsSample(now);
+    this.state.lastTotalCommandW = value;
+    this.lastEmittedCommands = [value];
+    this.lastEmittedMode = 'external_self_consumption';
+
+    if (runtime.retrySentAt
+      && Math.abs(value - Number(runtime.retryReferenceSetpointW || 0))
+        >= Math.max(1, Number(this.getSettings().batteryCommandStepW) || 1)) {
+      runtime.retrySentAt = 0;
+      runtime.staleOutsideSince = 0;
+      runtime.retryReferenceSetpointW = null;
+      runtime.status = 'external_control';
+    }
+
+    // P1 updates drive the watchdog and normal EMS evaluation. External setpoint
+    // feedback itself deliberately does not schedule another evaluation.
+    return true;
+  }
+
+  monitorHybridExternalControl(settings = this.getSettings(), now = Date.now()) {
+    const runtime = this.hybridEmsRuntime;
+    if (!this.isHybridEmsConfigured(settings) || !runtime.delegated || runtime.takeover) return;
+    const grid = Number(this.state.gridPowerW);
+    if (!Number.isFinite(grid)) return;
+    const rawMin = Number(settings.hybridWatchdogMinW);
+    const rawMax = Number(settings.hybridWatchdogMaxW);
+    const minValue = Number.isFinite(rawMin) ? rawMin : -300;
+    const maxValue = Number.isFinite(rawMax) ? rawMax : 300;
+    const min = Math.min(minValue, maxValue);
+    const max = Math.max(minValue, maxValue);
+    const withinBand = grid >= min && grid <= max;
+    if (withinBand) {
+      // The watchdog condition is explicitly AND-based: missing/stale external
+      // adjustment only matters while P1 is outside the configured Hybrid band.
+      // Returning inside the band proves acceptable regulation and fully resets
+      // an earlier retry cycle, so a later deviation receives a fresh 5 + 5 min.
+      runtime.staleOutsideSince = 0;
+      runtime.retrySentAt = 0;
+      runtime.retryReferenceSetpointW = null;
+      runtime.status = 'external_control';
+      return;
+    }
+    const intervalSeconds = Math.max(3, Number(settings.commandIntervalSeconds) || 10);
+    const freshnessMs = Math.max(30000, Math.min(120000, intervalSeconds * 3000));
+    // A repeated unchanged feedback value is not proof that the external EMS is
+    // still correcting the grid deviation. The watchdog therefore tracks the
+    // last meaningful setpoint change, while modeRequestedAt gives a newly
+    // delegated external EMS its normal response window.
+    const lastAdjustmentAt = Math.max(Number(runtime.externalSetpointChangedAt) || 0, Number(runtime.modeRequestedAt) || 0);
+    const stale = !lastAdjustmentAt || now - lastAdjustmentAt >= freshnessMs;
+    if (!stale) {
+      runtime.staleOutsideSince = 0;
+      return;
+    }
+    if (!runtime.staleOutsideSince) runtime.staleOutsideSince = now;
+    const fiveMinutes = 5 * 60 * 1000;
+    if (!runtime.retrySentAt && now - runtime.staleOutsideSince >= fiveMinutes) {
+      runtime.retrySentAt = now;
+      runtime.retryReferenceSetpointW = Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null;
+      runtime.status = 'retry_external_auto';
+      this.requestExternalEmsSelfConsumption('watchdog_retry', true);
+      return;
+    }
+    if (runtime.retrySentAt && now - runtime.retrySentAt >= fiveMinutes) {
+      const stepW = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+      const reference = Number(runtime.retryReferenceSetpointW);
+      const currentExternal = Number(runtime.externalSetpointW);
+      const changedAfterRetry = Number.isFinite(reference) && Number.isFinite(currentExternal)
+        && Math.abs(currentExternal - reference) >= stepW
+        && Number(runtime.externalSetpointAt) > Number(runtime.retrySentAt);
+      if (!changedAfterRetry && (grid < min || grid > max)) {
+        runtime.takeover = true;
+        runtime.delegated = false;
+        runtime.status = 'homeflux_fallback';
+        runtime.staleOutsideSince = 0;
+        this.requestEvaluate(true);
+        this.requestContextEvaluate(true, 'hybrid_watchdog_takeover');
+      }
+    }
+  }
+
   evaluateFastNow(forceStatus = false) {
     try {
       const now = Date.now();
@@ -9187,11 +9523,12 @@ class HomeFluxEmsApp extends Homey.App {
       result.pvLimitTargetGridW = previous.pvLimitTargetGridW ?? 0;
       result.pvLimitPredictedGridW = previous.pvLimitPredictedGridW ?? 0;
       result._runFlexibleLoadPass = false;
+      const hybridDelegated = this.updateHybridEmsDelegation(result, storedSettings, now);
 
       this.latestResult = result;
       this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
-      const batteryWantsChange = Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
-      this.queueCommandEmit(result, batteryWantsChange);
+      const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
+      if (!hybridDelegated) this.queueCommandEmit(result, batteryWantsChange);
       // queueStatusUpdate has its own compact signature and therefore performs
       // no Homey writes when the visible outcome is unchanged.
       this.queueStatusUpdate(result, forceStatus);
@@ -9233,8 +9570,10 @@ class HomeFluxEmsApp extends Homey.App {
       result.fastLoop = false;
       result.slowContextAt = now;
       result.flexibleLoadPass = true;
+      const hybridDelegated = this.updateHybridEmsDelegation(result, storedSettings, now);
 
-      const pvPreview = this.calculatePvPowerLimit(settings, result.candidateTotalCommandW, this.state.lastTotalCommandW);
+      const batteryPreviewW = hybridDelegated ? (Number(this.state.lastTotalCommandW) || 0) : result.candidateTotalCommandW;
+      const pvPreview = this.calculatePvPowerLimit(settings, batteryPreviewW, this.state.lastTotalCommandW);
       result.pvLimitPercent = pvPreview.limitPercent;
       result.pvLimitTargetPowerW = pvPreview.targetPowerW;
       result.pvLimitCurtailmentW = pvPreview.curtailmentW;
@@ -9245,8 +9584,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.latestResult = result;
       this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
       this.queueStatusUpdate(result, forceStatus);
-      const batteryWantsChange = Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
-      const batteryPublishQueued = this.queueCommandEmit(result, batteryWantsChange);
+      const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
+      const batteryPublishQueued = hybridDelegated ? false : this.queueCommandEmit(result, batteryWantsChange);
       if (!batteryPublishQueued) {
         const emergency = this.getEffectiveEvMode(storedSettings) === 'emergency';
         const ev1Settings = this.getEvInstanceSettings(0, storedSettings);
@@ -9280,6 +9619,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.calculatedSetpointTrigger || !result) return;
 
     const settings = this.getSettings();
+    // The calculated-setpoint card is informational, but users may wire it to
+    // custom adapters. During external Hybrid ownership it must therefore stay
+    // completely silent as well. Resetting the signature guarantees one fresh
+    // calculation event as soon as HomeFlux takes control back.
+    if (this.isHybridExternalControlActive(settings)) {
+      this.lastCalculatedSetpointSignature = null;
+      return;
+    }
     const count = this.getBatteryCount(settings);
     const calculatedInternal = (result.calculatedCommands || result.commands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
     const calculated = calculatedInternal.map(value => this.toPublishedCommand(value, settings));
@@ -9460,6 +9807,18 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   queueCommandEmit(result, precomputedChange = null) {
+    // Hard Hybrid ownership gate. Evaluation may continue for status/planning,
+    // but no normal or safety battery command is allowed to leave HomeFlux
+    // while the external EMS owns the configured battery group. During handover_wait the
+    // one already in-flight publication may finish, but no successor is queued.
+    const hybridSettings = this.getSettings();
+    const hybridHandoverPending = this.isHybridEmsConfigured(hybridSettings)
+      && String(this.hybridEmsRuntime?.status || '') === 'handover_wait';
+    if (this.isHybridExternalControlActive(hybridSettings) || hybridHandoverPending) {
+      this.pendingResult = null;
+      this.pendingCommandBypassInterval = false;
+      return false;
+    }
     if (!result.canPublishCommands) {
       const hadActiveOutput = this.lastEmittedCommands.some(value => Math.abs(value) > 0);
       if (hadActiveOutput) {
@@ -9516,6 +9875,15 @@ class HomeFluxEmsApp extends Homey.App {
 
     const bypassInterval = Boolean(this.pendingCommandBypassInterval);
     const settings = this.getSettings();
+    // Re-check ownership at the final publication boundary. This catches a
+    // command that was queued before Hybrid delegation but had not yet started.
+    const hybridHandoverPending = this.isHybridEmsConfigured(settings)
+      && String(this.hybridEmsRuntime?.status || '') === 'handover_wait';
+    if (this.isHybridExternalControlActive(settings) || hybridHandoverPending) {
+      this.pendingResult = null;
+      this.pendingCommandBypassInterval = false;
+      return;
+    }
     const intervalMs = Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 1000;
     const now = Date.now();
     const pauseInfo = this.getBatteryCommandPauseInfo(now, settings);
@@ -9631,6 +9999,10 @@ class HomeFluxEmsApp extends Homey.App {
       this.commandPublishing = false;
       if (this.pendingResult) {
         this.emitPending().catch(err => this.error('Queued battery command emit failed', err));
+      } else if (this.isHybridEmsConfigured(this.getSettings()) && String(this.hybridEmsRuntime?.status || '') === 'handover_wait') {
+        // A handover request that arrived during the async command publication
+        // is retried only after that publication has completed atomically.
+        this.requestContextEvaluate(true, 'hybrid_handover_after_publish');
       }
     }
   }
@@ -9852,7 +10224,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.6.7',
+      version: '0.7.1',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -9929,7 +10301,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.6.7',
+      version: '0.7.1',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -10208,9 +10580,12 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.6.7',
+      version: '0.7.1',
       settings: {
         batteryCount: storedSettings.batteryCount,
+        hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
+        hybridWatchdogMinW: Number.isFinite(Number(storedSettings.hybridWatchdogMinW)) ? Number(storedSettings.hybridWatchdogMinW) : -300,
+        hybridWatchdogMaxW: Number.isFinite(Number(storedSettings.hybridWatchdogMaxW)) ? Number(storedSettings.hybridWatchdogMaxW) : 300,
         evCount: this.getEvCount(storedSettings),
         hvacCount: this.getHvacCount(storedSettings),
         boilerCount: this.getBoilerCount(storedSettings),
@@ -10274,10 +10649,12 @@ class HomeFluxEmsApp extends Homey.App {
         passed: this.isChargeTestValid(storedSettings),
         running: Boolean(this.chargeTestRunning),
         awaitingConfirmation: Boolean(this.chargeTestAwaitingConfirmation),
+        stage: String(this.chargeTestStage || ''),
         lastRunAt: Number(this.chargeTestLastRunAt) || 0,
-        commandPerBatteryW: this.toPublishedCommand(-100, storedSettings),
+        commandPerBatteryW: this.toPublishedCommand(this.chargeTestStage === 'discharge' ? 100 : -100, storedSettings),
         batteryCount: this.getBatteryCount(storedSettings),
       },
+      hybridEms: this.getHybridEmsStatus(storedSettings),
       inputs: {
         gridPowerW: this.state.gridPowerW,
         pvPowerW: this.state.pvPowerW,
@@ -10360,6 +10737,8 @@ class HomeFluxEmsApp extends Homey.App {
       fastInputChanged = true;
       gridInputChanged = true;
       const inputSettings = this.getSettings();
+      // Hybrid EMS ownership is intentionally monitored only from the
+      // set_grid_power Flow input, which is the supported live P1 route.
       const contextGridDelta = this.lastContextGridInputW === null
         ? Infinity
         : Math.abs(this.state.gridPowerW - this.lastContextGridInputW);

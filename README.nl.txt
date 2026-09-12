@@ -1,11 +1,7 @@
-v0.6.7: Finetuning heeft nu eenmalig toepassen, niet meer controleren en blijvende parameter-toestemming.
-
 Jouw energie, anders geregeld
 
-HomeFlux EMS brengt de energie in je woning samen in één slim systeem. Het bepaalt wanneer je thuisbatterij wordt geladen of gebruikt, wanneer zonne-energie het best wordt benut en wanneer flexibele verbruikers zoals EV-laden, verwarming, koeling of warm water het efficiëntst kunnen draaien.
+HomeFlux EMS stuurt batterijen, zonnepanelen en flexibele verbruikers aan rond het energiecontract dat je werkelijk gebruikt. Het ondersteunt dynamische prijzen, maar is evenzeer ontworpen voor vaste contracten met twee of meer uurtarieven, zoals piek/dal en andere meervoudige tariefperiodes.
 
-In plaats van gebonden te zijn aan één merk of één type installatie, werkt HomeFlux rond de toestellen die je al hebt en het energiecontract dat je gebruikt. Het ondersteunt zowel dynamische energiecontracten als vaste contracten met verschillende tariefperiodes, zoals piek-, dal- of meervoudige uurtarieven.
+HomeFlux brengt tariefperiodes, PV-voorspelling, batterijreserve, zelfconsumptie, netlimieten en gebruikersprioriteiten samen in één regelstrategie. Hardware-integraties blijven onafhankelijk via expliciete Homey Flow-kaarten, terwijl Peak Guard een harde veiligheidslaag blijft.
 
-HomeFlux brengt comfort, zelfverbruik, batterijreserve, elektriciteitsprijzen en netlimieten voortdurend in balans, terwijl Peak Guard het piekverbruik onder controle houdt.
-
-Het resultaat is eenvoudig: gebruik meer van je eigen energie, koop stroom op betere momenten, vermijd onnodige pieken en laat HomeFlux alles automatisch coördineren.
+Het doel: meer nuttig zelfverbruik, energie op de juiste momenten inkopen, reserve voor later beschermen en onnodige netpieken vermijden.

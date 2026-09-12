@@ -4,8 +4,8 @@
     "nl": "Nieuw batterij-setpoint berekend"
   },
   "hint": {
-    "en": "Fires when HomeFlux EMS calculates a different battery setpoint, before the minimum command interval decides when it may be published.",
-    "nl": "Start wanneer HomeFlux EMS een ander batterij-setpoint berekent, vóór het minimum stuurinterval bepaalt wanneer dit werkelijk gepubliceerd mag worden."
+    "en": "Fires when HomeFlux EMS calculates a different battery setpoint, before the minimum command interval decides when it may be published. It stays silent while Hybrid EMS has delegated battery control to an external EMS.",
+    "nl": "Start wanneer HomeFlux EMS een ander batterij-setpoint berekent, vóór het minimum stuurinterval bepaalt wanneer dit werkelijk gepubliceerd mag worden. De kaart blijft stil zolang Hybrid EMS de batterijregeling aan een externe EMS heeft gedelegeerd."
   },
   "tokens": [
     { "name": "battery_count", "type": "number", "title": { "en": "Battery count", "nl": "Aantal batterijen" }, "example": 4 },

@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set external EMS battery setpoint",
+    "nl": "Stel batterijsetpoint externe EMS in"
+  },
+  "hint": {
+    "en": "Feed the actual battery setpoint used by the external EMS back to HomeFlux while Hybrid EMS is delegated. Positive = discharge, negative = charge.",
+    "nl": "Geef tijdens Hybrid EMS het werkelijk gebruikte batterijsetpoint van de externe EMS terug aan HomeFlux. Positief = ontladen, negatief = laden."
+  },
+  "args": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "External EMS setpoint (W)",
+        "nl": "Setpoint externe EMS (W)"
+      },
+      "min": -50000,
+      "max": 50000,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set external EMS battery setpoint to [[power]] W",
+    "nl": "Stel batterijsetpoint externe EMS in op [[power]] W"
+  }
+}
