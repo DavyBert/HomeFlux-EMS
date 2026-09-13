@@ -1,4 +1,8 @@
 {
+  "0.7.5": {
+    "en": "Follow-up test fixes: EV settings now only show configured EVs. Autotune keeps dropdown-backed values UI-safe and uses realistic parameter-specific automatic-management ranges that respect configured SoC, EV and hard safety limits.",
+    "nl": "Vervolgfixes uit de test: EV-instellingen tonen nu alleen geconfigureerde EV's. Autotune houdt waarden uit keuzelijsten geldig voor de UI en gebruikt realistische standaardbereiken per parameter, met respect voor ingestelde SoC-, EV- en harde veiligheidsgrenzen."
+  },
   "0.7.4": {
     "en": "Fixed Autotune handling for dropdown-backed settings and replaced the temporary +/-50% auto-management ranges with realistic parameter-specific defaults. SoC-related ranges respect the configured Maximum SoC, while user-defined ranges remain adjustable. Recommendations, one-off changes and automatic management only use values that the Settings UI can represent.",
     "nl": "Autotune-afhandeling voor instellingen met een keuzelijst gecorrigeerd en de tijdelijke +/-50%-grenzen voor automatisch beheer vervangen door realistische standaardbereiken per parameter. SoC-gerelateerde bereiken respecteren de ingestelde Maximum SoC en gebruikers kunnen de grenzen zelf aanpassen. Aanbevelingen en automatisch beheer gebruiken alleen waarden die de Settings-UI kan weergeven."

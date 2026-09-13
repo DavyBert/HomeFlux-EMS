@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.4');
+  assert.equal(manifest.version, '0.7.5');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -26,8 +26,8 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.4 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.4 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.5 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.5 — Your energy, managed differently');
 assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
 assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
 assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');
@@ -251,6 +251,13 @@ for (const oldCardId of ['ev_charge_current_updated','ev_charging_allowed_update
   assert(!appJson.flow.triggers.some(card => card.id === oldCardId), `${oldCardId} legacy output card should be removed`);
 }
 assert(html.includes('<option value="0">0</option><option value="1">1</option>'), 'zero-count module option missing');
+
+const evContractUiBlock = html.slice(html.indexOf('function renderEvContractUi()'), html.indexOf('function renderBoilerContractSummary()'));
+assert(evContractUiBlock.includes('const configured = instance <= count;'), 'EV contract UI must gate every instance by configured EV count');
+assert(evContractUiBlock.includes("panel?.classList.toggle('hidden', !configured);"), 'unconfigured EV panels must stay hidden');
+assert(evContractUiBlock.includes("classList.toggle('hidden', !configured || type !== 'tou')"), 'unconfigured EV time-of-use cards must stay hidden');
+assert(evContractUiBlock.includes("classList.toggle('hidden', !configured || type !== 'fixed')"), 'unconfigured EV fixed-tariff cards must stay hidden');
+assert(evContractUiBlock.includes("classList.toggle('hidden', !configured || !type.startsWith('dynamic'))"), 'unconfigured EV dynamic-tariff cards must stay hidden');
 
 for (const oldCardId of ['set_hvac_room_temperature','set_hvac_setpoint','set_hvac_fan_speed','set_hvac_mode','set_hvac_automatic_control']) {
   assert(!appJson.flow.actions.some(item => item.id === oldCardId), `${oldCardId} legacy input card must be removed`);

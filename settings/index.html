@@ -730,7 +730,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.7.4 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.7.5 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -2758,9 +2758,13 @@ async function onHomeyReady(Homey) {
 
     for (let instance = 1; instance <= MAX_FLEX_INSTANCES; instance += 1) {
       const stem = instanceStem('ev', instance);
-      q(`${stem}TariffFixedCard`)?.classList.toggle('hidden', type !== 'fixed');
-      q(`${stem}TariffTouCard`)?.classList.toggle('hidden', type !== 'tou');
-      q(`${stem}TariffDynamicCard`)?.classList.toggle('hidden', !type.startsWith('dynamic'));
+      const configured = instance <= count;
+      const panel = q(`evInstancePanel${instance}`);
+      panel?.classList.toggle('hidden', !configured);
+      if (!configured) panel?.classList.remove('active');
+      q(`${stem}TariffFixedCard`)?.classList.toggle('hidden', !configured || type !== 'fixed');
+      q(`${stem}TariffTouCard`)?.classList.toggle('hidden', !configured || type !== 'tou');
+      q(`${stem}TariffDynamicCard`)?.classList.toggle('hidden', !configured || !type.startsWith('dynamic'));
       let title = '—'; let detail = '';
       if (type === 'fixed') {
         title = uiLanguage === 'nl' ? 'Vast tarief' : 'Fixed tariff';
@@ -2796,7 +2800,6 @@ async function onHomeyReady(Homey) {
       }
       if (q(`${stem}SelectedContractTitle`)) q(`${stem}SelectedContractTitle`).textContent = title;
       if (q(`${stem}SelectedContractDetail`)) q(`${stem}SelectedContractDetail`).textContent = detail;
-      q(`evInstancePanel${instance}`)?.classList.toggle('hidden', instance > count);
     }
     renderBoilerContractSummary();
   }
