@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.3');
+  assert.equal(manifest.version, '0.7.4');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -26,8 +26,8 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.3 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.3 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.4 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.4 — Your energy, managed differently');
 assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
 assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
 assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');
@@ -107,7 +107,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 62"));
+assert(appJs.includes("settingsSchemaVersion', 64"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);
@@ -120,6 +120,8 @@ assert(html.includes('id="evPvSharePercent"'), 'global EV PV distribution settin
 for (const id of ['evSmartPvPriority','ev2SmartPvPriority','ev3SmartPvPriority','ev4SmartPvPriority']) assert(!html.includes(`id="${id}"`), `${id} legacy per-EV PV priority must not remain visible`);
 for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW']) assert(html.includes(`id="${id}"`), `${id} v0.4.18 setting missing`);
 assert(html.includes('<option value="3">Gemiddelde laatste 3 netmetingen</option>'), '3-input grid smoothing option missing');
+assert(appJs.includes("allowedValues: [0, 3, 5, 7, 10]"), 'P1 Autotune dropdown values must be declared in the runtime descriptor');
+assert(appJs.includes("allowedValues: [5, 10, 15, 20]"), 'EV feedback Autotune dropdown values must be declared in the runtime descriptor');
 assert(html.includes('Elke input telt één keer, ongeacht de tijd ertussen.'), 'grid smoothing must be described as input-count based');
 for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
 assert(html.includes('data-ev-grid-rate') && html.includes('evMaxGridImportW'), 'TOU total EV grid import limit missing from EV tab');

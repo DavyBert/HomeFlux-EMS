@@ -86,7 +86,7 @@ function bareApp() {
   assert.equal(readiness.degraded.some(item => item.startsWith('SoC batterij')), false);
 }
 
-// v0.7.3 Savings uses signed export/feed-in prices consistently. Positive
+// v0.7.4 Savings uses signed export/feed-in prices consistently. Positive
 // means compensation received; negative means the user pays to inject.
 {
   const app = bareApp();
@@ -2233,7 +2233,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 62);
+  assert.equal(stored.settingsSchemaVersion, 64);
   assert.deepEqual(stored.evEnergyDeadlineOverrides, []);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
@@ -2251,6 +2251,73 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(stored.evWeight, 1);
   assert.equal(stored.evPvSharePercent, 10);
   assert.equal(stored.evFixedMaxGridImportW, 0);
+}
+
+// v0.7.4: dropdown-backed Autotune settings are normalized on upgrade so a
+// v0.7.3 test value can never remain invisible/unselectable in Settings.
+{
+  const app = bareApp();
+  const stored = {
+    settingsSchemaVersion: 62,
+    gridControlWindowSeconds: 6,
+    evFeedbackTolerancePercent: 17,
+    ev2FeedbackTolerancePercent: 23,
+    ev3FeedbackTolerancePercent: 5,
+    ev4FeedbackTolerancePercent: 19,
+  };
+  app.homey.settings = {
+    get: key => Object.prototype.hasOwnProperty.call(stored, key) ? stored[key] : null,
+    set: (key, value) => { stored[key] = value; },
+  };
+  app.settingsCache = null;
+  app.migrateSettings();
+  assert.equal(stored.settingsSchemaVersion, 64);
+  assert.equal(stored.gridControlWindowSeconds, 5);
+  assert.equal(stored.evFeedbackTolerancePercent, 15);
+  assert.equal(stored.ev2FeedbackTolerancePercent, 20);
+  assert.equal(stored.ev3FeedbackTolerancePercent, 5);
+  assert.equal(stored.ev4FeedbackTolerancePercent, 20);
+}
+
+// v0.7.4: legacy +/-50% Autotune fences migrate once to realistic per-parameter
+// defaults, while a clearly custom range remains user-defined. SoC defaults are
+// constrained by the configured Max SoC.
+{
+  const app = bareApp();
+  const stored = {
+    settingsSchemaVersion: 63,
+    autoTuneMinConfidencePercent: 95,
+    minSoc: 10,
+    safetySoc: 15,
+    maxSoc: 85,
+    totalCapacityKwh: 20,
+    expectedEnergyNeedKwh: 20,
+    gridZeroMinW: -5,
+    gridZeroMaxW: 25,
+    evMinCurrentA: 6,
+    evMaxCurrentA: 32,
+    _autoTunePermissions: { lowForecastAutoSunnySoc: true, balanceStrength: true, commandDeadbandW: true },
+    _autoTuneLimits: {
+      lowForecastAutoSunnySoc: { min:45, max:135, minConfidencePercent:95 },
+      balanceStrength: { min:0.12, max:0.31, minConfidencePercent:90 },
+      commandDeadbandW: { min:12.5, max:37.5, minConfidencePercent:95 },
+    },
+  };
+  app.homey.settings = {
+    get: key => Object.prototype.hasOwnProperty.call(stored, key) ? stored[key] : null,
+    set: (key, value) => { stored[key] = value; },
+  };
+  app.settingsCache = null;
+  app.getSettings = () => ({
+    batteryCount:1, autoTuneMinConfidencePercent:95, minSoc:10, safetySoc:15, maxSoc:85,
+    totalCapacityKwh:20, expectedEnergyNeedKwh:20, gridZeroMinW:-5, gridZeroMaxW:25,
+    evMinCurrentA:6, evMaxCurrentA:32,
+  });
+  app.migrateSettings();
+  assert.equal(stored.settingsSchemaVersion, 64);
+  assert.deepEqual(stored._autoTuneLimits.lowForecastAutoSunnySoc, { min:70, max:85, minConfidencePercent:95, userDefined:false });
+  assert.deepEqual(stored._autoTuneLimits.commandDeadbandW, { min:25, max:250, minConfidencePercent:95, userDefined:false });
+  assert.deepEqual(stored._autoTuneLimits.balanceStrength, { min:0.12, max:0.31, minConfidencePercent:90, userDefined:true });
 }
 
 // v0.3.80: planning simulation is a pure calculation. It uses the entered SoC,
@@ -2283,7 +2350,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.3');
+  assert.equal(simulation.version, '0.7.4');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);

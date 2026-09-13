@@ -21,7 +21,7 @@ For EV planning, the existing SoC-by-time and kWh-by-time Flow cards can provide
 
 ### Autotune and Savings
 
-Autotune can observe the control signals HomeFlux already receives and recommend safe, non-critical tuning changes without adding extra polling. Automatic management is explicit opt-in: the global confidence threshold defaults to **95%**, and every managed parameter can have its own confidence threshold plus an allowed minimum/maximum range. When permission is first granted, that range defaults to 50% below and 50% above the current value.
+Autotune can observe the control signals HomeFlux already receives and recommend safe, non-critical tuning changes without adding extra polling. Automatic management is explicit opt-in: the global confidence threshold defaults to **95%**, and every managed parameter can have its own confidence threshold plus an allowed minimum/maximum range. When permission is first granted, HomeFlux uses a realistic parameter-specific starting range instead of a generic percentage around the current value. Hard limits such as configured Maximum SoC remain authoritative, while users can still adjust the allowed range themselves.
 
 Savings includes direct PV use, PV energy later used from the battery, load shifting and **PV export/feed-in**. Fixed and multi-rate contracts can define a feed-in price per tariff. For dynamic export prices, a Flow card can provide the current export price. The sign convention is intentionally simple: **positive = compensation received; negative = a cost to inject**. A separate Flow input can provide the cumulative exported energy for today to calibrate the calculated export total against the real meter.
 
@@ -43,7 +43,7 @@ Voor EV-planning kunnen de bestaande Flow-kaarten voor SoC-tegen-tijd en kWh-teg
 
 ### Autotune en Winst
 
-Autotune kan de regelsignalen observeren die HomeFlux toch al ontvangt en veilige, niet-kritische afstellingen aanbevelen zonder extra polling. Automatisch beheer blijft expliciet opt-in: de globale vertrouwensdrempel staat standaard op **95%**, en elke beheerde parameter kan een eigen vertrouwensdrempel en toegestane minimum-/maximumwaarde krijgen. Bij de eerste toestemming staat die band standaard op 50% onder en 50% boven de huidige waarde.
+Autotune kan de regelsignalen observeren die HomeFlux toch al ontvangt en veilige, niet-kritische afstellingen aanbevelen zonder extra polling. Automatisch beheer blijft expliciet opt-in: de globale vertrouwensdrempel staat standaard op **95%**, en elke beheerde parameter kan een eigen vertrouwensdrempel en toegestane minimum-/maximumwaarde krijgen. Bij de eerste toestemming gebruikt HomeFlux een realistisch startbereik per parameter in plaats van een generiek percentage rond de huidige waarde. Harde grenzen zoals de ingestelde Maximum SoC blijven leidend, terwijl de gebruiker het toegestane bereik zelf kan aanpassen.
 
 Winst neemt rechtstreeks PV-gebruik, PV uit de batterij, laadverschuiving en **PV-export/injectie** mee. Bij vaste en meervoudige tarieven kan per tarief een injectieprijs worden ingesteld. Voor dynamische exportprijzen kan een Flow-kaart de actuele exportprijs aanleveren. De tekenconventie is bewust eenvoudig: **positief = vergoeding die je ontvangt; negatief = kost om te injecteren**. Een aparte Flow-input kan de cumulatieve geëxporteerde energie van vandaag aanleveren om de berekende export te kalibreren met de echte meterstand.
 

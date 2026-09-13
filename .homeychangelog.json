@@ -1,4 +1,8 @@
 {
+  "0.7.4": {
+    "en": "Fixed Autotune handling for dropdown-backed settings and replaced the temporary +/-50% auto-management ranges with realistic parameter-specific defaults. SoC-related ranges respect the configured Maximum SoC, while user-defined ranges remain adjustable. Recommendations, one-off changes and automatic management only use values that the Settings UI can represent.",
+    "nl": "Autotune-afhandeling voor instellingen met een keuzelijst gecorrigeerd en de tijdelijke +/-50%-grenzen voor automatisch beheer vervangen door realistische standaardbereiken per parameter. SoC-gerelateerde bereiken respecteren de ingestelde Maximum SoC en gebruikers kunnen de grenzen zelf aanpassen. Aanbevelingen en automatisch beheer gebruiken alleen waarden die de Settings-UI kan weergeven."
+  },
   "0.7.3": {
     "en": "Autotune now uses a configurable confidence threshold (95% by default) plus per-parameter confidence and minimum/maximum boundaries for automatic changes. Savings now includes PV export/feed-in value, supports exported-energy calibration and a live export-price Flow input, with signed export prices for fixed and multi-rate tariffs.",
     "nl": "Autotune gebruikt nu een instelbare vertrouwensdrempel (standaard 95%) plus een eigen vertrouwenswaarde en minimum-/maximumgrenzen per automatisch beheerde parameter. Winst neemt nu PV-export/injectie mee, ondersteunt kalibratie met geëxporteerde energie en een live exportprijs via Flow, met positieve of negatieve exportprijzen voor vaste en meervoudige tarieven."

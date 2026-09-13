@@ -494,7 +494,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.3 initialized');
+    this.log('HomeFlux EMS v0.7.4 initialized');
   }
 
   refreshSettingsCache() {
@@ -1135,36 +1135,44 @@ class HomeFluxEmsApp extends Homey.App {
     const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
     if (!descriptor) return null;
     const settings = this.getSettings();
-    const current = Number(currentValue !== null && currentValue !== undefined ? currentValue : settings[settingKey]);
-    if (!Number.isFinite(current)) return null;
-    let delta = Math.abs(current) * 0.5;
-    // A literal +/-50% range around zero would lock the parameter at zero.
-    // Use one meaningful unit there so opt-in management can still move from
-    // an initial zero while remaining deliberately narrow.
-    if (delta < 1e-9) delta = 1;
-    let min = current - delta;
-    let max = current + delta;
-    if (settingKey === 'commandIntervalSeconds') {
-      min = Math.max(3, min);
-      max = Math.max(min, max);
-    }
-    const defaultConfidence = Math.max(0, Math.min(100, Number(this.getSettings().autoTuneMinConfidencePercent) || 95));
+    const profile = this.getAutoTuneRangeProfile(settingKey, settings);
+    if (!profile) return null;
+    const hardMin = Number.isFinite(Number(profile.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile.hardMax)) ? Number(profile.hardMax) : Infinity;
+    let min = Math.max(hardMin, Number(profile.defaultMin));
+    let max = Math.min(hardMax, Number(profile.defaultMax));
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    if (min > max) min = max = Math.max(hardMin, Math.min(hardMax, Number(currentValue ?? settings[settingKey]) || 0));
+    const defaultConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
     return {
-      min: Math.min(min, max),
-      max: Math.max(min, max),
+      min,
+      max,
       minConfidencePercent: defaultConfidence,
+      userDefined: false,
     };
   }
 
   getAutoTuneLimitFor(settingKey, currentValue = null, limits = null) {
+    const settings = this.getSettings();
     const stored = (limits || this.getAutoTuneLimits())[settingKey];
-    const min = Number(stored?.min);
-    const max = Number(stored?.max);
-    const fallbackConfidence = Math.max(0, Math.min(100, Number(this.getSettings().autoTuneMinConfidencePercent) || 95));
+    const fallbackConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
     const minConfidencePercent = Number.isFinite(Number(stored?.minConfidencePercent))
       ? Math.max(0, Math.min(100, Number(stored.minConfidencePercent)))
       : fallbackConfidence;
-    if (Number.isFinite(min) && Number.isFinite(max) && min <= max) return { min, max, minConfidencePercent };
+    const profile = this.getAutoTuneRangeProfile(settingKey, settings);
+    const hardMin = Number.isFinite(Number(profile?.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
+    let min = Number(stored?.min);
+    let max = Number(stored?.max);
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      if (min > max) [min, max] = [max, min];
+      min = Math.max(hardMin, Math.min(hardMax, min));
+      max = Math.max(hardMin, Math.min(hardMax, max));
+      if (min > max) [min, max] = [max, min];
+      const allowedValues = this.getAutoTuneAllowedValues(settingKey);
+      const hasSelectableValue = !allowedValues.length || allowedValues.some(value => value >= min && value <= max);
+      if (hasSelectableValue) return { min, max, minConfidencePercent, userDefined: Boolean(stored?.userDefined) };
+    }
     const defaults = this.getDefaultAutoTuneLimit(settingKey, currentValue);
     return defaults ? { ...defaults, minConfidencePercent } : null;
   }
@@ -1177,15 +1185,24 @@ class HomeFluxEmsApp extends Homey.App {
     let max = Number(body.max);
     if (!Number.isFinite(min) || !Number.isFinite(max)) throw new Error('Minimum en maximum moeten geldige getallen zijn.');
     if (min > max) [min, max] = [max, min];
-    if (settingKey === 'commandIntervalSeconds') min = Math.max(3, min);
-    if (min > max) max = min;
+    const settings = this.getSettings();
+    const profile = this.getAutoTuneRangeProfile(settingKey, settings);
+    const hardMin = Number.isFinite(Number(profile?.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
+    min = Math.max(hardMin, Math.min(hardMax, min));
+    max = Math.max(hardMin, Math.min(hardMax, max));
+    if (min > max) [min, max] = [max, min];
+    const allowedValues = this.getAutoTuneAllowedValues(settingKey);
+    if (allowedValues.length && !allowedValues.some(value => value >= min && value <= max)) {
+      throw new Error(`Dit bereik bevat geen geldige keuzewaarde. Toegestaan: ${allowedValues.join(', ')}.`);
+    }
     const limits = this.getAutoTuneLimits();
-    const previous = this.getAutoTuneLimitFor(settingKey, this.getSettings()[settingKey], limits) || {};
+    const previous = this.getAutoTuneLimitFor(settingKey, settings[settingKey], limits) || {};
     const requestedConfidence = Number(body.minConfidencePercent);
     const minConfidencePercent = Number.isFinite(requestedConfidence)
       ? Math.max(0, Math.min(100, requestedConfidence))
-      : Math.max(0, Math.min(100, Number(previous.minConfidencePercent) || Number(this.getSettings().autoTuneMinConfidencePercent) || 95));
-    limits[settingKey] = { min, max, minConfidencePercent };
+      : Math.max(0, Math.min(100, Number(previous.minConfidencePercent) || Number(settings.autoTuneMinConfidencePercent) || 95));
+    limits[settingKey] = { min, max, minConfidencePercent, userDefined: true };
     this.setSetting('_autoTuneLimits', limits);
     return this.getAutoTuneStatus();
   }
@@ -1211,7 +1228,7 @@ class HomeFluxEmsApp extends Homey.App {
       commandDeadbandW: { titleNl: 'Batterij-commandodeadband', titleEn: 'Battery command deadband', unit: 'W', scope: 'EMS' },
       gridZeroMinW: { titleNl: 'Nulpunt ondergrens net', titleEn: 'Grid zero-band lower limit', unit: 'W', scope: 'EMS' },
       gridZeroMaxW: { titleNl: 'Nulpunt bovengrens net', titleEn: 'Grid zero-band upper limit', unit: 'W', scope: 'EMS' },
-      gridControlWindowSeconds: { titleNl: 'P1-middelingsvenster', titleEn: 'P1 averaging window', unit: 'metingen', scope: 'EMS' },
+      gridControlWindowSeconds: { titleNl: 'P1-middelingsvenster', titleEn: 'P1 averaging window', unit: 'metingen', scope: 'EMS', allowedValues: [0, 3, 5, 7, 10] },
       adaptiveSetpointDeltaW: { titleNl: 'Adaptieve grote-setpointdrempel', titleEn: 'Adaptive large-setpoint threshold', unit: 'W', scope: 'EMS' },
       adaptiveSetpointWindowSeconds: { titleNl: 'Adaptief herhalingsvenster', titleEn: 'Adaptive repetition window', unit: 's', scope: 'EMS' },
       commandIntervalSeconds: { titleNl: "Minimum tijd tussen batterijcommando's", titleEn: 'Minimum battery command interval', unit: 's', scope: 'Batterij' },
@@ -1244,7 +1261,95 @@ class HomeFluxEmsApp extends Homey.App {
       titleEn: `${name} · ${label[1]}`,
       unit: label[2],
       scope: name,
+      ...(suffix === 'FeedbackTolerancePercent' ? { allowedValues: [5, 10, 15, 20] } : {}),
     };
+  }
+
+  getAutoTuneRangeProfile(settingKey, settings = this.getSettings()) {
+    const key = String(settingKey || '');
+    const maxSoc = Math.max(0, Math.min(100, Number(settings.maxSoc) || 100));
+    const hardSocFloor = Math.max(0, Math.min(maxSoc, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+    const batteryCapacityKwh = Math.max(0, Number(settings.totalCapacityKwh) || 0);
+    const expectedNeedKwh = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
+    const planningUpperKwh = Math.max(10, Math.min(100, Math.max(expectedNeedKwh * 2, batteryCapacityKwh * 2, 20)));
+    const currentNeedUpperKwh = Math.max(20, Math.min(100, Math.max(expectedNeedKwh * 1.25, batteryCapacityKwh * 3, 30)));
+
+    const fixed = {
+      commandDeadbandW: { defaultMin: 25, defaultMax: 250, hardMin: 0, hardMax: 1000 },
+      gridControlWindowSeconds: { defaultMin: 0, defaultMax: 10, hardMin: 0, hardMax: 10 },
+      adaptiveSetpointDeltaW: { defaultMin: 300, defaultMax: 3000, hardMin: 100, hardMax: 10000 },
+      adaptiveSetpointWindowSeconds: { defaultMin: 8, defaultMax: 45, hardMin: 2, hardMax: 120 },
+      commandIntervalSeconds: { defaultMin: 3, defaultMax: 60, hardMin: 3, hardMax: 120 },
+      pvDeltaThresholdW: { defaultMin: 50, defaultMax: 500, hardMin: 0, hardMax: 10000 },
+      pvCommandIntervalSeconds: { defaultMin: 10, defaultMax: 120, hardMin: 1, hardMax: 300 },
+      lowForecastSelfConsumptionMinKwh: { defaultMin: 0, defaultMax: planningUpperKwh, hardMin: 0, hardMax: 100 },
+      expectedEnergyNeedKwh: { defaultMin: 0, defaultMax: currentNeedUpperKwh, hardMin: 0, hardMax: 100 },
+      batterySaveDischargeAboveSoc: { defaultMin: hardSocFloor, defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
+      lowForecastAutoSunnySoc: { defaultMin: Math.min(maxSoc, Math.max(hardSocFloor, 70)), defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
+      lowForecastAutoSunnyMinutes: { defaultMin: 5, defaultMax: 15, hardMin: 1, hardMax: 1440 },
+      balanceDeadbandPct: { defaultMin: 0.5, defaultMax: 1.5, hardMin: 0, hardMax: 10 },
+      balanceStrength: { defaultMin: 0.1, defaultMax: 0.35, hardMin: 0, hardMax: 0.5 },
+    };
+
+    if (key === 'gridZeroMinW' || key === 'gridZeroMaxW') {
+      const configuredMin = Number(settings.gridZeroMinW);
+      const configuredMax = Number(settings.gridZeroMaxW);
+      const validBand = Number.isFinite(configuredMin) && Number.isFinite(configuredMax) && configuredMin <= configuredMax;
+      const midpoint = validBand ? (configuredMin + configuredMax) / 2 : 0;
+      if (key === 'gridZeroMinW') {
+        return { defaultMin: Math.max(-1000, midpoint - 250), defaultMax: Math.min(1000, midpoint - 10), hardMin: -1000, hardMax: 1000 };
+      }
+      return { defaultMin: Math.max(-1000, midpoint + 10), defaultMax: Math.min(1000, midpoint + 250), hardMin: -1000, hardMax: 1000 };
+    }
+
+    if (fixed[key]) return fixed[key];
+
+    const match = /^ev([2-4])?(CommandIntervalSeconds|FeedbackTolerancePercent|ModeSmartCurrentA|ModeStandardCurrentA)$/.exec(key);
+    if (!match) return null;
+    const index = match[1] ? Number(match[1]) - 1 : 0;
+    const suffix = match[2];
+    const evSettings = this.getEvInstanceSettings(index, settings);
+    const chargerMinA = Math.max(1, Math.min(64, Number(evSettings.evMinCurrentA) || 6));
+    const chargerMaxA = Math.max(chargerMinA, Math.min(64, Number(evSettings.evMaxCurrentA) || 32));
+    if (suffix === 'CommandIntervalSeconds') return { defaultMin: 5, defaultMax: 300, hardMin: 1, hardMax: 3600 };
+    if (suffix === 'FeedbackTolerancePercent') return { defaultMin: 5, defaultMax: 20, hardMin: 5, hardMax: 20 };
+    if (suffix === 'ModeSmartCurrentA' || suffix === 'ModeStandardCurrentA') {
+      return { defaultMin: chargerMinA, defaultMax: chargerMaxA, hardMin: chargerMinA, hardMax: chargerMaxA };
+    }
+    return null;
+  }
+
+  getAutoTuneAllowedValues(settingKey) {
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!Array.isArray(descriptor?.allowedValues)) return [];
+    return [...new Set(descriptor.allowedValues.map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
+  }
+
+  normalizeAutoTuneValue(settingKey, value, allowedRange = null) {
+    let next = Number(value);
+    if (!Number.isFinite(next)) return null;
+    const profile = this.getAutoTuneRangeProfile(settingKey, this.getSettings());
+    const hardMin = Number.isFinite(Number(profile?.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
+    let effectiveMin = hardMin;
+    let effectiveMax = hardMax;
+    if (allowedRange) {
+      effectiveMin = Math.max(effectiveMin, Number(allowedRange.min));
+      effectiveMax = Math.min(effectiveMax, Number(allowedRange.max));
+    }
+    if (effectiveMin > effectiveMax) return null;
+
+    const allowedValues = this.getAutoTuneAllowedValues(settingKey);
+    if (allowedValues.length) {
+      const candidates = allowedValues.filter(candidate => candidate >= effectiveMin && candidate <= effectiveMax);
+      if (!candidates.length) return null;
+      return candidates.reduce((best, candidate) => (
+        Math.abs(candidate - next) < Math.abs(best - next) ? candidate : best
+      ), candidates[0]);
+    }
+
+    next = Math.max(effectiveMin, Math.min(effectiveMax, next));
+    return Number.isFinite(next) ? next : null;
   }
 
   getAutoTuneRecommendations() {
@@ -1279,8 +1384,9 @@ class HomeFluxEmsApp extends Homey.App {
     const planningConfidence = days => Math.max(0.5, Math.min(0.97, 0.52 + (0.45 * (1 - Math.exp(-Math.max(0, Number(days) || 0) / 3.0)))));
     const push = (settingKey, titleNl, titleEn, current, recommended, unit, reasonNl, reasonEn, conf, samples, scope = 'EMS') => {
       if (ignored[settingKey]) return;
-      const cur = Number(current); const next = Number(recommended);
-      if (!Number.isFinite(cur) || !Number.isFinite(next) || Math.abs(cur - next) < 1e-9) return;
+      const cur = Number(current);
+      const next = this.normalizeAutoTuneValue(settingKey, recommended);
+      if (!Number.isFinite(cur) || next === null || Math.abs(cur - next) < 1e-9) return;
       const confidencePercent = Math.round(Math.max(0, Math.min(1, Number(conf) || 0)) * 100);
       const allowedRange = this.getAutoTuneLimitFor(settingKey, cur, limits);
       const parameterMinConfidence = Number(allowedRange?.minConfidencePercent ?? minConfidencePercent);
@@ -1747,15 +1853,8 @@ class HomeFluxEmsApp extends Homey.App {
       const dailyLearnedKeys = new Set(['lowForecastSelfConsumptionMinKwh','expectedEnergyNeedKwh','batterySaveDischargeAboveSoc','lowForecastAutoSunnySoc']);
       const cooldownMs = dailyLearnedKeys.has(key) ? 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
       if (!force && now - Number(lastApplied[key] || 0) < cooldownMs) continue;
-      let next = Number(recommendation.recommended);
-      if (allowedRange) next = Math.max(Number(allowedRange.min), Math.min(Number(allowedRange.max), next));
-      if (key === 'gridControlWindowSeconds') {
-        const valid = [0, 3, 5, 7, 10].filter(value => !allowedRange || (value >= allowedRange.min && value <= allowedRange.max));
-        if (!valid.length) continue;
-        next = valid.reduce((best, value) => Math.abs(value - next) < Math.abs(best - next) ? value : best, valid[0]);
-      }
-      if (key === 'commandIntervalSeconds') next = Math.max(3, next);
-      if (!Number.isFinite(current) || !Number.isFinite(next) || Math.abs(current - next) < 1e-9) continue;
+      const next = this.normalizeAutoTuneValue(key, recommendation.recommended, allowedRange);
+      if (!Number.isFinite(current) || next === null || Math.abs(current - next) < 1e-9) continue;
       this.setSetting(key, next);
       lastApplied[key] = now;
       lastAppliedChanged = true;
@@ -1824,8 +1923,8 @@ class HomeFluxEmsApp extends Homey.App {
     if (!recommendation) throw new Error('Deze aanbeveling is intussen niet meer actief. Vernieuw Autotune en probeer opnieuw.');
 
     const current = Number(this.getSettings()[settingKey]);
-    const next = Number(recommendation.recommended);
-    if (!Number.isFinite(current) || !Number.isFinite(next)) throw new Error('Deze Autotune-waarde kan niet veilig worden toegepast.');
+    const next = this.normalizeAutoTuneValue(settingKey, recommendation.recommended);
+    if (!Number.isFinite(current) || next === null) throw new Error('Deze Autotune-waarde kan niet veilig worden toegepast.');
     if (Math.abs(current - next) < 1e-9) return this.getAutoTuneStatus();
 
     const now = Date.now();
@@ -3198,7 +3297,65 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('_autoTuneLimits') === null) this.setSetting('_autoTuneLimits', {});
     }
 
-    this.setSetting('settingsSchemaVersion', 62);
+    if (schema < 63) {
+      // v0.7.4: Autotune may only write values that exist in select/dropdown
+      // controls. v0.7.3 could recommend an arbitrary EV feedback percentage,
+      // so normalize any such stored test value to the nearest UI option.
+      const normalizeStoredChoice = (key, allowedValues) => {
+        const raw = this.homey.settings.get(key);
+        if (raw === null || raw === undefined || raw === '') return;
+        const current = Number(raw);
+        if (!Number.isFinite(current) || allowedValues.includes(current)) return;
+        const next = allowedValues.reduce((best, candidate) => (
+          Math.abs(candidate - current) < Math.abs(best - current) ? candidate : best
+        ), allowedValues[0]);
+        this.setSetting(key, next);
+      };
+      normalizeStoredChoice('gridControlWindowSeconds', [0, 3, 5, 7, 10]);
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        normalizeStoredChoice(`${stem}FeedbackTolerancePercent`, [5, 10, 15, 20]);
+      }
+    }
+
+    if (schema < 64) {
+      // v0.7.4: replace the temporary +/-50% Autotune fences from v0.7.3 with
+      // parameter-specific realistic defaults. Preserve ranges that were
+      // clearly edited by the user; old automatically generated ranges are
+      // recognizable because they are symmetric +/-50% around their center.
+      const limits = this.homey.settings.get('_autoTuneLimits');
+      const permissions = this.homey.settings.get('_autoTunePermissions');
+      const existing = limits && typeof limits === 'object' && !Array.isArray(limits) ? { ...limits } : {};
+      const permitted = permissions && typeof permissions === 'object' && !Array.isArray(permissions) ? permissions : {};
+      const looksLikeLegacyPercentRange = range => {
+        const min = Number(range?.min);
+        const max = Number(range?.max);
+        if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return false;
+        const center = (min + max) / 2;
+        const halfWidth = (max - min) / 2;
+        const expected = Math.abs(center) < 1e-9 ? 1 : Math.abs(center) * 0.5;
+        return Math.abs(halfWidth - expected) <= Math.max(1e-9, expected * 1e-6);
+      };
+      const keys = new Set([...Object.keys(existing), ...Object.keys(permitted).filter(key => permitted[key])]);
+      const migrated = { ...existing };
+      for (const key of keys) {
+        if (!this.getAutoTuneSettingDescriptor(key)) continue;
+        const oldRange = existing[key];
+        const legacyGenerated = !oldRange
+          || looksLikeLegacyPercentRange(oldRange)
+          || (key === 'commandIntervalSeconds' && Number(oldRange?.min) === 3 && Number(oldRange?.max) === 3);
+        if (legacyGenerated) {
+          const defaults = this.getDefaultAutoTuneLimit(key, this.getSettings()[key]);
+          if (defaults) migrated[key] = defaults;
+        } else {
+          const effective = this.getAutoTuneLimitFor(key, this.getSettings()[key], { [key]: { ...oldRange, userDefined: true } });
+          if (effective) migrated[key] = { ...effective, userDefined: true };
+        }
+      }
+      this.setSetting('_autoTuneLimits', migrated);
+    }
+
+    this.setSetting('settingsSchemaVersion', 64);
   }
 
   async ensureDefaults() {
@@ -10657,7 +10814,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.3',
+      version: '0.7.4',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -10734,7 +10891,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.3',
+      version: '0.7.4',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -11020,7 +11177,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.3',
+      version: '0.7.4',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

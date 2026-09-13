@@ -314,7 +314,7 @@ function appWithSettings(overrides = {}) {
 
 // Permission is opt-in, but v0.7.3 only applies automatically when the
 // per-parameter confidence threshold is reached. Enabling permission creates a
-// persistent default +/-50% allowed range around the current value.
+// persistent parameter-specific realistic allowed range instead of a generic percentage fence.
 (async () => {
   const { app, store } = appWithSettings();
   for (let i = 0; i < 40; i += 1) app.noteAutoTuneGridSample(i % 2 ? 320 : 0, 1_000_000 + i * 1000);
@@ -324,18 +324,18 @@ function appWithSettings(overrides = {}) {
   const result = await app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: true });
   assert.equal(store._autoTunePermissions.commandDeadbandW, true);
   assert.equal(store.commandDeadbandW, 25, 'permission alone must not apply below confidence threshold');
-  assert.deepEqual(store._autoTuneLimits.commandDeadbandW, { min:12.5, max:37.5, minConfidencePercent:95 });
+  assert.deepEqual(store._autoTuneLimits.commandDeadbandW, { min:25, max:250, minConfidencePercent:95, userDefined:false });
   assert.ok(result.recommendations.some(item => item.settingKey === 'commandDeadbandW' && item.autoManaged));
 
   // With enough independent observations, the default 95% threshold becomes
-  // eligible without the user lowering it. The +/-50% fence still applies.
+  // eligible without the user lowering it. The parameter-specific safety fence still applies.
   const highConfidence = appWithSettings();
   for (let i = 0; i < 220; i += 1) highConfidence.app.noteAutoTuneGridSample(i % 2 ? 320 : 0, 1_500_000 + i * 1000);
   const highRec = highConfidence.app.getAutoTuneRecommendations().find(item => item.settingKey === 'commandDeadbandW');
   assert.ok(highRec && highRec.confidence >= 95, 'enough rapid observations should eventually pass the default 95% threshold');
   await highConfidence.app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: true });
   assert.ok(highConfidence.store.commandDeadbandW > 25, 'default 95% confidence must allow automatic management once confidence is high enough');
-  assert.ok(highConfidence.store.commandDeadbandW <= 37.5, 'automatic change must remain within the default +50% fence');
+  assert.ok(highConfidence.store.commandDeadbandW <= 250, 'automatic change must remain within the realistic default deadband fence');
 
   // Daily planning confidence grows on a daily timescale rather than as if
   // every day were a rapid P1 sample. Four days stay below the default 95%,
@@ -406,6 +406,27 @@ function appWithSettings(overrides = {}) {
   assert.equal(Boolean(suppressed.store._autoTuneIgnored.commandDeadbandW), false);
   assert.ok(resumed.recommendations.some(item => item.settingKey === 'commandDeadbandW'));
 
+
+  // v0.7.4 realistic default fences: each managed parameter gets a domain-
+  // specific range instead of +/-50% around the current value. SoC thresholds
+  // are capped by the configured maximum SoC.
+  const realistic = appWithSettings({ maxSoc: 85, minSoc: 10, safetySoc: 15, totalCapacityKwh: 20, expectedEnergyNeedKwh: 20 });
+  await realistic.app.setAutoTunePermission({ settingKey: 'lowForecastAutoSunnySoc', allowed: true });
+  assert.deepEqual(realistic.store._autoTuneLimits.lowForecastAutoSunnySoc, { min:70, max:85, minConfidencePercent:95, userDefined:false });
+  await realistic.app.setAutoTunePermission({ settingKey: 'batterySaveDischargeAboveSoc', allowed: true });
+  assert.deepEqual(realistic.store._autoTuneLimits.batterySaveDischargeAboveSoc, { min:15, max:85, minConfidencePercent:95, userDefined:false });
+  await realistic.app.setAutoTunePermission({ settingKey: 'lowForecastSelfConsumptionMinKwh', allowed: true });
+  assert.deepEqual(realistic.store._autoTuneLimits.lowForecastSelfConsumptionMinKwh, { min:0, max:40, minConfidencePercent:95, userDefined:false });
+  await realistic.app.setAutoTunePermission({ settingKey: 'expectedEnergyNeedKwh', allowed: true });
+  assert.deepEqual(realistic.store._autoTuneLimits.expectedEnergyNeedKwh, { min:0, max:60, minConfidencePercent:95, userDefined:false });
+  await realistic.app.setAutoTunePermission({ settingKey: 'balanceStrength', allowed: true });
+  assert.deepEqual(realistic.store._autoTuneLimits.balanceStrength, { min:0.1, max:0.35, minConfidencePercent:95, userDefined:false });
+  await realistic.app.setAutoTunePermission({ settingKey: 'evModeSmartCurrentA', allowed: true });
+  assert.deepEqual(realistic.store._autoTuneLimits.evModeSmartCurrentA, { min:6, max:32, minConfidencePercent:95, userDefined:false });
+  await realistic.app.setAutoTuneLimits({ settingKey:'lowForecastAutoSunnySoc', min:40, max:135, minConfidencePercent:90 });
+  assert.equal(realistic.store._autoTuneLimits.lowForecastAutoSunnySoc.max, 85, 'Sunny-day Autotune fence may never exceed configured Max SoC');
+  assert.equal(realistic.store._autoTuneLimits.lowForecastAutoSunnySoc.userDefined, true);
+
   // v0.7.1: once Autotune is allowed to manage the battery command interval,
   // it may never leave that interval below 3 seconds. Faster automatic
   // steering can introduce oscillation, even when a legacy/manual value was 1 s.
@@ -415,6 +436,45 @@ function appWithSettings(overrides = {}) {
   assert.ok(intervalFloor.store.commandIntervalSeconds >= 3, 'Autotune command interval must never be below 3 seconds');
   assert.ok(intervalFloor.store._autoTuneHistory.some(item => item.settingKey === 'commandIntervalSeconds' && item.to >= 3));
   assert.ok(floorStatus.managed.some(item => item.settingKey === 'commandIntervalSeconds'));
+
+  // v0.7.4: select/dropdown-backed settings may only receive values that the
+  // Settings UI can actually represent. The rule is generic through the
+  // descriptor so future discrete Autotune parameters can reuse it.
+  assert.deepEqual(app.getAutoTuneSettingDescriptor('gridControlWindowSeconds').allowedValues, [0, 3, 5, 7, 10]);
+  assert.deepEqual(app.getAutoTuneSettingDescriptor('evFeedbackTolerancePercent').allowedValues, [5, 10, 15, 20]);
+  assert.deepEqual(app.getAutoTuneSettingDescriptor('ev4FeedbackTolerancePercent').allowedValues, [5, 10, 15, 20]);
+
+  const evDiscrete = appWithSettings({ evFeedbackTolerancePercent: 10 });
+  evDiscrete.app.autoTuneRuntime.ev[0].errorSamples = 220;
+  evDiscrete.app.autoTuneRuntime.ev[0].errorEwmaPercent = 8; // raw recommendation = 17%
+  const evDiscreteRec = evDiscrete.app.getAutoTuneRecommendations().find(item => item.settingKey === 'evFeedbackTolerancePercent');
+  assert.ok(evDiscreteRec);
+  assert.equal(evDiscreteRec.recommended, 15, 'EV feedback recommendation must snap to a valid dropdown value');
+  await evDiscrete.app.setAutoTunePermission({ settingKey: 'evFeedbackTolerancePercent', allowed: true });
+  assert.equal(evDiscrete.store.evFeedbackTolerancePercent, 15, 'automatic apply must write a valid EV feedback dropdown value');
+
+  const evOneOff = appWithSettings({ evFeedbackTolerancePercent: 10 });
+  evOneOff.app.autoTuneRuntime.ev[0].errorSamples = 30;
+  evOneOff.app.autoTuneRuntime.ev[0].errorEwmaPercent = 8;
+  await evOneOff.app.applyAutoTuneRecommendationOnce({ settingKey: 'evFeedbackTolerancePercent' });
+  assert.equal(evOneOff.store.evFeedbackTolerancePercent, 15, 'one-off apply must also write a valid dropdown value');
+
+  await assert.rejects(
+    () => evDiscrete.app.setAutoTuneLimits({ settingKey: 'evFeedbackTolerancePercent', min: 16, max: 19, minConfidencePercent: 95 }),
+    /geen geldige keuzewaarde/i,
+    'an allowed range with no selectable value must be rejected instead of creating a silent no-op',
+  );
+
+  const constrainedDiscrete = appWithSettings({ evFeedbackTolerancePercent: 10 });
+  constrainedDiscrete.app.autoTuneRuntime.ev[0].errorSamples = 220;
+  constrainedDiscrete.app.autoTuneRuntime.ev[0].errorEwmaPercent = 12; // raw recommendation > 20%
+  await constrainedDiscrete.app.setAutoTunePermission({ settingKey: 'evFeedbackTolerancePercent', allowed: true });
+  await constrainedDiscrete.app.setAutoTuneLimits({ settingKey: 'evFeedbackTolerancePercent', min: 11, max: 19, minConfidencePercent: 95 });
+  constrainedDiscrete.store.evFeedbackTolerancePercent = 10;
+  constrainedDiscrete.app.settingsCache.evFeedbackTolerancePercent = 10;
+  const constrainedApplied = await constrainedDiscrete.app.applyAutoTuneRecommendations({ onlyKey: 'evFeedbackTolerancePercent', force: true });
+  assert.equal(constrainedApplied, 1);
+  assert.equal(constrainedDiscrete.store.evFeedbackTolerancePercent, 15, 'automatic apply must choose the nearest valid dropdown value inside the user fence');
 
   console.log('automatic Autotune tests passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });
