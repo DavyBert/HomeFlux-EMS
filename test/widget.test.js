@@ -19,14 +19,20 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.7.1');
-assert.equal(appCompose.version, '0.7.1');
-assert.equal(packageJson.version, '0.7.1');
-assert.equal(packageLock.version, '0.7.1');
-assert.equal(packageLock.packages[''].version, '0.7.1');
+assert.equal(manifest.version, '0.7.2');
+assert.equal(appCompose.version, '0.7.2');
+assert.equal(packageJson.version, '0.7.2');
+assert.equal(packageLock.version, '0.7.2');
+assert.equal(packageLock.packages[''].version, '0.7.2');
+assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
+assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
+const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');
+assert(emsDriver, 'EMS driver missing');
+assert(emsDriver.capabilities.includes('ems_control_owner'), 'EMS device must expose who owns battery control');
+assert(emsDriver.capabilities.includes('ems_ev_plan'), 'EMS device must expose EV planning/fallback information');
 assert.deepEqual(manifest.widgets.savings, { ...compose, id: 'savings' }, 'generated widget manifest must match widget Compose');
 assert.deepEqual(manifest.widgets.status, { ...statusCompose, id: 'status' }, 'generated status widget manifest must match widget Compose');
-for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar', 'showEvPlanning']) {
+for (const id of ['showReasons', 'showTariff', 'showNextTariff', 'showPriceStatus', 'showNextCharge', 'showPlanningPhase', 'showPlanningForecast', 'showPlanningNeed', 'showPlanningGrid', 'showPlanningSolar', 'showControlOwner', 'showEvPlanning']) {
   assert(statusCompose.settings.some(item => item.id === id), `status widget setting ${id} missing`);
 }
 assert(statusHtml.includes("enabled(settings, 'showTariff')"), 'status widget must allow current tariff to be selected');
@@ -48,6 +54,11 @@ assert(statusHtml.includes('formatDurationMs(nextAt - Date.now())'), 'next tarif
 assert(statusHtml.includes('batteryTimingText(status, Homey)'), 'status widget must render charge/discharge remaining time');
 assert(statusHtml.includes('priceDataText(status, Homey)'), 'status widget must render price-data freshness');
 assert(statusHtml.includes('nextChargeText(status, Homey)'), 'status widget must render next-charge status');
+assert(statusHtml.includes('hybridControlOwnerText(status, Homey)'), 'status widget must render Hybrid/HomeFlux battery ownership');
+assert(statusHtml.includes("enabled(settings, 'showControlOwner')"), 'status widget must let the user show/hide battery control ownership');
+assert(statusHtml.includes('evPlanningTargetText(ev, Homey)'), 'status widget must render persistent EV minimum targets and settings fallback');
+assert(statusHtml.includes('widget.status.evChargingGuarantee'), 'status widget must identify charging for a guaranteed EV minimum');
+assert(statusHtml.includes("String(ev.planningSource || 'settings')"), 'EV planning widget must distinguish Flow targets from settings fallback');
 assert.equal(compose.height, 150);
 assert.equal(compose.devices, undefined, 'savings widget must not require a device selection');
 assert.equal(statusCompose.devices, undefined, 'status widget must not require a device selection');

@@ -1,4 +1,8 @@
 {
+  "0.7.2": {
+    "en": "Added persistent guaranteed EV minimum targets by SoC or required kWh, with clear settings fallback and favourable-charging behaviour after the minimum is reached. Hybrid ownership is now more visible in the status widget and EMS device. Improved device/widget guidance in battery configuration and documentation.",
+    "nl": "Toegevoegd: blijvende gegarandeerde EV-minimumdoelen via SoC of benodigde kWh, met duidelijke fallback naar instellingen en gunstig verder laden nadat het minimum is bereikt. Hybrid ownership is nu duidelijker zichtbaar in de statuswidget en het EMS-apparaat. Uitleg over apparaat en widgets is verbeterd in batterijconfiguratie en documentatie."
+  },
   "0.7.1": {
     "en": "Reorganized EMS configuration, added two-step battery direction testing, renamed Finetuning to Autotune, introduced Hybrid EMS for external self-consumption control with one or multiple batteries, and changed the license to GPL-3.0-only.",
     "nl": "EMS-configuratie heringedeeld, tweestaps batterijrichtingtest toegevoegd, Finetuning hernoemd naar Autotune, Hybrid EMS voor externe zelfconsumptiesturing met één of meerdere batterijen toegevoegd en de licentie gewijzigd naar GPL-3.0-only."

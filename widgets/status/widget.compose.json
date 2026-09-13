@@ -60,6 +60,15 @@
       "value": true
     },
     {
+      "id": "showControlOwner",
+      "type": "checkbox",
+      "title": {
+        "en": "Battery control owner",
+        "nl": "Wie stuurt de batterij"
+      },
+      "value": true
+    },
+    {
       "id": "showOutput",
       "type": "checkbox",
       "title": {

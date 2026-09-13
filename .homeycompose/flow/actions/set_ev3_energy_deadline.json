@@ -4,8 +4,8 @@
     "nl": "Stel EV 3: kWh nodig tegen tijd in"
   },
   "hint": {
-    "en": "Sets a temporary energy deadline for EV 3. Useful when vehicle SoC is unavailable. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps charging inside the configured EV tariffs; Yes may use other tariffs only when required to meet the deadline. Peak Guard always remains absolute.",
-    "nl": "Stelt een tijdelijk energiedoel voor EV 3 in. Handig wanneer voertuig-SoC niet beschikbaar is. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee blijft binnen de ingestelde EV-tarieven; Ja mag alleen indien nodig andere tarieven gebruiken om de deadline te halen. Peak Guard blijft altijd absoluut."
+    "en": "Sets a persistent minimum energy target for EV 3. It remains active until another EV target is submitted or the planning override is cleared. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps deadline charging on configured favourable tariffs/PV; Yes may use any tariff when required to secure the minimum. After the minimum is reached, charging may continue on favourable moments. Peak Guard always remains absolute.",
+    "nl": "Stelt een blijvend minimum-energiedoel voor EV 3 in. Het blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee gebruikt voor de deadline alleen ingestelde gunstige tarieven/PV; Ja mag elk tarief gebruiken wanneer dat nodig is om het minimum te garanderen. Na het minimum mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut."
   },
   "args": [
     {
@@ -39,15 +39,15 @@
         {
           "id": "no",
           "title": {
-            "en": "No — selected tariffs only",
-            "nl": "Nee — alleen geselecteerde tarieven"
+            "en": "No — favourable moments only",
+            "nl": "Nee — alleen gunstige momenten"
           }
         },
         {
           "id": "yes",
           "title": {
-            "en": "Yes — use extra tariffs if required",
-            "nl": "Ja — extra tarieven gebruiken indien nodig"
+            "en": "Yes — all tariffs if required",
+            "nl": "Ja — alle tarieven indien nodig"
           }
         }
       ]

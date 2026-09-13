@@ -10,11 +10,13 @@
   "capabilities": [
     "ems_control_mode",
     "ems_status",
+    "ems_control_owner",
     "ems_tariff",
     "ems_action",
     "ems_battery_command",
     "ems_charge_plan",
     "ems_ev_status",
+    "ems_ev_plan",
     "ems_ev_override",
     "ems_hvac_status",
     "ems_savings_today",

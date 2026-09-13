@@ -5,3 +5,6 @@ HomeFlux EMS stuurt batterijen, zonnepanelen en flexibele verbruikers aan rond h
 HomeFlux brengt tariefperiodes, PV-voorspelling, batterijreserve, zelfconsumptie, netlimieten en gebruikersprioriteiten samen in één regelstrategie. Hardware-integraties blijven onafhankelijk via expliciete Homey Flow-kaarten, terwijl Peak Guard een harde veiligheidslaag blijft.
 
 Het doel: meer nuttig zelfverbruik, energie op de juiste momenten inkopen, reserve voor later beschermen en onnodige netpieken vermijden.
+
+
+Gebruik optioneel het HomeFlux EMS-apparaat voor snelle bediening/status en voeg de EMS-status- en Winst-widgets toe om planning, ownership en kostimpact zichtbaar te houden op je Homey-dashboard.

@@ -2207,7 +2207,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 60);
+  assert.equal(stored.settingsSchemaVersion, 61);
+  assert.deepEqual(stored.evEnergyDeadlineOverrides, []);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
   assert.equal(stored.lowForecastAutoSunnyEnabled, false);
@@ -2256,7 +2257,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.1');
+  assert.equal(simulation.version, '0.7.2');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2901,26 +2902,120 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(app.evEnergyPlans[0].targetKwh, 20);
 }
 
-// v0.6.1: Flow can persistently override the saved SoC target/time. A kWh
-// plan may temporarily take precedence, but only the clear card deletes the override.
+// v0.7.2: Flow SoC/kWh deadlines are persistent minimum targets. The most
+// recently submitted target is authoritative and the existing clear card clears
+// either type so an older hidden target can never reappear.
 {
   const app = bareApp();
-  app.evEnergyPlans = [{ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0 }];
-  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0 }];
+  const stored = {};
+  app.homey.settings = {
+    get: key => Object.prototype.hasOwnProperty.call(stored, key) ? stored[key] : null,
+    set: (key, value) => { stored[key] = value; },
+  };
+  app.evEnergyPlans = [{ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0,guarantee:false,sessionStarted:false }];
+  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }];
   app.evTargetWarningState = [''];
+  app.state.evConnected = false;
+  app.inputSeen.ev = { connected:true, soc:false, chargeCurrent:false };
+  app.inputUpdatedAt.ev = { connected:Date.now(), soc:0, chargeCurrent:0 };
   app.getSettings = () => ({ timezone: 'Europe/Brussels' });
   app.requestContextEvaluate = () => {};
   assert.equal(app.setEvSocPlan(0, 80, '7am'), false);
   assert.equal(app.setEvSocPlan(0, 101, '07:00'), false);
-  assert.equal(app.setEvSocPlan(0, 80, '07:00'), true);
+  assert.equal(app.setEvSocPlan(0, 80, '07:00', 'no'), true);
   assert.equal(app.evSocPlans[0].active, true);
   assert.equal(app.evSocPlans[0].targetSoc, 80);
   assert.equal(app.evEnergyPlans[0].active, false);
-  assert.equal(app.setEvEnergyPlan(0, 20, '07:00'), true);
-  assert.equal(app.evSocPlans[0].active, true);
+
+  assert.equal(app.setEvEnergyPlan(0, 20, '07:00', 'yes'), true);
+  assert.equal(app.evSocPlans[0].active, false, 'latest kWh target must replace the older SoC target');
   assert.equal(app.evEnergyPlans[0].active, true);
+  assert.equal(app.evEnergyPlans[0].targetKwh, 20);
+  assert.equal(app.evEnergyPlans[0].remainingKwh, 20);
+  assert.equal(app.evEnergyPlans[0].guarantee, true);
+  assert.equal(Array.isArray(stored.evEnergyDeadlineOverrides), true);
+  assert.equal(stored.evEnergyDeadlineOverrides[0].active, true);
+  assert.equal(stored.evEnergyDeadlineOverrides[0].targetKwh, 20);
+  assert.equal(stored.evEnergyDeadlineOverrides[0].guarantee, true);
+
   assert.equal(app.clearEvSocPlan(0), true);
   assert.equal(app.evSocPlans[0].active, false);
+  assert.equal(app.evEnergyPlans[0].active, false);
+  assert.equal(stored.evEnergyDeadlineOverrides[0].active, false);
+}
+
+// v0.7.2: persistent kWh targets survive an app restart with their remaining
+// minimum intact. Reaching the minimum keeps the target active; the next real EV
+// connection starts a new session from the same configured minimum instead of
+// deleting the Flow input.
+{
+  const now = Date.now();
+  const saved = [{
+    active:true, targetKwh:12, remainingKwh:3.5, targetTime:'06:30',
+    deadlineAt:now + 3600000, guarantee:true, sessionStarted:true,
+  }];
+  const app = bareApp();
+  app.homey.settings = { get: key => key === 'evEnergyDeadlineOverrides' ? saved : null, set: () => {} };
+  app.restoreEvEnergyPlanOverrides();
+  let plan = app.evEnergyPlans[0];
+  assert.equal(plan.active, true);
+  assert.equal(plan.targetKwh, 12);
+  assert.equal(plan.remainingKwh, 3.5);
+  assert.equal(plan.targetTime, '06:30');
+  assert.equal(plan.guarantee, true);
+  assert.equal(plan.sessionStarted, true);
+
+  plan.remainingKwh = 0;
+  app.state.evConnected = true;
+  app.inputSeen.ev = { connected:true, soc:false, chargeCurrent:false };
+  app.inputUpdatedAt.ev = { connected:now, soc:0, chargeCurrent:0 };
+  app.getSettings = () => ({ timezone:'Europe/Brussels', evTargetTime:'07:00' });
+  app.persistEvEnergyPlanOverrides = () => true;
+  app.tickEvEnergyPlan(0, now + 1000);
+  assert.equal(plan.active, true, 'minimum reached must not delete the persistent Flow target');
+  assert.equal(plan.remainingKwh, 0);
+
+  // A disconnect arms the next session; reconnect restores the full minimum.
+  app.handleEvEnergyPlanConnectionTransition(0, true, false, now + 2000);
+  assert.equal(plan.sessionStarted, false);
+  app.handleEvEnergyPlanConnectionTransition(0, false, true, now + 3000);
+  assert.equal(plan.sessionStarted, true);
+  assert.equal(plan.remainingKwh, 12);
+}
+
+// v0.7.2: without a Flow planning card the runtime explicitly falls back to
+// the configured EV target. Flow targets identify their source so widgets and
+// the EMS device can distinguish a user-supplied minimum from settings fallback.
+{
+  const app = bareApp();
+  app.evEnergyPlans = Array.from({ length:4 }, () => ({ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0,guarantee:false,sessionStarted:false }));
+  app.evSocPlans = Array.from({ length:4 }, () => ({ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }));
+  app.evSessionOverride = { mode:null };
+  app.extraEvInstances = [];
+  const settings = {
+    timezone:'Europe/Brussels', evCount:1, evEnabled:true, evSocEnabled:true,
+    evTargetSoc:75, evTargetTime:'06:45', evGuaranteeTarget:true,
+    evAllowUnselectedTariffForDeadline:false, touRates:[],
+  };
+  let runtime = app.getEvInstanceSettings(0, settings);
+  assert.equal(runtime.evPlanningSource, 'settings');
+  assert.equal(runtime.evPlanningFlowInputReceived, false);
+  assert.equal(runtime.evPlanningTargetSoc, 75);
+  assert.equal(runtime.evPlanningTargetTime, '06:45');
+  let devicePlan = app.getEvPlanningDeviceStatus(settings);
+  assert.match(devicePlan, /geen Flow-doel · instellingen/);
+  assert.match(devicePlan, /75% tegen 06:45/);
+
+  app.evSocPlans[0] = { active:true,targetSoc:82,targetTime:'07:15',deadlineAt:0,guarantee:true };
+  runtime = app.getEvInstanceSettings(0, settings);
+  assert.equal(runtime.evPlanningSource, 'flow_soc');
+  assert.equal(runtime.evPlanningFlowInputReceived, true);
+  assert.equal(runtime.evPlanningTargetSoc, 82);
+  assert.equal(runtime.evPlanningGuarantee, true);
+  devicePlan = app.getEvPlanningDeviceStatus(settings);
+  assert.match(devicePlan, /Flow-doel/);
+  assert.match(devicePlan, /82% tegen 07:15/);
+  assert.match(devicePlan, /gegarandeerd/);
 }
 
 // v0.6.1: output timing must treat Hybrid as both a mode and current output.
@@ -3149,6 +3244,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(status.available, true);
   assert.equal(status.configured, true);
   assert.equal(status.delegated, true);
+  assert.equal(status.owner, 'external');
   assert.equal(status.externalSetpointW, 1250);
   assert.equal(status.gridBandMinW, -300);
   assert.equal(status.gridBandMaxW, 300);
@@ -3699,4 +3795,158 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(app.hybridEmsRuntime.retryReferenceSetpointW, null);
   assert.equal(app.hybridEmsRuntime.staleOutsideSince, 0);
   assert.equal(app.hybridEmsRuntime.status, 'external_control');
+}
+
+// v0.7.2: the production Smart-EV portfolio must preserve a guaranteed Flow
+// minimum outside selected tariffs. The helper may request `source=guarantee`,
+// but the shared allocator must also grant that power and publish the matching
+// intentional grid-import target so the battery EMS does not cancel it.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.evSessionOverride = { mode: null };
+  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }];
+  app.evEnergyPlans = [{
+    active:true, targetKwh:7, remainingKwh:7, targetTime:'23:59',
+    deadlineAt:now + (30 * 60000), lastTickAt:now, guarantee:true, sessionStarted:true,
+  }];
+  app.inputSeen.ev = { soc:false, connected:true, chargeCurrent:true };
+  app.inputUpdatedAt.ev = { soc:0, connected:now, chargeCurrent:now };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = 0;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedEvCurrentA = 0;
+  app.lastPublishedEvAllowed = false;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone:'Europe/Brussels', contractType:'tou', batteryCount:0, evCount:1,
+    touRates:[{ id:'normal', name:'Normal', avoidGridImport:true, evChargeAllowed:false, evPvChargeAllowed:true, evMaxGridImportW:0 }],
+    touSchedule:[{ rateId:'normal', start:'00:00', end:'00:00', days:[1,2,3,4,5,6,7] }],
+    evEnabled:true, evSocEnabled:false, evMode:'smart', evControlType:'current',
+    evPvSharePercent:100, evWeight:1, evPhases:1, evMinCurrentA:6, evMaxCurrentA:32, evStandardCurrentA:16,
+    evPeakGuardBatteryAssistNormal:false, peakShaveEnabled:false,
+    exportLimitEnabled:false, minimumExportW:0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff:{ kind:'tou', rateId:'normal', className:'normal', label:'Normal' },
+    candidateCommands:[], candidateTotalCommandW:0,
+    calculatedCommands:[], calculatedTotalCommandW:0,
+    commands:[], totalCommandW:0, gridChargeAssistW:0, pvChargeW:0,
+  };
+  let ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.source, 'guarantee');
+  assert.equal(ev.guaranteeActive, true);
+  assert.equal(ev.selectedTariff, false);
+  assert.equal(ev.desiredCurrentA, 32);
+  assert.equal(ev.desiredPowerW, 7360);
+  assert.equal(ev.portfolioGridImportTargetW, 7360);
+  assert.match(ev.reason, /Gegarandeerd minimum/);
+
+  // The same persistent target with guarantee=No may still use PV/favourable
+  // tariffs, but must not consume an otherwise blocked tariff from the grid.
+  app.evEnergyPlans[0].guarantee = false;
+  ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.allowed, false);
+  assert.equal(ev.desiredCurrentA, 0);
+  assert.equal(ev.portfolioGridImportTargetW || 0, 0);
+}
+
+// v0.7.2: guaranteed all-tariff EV charging never bypasses Peak Guard. Even a
+// hard minimum only receives the real remaining peak budget.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.evSessionOverride = { mode:null };
+  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }];
+  app.evEnergyPlans = [{
+    active:true, targetKwh:7, remainingKwh:7, targetTime:'23:59',
+    deadlineAt:now + (30 * 60000), lastTickAt:now, guarantee:true, sessionStarted:true,
+  }];
+  app.inputSeen.ev = { soc:false, connected:true, chargeCurrent:true };
+  app.inputUpdatedAt.ev = { soc:0, connected:now, chargeCurrent:now };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 0;
+  app.state.gridPowerW = 0;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedEvCurrentA = 0;
+  app.lastPublishedEvAllowed = false;
+  app.getPvCurtailmentHeadroomW = () => 0;
+  app.getRuntimeSettings = settings => settings;
+  const settings = {
+    timezone:'Europe/Brussels', contractType:'tou', batteryCount:0, evCount:1,
+    touRates:[{ id:'normal', name:'Normal', avoidGridImport:true, evChargeAllowed:false, evPvChargeAllowed:true, evMaxGridImportW:0 }],
+    touSchedule:[{ rateId:'normal', start:'00:00', end:'00:00', days:[1,2,3,4,5,6,7] }],
+    evEnabled:true, evSocEnabled:false, evMode:'smart', evControlType:'current',
+    evPvSharePercent:100, evWeight:1, evPhases:1, evMinCurrentA:6, evMaxCurrentA:32, evStandardCurrentA:16,
+    evPeakGuardBatteryAssistNormal:false,
+    peakShaveEnabled:true, peakLimitW:2200, peakSoftMarginW:100,
+    exportLimitEnabled:false, minimumExportW:0,
+  };
+  app.getSettings = () => settings;
+  const result = {
+    tariff:{ kind:'tou', rateId:'normal', className:'normal', label:'Normal' },
+    candidateCommands:[], candidateTotalCommandW:0,
+    calculatedCommands:[], calculatedTotalCommandW:0,
+    commands:[], totalCommandW:0, gridChargeAssistW:0, pvChargeW:0,
+  };
+  const ev = app.coordinateEvBatteryPriority(result, settings);
+  assert.equal(ev.source, 'guarantee');
+  assert.equal(ev.guaranteeActive, true);
+  assert.equal(ev.desiredCurrentA, 9); // 9 A = 2070 W, inside the 2100 W soft Peak Guard budget.
+  assert.equal(ev.desiredPowerW, 2070);
+  assert.equal(ev.portfolioGridImportTargetW, 2070);
+  assert.equal(ev.desiredPowerW <= 2100, true);
+}
+
+// v0.7.2: a persisted kWh minimum remains session-safe across a restart. If
+// the first fresh charger status says disconnected, that confirmation arms the
+// full minimum for the next connection even though the in-memory `wasConnected`
+// value starts false after restart.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.evEnergyPlans = [{
+    active:true, targetKwh:15, remainingKwh:2, targetTime:'07:00',
+    deadlineAt:now + 3600000, lastTickAt:now, guarantee:true, sessionStarted:true,
+  }];
+  app.getSettings = () => ({ timezone:'Europe/Brussels' });
+  let persistCalls = 0;
+  app.persistEvEnergyPlanOverrides = () => { persistCalls += 1; return true; };
+  assert.equal(app.handleEvEnergyPlanConnectionTransition(0, false, false, now + 1000), true);
+  assert.equal(app.evEnergyPlans[0].sessionStarted, false);
+  assert.equal(persistCalls, 1);
+  assert.equal(app.handleEvEnergyPlanConnectionTransition(0, false, true, now + 2000), true);
+  assert.equal(app.evEnergyPlans[0].sessionStarted, true);
+  assert.equal(app.evEnergyPlans[0].remainingKwh, 15);
+}
+
+// v0.7.2: once a persistent kWh minimum is already satisfied, favourable
+// extra charging must not write the same 0 kWh state back to Homey settings on
+// every meter/EV update. The target stays active without creating write churn.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.evEnergyPlans = [{
+    active:true, targetKwh:10, remainingKwh:0, targetTime:'07:00',
+    deadlineAt:now + 3600000, lastTickAt:now - 60000, guarantee:true, sessionStarted:true,
+  }];
+  app.evSocPlans = [{ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }];
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 16;
+  app.inputSeen.ev = { connected:true, chargeCurrent:true, soc:false };
+  app.inputUpdatedAt.ev = { connected:now, chargeCurrent:now, soc:0 };
+  app.getSettings = () => ({
+    timezone:'Europe/Brussels', evCount:1, evEnabled:true, evSocEnabled:false,
+    evPhases:1, evMinCurrentA:6, evMaxCurrentA:32, evStandardCurrentA:16, touRates:[],
+  });
+  let persistCalls = 0;
+  app.persistEvEnergyPlanOverrides = () => { persistCalls += 1; return true; };
+  app.tickEvEnergyPlan(0, now);
+  assert.equal(app.evEnergyPlans[0].remainingKwh, 0);
+  assert.equal(persistCalls, 0);
 }

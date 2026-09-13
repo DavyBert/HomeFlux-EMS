@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.1');
+  assert.equal(manifest.version, '0.7.2');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -25,8 +25,11 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.1 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.1 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.2 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.2 — Your energy, managed differently');
+assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
+assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
+assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');
 assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
 assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
 assert.deepStrictEqual(composeJson.api.getHybridStatus, { method: 'GET', path: '/hybrid-status' });
@@ -88,7 +91,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 60"));
+assert(appJs.includes("settingsSchemaVersion', 61"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);

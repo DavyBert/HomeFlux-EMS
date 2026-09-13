@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.1 — Your energy, managed differently",
+    "subtitle": "v0.7.2 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -149,7 +149,25 @@
       "evTargetNotFeasible": "not feasible",
       "reasonDischargePausedPlanning": "Discharge paused at protected planning target",
       "reasonDischargePausedFloor": "Discharge paused at configured discharge SoC",
-      "reasonDischargePausedMinimum": "Discharge paused at minimum SoC"
+      "reasonDischargePausedMinimum": "Discharge paused at minimum SoC",
+      "controlOwner": "Battery control",
+      "controlOwnerNoBattery": "No home battery",
+      "controlOwnerExternal": "External EMS",
+      "controlOwnerHomeFlux": "HomeFlux",
+      "hybridOff": "Hybrid off",
+      "hybridFallback": "Hybrid fallback",
+      "hybridHandoverWait": "handover waiting",
+      "hybridHomeFluxPriority": "planning/safety",
+      "minimumBy": "minimum by",
+      "minimumReached": "minimum reached",
+      "remaining": "remaining",
+      "noSocTarget": "no SoC target configured",
+      "noFlowTarget": "No Flow target received",
+      "settingsFallback": "settings:",
+      "guaranteedAllTariffs": "guaranteed · all tariffs if required",
+      "favourableOnly": "not guaranteed · favourable moments only",
+      "flowTarget": "Flow target",
+      "evChargingGuarantee": "Charging for guaranteed minimum"
     }
   }
 }

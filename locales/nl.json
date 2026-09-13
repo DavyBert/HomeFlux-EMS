@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.1 — Jouw energie, anders geregeld",
+    "subtitle": "v0.7.2 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -149,7 +149,25 @@
       "evTargetNotFeasible": "niet haalbaar",
       "reasonDischargePausedPlanning": "Ontladen gepauzeerd op beschermd planningsdoel",
       "reasonDischargePausedFloor": "Ontladen gepauzeerd op ingestelde ontlaad-SoC",
-      "reasonDischargePausedMinimum": "Ontladen gepauzeerd op minimum-SoC"
+      "reasonDischargePausedMinimum": "Ontladen gepauzeerd op minimum-SoC",
+      "controlOwner": "Batterijsturing",
+      "controlOwnerNoBattery": "Geen thuisbatterij",
+      "controlOwnerExternal": "Externe EMS",
+      "controlOwnerHomeFlux": "HomeFlux",
+      "hybridOff": "Hybrid uit",
+      "hybridFallback": "Hybrid fallback",
+      "hybridHandoverWait": "overdracht wacht",
+      "hybridHomeFluxPriority": "planning/veiligheid",
+      "minimumBy": "minimum tegen",
+      "minimumReached": "minimum bereikt",
+      "remaining": "resterend",
+      "noSocTarget": "geen SoC-doel ingesteld",
+      "noFlowTarget": "Geen Flow-doel ontvangen",
+      "settingsFallback": "instellingen:",
+      "guaranteedAllTariffs": "gegarandeerd · alle tarieven indien nodig",
+      "favourableOnly": "niet gegarandeerd · alleen gunstige momenten",
+      "flowTarget": "Flow-doel",
+      "evChargingGuarantee": "Laden voor gegarandeerd minimum"
     }
   }
 }

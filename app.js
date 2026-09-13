@@ -187,7 +187,8 @@ class HomeFluxEmsApp extends Homey.App {
     // after sustained real grid import. No extra polling timer is required.
     this.evPvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
     this.latestEvDecision = null;
-    this.evEnergyPlans = Array.from({ length: 4 }, () => ({ active:false, targetKwh:0, remainingKwh:0, targetTime:'07:00', deadlineAt:0, lastTickAt:0, guarantee:false }));
+    this.evEnergyPlans = Array.from({ length: 4 }, () => ({ active:false, targetKwh:0, remainingKwh:0, targetTime:'07:00', deadlineAt:0, lastTickAt:0, guarantee:false, sessionStarted:false }));
+    this.evEnergyPlanPersistAt = 0;
     this.evSocPlans = Array.from({ length: 4 }, () => ({ active:false, targetSoc:0, targetTime:'07:00', deadlineAt:0, guarantee:false }));
     this.evTargetWarningState = Array(4).fill('');
     this.evTargetWarningTrigger = null;
@@ -304,6 +305,7 @@ class HomeFluxEmsApp extends Homey.App {
     await this.migrateSettings();
     await this.ensureDefaults();
     this.refreshSettingsCache();
+    this.restoreEvEnergyPlanOverrides();
     this.restoreEvSocPlanOverrides();
     this.restoreBoilerRuntime();
 
@@ -490,7 +492,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.1 initialized');
+    this.log('HomeFlux EMS v0.7.2 initialized');
   }
 
   refreshSettingsCache() {
@@ -2015,40 +2017,73 @@ class HomeFluxEmsApp extends Homey.App {
     if (override?.mode) settings.evMode = this.normalizeEvOperatingMode(override.mode);
     settings.evSessionOverrideActive = Boolean(override?.mode);
     const energyPlan = this.evEnergyPlans?.[index];
-    const energyDeadlineAt = Math.max(0, Number(energyPlan?.deadlineAt) || 0);
-    if (energyPlan?.active && Number(energyPlan.remainingKwh) > 0 && energyDeadlineAt > Date.now()) {
+    const socPlan = this.evSocPlans?.[index];
+    const now = Date.now();
+
+    // The last Flow target remains authoritative until another target is sent
+    // or the existing clear-override card is used. A kWh target is a minimum
+    // for the current connection session; reaching it does not block additional
+    // charging during PV or otherwise favourable tariff windows.
+    if (energyPlan?.active) {
+      let energyDeadlineAt = Math.max(0, Number(energyPlan.deadlineAt) || 0);
+      if (!(energyDeadlineAt > now)) {
+        const nextDeadline = findNextLocalTime(new Date(now), String(energyPlan.targetTime || settings.evTargetTime || '07:00'), settings.timezone || 'Europe/Brussels');
+        energyDeadlineAt = nextDeadline.getTime();
+        energyPlan.deadlineAt = energyDeadlineAt;
+      }
       settings.evEnergyPlanActive = true;
       settings.evEnergyNeedKwh = Math.max(0, Number(energyPlan.remainingKwh) || 0);
       settings.evEnergyDeadlineAt = energyDeadlineAt;
-      // A Flow deadline always enables deadline pacing. Its own 'guarantee'
-      // choice decides whether HomeFlux may leave the selected EV tariffs.
+      settings.evTargetTime = String(energyPlan.targetTime || settings.evTargetTime || '07:00');
+      // A Flow deadline always enables deadline pacing. Its own guarantee choice
+      // decides whether HomeFlux may use every tariff when that is required to
+      // reach the minimum target. Peak Guard remains absolute.
       settings.evGuaranteeTarget = true;
       settings.evAllowUnselectedTariffForDeadline = Boolean(energyPlan.guarantee);
-    } else {
-      if (energyPlan?.active && energyDeadlineAt > 0 && energyDeadlineAt <= Date.now()) energyPlan.active = false;
+      settings.evPlanningSource = 'flow_energy';
+      settings.evPlanningFlowInputReceived = true;
+      settings.evPlanningGuarantee = Boolean(energyPlan.guarantee);
+      settings.evPlanningTargetKwh = Math.max(0, Number(energyPlan.targetKwh) || 0);
+      settings.evPlanningRemainingKwh = Math.max(0, Number(energyPlan.remainingKwh) || 0);
+      settings.evPlanningTargetSoc = null;
+      settings.evPlanningTargetTime = settings.evTargetTime;
+    } else if (settings.evSocEnabled !== false && socPlan?.active) {
+      // A persistent Flow SoC target is likewise a minimum target. Once reached,
+      // normal PV/tariff charging may continue; only the deadline guarantee is
+      // released because the minimum has already been satisfied.
       settings.evEnergyPlanActive = false;
       settings.evEnergyNeedKwh = 0;
       settings.evEnergyDeadlineAt = 0;
-    }
-
-    // A Flow SoC target is a persistent override of the configured target/time.
-    // It remains authoritative until the dedicated clear-override Flow card is
-    // executed. A one-shot kWh plan still takes precedence while it is active.
-    const socPlan = this.evSocPlans?.[index];
-    if (!settings.evEnergyPlanActive && settings.evSocEnabled !== false && socPlan?.active) {
       settings.evSocPlanActive = true;
       settings.evSocPlanOverrideActive = true;
       settings.evTargetSoc = Math.max(0, Math.min(100, Number(socPlan.targetSoc) || 0));
       settings.evTargetTime = String(socPlan.targetTime || settings.evTargetTime || '07:00');
-      const nextDeadline = findNextLocalTime(new Date(), settings.evTargetTime, settings.timezone || 'Europe/Brussels');
+      const nextDeadline = findNextLocalTime(new Date(now), settings.evTargetTime, settings.timezone || 'Europe/Brussels');
       socPlan.deadlineAt = nextDeadline.getTime();
       settings.evSocDeadlineAt = socPlan.deadlineAt;
       settings.evGuaranteeTarget = true;
       settings.evAllowUnselectedTariffForDeadline = Boolean(socPlan.guarantee);
+      settings.evPlanningSource = 'flow_soc';
+      settings.evPlanningFlowInputReceived = true;
+      settings.evPlanningGuarantee = Boolean(socPlan.guarantee);
+      settings.evPlanningTargetKwh = null;
+      settings.evPlanningRemainingKwh = null;
+      settings.evPlanningTargetSoc = settings.evTargetSoc;
+      settings.evPlanningTargetTime = settings.evTargetTime;
     } else {
+      settings.evEnergyPlanActive = false;
+      settings.evEnergyNeedKwh = 0;
+      settings.evEnergyDeadlineAt = 0;
       settings.evSocPlanActive = false;
       settings.evSocPlanOverrideActive = Boolean(socPlan?.active);
       settings.evSocDeadlineAt = 0;
+      settings.evPlanningSource = 'settings';
+      settings.evPlanningFlowInputReceived = false;
+      settings.evPlanningGuarantee = Boolean(settings.evGuaranteeTarget) && Boolean(settings.evAllowUnselectedTariffForDeadline);
+      settings.evPlanningTargetKwh = null;
+      settings.evPlanningRemainingKwh = null;
+      settings.evPlanningTargetSoc = settings.evSocEnabled !== false ? Math.max(0, Math.min(100, Number(settings.evTargetSoc) || 0)) : null;
+      settings.evPlanningTargetTime = String(settings.evTargetTime || '07:00');
     }
     return settings;
   }
@@ -3004,7 +3039,14 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('hybridEmsEnabled') === null) this.setSetting('hybridEmsEnabled', false);
     }
 
-    this.setSetting('settingsSchemaVersion', 60);
+    if (schema < 61) {
+      // v0.7.2: Flow-fed EV energy/deadline targets become persistent minimum
+      // targets, just like the existing SoC/deadline override. Only compact
+      // target/session state is stored; raw EV measurements remain RAM-only.
+      if (this.homey.settings.get('evEnergyDeadlineOverrides') === null) this.setSetting('evEnergyDeadlineOverrides', []);
+    }
+
+    this.setSetting('settingsSchemaVersion', 61);
   }
 
   async ensureDefaults() {
@@ -3779,6 +3821,41 @@ class HomeFluxEmsApp extends Homey.App {
     return `${active}/${enabled.length} actief · ${enabled.map(index => this.getEvInstanceName(index, settings)).join(', ')}`;
   }
 
+  getEvPlanningDeviceStatus(settings = this.getSettings()) {
+    const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
+    const isNl = language.startsWith('nl');
+    const rows = [];
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const instanceSettings = this.getEvInstanceSettings(index, settings);
+      if (!Boolean(instanceSettings.evEnabled)) continue;
+      const source = String(instanceSettings.evPlanningSource || 'settings');
+      const time = String(instanceSettings.evPlanningTargetTime || instanceSettings.evTargetTime || '07:00');
+      const guarantee = Boolean(instanceSettings.evPlanningGuarantee);
+      let target = '';
+      if (source === 'flow_energy') {
+        const kwh = Math.max(0, Number(instanceSettings.evPlanningTargetKwh) || 0);
+        target = `${kwh.toFixed(1).replace('.0', '')} kWh`;
+      } else if (source === 'flow_soc') {
+        target = `${Math.max(0, Number(instanceSettings.evPlanningTargetSoc) || 0).toFixed(0)}%`;
+      } else if (instanceSettings.evSocEnabled !== false) {
+        target = `${Math.max(0, Number(instanceSettings.evPlanningTargetSoc) || 0).toFixed(0)}%`;
+      } else {
+        target = isNl ? 'geen SoC-doel' : 'no SoC target';
+      }
+      const sourceLabel = source === 'settings'
+        ? (isNl ? 'geen Flow-doel · instellingen' : 'no Flow target · settings')
+        : (isNl ? 'Flow-doel' : 'Flow target');
+      const policy = source === 'settings'
+        ? ''
+        : (guarantee ? (isNl ? 'gegarandeerd' : 'guaranteed') : (isNl ? 'gunstige momenten' : 'favourable moments'));
+      const name = this.getEvInstanceName(index, settings);
+      rows.push(`${name}: ${sourceLabel} · ${target}${target.includes('doel') || target.includes('target') ? '' : ` ${isNl ? 'tegen' : 'by'} ${time}`}${policy ? ` · ${policy}` : ''}`);
+    }
+    if (!rows.length) return isNl ? 'Geen EV actief' : 'No EV enabled';
+    if (rows.length === 1 && this.getEvCount(settings) === 1) return rows[0].replace(/^EV 1: /, '');
+    return rows.join(' | ');
+  }
+
   getEvOverrideDeviceStatus(settings = this.getSettings()) {
     const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
     const isNl = language.startsWith('nl');
@@ -3828,6 +3905,32 @@ class HomeFluxEmsApp extends Homey.App {
     return `${active}/${enabled.length} actief · ${enabled.map(index => this.getHvacInstanceName(index, settings)).join(', ')}`;
   }
 
+  getHybridControlOwnerDeviceStatus(settings = this.getSettings()) {
+    const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
+    const isNl = language.startsWith('nl');
+    const hybrid = this.getHybridEmsStatus(settings);
+    if (!hybrid.available) return isNl ? 'Geen thuisbatterij' : 'No home battery';
+    if (hybrid.owner === 'external') {
+      const mode = hybrid.mode === 'avoid_import'
+        ? (isNl ? 'netimport vermijden' : 'avoid grid import')
+        : (isNl ? 'zelfconsumptie' : 'self-consumption');
+      return `${isNl ? 'Externe EMS' : 'External EMS'} · ${mode}`;
+    }
+    const status = String(hybrid.status || 'inactive');
+    if (!hybrid.enabled) return `HomeFlux · ${isNl ? 'Hybrid uit' : 'Hybrid off'}`;
+    if (status === 'homeflux_peak_guard') return 'HomeFlux · Peak Guard';
+    if (status === 'homeflux_peak_guard_cooldown') {
+      const seconds = Math.max(0, Number(hybrid.peakGuardCooldownRemainingSeconds) || 0);
+      const mm = Math.floor(seconds / 60);
+      const ss = String(Math.floor(seconds % 60)).padStart(2, '0');
+      return `HomeFlux · Peak Guard cooldown ${mm}:${ss}`;
+    }
+    if (status === 'homeflux_fallback') return `HomeFlux · ${isNl ? 'Hybrid fallback' : 'Hybrid fallback'}`;
+    if (status === 'handover_wait') return `HomeFlux · ${isNl ? 'overdracht wacht' : 'handover waiting'}`;
+    if (status === 'homeflux_priority') return `HomeFlux · ${isNl ? 'planning/veiligheid' : 'planning/safety'}`;
+    return 'HomeFlux';
+  }
+
   getEmsDeviceSnapshot(result = this.latestResult) {
     const settings = this.getSettings();
     const readiness = this.getInputReadiness(settings);
@@ -3842,7 +3945,9 @@ class HomeFluxEmsApp extends Homey.App {
       action: String(action),
       batteryCommand: this.getBatteryCommandDeviceStatus(),
       chargePlan: this.getCompactChargePlanDeviceStatus(),
+      controlOwner: this.getHybridControlOwnerDeviceStatus(settings),
       evStatus: this.getEvDeviceStatus(settings),
+      evPlan: this.getEvPlanningDeviceStatus(settings),
       evOverride: this.getEvOverrideDeviceStatus(settings),
       hvacStatus: this.getHvacDeviceStatus(settings),
       savingsToday: Number(this.savings ? totalSavings(this.savings.today) : 0) || 0,
@@ -5579,22 +5684,23 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   handleEvSessionConnectionTransition(wasConnected, isConnected) {
-    if (!this.evSessionOverride?.mode) return false;
+    const energyChanged = this.handleEvEnergyPlanConnectionTransition(0, wasConnected, isConnected);
+    if (!this.evSessionOverride?.mode) return energyChanged;
 
     // If the override was requested while disconnected, the first connection
     // starts the one-session lifetime. If it was requested while already
     // connected, sessionStarted was set immediately in setEvSessionOverride().
     if (isConnected) {
       this.evSessionOverride.sessionStarted = true;
-      return false;
+      return energyChanged;
     }
 
     // Repeated disconnected reports before a session has ever started do not
     // consume the override. Only connected -> disconnected ends the session.
     if (Boolean(wasConnected) && Boolean(this.evSessionOverride.sessionStarted)) {
-      return this.clearEvSessionOverride();
+      return this.clearEvSessionOverride() || energyChanged;
     }
-    return false;
+    return energyChanged;
   }
 
 
@@ -5647,16 +5753,17 @@ class HomeFluxEmsApp extends Homey.App {
 
   handleEvSessionConnectionTransitionFor(index, wasConnected, isConnected) {
     if (index === 0) return this.handleEvSessionConnectionTransition(wasConnected, isConnected);
+    const energyChanged = this.handleEvEnergyPlanConnectionTransition(index, wasConnected, isConnected);
     const runtime = this.getExtraEv(index);
-    if (!runtime?.sessionOverride?.mode) return false;
+    if (!runtime?.sessionOverride?.mode) return energyChanged;
     if (isConnected) {
       runtime.sessionOverride.sessionStarted = true;
-      return false;
+      return energyChanged;
     }
     if (Boolean(wasConnected) && Boolean(runtime.sessionOverride.sessionStarted)) {
-      return this.clearEvSessionOverrideFor(index);
+      return this.clearEvSessionOverrideFor(index) || energyChanged;
     }
-    return false;
+    return energyChanged;
   }
 
   getRuntimeSettings(settings = this.getSettings()) {
@@ -6256,6 +6363,52 @@ class HomeFluxEmsApp extends Homey.App {
     };
   }
 
+  restoreEvEnergyPlanOverrides() {
+    const raw = this.homey.settings.get('evEnergyDeadlineOverrides');
+    const saved = Array.isArray(raw) ? raw : [];
+    const now = Date.now();
+    this.evEnergyPlans = Array.from({ length: 4 }, (_, index) => {
+      const item = saved[index] || {};
+      const targetKwh = Math.max(0, Math.min(250, Number(item.targetKwh) || 0));
+      const remainingKwh = Math.max(0, Math.min(targetKwh || 250, Number.isFinite(Number(item.remainingKwh)) ? Number(item.remainingKwh) : targetKwh));
+      const targetTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(item.targetTime || '')) ? String(item.targetTime) : '07:00';
+      const deadlineAt = Math.max(0, Number(item.deadlineAt) || 0);
+      return {
+        active: Boolean(item.active) && targetKwh > 0,
+        targetKwh,
+        remainingKwh,
+        targetTime,
+        deadlineAt,
+        // Never integrate charge current across app downtime. The remaining
+        // value is persisted periodically, then counting resumes from startup.
+        lastTickAt: now,
+        guarantee: Boolean(item.guarantee),
+        sessionStarted: Boolean(item.sessionStarted),
+      };
+    });
+    this.evEnergyPlanPersistAt = now;
+  }
+
+  persistEvEnergyPlanOverrides(force = false, now = Date.now()) {
+    if (!force && Number(this.evEnergyPlanPersistAt) > 0 && now - Number(this.evEnergyPlanPersistAt) < 5 * 60 * 1000) return false;
+    const serialized = Array.from({ length: 4 }, (_, index) => {
+      const plan = this.evEnergyPlans?.[index] || {};
+      const targetKwh = Math.max(0, Math.min(250, Number(plan.targetKwh) || 0));
+      return {
+        active: Boolean(plan.active) && targetKwh > 0,
+        targetKwh,
+        remainingKwh: Math.max(0, Math.min(targetKwh || 250, Number.isFinite(Number(plan.remainingKwh)) ? Number(plan.remainingKwh) : targetKwh)),
+        targetTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(plan.targetTime || '')) ? String(plan.targetTime) : '07:00',
+        deadlineAt: Math.max(0, Number(plan.deadlineAt) || 0),
+        guarantee: Boolean(plan.guarantee),
+        sessionStarted: Boolean(plan.sessionStarted),
+      };
+    });
+    if (typeof this.homey?.settings?.set === 'function') this.setSetting('evEnergyDeadlineOverrides', serialized);
+    this.evEnergyPlanPersistAt = now;
+    return true;
+  }
+
   restoreEvSocPlanOverrides() {
     const raw = this.homey.settings.get('evSocDeadlineOverrides');
     const saved = Array.isArray(raw) ? raw : [];
@@ -6281,14 +6434,28 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   clearEvSocPlan(index) {
+    // Keep the historical Flow card ID for compatibility, but v0.7.2 makes it
+    // the generic EV planning-override clear action. This is necessary now that
+    // both SoC and kWh deadline targets are persistent.
     if (!Array.isArray(this.evSocPlans)) this.restoreEvSocPlanOverrides();
-    const plan = this.evSocPlans?.[index];
-    if (!plan) return false;
-    plan.active = false;
-    plan.deadlineAt = 0;
+    if (!Array.isArray(this.evEnergyPlans)) this.restoreEvEnergyPlanOverrides();
+    const socPlan = this.evSocPlans?.[index];
+    const energyPlan = this.evEnergyPlans?.[index];
+    if (!socPlan && !energyPlan) return false;
+    if (socPlan) {
+      socPlan.active = false;
+      socPlan.deadlineAt = 0;
+    }
+    if (energyPlan) {
+      energyPlan.active = false;
+      energyPlan.deadlineAt = 0;
+      energyPlan.remainingKwh = 0;
+      energyPlan.sessionStarted = false;
+    }
     this.persistEvSocPlanOverrides();
+    this.persistEvEnergyPlanOverrides(true);
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
-    this.requestContextEvaluate(true, 'ev'+(index+1)+'_soc_override_cleared');
+    this.requestContextEvaluate(true, 'ev'+(index+1)+'_planning_override_cleared');
     return true;
   }
 
@@ -6310,12 +6477,49 @@ class HomeFluxEmsApp extends Homey.App {
     const elapsedHours = Math.max(0, now - last) / 3600000;
     const input = this.getEvInputSnapshot(index);
     const settings = this.getEvInstanceSettings(index, this.getSettings());
-    const actualCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+    const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+    const actualCurrentA = connected && input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
     const deliveredKwh = elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000;
-    if (deliveredKwh > 0) plan.remainingKwh = Math.max(0, Number(plan.remainingKwh) - deliveredKwh);
+    const before = Math.max(0, Number(plan.remainingKwh) || 0);
+    if (deliveredKwh > 0 && before > 0) plan.remainingKwh = Math.max(0, before - deliveredKwh);
     plan.lastTickAt = now;
-    if (plan.remainingKwh <= 0.001) plan.active = false;
+    if (deliveredKwh > 0 && before > 0) {
+      const reachedMinimumNow = before > 0.001 && plan.remainingKwh <= 0.001;
+      this.persistEvEnergyPlanOverrides(reachedMinimumNow, now);
+    }
     return plan;
+  }
+
+  handleEvEnergyPlanConnectionTransition(index, wasConnected, isConnected, now = Date.now()) {
+    const plan = this.evEnergyPlans?.[index];
+    if (!plan?.active) return false;
+    const connectedNow = Boolean(isConnected);
+    const connectedBefore = Boolean(wasConnected);
+    let changed = false;
+    if (connectedNow && !connectedBefore) {
+      if (!plan.sessionStarted) {
+        plan.remainingKwh = Math.max(0, Number(plan.targetKwh) || 0);
+        const settings = this.getSettings();
+        const deadline = findNextLocalTime(new Date(now), String(plan.targetTime || '07:00'), settings.timezone || 'Europe/Brussels');
+        plan.deadlineAt = deadline.getTime();
+        changed = true;
+      }
+      plan.sessionStarted = true;
+      plan.lastTickAt = now;
+      changed = true;
+    } else if (!connectedNow && plan.sessionStarted) {
+      // A confirmed disconnect ends the energy-counting session. This also
+      // covers the first disconnected status received after an app/Homey
+      // restart, where `wasConnected` starts false but the persisted plan still
+      // remembers that the previous charging session had started.
+      // Keep the persistent target itself and arm the full configured kWh
+      // minimum for the next real EV connection.
+      plan.sessionStarted = false;
+      plan.lastTickAt = now;
+      changed = true;
+    }
+    if (changed) this.persistEvEnergyPlanOverrides(true, now);
+    return changed;
   }
 
   setEvEnergyPlan(index, energyKwh, targetTime, guaranteeInput = 'no') {
@@ -6323,15 +6527,31 @@ class HomeFluxEmsApp extends Homey.App {
     const time = String(targetTime || '').trim();
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
     const settings = this.getSettings();
-    const deadline = findNextLocalTime(new Date(), time, settings.timezone || 'Europe/Brussels');
+    const now = Date.now();
+    const deadline = findNextLocalTime(new Date(now), time, settings.timezone || 'Europe/Brussels');
     const plan = this.evEnergyPlans[index];
     if (!plan) return false;
-    plan.active = kwh > 0; plan.targetKwh = kwh; plan.remainingKwh = kwh;
-    plan.targetTime = time; plan.deadlineAt = deadline.getTime(); plan.lastTickAt = Date.now();
+    plan.active = kwh > 0;
+    plan.targetKwh = kwh;
+    plan.remainingKwh = kwh;
+    plan.targetTime = time;
+    plan.deadlineAt = plan.active ? deadline.getTime() : 0;
+    plan.lastTickAt = now;
     plan.guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
-    // A kWh deadline temporarily takes precedence but does not delete a persistent
-    // SoC Flow override. The SoC override resumes automatically after the kWh plan.
-    this.evTargetWarningState[index] = '';
+    const input = this.getEvInputSnapshot(index);
+    plan.sessionStarted = plan.active && Boolean(input?.seen?.connected) && Boolean(input?.connected);
+
+    // The most recently submitted Flow target owns EV deadline planning. Keep
+    // one unambiguous source instead of allowing a hidden older SoC target to
+    // reappear behind a persistent kWh minimum.
+    const socPlan = this.evSocPlans?.[index];
+    if (socPlan) {
+      socPlan.active = false;
+      socPlan.deadlineAt = 0;
+      this.persistEvSocPlanOverrides();
+    }
+    this.persistEvEnergyPlanOverrides(true, now);
+    if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
     this.requestContextEvaluate(true, 'ev'+(index+1)+'_energy_deadline');
     return true;
   }
@@ -6353,7 +6573,13 @@ class HomeFluxEmsApp extends Homey.App {
     plan.guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
     this.persistEvSocPlanOverrides();
     const energyPlan = this.evEnergyPlans?.[index];
-    if (energyPlan) energyPlan.active = false;
+    if (energyPlan) {
+      energyPlan.active = false;
+      energyPlan.deadlineAt = 0;
+      energyPlan.remainingKwh = 0;
+      energyPlan.sessionStarted = false;
+      this.persistEvEnergyPlanOverrides(true);
+    }
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
     this.requestContextEvaluate(true, 'ev'+(index+1)+'_soc_deadline');
     return true;
@@ -6966,9 +7192,25 @@ class HomeFluxEmsApp extends Homey.App {
       Math.max(0, allocatedAfterPvW - nonBatteryPvW),
     );
 
+    // Stage 2: a guaranteed minimum target is allowed to leave the selected
+    // tariff windows only when the deadline algorithm says this is now required.
+    // The helper marks only those EVs as guaranteeActive. They may consume any
+    // remaining Peak Guard headroom, but never bypass the absolute peak budget.
+    // Because Stage 1 already allocated all usable PV, every extra watt added
+    // here is intentional grid charging that the battery EMS must not cancel.
+    const guaranteeEntries = smartEntries.filter(entry => Boolean(entry.decision.guaranteeActive));
+    if (guaranteeEntries.length && allocatedW + 0.5 < peakBudgetW) {
+      allocation = this.allocateWeightedEvPower(guaranteeEntries, peakBudgetW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    }
+    const allocatedAfterGuaranteeW = allocatedW;
+    const guaranteedGridBudgetW = Math.max(0, allocatedAfterGuaranteeW - allocatedAfterPvW);
+
     // Stage 3: during an explicitly selected standard-charging tariff the user
     // may allow a TOTAL grid-import budget for all EVs. Only EVs for which that
     // tariff is selected may consume this extra grid room. 0 W keeps zero-grid.
+    // A hard guaranteed minimum already allocated in Stage 2 stays authoritative;
+    // normal selected-tariff charging may only use whatever budget remains.
     const tariffEntries = smartEntries.filter(entry => Boolean(entry.decision.selectedTariff));
     const gridImportLimitW = tariffEntries.length ? this.getEvGridImportLimitW(tariff, runtimeSettings) : 0;
     // The configured value is the maximum P1/grid import while EV tariff
@@ -6992,9 +7234,17 @@ class HomeFluxEmsApp extends Homey.App {
     const nonEvGridBeforeSmartW = predictedGridBeforeSmartChangeW - currentSmartPowerW;
     const predictedGridAfterTariffW = predictedGridBeforeSmartChangeW
       + (allocatedAfterTariffW - currentSmartPowerW) - transferredBatteryPvW;
-    const portfolioEvGridImportTargetW = tariffEntries.length && allocatedAfterTariffW > 0
+    // Selected-tariff charging respects its configured meter/import ceiling.
+    // Guaranteed minimum charging outside selected tariffs is a separate hard
+    // deadline allowance and is added on top of that normal tariff allowance.
+    // Publishing this intentional EV import target prevents the battery EMS from
+    // immediately cancelling the grid energy that the guaranteed EV target needs.
+    const intentionalGridLimitW = Math.max(0, gridImportLimitW) + guaranteedGridBudgetW;
+    const hasIntentionalGridCharge = (tariffEntries.length > 0 || guaranteeEntries.length > 0)
+      && allocatedAfterTariffW > 0;
+    const portfolioEvGridImportTargetW = hasIntentionalGridCharge
       ? Math.min(
-        gridImportLimitW,
+        intentionalGridLimitW,
         Math.max(0, predictedGridAfterTariffW - Math.max(0, nonEvGridBeforeSmartW)),
       )
       : 0;
@@ -7091,9 +7341,12 @@ class HomeFluxEmsApp extends Homey.App {
       } else {
         const pieces = [];
         if (decision.pvAllocatedW > 0) pieces.push('PV');
-        if (decision.selectedTariff && decision.gridAllocatedW > 0) pieces.push(`tarief (netlimiet ${Math.round(gridImportLimitW)} W totaal)`);
+        if (decision.guaranteeActive && decision.gridAllocatedW > 0) pieces.push('garantie/deadline (alle tarieven indien nodig)');
+        else if (decision.selectedTariff && decision.gridAllocatedW > 0) pieces.push(`tarief (netlimiet ${Math.round(gridImportLimitW)} W totaal)`);
         if (decision.batterySupportAllocatedW > 0) pieces.push(`thuisbatterij (${decision.batterySupportAllocatedW} W extra)`);
-        decision.reason = `Slim laden via ${pieces.length ? pieces.join(' + ') : 'beschikbaar energiebudget'} · gewicht ${entry.weight}`;
+        decision.reason = decision.guaranteeActive
+          ? `Gegarandeerd minimum · ${pieces.length ? pieces.join(' + ') : 'beschikbaar energiebudget'} · gewicht ${entry.weight}`
+          : `Slim laden via ${pieces.length ? pieces.join(' + ') : 'beschikbaar energiebudget'} · gewicht ${entry.weight}`;
         decision.reason += ` · PV-verdeling EV ${evPvSharePercent}% / batterij ${100 - evPvSharePercent}%`;
         if (releasedBatteryPvBudgetW > 0.5) decision.reason += ` · ${Math.round(releasedBatteryPvBudgetW)} W ongebruikt batterijbudget vrijgegeven aan EV`;
         if (decision.modeFallback === 'smart') {
@@ -9217,6 +9470,8 @@ class HomeFluxEmsApp extends Homey.App {
       configured: this.isHybridEmsConfigured(settings),
       delegated: Boolean(runtime.delegated) && !Boolean(runtime.takeover),
       takeover: Boolean(runtime.takeover),
+      owner: Boolean(runtime.delegated) && !Boolean(runtime.takeover) ? 'external' : 'homeflux',
+      mode: Boolean(runtime.delegated) && !Boolean(runtime.takeover) ? String(this.latestResult?.baseMode || '') : '',
       status: String(runtime.status || 'inactive'),
       externalSetpointW: Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null,
       externalSetpointAt: Number(runtime.externalSetpointAt) || 0,
@@ -10224,7 +10479,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.1',
+      version: '0.7.2',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -10301,7 +10556,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.1',
+      version: '0.7.2',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -10500,6 +10755,13 @@ class HomeFluxEmsApp extends Homey.App {
         soc: instanceSettings.evSocEnabled !== false && input?.seen?.soc ? Number(input.soc) : null,
         socFreshness: this.getEvSocFreshness(index, instanceSettings, statusNow),
         socPlanOverrideActive: Boolean(instanceSettings.evSocPlanOverrideActive),
+        planningSource: String(instanceSettings.evPlanningSource || 'settings'),
+        planningFlowInputReceived: Boolean(instanceSettings.evPlanningFlowInputReceived),
+        planningGuarantee: Boolean(instanceSettings.evPlanningGuarantee),
+        planningTargetKwh: Number.isFinite(Number(instanceSettings.evPlanningTargetKwh)) ? Number(instanceSettings.evPlanningTargetKwh) : null,
+        planningRemainingKwh: Number.isFinite(Number(instanceSettings.evPlanningRemainingKwh)) ? Number(instanceSettings.evPlanningRemainingKwh) : null,
+        planningTargetSoc: Number.isFinite(Number(instanceSettings.evPlanningTargetSoc)) ? Number(instanceSettings.evPlanningTargetSoc) : null,
+        planningTargetTime: String(instanceSettings.evPlanningTargetTime || instanceSettings.evTargetTime || '07:00'),
         actualCurrentA: input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0,
         received: { ...(input?.seen || {}), soc: instanceSettings.evSocEnabled !== false ? Boolean(input?.seen?.soc) : false },
         override: {
@@ -10580,7 +10842,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.1',
+      version: '0.7.2',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

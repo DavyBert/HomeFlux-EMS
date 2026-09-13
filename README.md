@@ -13,6 +13,12 @@ Instead of locking the EMS to one battery, inverter or charger brand, HomeFlux u
 
 **Peak Guard remains a hard safety layer**, while planning and tariff logic decide how the available energy is used. The goal is straightforward: increase useful self-consumption, buy energy at the right moments, protect the reserve you need later and avoid unnecessary grid peaks.
 
+### EMS device and widgets
+
+Add the **HomeFlux EMS device** in Homey for quick operational changes without building an extra Flow and for an at-a-glance view of the active override, **who currently owns battery control (HomeFlux or an external EMS)**, EV status and EV planning. HomeFlux also includes an **EMS status widget** for live strategy/planning information and a **Savings widget** for cost and savings visualization.
+
+For EV planning, the existing SoC-by-time and kWh-by-time Flow cards can provide a persistent **minimum target**. A guaranteed target may use any tariff when that is required to secure the deadline; a non-guaranteed target keeps trying on favourable PV/tariff moments. If no Flow target has been supplied, HomeFlux clearly falls back to the EV target and time configured in settings.
+
 ## Nederlands
 
 HomeFlux EMS is een Homey-gebaseerd energiebeheersysteem dat batterijen, zonnepanelen en flexibele verbruikers aanstuurt rond **het energiecontract dat je werkelijk gebruikt**. Het is dus niet alleen bedoeld voor dynamische prijzen: HomeFlux is juist ontworpen om ook volwaardig te werken met **vaste contracten met twee of meer uurtarieven**, zoals piek/dal of andere meervoudige tariefperiodes.
@@ -22,6 +28,12 @@ HomeFlux beslist wanneer opgeslagen energie gebruikt, bewaard of geladen wordt, 
 In plaats van het EMS vast te koppelen aan één merk batterij, omvormer of laadpaal gebruikt HomeFlux expliciete Homey Flow-kaarten als integratielaag. Daardoor blijft de energiestrategie onafhankelijk van de onderliggende hardware en kunnen ondersteunde Homey-integraties gecombineerd worden met eigen lokale controllers.
 
 **Peak Guard blijft een harde veiligheidslaag**, terwijl planning en tarieflogica bepalen hoe de beschikbare energie wordt ingezet. Het doel is duidelijk: meer nuttig zelfverbruik, energie op de juiste momenten inkopen, de nodige reserve voor later beschermen en onnodige netpieken vermijden.
+
+### EMS-apparaat en widgets
+
+Voeg het **HomeFlux EMS-apparaat** toe in Homey voor snelle operationele aanpassingen zonder extra Flow en voor een overzicht van de actieve override, **wie de batterijregeling in handen heeft (HomeFlux of een externe EMS)**, EV-status en EV-planning. HomeFlux bevat daarnaast een **EMS-statuswidget** voor live strategie/planning en een **Winst-widget** voor kost- en besparingsvisualisatie.
+
+Voor EV-planning kunnen de bestaande Flow-kaarten voor SoC-tegen-tijd en kWh-tegen-tijd een blijvend **minimumdoel** instellen. Een gegarandeerd doel mag elk tarief gebruiken wanneer dat nodig is om de deadline te verzekeren; een niet-gegarandeerd doel blijft proberen op gunstige PV-/tariefmomenten. Is geen Flow-doel ingestuurd, dan valt HomeFlux zichtbaar terug op het EV-doel en tijdstip uit de instellingen.
 
 ## Homey API permission
 

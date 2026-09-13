@@ -199,6 +199,29 @@
       return labels[source] || labels.none;
     }
 
+    function hybridControlOwnerText(status, Homey) {
+      const hybrid = status.hybridEms || {};
+      if (hybrid.available === false) return tr(Homey, 'widget.status.controlOwnerNoBattery', 'No home battery');
+      if (String(hybrid.owner || '') === 'external' || Boolean(hybrid.delegated)) {
+        const mode = String(hybrid.mode || status.baseMode || '');
+        const modeText = mode === 'avoid_import'
+          ? tr(Homey, 'widget.status.modeAvoidImport', 'Avoid grid import')
+          : tr(Homey, 'widget.status.modeSelfConsumption', 'Self-consumption');
+        return `${tr(Homey, 'widget.status.controlOwnerExternal', 'External EMS')} · ${modeText}`;
+      }
+      const state = String(hybrid.status || 'inactive');
+      if (!hybrid.enabled) return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridOff', 'Hybrid off')}`;
+      if (state === 'homeflux_peak_guard') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · Peak Guard`;
+      if (state === 'homeflux_peak_guard_cooldown') {
+        const seconds = Math.max(0, Math.ceil(Number(hybrid.peakGuardCooldownRemainingSeconds) || 0));
+        return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · Peak Guard cooldown ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+      }
+      if (state === 'homeflux_fallback') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridFallback', 'Hybrid fallback')}`;
+      if (state === 'handover_wait') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridHandoverWait', 'handover waiting')}`;
+      if (state === 'homeflux_priority') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridHomeFluxPriority', 'planning/safety')}`;
+      return tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux');
+    }
+
     function emsMode(status, Homey) {
       const modes = {
         auto: tr(Homey, 'widget.status.modeAuto', 'Automatic'),
@@ -327,6 +350,32 @@
       return '';
     }
 
+    function evPlanningTargetText(ev, Homey) {
+      if (!ev || !ev.enabled) return '';
+      const source = String(ev.planningSource || 'settings');
+      const time = String(ev.planningTargetTime || '07:00');
+      const guarantee = Boolean(ev.planningGuarantee);
+      let target = '';
+      if (source === 'flow_energy') {
+        const kwh = Math.max(0, Number(ev.planningTargetKwh) || 0);
+        const remaining = Math.max(0, Number(ev.planningRemainingKwh) || 0);
+        target = `${kwh.toFixed(1).replace('.0', '')} kWh ${tr(Homey, 'widget.status.minimumBy', 'minimum by')} ${time}`;
+        if (remaining <= 0.001) target += ` · ${tr(Homey, 'widget.status.minimumReached', 'minimum reached')}`;
+        else target += ` · ${remaining.toFixed(1).replace('.0', '')} kWh ${tr(Homey, 'widget.status.remaining', 'remaining')}`;
+      } else {
+        const soc = Number(ev.planningTargetSoc);
+        if (Number.isFinite(soc)) target = `${Math.round(soc)}% ${tr(Homey, 'widget.status.minimumBy', 'minimum by')} ${time}`;
+        else target = tr(Homey, 'widget.status.noSocTarget', 'no SoC target configured');
+      }
+      if (source === 'settings') {
+        return `${tr(Homey, 'widget.status.noFlowTarget', 'No Flow target received')} · ${tr(Homey, 'widget.status.settingsFallback', 'settings')} ${target}`;
+      }
+      const policy = guarantee
+        ? tr(Homey, 'widget.status.guaranteedAllTariffs', 'guaranteed · all tariffs if required')
+        : tr(Homey, 'widget.status.favourableOnly', 'not guaranteed · favourable moments only');
+      return `${tr(Homey, 'widget.status.flowTarget', 'Flow target')} · ${target} · ${policy}`;
+    }
+
     function evNextDecisionText(ev, Homey) {
       if (!ev || !ev.enabled || !ev.connected) return '';
       const parts = [];
@@ -380,7 +429,8 @@
       if (active) {
         if (ev.override?.active || source === 'emergency' || source === 'soc_target') return tr(Homey, 'widget.status.evChargingOverride', 'Charging by override/target');
         if (source.includes('pv') && source.includes('tariff')) return tr(Homey, 'widget.status.evChargingPvTariff', 'Charging from solar + tariff');
-        if (source.includes('tariff') || source === 'guarantee') return tr(Homey, 'widget.status.evChargingTariff', 'Charging on tariff');
+        if (source === 'guarantee') return tr(Homey, 'widget.status.evChargingGuarantee', 'Charging for guaranteed minimum');
+        if (source.includes('tariff')) return tr(Homey, 'widget.status.evChargingTariff', 'Charging on tariff');
         if (source.includes('pv')) return tr(Homey, 'widget.status.evChargingPv', 'Charging from solar');
         return tr(Homey, 'widget.status.evCharging', 'Charging');
       }
@@ -514,6 +564,7 @@
       if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status, Homey));
       if (enabled(settings, 'showPriceStatus')) addMetric(generalGrid, tr(Homey, 'widget.status.priceData', 'Price data'), priceDataText(status, Homey));
       if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
+      if (enabled(settings, 'showControlOwner')) addMetric(generalGrid, tr(Homey, 'widget.status.controlOwner', 'Battery control'), hybridControlOwnerText(status, Homey));
       if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));
       if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc));
       if (enabled(settings, 'showBatteryTarget')) addMetric(generalGrid, tr(Homey, 'widget.status.batteryTarget', 'Battery target'), formatSoc(status.targetSoc));
@@ -556,6 +607,8 @@
             const coordinationReason = evBatteryCoordinationText(ev, Homey);
             if (coordinationReason) reasons.push(coordinationReason);
             if (enabled(settings, 'showEvPlanning')) {
+              const targetPlan = evPlanningTargetText(ev, Homey);
+              if (targetPlan) reasons.push(targetPlan);
               const nextDecision = evNextDecisionText(ev, Homey);
               if (nextDecision) reasons.push(nextDecision);
             }

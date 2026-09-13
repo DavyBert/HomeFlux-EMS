@@ -5,3 +5,6 @@ HomeFlux EMS coordinates batteries, solar production and flexible loads around t
 HomeFlux combines tariff periods, PV forecasts, battery reserve, self-consumption, grid limits and user priorities in one control strategy. Hardware integrations remain independent through explicit Homey Flow cards, while Peak Guard remains a hard safety layer.
 
 The goal: increase useful self-consumption, buy energy at the right moments, protect reserve for later and avoid unnecessary grid peaks.
+
+
+Use the optional HomeFlux EMS device for quick control/status and add the EMS status and Savings widgets to keep planning, ownership and cost impact visible on your Homey dashboard.
