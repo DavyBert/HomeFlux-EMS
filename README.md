@@ -19,6 +19,8 @@ Add the **HomeFlux EMS device** in Homey for quick operational changes without b
 
 For EV planning, the existing SoC-by-time and kWh-by-time Flow cards can provide a persistent **minimum target**. A guaranteed target may use any tariff when that is required to secure the deadline; a non-guaranteed target keeps trying on favourable PV/tariff moments. If no Flow target has been supplied, HomeFlux clearly falls back to the EV target and time configured in settings.
 
+The EV settings also include an **idle house load** estimate. This value is advisory only: it lets Settings show how much EV current, or which mode-only charging level, can physically fit below Peak Guard without PV or battery reserve. Live control never uses this estimate and continues to rely on the real P1 measurement.
+
 ### Autotune and Savings
 
 Autotune can observe the control signals HomeFlux already receives and recommend safe, non-critical tuning changes without adding extra polling. Automatic management is explicit opt-in: the global confidence threshold defaults to **95%**, and every managed parameter can have its own confidence threshold plus an allowed minimum/maximum range. When permission is first granted, HomeFlux uses a realistic parameter-specific starting range instead of a generic percentage around the current value. Hard limits such as configured Maximum SoC remain authoritative, while users can still adjust the allowed range themselves.
@@ -40,6 +42,8 @@ In plaats van het EMS vast te koppelen aan één merk batterij, omvormer of laad
 Voeg het **HomeFlux EMS-apparaat** toe in Homey voor snelle operationele aanpassingen zonder extra Flow en voor een overzicht van de actieve override, **wie de batterijregeling in handen heeft (HomeFlux of een externe EMS)**, EV-status en EV-planning. HomeFlux bevat daarnaast een **EMS-statuswidget** voor live strategie/planning en een **Winst-widget** voor kost- en besparingsvisualisatie.
 
 Voor EV-planning kunnen de bestaande Flow-kaarten voor SoC-tegen-tijd en kWh-tegen-tijd een blijvend **minimumdoel** instellen. Een gegarandeerd doel mag elk tarief gebruiken wanneer dat nodig is om de deadline te verzekeren; een niet-gegarandeerd doel blijft proberen op gunstige PV-/tariefmomenten. Is geen Flow-doel ingestuurd, dan valt HomeFlux zichtbaar terug op het EV-doel en tijdstip uit de instellingen.
+
+In de EV-instellingen kan ook het **rustverbruik van de woning** worden ingevuld. Die waarde is uitsluitend informatief: Instellingen toont daarmee hoeveel EV-laadstroom, of welke modus bij mode-only sturing, fysiek binnen Peak Guard past zonder PV of batterijreserve. De live regeling gebruikt deze schatting nooit en blijft altijd op de werkelijke P1-meting sturen.
 
 ### Autotune en Winst
 

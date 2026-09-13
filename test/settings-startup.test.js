@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.5');
+  assert.equal(manifest.version, '0.7.6');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -26,8 +26,8 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.5 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.5 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.6 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.6 — Your energy, managed differently');
 assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
 assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
 assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');
@@ -107,7 +107,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 64"));
+assert(appJs.includes("settingsSchemaVersion', 65"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);
@@ -213,7 +213,7 @@ assert(apiJs.includes('async refreshPlanning({ homey })'));
 assert(appJs.includes('evaluateFastNow(forceStatus = false)'));
 assert(appJs.includes('evaluateContextNow(forceStatus = false)'));
 
-for (const id of ['evCount','hvacCount','boilerCount','boilerEnabled','boilerColdResetTime','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes','flexibleLoadPriorityOrder']) {
+for (const id of ['evCount','evIdleHouseLoadW','hvacCount','boilerCount','boilerEnabled','boilerColdResetTime','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes','flexibleLoadPriorityOrder']) {
   assert(html.includes(`id="${id}"`), `${id} setting missing`);
 }
 for (let instance = 2; instance <= 4; instance += 1) {
@@ -229,6 +229,24 @@ assert(html.includes('Verwarmingstemperatuur (°C)'), 'heating target label miss
 assert(html.includes('Koelingstemperatuur (°C)'), 'cooling target label missing');
 assert(html.includes('renderPriorityList()'));
 assert(html.includes('test-ev-output'));
+assert(html.includes('id="evOutputTestCard2"'));
+assert(html.includes("q(`evOutputTestCard${instance}`)?.classList.toggle('hidden', instance > evCount)"));
+assert(html.includes("q('evGlobalPvDistributionSettings')?.classList.toggle('hidden', evCount === 0);"), 'EV PV distribution must be hidden when no EV is configured');
+assert(html.includes("q('evGlobalGridImportSettings')?.classList.toggle('hidden', evCount === 0);"), 'EV grid-import settings must be hidden when no EV is configured');
+assert(html.includes('src="ev-headroom.js"'), 'EV Peak Guard preview helper must be loaded');
+assert(html.includes('id="evPeakGuardHeadroomSummary"'), 'EV Peak Guard summary host missing');
+assert(html.includes('function renderEvPeakGuardCapacity()'), 'EV Peak Guard preview renderer missing');
+assert(html.includes("['input','change'].forEach(eventName => q('panel-ev')?.addEventListener(eventName, renderEvPeakGuardCapacity));"), 'EV Peak Guard preview must be event-driven');
+assert(!html.includes('setInterval(renderEvPeakGuardCapacity'), 'EV Peak Guard preview must not add background polling');
+for (const stem of ['ev','ev2','ev3','ev4']) {
+  const priorityStart = html.indexOf(`id="${stem}SmartPrioritySettings"`);
+  assert(priorityStart >= 0, `${stem} smart-priority block missing`);
+  const priorityEnd = html.indexOf('</fieldset>', priorityStart);
+  const priorityBlock = html.slice(priorityStart, priorityEnd);
+  assert(!priorityBlock.includes(`Weight">`) || !priorityBlock.includes('</div>\n</div>\n<div class="homey-form-group"><label class="homey-form-label" for="' + stem + 'SmartGridPriority"'), `${stem} smart-priority grid must not close before the remaining EV controls`);
+}
+assert(html.includes("if (panel) panel.classList.toggle('hidden', instance > count)"));
+assert(html.includes("if (instance > configuredCount('ev'))"));
 assert(html.includes('test-hvac-output'));
 
 const expectedConditionCards = [

@@ -811,7 +811,7 @@
     "Stand-by en andere expliciete EMS-modi die geen gewone zelfconsumptie/netimportregeling zijn.": "Standby and other explicit EMS modes that are not normal self-consumption/grid-import control.",
     "Gewone zelfconsumptie en netimport vermijden": "Normal self-consumption and grid-import avoidance",
     "mogen door de externe EMS worden geregeld. Zodra HomeFlux extra strategie, planning of veiligheid moet toepassen, blijft de batterij onder HomeFlux-regie.": "may be controlled by the external EMS. As soon as HomeFlux must apply additional strategy, planning or safety, the battery remains under HomeFlux control.",
-    "v0.7.5 — Jouw energie, anders geregeld": "v0.7.5 — Your energy, managed differently",
+    "v0.7.6 — Jouw energie, anders geregeld": "v0.7.6 — Your energy, managed differently",
     "Minimum vertrouwen voor automatisch aanpassen (%)": "Minimum confidence for automatic changes (%)",
     "Standaard 95%. Toestemming alleen is niet genoeg: HomeFlux wijzigt een automatisch beheerde parameter pas vanaf deze betrouwbaarheid.": "Default 95%. Permission alone is not enough: HomeFlux only changes an auto-managed parameter once this confidence level is reached.",
     "Per automatisch beheerde parameter verschijnt een eigen toegestaan minimum en maximum. HomeFlux vult bij de eerste toestemming een realistisch startbereik in voor die specifieke instelling en respecteert daarbij harde grenzen zoals Maximum SoC. Je kunt deze grenzen daarna zelf aanpassen.": "Each auto-managed parameter gets its own allowed minimum and maximum. On first permission, HomeFlux fills in a realistic starting range for that specific setting while respecting hard limits such as Maximum SoC. You can adjust these limits afterwards.",
@@ -819,7 +819,14 @@
     "PV-export": "PV export",
     "Positief = vergoeding die je ontvangt voor export. Negatief = kost die je betaalt om te injecteren.": "Positive = compensation you receive for export. Negative = a cost you pay to inject.",
     "Definieer eerst je contracttarieven één keer, bijvoorbeeld Superdal, Dal en Piek. Per tarief kies je of een lage dagvoorspelling de batterij moet sparen én of HomeFlux daarbij de reserve boven het forecast-doel SoC nog mag gebruiken. Bij Injectie €/kWh betekent een positief bedrag een vergoeding die je ontvangt; een negatief bedrag is een kost om te injecteren.": "Define your contract tariffs once, for example Super off-peak, Off-peak and Peak. For each tariff choose whether a low daily forecast should preserve the battery and whether HomeFlux may still use the reserve above the forecast target SoC. For Feed-in €/kWh, a positive amount is compensation you receive; a negative amount is a cost to inject.",
-    "Winst neemt nu PV-export/injectie mee": "Savings now includes PV export/feed-in"
+    "Winst neemt nu PV-export/injectie mee": "Savings now includes PV export/feed-in",
+    "Rustverbruik woning (W)": "Idle house load (W)",
+    "Gemiddeld huisverbruik zonder EV, zonder PV-bijdrage en zonder batterijontlading. Deze waarde wordt alleen gebruikt om in Instellingen vooraf de EV-laadruimte binnen Peak Guard te tonen; de live regeling blijft altijd de echte P1-meting gebruiken.": "Average house consumption without EV, without PV contribution and without battery discharge. This value is used only in Settings to preview EV charging headroom within Peak Guard; live control always uses the real P1 measurement.",
+    "Beschikbare EV-ruimte binnen Peak Guard": "Available EV headroom within Peak Guard",
+    "Effectieve Peak Guard": "Effective Peak Guard",
+    "EV-budget zonder PV/batterijreserve": "EV budget without PV/battery reserve",
+    "Batterij sparen / geen batterijreserve": "Battery Save / no battery reserve",
+    "Peak Guard laadcheck": "Peak Guard charging check"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

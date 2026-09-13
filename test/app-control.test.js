@@ -2233,7 +2233,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 64);
+  assert.equal(stored.settingsSchemaVersion, 65);
   assert.deepEqual(stored.evEnergyDeadlineOverrides, []);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
@@ -2251,6 +2251,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(stored.evWeight, 1);
   assert.equal(stored.evPvSharePercent, 10);
   assert.equal(stored.evFixedMaxGridImportW, 0);
+  assert.equal(stored.evIdleHouseLoadW, 0);
 }
 
 // v0.7.4: dropdown-backed Autotune settings are normalized on upgrade so a
@@ -2271,7 +2272,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.settingsCache = null;
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 64);
+  assert.equal(stored.settingsSchemaVersion, 65);
   assert.equal(stored.gridControlWindowSeconds, 5);
   assert.equal(stored.evFeedbackTolerancePercent, 15);
   assert.equal(stored.ev2FeedbackTolerancePercent, 20);
@@ -2314,10 +2315,25 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     evMinCurrentA:6, evMaxCurrentA:32,
   });
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 64);
+  assert.equal(stored.settingsSchemaVersion, 65);
   assert.deepEqual(stored._autoTuneLimits.lowForecastAutoSunnySoc, { min:70, max:85, minConfidencePercent:95, userDefined:false });
   assert.deepEqual(stored._autoTuneLimits.commandDeadbandW, { min:25, max:250, minConfidencePercent:95, userDefined:false });
   assert.deepEqual(stored._autoTuneLimits.balanceStrength, { min:0.12, max:0.31, minConfidencePercent:90, userDefined:true });
+}
+
+// v0.7.6: the idle house load is an advisory Settings value only. Upgrades
+// receive 0 W so HomeFlux never invents a household base load.
+{
+  const app = bareApp();
+  const stored = { settingsSchemaVersion: 64 };
+  app.homey.settings = {
+    get: key => Object.prototype.hasOwnProperty.call(stored, key) ? stored[key] : null,
+    set: (key, value) => { stored[key] = value; },
+  };
+  app.settingsCache = null;
+  app.migrateSettings();
+  assert.equal(stored.settingsSchemaVersion, 65);
+  assert.equal(stored.evIdleHouseLoadW, 0);
 }
 
 // v0.3.80: planning simulation is a pure calculation. It uses the entered SoC,
@@ -2350,7 +2366,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.5');
+  assert.equal(simulation.version, '0.7.6');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -4042,4 +4058,193 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.tickEvEnergyPlan(0, now);
   assert.equal(app.evEnergyPlans[0].remainingKwh, 0);
   assert.equal(persistCalls, 0);
+}
+
+// v0.7.6 safety regression: every EV mode shares one physical Peak Guard
+// budget, weights apply to 1..4 EVs, and Hybrid never turns a candidate battery
+// command into virtual EV headroom.
+{
+  function configurePortfolio(app, count, mode, hybridDelegated = false, controlType = 'current') {
+    const now = Date.now();
+    app.inputSeen.ev = { soc: true, connected: true, chargeCurrent: true };
+    app.inputUpdatedAt.ev = { soc: now, connected: now, chargeCurrent: now };
+    app.state.evSoc = 20;
+    app.state.evConnected = true;
+    app.state.evChargeCurrentA = 0;
+    app.state.gridPowerW = mode === 'smart' ? -6000 : 3000;
+    app.state.lastTotalCommandW = 0;
+    app.lastPublishedEvCurrentA = 0;
+    app.lastPublishedEvAllowed = false;
+    app.lastPublishedEvChargeMode = 'stop';
+    app.extraEvInstances = Array.from({ length: 3 }, (_, idx) => idx < count - 1 ? {
+      state: { soc: 20, connected: true, chargeCurrentA: 0 },
+      seen: { soc: true, connected: true, chargeCurrent: true },
+      updatedAt: { soc: now, connected: now, chargeCurrent: now },
+      lastPublishedCurrentA: 0, lastPublishedAllowed: false, lastPublishedChargeMode: 'stop', lastPublishedAt: 0,
+      stopHoldUntil: 0, sessionOverride: { mode: null },
+      pvSession: { active: false, rateId: '', overImportSince: 0 },
+      latestDecision: null,
+    } : null);
+    app.evSessionOverride = { mode: null };
+    app.evEnergyPlans = Array.from({ length: 4 }, () => ({ active:false,targetKwh:0,remainingKwh:0,targetTime:'07:00',deadlineAt:0,lastTickAt:0,guarantee:false,sessionStarted:false }));
+    app.evSocPlans = Array.from({ length: 4 }, () => ({ active:false,targetSoc:0,targetTime:'07:00',deadlineAt:0,guarantee:false }));
+    app.getPvCurtailmentHeadroomW = () => 0;
+    app.getRuntimeSettings = settings => settings;
+    app.hybridEmsRuntime = {
+      delegated: hybridDelegated, takeover: false, externalSetpointW: 0,
+      externalSetpointAt: now, externalSetpointChangedAt: now, staleOutsideSince: 0,
+      retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: now,
+      peakGuardWasActive: false, peakGuardCooldownUntil: 0,
+      status: hybridDelegated ? 'external_control' : 'inactive',
+    };
+
+    const settings = {
+      timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 1, evCount: count,
+      hybridEmsEnabled: hybridDelegated,
+      touRates: [{
+        id: 'normal', name: 'Normal', evChargeAllowed: mode !== 'smart', evPvChargeAllowed: true, evMaxGridImportW: 10000,
+        ev2ChargeAllowed: mode !== 'smart', ev2PvChargeAllowed: true,
+        ev3ChargeAllowed: mode !== 'smart', ev3PvChargeAllowed: true,
+        ev4ChargeAllowed: mode !== 'smart', ev4PvChargeAllowed: true,
+      }],
+      touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
+      evPvSharePercent: 100,
+      peakShaveEnabled: true, peakLimitW: 8000, peakSoftMarginW: 100,
+      maxTotalDischargeW: 8000, minSoc: 10, maxSoc: 95,
+      exportLimitEnabled: false, minimumExportW: 0,
+    };
+    const weights = [1, 1, 2, 2];
+    for (let i = 0; i < count; i += 1) {
+      const stem = i === 0 ? 'ev' : `ev${i + 1}`;
+      settings[`${stem}Enabled`] = true;
+      settings[`${stem}SocEnabled`] = mode === 'soc_target';
+      settings[`${stem}SocFreshnessMinutes`] = 15;
+      settings[`${stem}Mode`] = mode;
+      settings[`${stem}ControlType`] = controlType;
+      settings[`${stem}ModeSmartCurrentA`] = 6;
+      settings[`${stem}ModeStandardCurrentA`] = 16;
+      settings[`${stem}Weight`] = weights[i];
+      settings[`${stem}Phases`] = 1;
+      settings[`${stem}MinCurrentA`] = 1;
+      settings[`${stem}MaxCurrentA`] = 32;
+      settings[`${stem}StandardCurrentA`] = 16;
+      settings[`${stem}BatteryCapacityKwh`] = 60;
+      settings[`${stem}TargetSoc`] = 80;
+      settings[`${stem}TargetTime`] = '07:00';
+      settings[`${stem}GuaranteeTarget`] = false;
+      settings[`${stem}AllowUnselectedTariffForDeadline`] = false;
+      settings[`${stem}PeakGuardBatteryAssistNormal`] = false;
+      settings[`${stem}PeakGuardBatteryAssistEmergency`] = false;
+    }
+    app.getSettings = () => settings;
+    return settings;
+  }
+
+  for (const hybridDelegated of [false, true]) {
+    for (const controlType of ['current', 'mode', 'hybrid']) {
+      for (const mode of ['smart', 'soc_target', 'emergency']) {
+        for (let count = 1; count <= 4; count += 1) {
+          const app = bareApp();
+          const settings = configurePortfolio(app, count, mode, hybridDelegated, controlType);
+        const result = {
+          tariff: { kind:'tou', rateId:'normal', className:'normal', label:'Normal' },
+          candidateCommands:[4000], candidateTotalCommandW:4000,
+          calculatedCommands:[4000], calculatedTotalCommandW:4000,
+          commands:[4000], totalCommandW:4000,
+          gridChargeAssistW:0, pvChargeW:0,
+          baseMode:'self_consumption', inputReady:true, controlEnabled:true,
+          liveGridPowerW: app.state.gridPowerW, avgSoc:50,
+          lowForecastBatterySaveActive:false, lowForecastDischargeToTargetActive:false,
+          peakReserveProtected:false, batteryPauseCode:'', override:null,
+        };
+        app.coordinateEvBatteryPriority(result, settings);
+        assert.equal(result.evDecisions.length, count, `${mode}/${controlType}/hybrid=${hybridDelegated}/count=${count}`);
+        const totalDesiredW = result.evDecisions.reduce((sum, d) => sum + Math.max(0, Number(d.desiredPowerW) || 0), 0);
+        if (mode === 'smart') {
+          assert.ok(totalDesiredW <= 6000 + 1, `Smart PV pool exceeded for count ${count}`);
+        } else {
+          // Real P1 is 3 kW and the soft Peak Guard ceiling is 7.9 kW, so all
+          // Emergency/SoC-target EVs together get at most 4.9 kW. The 4 kW
+          // candidate battery discharge must not increase that room, even when
+          // Hybrid is currently delegated.
+          assert.ok(totalDesiredW <= 4900 + 1, `${mode} exceeded shared Peak Guard for count ${count}`);
+          if (count >= 4 && controlType !== 'mode') {
+            assert.ok(result.evDecisions[2].desiredPowerW >= result.evDecisions[0].desiredPowerW, `${mode}/${controlType} EV3 weight ignored`);
+            assert.ok(result.evDecisions[3].desiredPowerW >= result.evDecisions[1].desiredPowerW, `${mode}/${controlType} EV4 weight ignored`);
+          }
+        }
+      }
+    }
+  }
+  }
+}
+
+// v0.7.6: a guaranteed deadline outside a selected tariff is intentional EV
+// grid import too. It must activate the grid target and prevent Hybrid from
+// handing the battery to a native self-consumption controller.
+{
+  const app = bareApp();
+  const now = Date.now();
+  app.extraEvInstances = [];
+  app.inputSeen.ev = { soc:false, connected:true, chargeCurrent:true };
+  app.inputUpdatedAt.ev = { soc:0, connected:now, chargeCurrent:now + 1 };
+  app.state.evConnected = true;
+  app.state.evChargeCurrentA = 10;
+  app.state.gridPowerW = 2300;
+  app.state.lastTotalCommandW = 0;
+  app.lastPublishedEvCurrentA = 10;
+  app.lastEvPublishedAt = now;
+  app.latestEvDecision = {
+    connected:true, selectedTariff:false, guaranteeActive:true, intentionalGridImport:true,
+    portfolioGridImportTargetW:4900, desiredCurrentA:10,
+  };
+  const settings = {
+    evCount:1, evEnabled:true, evControlType:'current', evCommandIntervalSeconds:10,
+    evSkipFeedbackValidation:true, batteryCount:1, hybridEmsEnabled:true,
+    peakShaveEnabled:true, peakLimitW:8000, peakSoftMarginW:100,
+  };
+  const grid = app.getEvGridImportControlStatus(settings, now + 1000);
+  assert.equal(grid.state, 'active');
+  assert.equal(grid.activeTargetW, 2300);
+
+  const eligibleBase = {
+    baseMode:'self_consumption', inputReady:true, controlEnabled:true, liveGridPowerW:2300,
+    avgSoc:50, gridChargeAssistW:0, lowForecastBatterySaveActive:false,
+    lowForecastDischargeToTargetActive:false, peakReserveProtected:false,
+    batteryPauseCode:'', override:null, batteryDischargeFloorSoc:10,
+  };
+  assert.equal(app.isHybridExternalControlEligible({ ...eligibleBase, evIntentionalGridImportW:2300 }, settings), false);
+  assert.equal(app.isHybridExternalControlEligible({ ...eligibleBase, evIntentionalGridImportW:0, liveGridPowerW:-1000 }, settings), true);
+}
+
+// v0.7.6 Hybrid ownership follows EV energy source: pure PV may stay delegated,
+// but any intentional EV grid import immediately returns battery ownership to
+// HomeFlux so a native self-consumption EMS cannot cancel the planned import.
+{
+  const app = bareApp();
+  const now = Date.now();
+  const settings = {
+    batteryCount:1, hybridEmsEnabled:true, controlEnabled:true,
+    peakShaveEnabled:true, peakLimitW:8000, peakSoftMarginW:100, maxSoc:95,
+  };
+  app.getSettings = () => settings;
+  app.externalEmsSelfConsumptionTrigger = { trigger: async () => true };
+  app.hybridEmsRuntime = {
+    delegated:true, takeover:false, externalSetpointW:0, externalSetpointAt:now,
+    externalSetpointChangedAt:now, staleOutsideSince:0, retrySentAt:0,
+    retryReferenceSetpointW:null, modeRequestedAt:now, peakGuardWasActive:false,
+    peakGuardCooldownUntil:0, status:'external_control',
+  };
+  const base = {
+    baseMode:'self_consumption', inputReady:true, controlEnabled:true,
+    liveGridPowerW:-1000, avgSoc:50, batteryDischargeFloorSoc:10,
+    gridChargeAssistW:0, lowForecastBatterySaveActive:false,
+    lowForecastDischargeToTargetActive:false, peakReserveProtected:false,
+    batteryPauseCode:'', override:null,
+  };
+  assert.equal(app.updateHybridEmsDelegation({ ...base, evIntentionalGridImportW:0 }, settings, now), true);
+  assert.equal(app.hybridEmsRuntime.delegated, true);
+  assert.equal(app.updateHybridEmsDelegation({ ...base, liveGridPowerW:2300, evIntentionalGridImportW:2300 }, settings, now + 1), false);
+  assert.equal(app.hybridEmsRuntime.delegated, false);
+  assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
 }

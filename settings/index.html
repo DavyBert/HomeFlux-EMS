@@ -5,6 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <script data-origin="settings" src="/homey.js" type="text/javascript"></script>
+<script src="ev-headroom.js" type="text/javascript"></script>
 <style>
     :root {
       color-scheme: dark;
@@ -533,6 +534,17 @@
     .forecast-badge { display:inline-flex; align-items:center; min-height:22px; padding:3px 8px; border-radius:999px; background:rgba(79,138,16,.24); border:1px solid rgba(127,193,59,.42); color:#dfffc1 !important; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
     .forecast-badge.hidden { display:none !important; }
     .forecast-note { margin-top:10px; padding:10px 12px; border-radius:12px; background:rgba(79,138,16,.08); border:1px solid rgba(79,138,16,.20); }
+    .ev-headroom-summary { margin-top:10px; }
+    .ev-headroom-box { margin-top:8px; padding:10px 12px; border-radius:14px; border:1px solid rgba(79,138,16,.22); background:rgba(79,138,16,.055); }
+    .ev-headroom-title { font-weight:800; color:#fff !important; margin-bottom:5px; }
+    .ev-headroom-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:start; padding:6px 0; border-top:1px solid rgba(255,255,255,.07); }
+    .ev-headroom-row:first-of-type { border-top:0; }
+    .ev-headroom-value { font-weight:800; text-align:right; color:#fff !important; }
+    .ev-headroom-value.good { color:#bdf48d !important; }
+    .ev-headroom-value.warn { color:#ffd483 !important; }
+    .ev-headroom-value.bad { color:#ffaaa3 !important; }
+    .ev-headroom-detail { grid-column:1 / -1; margin-top:-3px; font-size:11px; line-height:1.35; color:rgba(225,234,243,.70) !important; }
+    @media (max-width: 430px) { .ev-headroom-row { grid-template-columns:1fr; gap:2px; } .ev-headroom-value { text-align:left; } }
 
     /* Keep the core control pages two-column at normal Homey modal widths. */
     @media (max-width: 760px) {
@@ -730,7 +742,7 @@
 <body>
 <header class="homey-header">
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
-<p class="homey-subtitle" data-i18n="settings.subtitle">v0.7.5 — Jouw energie, anders geregeld</p>
+<p class="homey-subtitle" data-i18n="settings.subtitle">v0.7.6 — Jouw energie, anders geregeld</p>
 </header>
 <div class="tabs">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
@@ -1284,7 +1296,7 @@
 </fieldset>
 </section>
 <section class="panel" id="panel-ev">
-<fieldset class="homey-form-fieldset"><legend class="homey-form-legend">EV-laders</legend><div class="grid"><div class="homey-form-group"><label class="homey-form-label" for="evCount">Aantal EV-laders</label><select class="homey-form-select" id="evCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div><div class="homey-form-group"><div class="muted">EV’s werken onafhankelijk en staan niet in de thermische prioriteitenlijst. HomeFlux laat maximaal één nieuwe EV per normale EMS-cyclus starten.</div></div></div></fieldset>
+<fieldset class="homey-form-fieldset"><legend class="homey-form-legend">EV-laders</legend><div class="grid"><div class="homey-form-group"><label class="homey-form-label" for="evCount">Aantal EV-laders</label><select class="homey-form-select" id="evCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div><div class="homey-form-group"><label class="homey-form-label" for="evIdleHouseLoadW">Rustverbruik woning (W)</label><input class="homey-form-input" id="evIdleHouseLoadW" min="0" max="50000" step="50" type="number"/><div class="muted">Gemiddeld huisverbruik zonder EV, zonder PV-bijdrage en zonder batterijontlading. Deze waarde wordt alleen gebruikt om in Instellingen vooraf de EV-laadruimte binnen Peak Guard te tonen; de live regeling blijft altijd de echte P1-meting gebruiken.</div></div><div class="homey-form-group full-width"><div class="muted">EV’s werken onafhankelijk en staan niet in de thermische prioriteitenlijst. HomeFlux laat maximaal één nieuwe EV per normale EMS-cyclus starten.</div></div></div><div class="ev-headroom-summary" id="evPeakGuardHeadroomSummary"></div></fieldset>
 <fieldset class="homey-form-fieldset" id="evGlobalPvDistributionSettings"><legend class="homey-form-legend">PV-verdeling thuisbatterij / EV’s</legend><div class="grid"><div class="homey-form-group"><label class="homey-form-label" for="evPvSharePercent">Verdeling beschikbaar PV-vermogen</label><select class="homey-form-select" id="evPvSharePercent"><option value="10">Batterij 90% · EV’s 10%</option><option value="20">Batterij 80% · EV’s 20%</option><option value="30">Batterij 70% · EV’s 30%</option><option value="40">Batterij 60% · EV’s 40%</option><option value="50">Batterij 50% · EV’s 50%</option><option value="60">Batterij 40% · EV’s 60%</option><option value="70">Batterij 30% · EV’s 70%</option><option value="80">Batterij 20% · EV’s 80%</option><option value="90">Batterij 10% · EV’s 90%</option></select><div class="muted"><span id="evPvShareHelp">Globaal voor alle EV’s. HomeFlux vormt één PV-budget uit werkelijk resterend PV-overschot en PV-vermogen dat de thuisbatterij al aan het laden is. Dit percentage bepaalt welk deel de gezamenlijke EV-pool mag gebruiken. Het EV-budget wordt daarna verdeeld volgens de individuele EV-gewichten. De normale batterijregeling blijft ongewijzigd.</span></div></div></div></fieldset>
 <fieldset class="homey-form-fieldset" id="evGlobalGridImportSettings"><legend class="homey-form-legend">EV-netafname per contract</legend>
 <div class="card hidden" id="evGridFixedSettings"><div class="statusline">Vast laadvenster</div><div class="homey-form-group"><label class="homey-form-label" for="evFixedMaxGridImportW">Maximale tellerafname tijdens EV-laden (W)</label><input class="homey-form-input" id="evFixedMaxGridImportW" max="50000" min="0" step="100" type="number"/><div class="muted">Maximale totale netafname op de teller tijdens EV-laden. Peak Guard blijft altijd de absolute bovengrens.</div></div></div>
@@ -1334,7 +1346,6 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="evSmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="evWeight">Verdelingsgewicht EV 1</label><input class="homey-form-input" id="evWeight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-</div>
 <div class="homey-form-group"><label class="homey-form-label" for="evSmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="evSmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="evPvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="evPvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="evPvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="evPvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1348,7 +1359,7 @@
 <div class="card hidden" id="evTariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 1</div><div id="evTouRateSummary"></div></div>
 <div class="card hidden" id="evTariffDynamicCard"><div class="statusline" id="evDynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="evDynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="evDynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="evDynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
 </fieldset>
-<div class="card output-test-card"><h3>EV 1 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 1-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
+<div class="card output-test-card" id="evOutputTestCard1" data-ev-output-test-instance="1"><h3>EV 1 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 1-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="evTestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="evTestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="1" data-output="current" type="button">Test laadstroom-kaart</button></div>
 <div class="homey-form-group"><label class="homey-form-label">Test laden toegestaan</label><div class="test-button-row"><button class="homey-button-secondary test-ev-output" data-instance="1" data-output="allowed" data-value="true" type="button">Test toegestaan</button><button class="homey-button-secondary test-ev-output" data-instance="1" data-output="allowed" data-value="false" type="button">Test niet toegestaan</button></div></div>
 <div class="homey-form-group full-width"><label class="homey-form-label" for="evTestMode">Test laadmodus</label><div class="test-inline test-inline-action"><select class="homey-form-select" id="evTestMode"><option value="stop">Stop</option><option value="smart">Smart</option><option value="standard">Standard</option></select><button class="homey-button-secondary test-ev-output" data-instance="1" data-output="mode" type="button">Test laadmodus-kaart</button></div></div>
@@ -1395,7 +1406,6 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev2SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev2Weight">Verdelingsgewicht EV 2</label><input class="homey-form-input" id="ev2Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-</div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev2SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2PvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="ev2PvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev2PvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="ev2PvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1409,7 +1419,7 @@
 <div class="card hidden" id="ev2TariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 2</div><div id="ev2TouRateSummary"></div></div>
 <div class="card hidden" id="ev2TariffDynamicCard"><div class="statusline" id="ev2DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev2DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev2DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev2DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
 </fieldset>
-<div class="card output-test-card"><h3>EV 2 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 2-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
+<div class="card output-test-card" id="evOutputTestCard2" data-ev-output-test-instance="2"><h3>EV 2 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 2-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev2TestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="ev2TestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="2" data-output="current" type="button">Test laadstroom-kaart</button></div>
 <div class="homey-form-group"><label class="homey-form-label">Test laden toegestaan</label><div class="test-button-row"><button class="homey-button-secondary test-ev-output" data-instance="2" data-output="allowed" data-value="true" type="button">Test toegestaan</button><button class="homey-button-secondary test-ev-output" data-instance="2" data-output="allowed" data-value="false" type="button">Test niet toegestaan</button></div></div>
 <div class="homey-form-group full-width"><label class="homey-form-label" for="ev2TestMode">Test laadmodus</label><div class="test-inline test-inline-action"><select class="homey-form-select" id="ev2TestMode"><option value="stop">Stop</option><option value="smart">Smart</option><option value="standard">Standard</option></select><button class="homey-button-secondary test-ev-output" data-instance="2" data-output="mode" type="button">Test laadmodus-kaart</button></div></div>
@@ -1456,7 +1466,6 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev3SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev3Weight">Verdelingsgewicht EV 3</label><input class="homey-form-input" id="ev3Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-</div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev3SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3PvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="ev3PvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev3PvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="ev3PvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1470,7 +1479,7 @@
 <div class="card hidden" id="ev3TariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 3</div><div id="ev3TouRateSummary"></div></div>
 <div class="card hidden" id="ev3TariffDynamicCard"><div class="statusline" id="ev3DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev3DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev3DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev3DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
 </fieldset>
-<div class="card output-test-card"><h3>EV 3 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 3-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
+<div class="card output-test-card" id="evOutputTestCard3" data-ev-output-test-instance="3"><h3>EV 3 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 3-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev3TestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="ev3TestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="3" data-output="current" type="button">Test laadstroom-kaart</button></div>
 <div class="homey-form-group"><label class="homey-form-label">Test laden toegestaan</label><div class="test-button-row"><button class="homey-button-secondary test-ev-output" data-instance="3" data-output="allowed" data-value="true" type="button">Test toegestaan</button><button class="homey-button-secondary test-ev-output" data-instance="3" data-output="allowed" data-value="false" type="button">Test niet toegestaan</button></div></div>
 <div class="homey-form-group full-width"><label class="homey-form-label" for="ev3TestMode">Test laadmodus</label><div class="test-inline test-inline-action"><select class="homey-form-select" id="ev3TestMode"><option value="stop">Stop</option><option value="smart">Smart</option><option value="standard">Standard</option></select><button class="homey-button-secondary test-ev-output" data-instance="3" data-output="mode" type="button">Test laadmodus-kaart</button></div></div>
@@ -1517,7 +1526,6 @@
 </fieldset>
 <fieldset class="homey-form-fieldset" id="ev4SmartPrioritySettings"><legend class="homey-form-legend">Slim — energieprioriteit</legend><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev4Weight">Verdelingsgewicht EV 4</label><input class="homey-form-input" id="ev4Weight" max="10" min="1" step="1" type="number"/><div class="muted">1–10. Als meerdere EV's tegelijk mogen laden, verdeelt HomeFlux het beschikbare gezamenlijke EV-budget volgens deze gewichten. Ongebruikte ruimte wordt opnieuw over de andere aangesloten EV's verdeeld.</div></div>
-</div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4SmartGridPriority">Bij gelijktijdig gepland netladen</label><select class="homey-form-select" id="ev4SmartGridPriority"><option value="battery_first">Thuisbatterij eerst</option><option value="ev_first">EV eerst</option><option value="share">Verdelen</option></select></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4PvStartSurplusW">PV-laden starten vanaf overschot (W)</label><input class="homey-form-input" id="ev4PvStartSurplusW" min="0" max="20000" step="100" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" for="ev4PvStopSurplusW">PV-laden stopdrempel (W)</label><input class="homey-form-input" id="ev4PvStopSurplusW" min="0" max="20000" step="100" type="number"/></div>
@@ -1531,7 +1539,7 @@
 <div class="card hidden" id="ev4TariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 4</div><div id="ev4TouRateSummary"></div></div>
 <div class="card hidden" id="ev4TariffDynamicCard"><div class="statusline" id="ev4DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev4DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev4DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev4DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
 </fieldset>
-<div class="card output-test-card"><h3>EV 4 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 4-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
+<div class="card output-test-card" id="evOutputTestCard4" data-ev-output-test-instance="4"><h3>EV 4 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 4-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev4TestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="ev4TestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="4" data-output="current" type="button">Test laadstroom-kaart</button></div>
 <div class="homey-form-group"><label class="homey-form-label">Test laden toegestaan</label><div class="test-button-row"><button class="homey-button-secondary test-ev-output" data-instance="4" data-output="allowed" data-value="true" type="button">Test toegestaan</button><button class="homey-button-secondary test-ev-output" data-instance="4" data-output="allowed" data-value="false" type="button">Test niet toegestaan</button></div></div>
 <div class="homey-form-group full-width"><label class="homey-form-label" for="ev4TestMode">Test laadmodus</label><div class="test-inline test-inline-action"><select class="homey-form-select" id="ev4TestMode"><option value="stop">Stop</option><option value="smart">Smart</option><option value="standard">Standard</option></select><button class="homey-button-secondary test-ev-output" data-instance="4" data-output="mode" type="button">Test laadmodus-kaart</button></div></div>
@@ -2012,11 +2020,11 @@ async function onHomeyReady(Homey) {
     'balanceEnabled','balanceDeadbandPct','balanceStrength','balanceWarningEnabled','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','controlEnabled','peakShaveEnabled','peakLimitW','peakSoftMarginW',
     'gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','batteryCommandPauseEnabled','batteryCommandPauseStart','batteryCommandPauseEnd','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','nightTargetTime','solarTargetTime','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','sunnyMonthsMinSoc','peakReserveNightEnabled','controlProfile','overrideResumeOnTariffChange','contractType','dynamicPriceSource','dynamicUseBatteryNormalHours',
     'fixedImportPrice','fixedFeedInPrice','fixedChargeWindowStart','fixedChargeWindowEnd','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','exportLimitEnabled',
-    'evCount','evPvSharePercent','hvacCount','boilerCount',
+    'evCount','evIdleHouseLoadW','evPvSharePercent','hvacCount','boilerCount',
     'boilerEnabled','boilerName','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerColdResetTime','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','boilerPeakGuardBatterySupportEnabled','boilerTariffPeriod','boilerDayStartTime','boilerDayEndTime','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled',
     'priorityEvaluationMinutes','flexibleLoadPriorityOrder'
   ];
-  const numeric = new Set(['batteryCount','autoTuneMinConfidencePercent','hybridWatchdogMinW','hybridWatchdogMaxW','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','evPvSharePercent','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
+  const numeric = new Set(['batteryCount','autoTuneMinConfidencePercent','hybridWatchdogMinW','hybridWatchdogMaxW','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','evIdleHouseLoadW','evPvSharePercent','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
   const boolean = new Set(['hybridEmsEnabled','balanceEnabled','balanceWarningEnabled','controlEnabled','adaptiveLiveControlEnabled','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandPauseEnabled','exportLimitEnabled','peakShaveEnabled','overrideResumeOnTariffChange','dynamicUseBatteryNormalHours','lowForecastAutoSunnyEnabled','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','peakReserveNightEnabled','boilerEnabled','boilerPeakGuardBatterySupportEnabled','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled']);
   const jsonArray = new Set(['flexibleLoadPriorityOrder']);
   const evSuffixes = ['Enabled','Name','SocEnabled','SocFreshnessMinutes','Mode','ControlType','SmartGridPriority','Weight','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
@@ -2236,6 +2244,8 @@ async function onHomeyReady(Homey) {
       const label = configuredName(kind, instance);
       const tab = q(`${kind}InstanceTab${instance}`);
       const legend = q(`${kind}InstanceLegend${instance}`);
+      const panel = q(`${kind}InstancePanel${instance}`);
+      if (panel) panel.classList.toggle('hidden', instance > count);
       if (tab) {
         tab.textContent = label;
         tab.classList.toggle('hidden', instance > count);
@@ -2363,6 +2373,139 @@ async function onHomeyReady(Homey) {
     }));
   }
 
+  function configuredPreviewBatteryDischargeW() {
+    const count = configuredBatteryCount();
+    if (count <= 0) return 0;
+    const groupMax = Math.max(0, Number(q('maxTotalDischargeW')?.value) || 0);
+    if (groupMax <= 0) return 0;
+    let hardwareMax = 0;
+    if (q('individualBatteryPowerLimitsEnabled')?.checked) {
+      for (let battery = 1; battery <= count; battery += 1) {
+        hardwareMax += Math.max(0, Number(q(`battery${battery}MaxDischargeW`)?.value) || 0);
+      }
+    } else {
+      hardwareMax = count * Math.max(0, Number(q('maxDischargePerBatteryW')?.value) || 0);
+    }
+    return Math.max(0, Math.min(groupMax, hardwareMax || groupMax));
+  }
+
+  function ensureEvPeakGuardPreviewCard(instance) {
+    const id = `evPeakGuardPreview${instance}`;
+    let card = q(id);
+    if (card) return card;
+    const panel = q(`evInstancePanel${instance}`);
+    if (!panel) return null;
+    card = document.createElement('div');
+    card.id = id;
+    card.className = 'ev-headroom-box ev-peak-guard-preview';
+    const anchor = panel.querySelector('.ev-mode-estimate-cluster');
+    if (anchor && anchor.parentElement) anchor.insertAdjacentElement('afterend', card);
+    else panel.querySelector('fieldset')?.appendChild(card);
+    return card;
+  }
+
+  function formatEvHeadroomScenario(scenario, controlType) {
+    if (!scenario) return {
+      value: uiLanguage === 'nl' ? 'Geen Peak Guard-limiet' : 'No Peak Guard limit',
+      css: 'good', detail: uiLanguage === 'nl' ? 'Peak Guard staat uit.' : 'Peak Guard is disabled.',
+    };
+    if (controlType === 'mode') {
+      if (scenario.standardFits) return {
+        value: uiLanguage === 'nl' ? 'Standaard + Slim' : 'Standard + Smart', css: 'good',
+        detail: uiLanguage === 'nl'
+          ? `Standaard (${scenario.standardCurrentA} A) en Slim (${scenario.smartCurrentA} A) passen binnen deze laadruimte.`
+          : `Standard (${scenario.standardCurrentA} A) and Smart (${scenario.smartCurrentA} A) fit within this charging headroom.`,
+      };
+      if (scenario.smartFits) return {
+        value: uiLanguage === 'nl' ? 'Alleen Slim' : 'Smart only', css: 'warn',
+        detail: uiLanguage === 'nl'
+          ? `Slim (${scenario.smartCurrentA} A) past. Standaard (${scenario.standardCurrentA} A) zou Peak Guard overschrijden en valt terug naar Slim.`
+          : `Smart (${scenario.smartCurrentA} A) fits. Standard (${scenario.standardCurrentA} A) would exceed Peak Guard and falls back to Smart.`,
+      };
+      return {
+        value: 'STOP', css: 'bad',
+        detail: uiLanguage === 'nl'
+          ? `Zelfs Slim (${scenario.smartCurrentA} A) past niet binnen de beschikbare laadruimte.`
+          : `Even Smart (${scenario.smartCurrentA} A) does not fit within the available charging headroom.`,
+      };
+    }
+
+    if (!scenario.canCharge) return {
+      value: uiLanguage === 'nl' ? 'Kan niet starten' : 'Cannot start', css: 'bad',
+      detail: uiLanguage === 'nl'
+        ? `Peak Guard laat theoretisch ${scenario.theoreticalAvailableA} A toe, maar deze EV vereist minimaal ${scenario.minCurrentA} A.`
+        : `Peak Guard theoretically allows ${scenario.theoreticalAvailableA} A, but this EV requires at least ${scenario.minCurrentA} A.`,
+    };
+    const notes = [];
+    if (scenario.standardFits) notes.push(uiLanguage === 'nl' ? `standaard ${scenario.standardCurrentA} A past` : `standard ${scenario.standardCurrentA} A fits`);
+    else notes.push(uiLanguage === 'nl' ? `standaard ${scenario.standardCurrentA} A wordt begrensd` : `standard ${scenario.standardCurrentA} A is limited`);
+    if (scenario.fullFits) notes.push(uiLanguage === 'nl' ? `vol vermogen ${scenario.maxCurrentA} A past` : `full power ${scenario.maxCurrentA} A fits`);
+    else if (scenario.maxCurrentA > scenario.usableMaxA) notes.push(uiLanguage === 'nl' ? `maximaal ingesteld ${scenario.maxCurrentA} A past niet` : `configured maximum ${scenario.maxCurrentA} A does not fit`);
+    return {
+      value: `${uiLanguage === 'nl' ? 'max.' : 'max'} ${scenario.usableMaxA} A`,
+      css: scenario.standardFits ? 'good' : 'warn',
+      detail: notes.join(' · '),
+    };
+  }
+
+  function renderEvPeakGuardCapacity() {
+    const helper = window.HomeFluxEvHeadroom;
+    const summary = q('evPeakGuardHeadroomSummary');
+    if (!helper || !summary) return;
+    const evCount = configuredCount('ev');
+    const peakEnabled = Boolean(q('peakShaveEnabled')?.checked);
+    const peakLimitW = Math.max(0, Number(q('peakLimitW')?.value) || 0);
+    const peakSoftMarginW = Math.max(0, Number(q('peakSoftMarginW')?.value) || 0);
+    const softPeakW = Math.max(0, peakLimitW - peakSoftMarginW);
+    const idleHouseLoadW = Math.max(0, Number(q('evIdleHouseLoadW')?.value) || 0);
+    const baseBudgetW = peakEnabled ? Math.max(0, softPeakW - idleHouseLoadW) : 0;
+    const idleWarning = idleHouseLoadW <= 0
+      ? `<div class="ev-headroom-detail">${uiLanguage === 'nl' ? 'Rustverbruik staat op 0 W. Vul hier je normale basislast in voor een realistische controle.' : 'Idle house load is 0 W. Enter your normal base load for a realistic check.'}</div>`
+      : '';
+    summary.innerHTML = peakEnabled
+      ? `<div class="ev-headroom-box"><div class="ev-headroom-title">${uiLanguage === 'nl' ? 'Beschikbare EV-ruimte binnen Peak Guard' : 'Available EV headroom within Peak Guard'}</div><div class="ev-headroom-row"><span>${uiLanguage === 'nl' ? 'Effectieve Peak Guard' : 'Effective Peak Guard'}</span><span class="ev-headroom-value">${Math.round(softPeakW)} W</span><div class="ev-headroom-detail">${Math.round(peakLimitW)} W − ${Math.round(peakSoftMarginW)} W ${uiLanguage === 'nl' ? 'veiligheidsmarge' : 'safety margin'}</div></div><div class="ev-headroom-row"><span>${uiLanguage === 'nl' ? 'Rustverbruik woning' : 'Idle house load'}</span><span class="ev-headroom-value">${Math.round(idleHouseLoadW)} W</span></div><div class="ev-headroom-row"><span>${uiLanguage === 'nl' ? 'EV-budget zonder PV/batterijreserve' : 'EV budget without PV/battery reserve'}</span><span class="ev-headroom-value ${baseBudgetW > 0 ? 'good' : 'bad'}">${Math.round(baseBudgetW)} W</span><div class="ev-headroom-detail">${uiLanguage === 'nl' ? 'Dit is de gezamenlijke fysieke laadruimte. Bij meerdere EV’s verdeelt HomeFlux deze ruimte volgens de ingestelde EV-gewichten.' : 'This is the combined physical charging headroom. With multiple EVs, HomeFlux distributes this budget according to the configured EV weights.'}</div></div>${idleWarning}<div class="ev-headroom-detail">${uiLanguage === 'nl' ? 'Deze configuratiecheck veronderstelt dat het huidige tarief/deadline netladen toestaat. Tariefspecifieke EV-netimportlimieten kunnen de werkelijke laadruimte verder beperken.' : 'This configuration check assumes the current tariff/deadline allows grid charging. Tariff-specific EV grid-import limits may further reduce the real charging headroom.'}</div></div>`
+      : `<div class="ev-headroom-box"><div class="ev-headroom-title">${uiLanguage === 'nl' ? 'Peak Guard staat uit' : 'Peak Guard is disabled'}</div><div class="ev-headroom-detail">${uiLanguage === 'nl' ? 'Zonder actieve Peak Guard is er geen vaste netlimiet om deze EV-configuratie vooraf tegen te toetsen.' : 'Without an active Peak Guard there is no fixed grid limit against which this EV configuration can be checked.'}</div></div>`;
+
+    const potentialBatteryW = configuredPreviewBatteryDischargeW();
+    for (let instance = 1; instance <= MAX_FLEX_INSTANCES; instance += 1) {
+      const card = ensureEvPeakGuardPreviewCard(instance);
+      if (!card) continue;
+      const configured = instance <= evCount;
+      card.classList.toggle('hidden', !configured);
+      if (!configured) continue;
+      const stem = instanceStem('ev', instance);
+      const controlType = String(q(`${stem}ControlType`)?.value || 'current');
+      const evMode = String(q(`${stem}Mode`)?.value || 'smart');
+      const assistEnabled = evMode === 'emergency'
+        ? Boolean(q(`${stem}PeakGuardBatteryAssistEmergency`)?.checked)
+        : Boolean(q(`${stem}PeakGuardBatteryAssistNormal`)?.checked);
+      const batterySupportW = assistEnabled ? potentialBatteryW : 0;
+      const capability = helper.calculateCapability({
+        peakEnabled,
+        peakLimitW,
+        peakSoftMarginW,
+        idleHouseLoadW,
+        batterySupportW,
+        ev: {
+          controlType,
+          phases: Number(q(`${stem}Phases`)?.value) || 3,
+          minCurrentA: Number(q(`${stem}MinCurrentA`)?.value) || 6,
+          maxCurrentA: Number(q(`${stem}MaxCurrentA`)?.value) || 32,
+          standardCurrentA: Number(q(`${stem}StandardCurrentA`)?.value) || 16,
+          modeSmartCurrentA: Number(q(`${stem}ModeSmartCurrentA`)?.value) || 6,
+          modeStandardCurrentA: Number(q(`${stem}ModeStandardCurrentA`)?.value) || 16,
+        },
+      });
+      const saveScenario = formatEvHeadroomScenario(capability.batterySaving, controlType);
+      const selfScenario = formatEvHeadroomScenario(capability.selfConsumption, controlType);
+      const phases = Number(q(`${stem}Phases`)?.value) === 1 ? 1 : 3;
+      const supportText = batterySupportW > 0
+        ? (uiLanguage === 'nl' ? `potentieel +${Math.round(batterySupportW)} W uit thuisbatterij, alleen zolang voldoende SoC/reserve beschikbaar is` : `potential +${Math.round(batterySupportW)} W from the home battery, only while sufficient SoC/reserve is available`)
+        : (uiLanguage === 'nl' ? 'geen extra EV-batterijondersteuning meegerekend' : 'no extra EV battery support included');
+      card.innerHTML = `<div class="ev-headroom-title">${uiLanguage === 'nl' ? 'Peak Guard laadcheck' : 'Peak Guard charging check'} · ${escapeHtml(configuredName('ev', instance))}</div><div class="ev-headroom-detail">${phases} ${uiLanguage === 'nl' ? (phases === 1 ? 'fase' : 'fasen') : (phases === 1 ? 'phase' : 'phases')} · 230 V ${uiLanguage === 'nl' ? 'per fase' : 'per phase'} · ${uiLanguage === 'nl' ? 'berekening op rustverbruik, dus zonder PV' : 'calculated from idle house load, so without PV'}</div><div class="ev-headroom-row"><span>${uiLanguage === 'nl' ? 'Batterij sparen / geen batterijreserve' : 'Battery Save / no battery reserve'}</span><span class="ev-headroom-value ${saveScenario.css}">${escapeHtml(saveScenario.value)}</span><div class="ev-headroom-detail">${escapeHtml(saveScenario.detail)}</div></div><div class="ev-headroom-row"><span>${uiLanguage === 'nl' ? 'Zelfconsumptie' : 'Self-consumption'}</span><span class="ev-headroom-value ${selfScenario.css}">${escapeHtml(selfScenario.value)}</span><div class="ev-headroom-detail">${escapeHtml(selfScenario.detail)} · ${escapeHtml(supportText)}</div></div><div class="ev-headroom-detail">${uiLanguage === 'nl' ? 'Bij meerdere EV’s is dit geen gereserveerde stroom per EV: de gezamenlijke Peak Guard-ruimte wordt live volgens de EV-gewichten verdeeld. Hybrid/externe EMS of een lage batterij-SoC kan alleen de optionele batterijondersteuning wegnemen; de regel “Batterij sparen / geen batterijreserve” blijft de conservatieve basis.' : 'With multiple EVs this is not reserved current per EV: the shared Peak Guard headroom is distributed live according to EV weights. Hybrid/external EMS or a low battery SoC can only remove optional battery support; the “Battery Save / no battery reserve” line remains the conservative baseline.'}</div>`;
+    }
+  }
+
   function updateModuleUi() {
     updateBatteryConfigurationUi();
     const evCount = configuredCount('ev');
@@ -2371,6 +2514,8 @@ async function onHomeyReady(Homey) {
     updateInstanceLabels('ev');
     updateInstanceLabels('hvac');
     q('evEmptyState')?.classList.toggle('hidden', evCount > 0);
+    q('evGlobalPvDistributionSettings')?.classList.toggle('hidden', evCount === 0);
+    q('evGlobalGridImportSettings')?.classList.toggle('hidden', evCount === 0);
     q('hvacEmptyState')?.classList.toggle('hidden', hvacCount > 0);
     q('evInstancePanels')?.classList.toggle('hidden', evCount === 0);
     q('hvacInstancePanels')?.classList.toggle('hidden', hvacCount === 0);
@@ -2383,10 +2528,12 @@ async function onHomeyReady(Homey) {
     switchInstanceTab('ev', activeEvInstance);
     switchInstanceTab('hvac', activeHvacInstance);
     for (let instance = 1; instance <= MAX_FLEX_INSTANCES; instance += 1) {
+      q(`evOutputTestCard${instance}`)?.classList.toggle('hidden', instance > evCount);
       updateEvInstanceUi(instance);
       updateHvacInstanceUi(instance);
     }
     renderPriorityList();
+    renderEvPeakGuardCapacity();
   }
 
   let helpCatalogRendered = false;
@@ -3264,6 +3411,7 @@ async function onHomeyReady(Homey) {
           else if (id === 'lowForecastAutoSunnyMinutes') q(id).value = 10;
           else if (id === 'peakReserveTargetSoc') q(id).value = 0;
           else if (id === 'sunnyMonthsMinSoc') q(id).value = 20;
+          else if (id === 'evIdleHouseLoadW') q(id).value = 0;
           else if (/^battery[1-8]MaxChargeW$/.test(id)) q(id).value = Number(snapshot.maxChargePerBatteryW) || 2300;
           else if (/^battery[1-8]MaxDischargeW$/.test(id)) q(id).value = Number(snapshot.maxDischargePerBatteryW) || 2400;
           else if (/^ev(?:[2-4])?ModeSmartCurrentA$/.test(id)) { const stem=id.replace(/ModeSmartCurrentA$/,''); q(id).value = Number(snapshot[`${stem}MinCurrentA`]) || 6; }
@@ -3423,6 +3571,16 @@ async function onHomeyReady(Homey) {
   }
 
   q('evCount')?.addEventListener('change',()=>{ updateModuleUi(); renderRates(); renderEvContractUi(); });
+  // EV Peak Guard preview is settings-only and event-driven: no timer, polling or
+  // EMS evaluation is added. Recalculate only while the user edits relevant
+  // configuration values on this page.
+  ['input','change'].forEach(eventName => q('panel-ev')?.addEventListener(eventName, renderEvPeakGuardCapacity));
+  const evHeadroomGlobalIds = ['peakShaveEnabled','peakLimitW','peakSoftMarginW','batteryCount','maxTotalDischargeW','maxDischargePerBatteryW','individualBatteryPowerLimitsEnabled'];
+  for (let battery = 1; battery <= 8; battery += 1) evHeadroomGlobalIds.push(`battery${battery}MaxDischargeW`);
+  for (const id of evHeadroomGlobalIds) {
+    q(id)?.addEventListener('input', renderEvPeakGuardCapacity);
+    q(id)?.addEventListener('change', renderEvPeakGuardCapacity);
+  }
   q('hvacCount')?.addEventListener('change',updateModuleUi);
   q('boilerCount')?.addEventListener('change',()=>{ updateModuleUi(); renderRates(); renderBoilerContractSummary(); });
   document.querySelectorAll('[data-instance-tab-kind]').forEach(button=>button.addEventListener('click',()=>switchInstanceTab(button.dataset.instanceTabKind,button.dataset.instanceTab)));
@@ -3472,6 +3630,10 @@ async function onHomeyReady(Homey) {
 
   document.querySelectorAll('.test-ev-output').forEach(button=>button.addEventListener('click',event=>{
     const instance=Math.max(1,Math.min(MAX_FLEX_INSTANCES,Number(button.dataset.instance)||1));
+    if (instance > configuredCount('ev')) {
+      Homey.alert(uiLanguage === 'nl' ? `EV ${instance} is niet geconfigureerd.` : `EV ${instance} is not configured.`);
+      return;
+    }
     const stem=instanceStem('ev',instance), output=button.dataset.output;
     const body={instance,output};
     if(output==='current') body.currentA=Number(q(`${stem}TestCurrentA`)?.value);

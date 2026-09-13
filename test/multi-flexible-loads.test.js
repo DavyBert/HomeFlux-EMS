@@ -317,7 +317,9 @@ function makeApp() {
   await app.publishBoilerDecision({ on: true, outputCommand: true });
   assert.deepEqual(app.boilerTrigger.calls[0][0], { on: true });
 
-  // Output tests route to the selected extra instance.
+  // Output tests route only to configured instances.
+  const previousGetSettingsForOutputTest = app.getSettings;
+  app.getSettings = () => ({ ...previousGetSettingsForOutputTest.call(app), evCount: 2 });
   app.extraEvInstances = [{ sessionOverride:{}, state:{}, seen:{}, updatedAt:{} }, { sessionOverride:{}, state:{}, seen:{}, updatedAt:{} }, { sessionOverride:{}, state:{}, seen:{}, updatedAt:{} }];
   app.extraEvTriggers = [{ current: triggerSpy(), allowed: triggerSpy(), mode: triggerSpy() }, {}, {}];
   app.extraHvacTriggers = [{ power: triggerSpy(), mode: triggerSpy(), setpoint: triggerSpy(), fan: triggerSpy() }, {}, {}];
@@ -325,6 +327,7 @@ function makeApp() {
   assert.equal(app.extraEvTriggers[0].current.calls[0][0].charge_current, 8);
   await app.testHvacOutput({ instance: 2, output: 'power', on: true });
   assert.equal(app.extraHvacTriggers[0].power.calls[0][0].state_value, 1);
+  app.getSettings = previousGetSettingsForOutputTest;
 
   console.log('multi flexible-load tests passed');
 })().catch(err => { console.error(err); process.exit(1); });

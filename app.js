@@ -494,7 +494,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.5 initialized');
+    this.log('HomeFlux EMS v0.7.6 initialized');
   }
 
   refreshSettingsCache() {
@@ -3355,7 +3355,14 @@ class HomeFluxEmsApp extends Homey.App {
       this.setSetting('_autoTuneLimits', migrated);
     }
 
-    this.setSetting('settingsSchemaVersion', 64);
+    if (schema < 65) {
+      // v0.7.6: optional settings-only EV base-load estimate. It is never used
+      // by live control; it only helps Settings show which EV current/mode can
+      // physically fit below Peak Guard when there is no PV or battery reserve.
+      if (this.homey.settings.get('evIdleHouseLoadW') === null) this.setSetting('evIdleHouseLoadW', 0);
+    }
+
+    this.setSetting('settingsSchemaVersion', 65);
   }
 
   async ensureDefaults() {
@@ -7292,7 +7299,13 @@ class HomeFluxEmsApp extends Homey.App {
     const rawGridW = Number(this.state.gridPowerW) || 0;
     const currentBatteryW = Number(currentBatteryCommandW) || 0;
     const nextBatteryW = Number(nextBatteryCommandW) || 0;
-    const predictedGridAfterBatteryW = rawGridW + currentBatteryW - nextBatteryW;
+    // EV safety is always budgeted from the PHYSICAL battery output that is
+    // already active. A queued/candidate HomeFlux battery setpoint may never
+    // create virtual Peak Guard headroom for an EV. This is especially
+    // important while Hybrid EMS owns the batteries, because that candidate is
+    // deliberately not published at all.
+    const evPlanningBatteryW = currentBatteryW;
+    const predictedGridAfterBatteryW = rawGridW + currentBatteryW - evPlanningBatteryW;
     // EV budgeting is based on the PHYSICAL situation that is already active,
     // not on a queued/candidate battery command. Remove only CURRENT battery
     // discharge from the real meter so battery energy can never masquerade as
@@ -7349,7 +7362,7 @@ class HomeFluxEmsApp extends Homey.App {
     const batteryGridChargeW = Math.max(0, Number(result?.gridChargeAssistW) || 0);
     const decisions = [];
     const smartEntries = [];
-    const nonSmartSupportEntries = [];
+    const nonSmartEntries = [];
     let nonSmartIncreaseW = 0;
 
     for (let index = 0; index < evCount; index += 1) {
@@ -7374,11 +7387,14 @@ class HomeFluxEmsApp extends Homey.App {
         actualCurrentA,
         gridPowerW: rawGridW,
         currentBatteryCommandW: currentBatteryW,
-        nextBatteryCommandW: nextBatteryW,
+        nextBatteryCommandW: evPlanningBatteryW,
         pvHeadroomW: 0,
         pvAvailableWOverride: pvAvailableW,
         pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
-        skipPeakLimit: String(settings.evMode || 'smart') === 'smart',
+        // The portfolio coordinator owns the one shared Peak Guard budget for
+        // every EV mode. Per-EV Peak Guard here would let EV2..EV4 each believe
+        // they own the same headroom.
+        skipPeakLimit: true,
       });
       decision = this.applyEvPvSessionHysteresisFor(index, decision, result, settings, rawGridW);
       decision = {
@@ -7400,40 +7416,21 @@ class HomeFluxEmsApp extends Homey.App {
       decisions.push(decision);
       const commandedPowerW = this.getEvCommandedPowerW(index, storedSettings);
       if (String(settings.evMode || 'smart') !== 'smart') {
-        const baselineDesiredPowerW = Math.max(0, Number(decision.desiredPowerW) || 0);
-        if (Boolean(decision.batterySupportEnabled)) {
-          let unbounded = calculateEvDecision({
+        const requestedPowerW = Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0);
+        if (Boolean(decision.allowed) && requestedPowerW > 0) {
+          nonSmartEntries.push({
+            index,
             settings,
-            now: new Date(),
-            tariff,
-            connected,
-            soc,
-            socSeen: socFreshness.seen,
-            socFresh: socFreshness.fresh,
-            socAgeMinutes: socFreshness.ageMinutes,
-            actualCurrentA,
-            gridPowerW: rawGridW,
-            currentBatteryCommandW: currentBatteryW,
-            nextBatteryCommandW: nextBatteryW,
-            pvHeadroomW: 0,
-            pvAvailableWOverride: pvAvailableW,
-            pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
-            skipPeakLimit: true,
+            decision,
+            weight: decision.weight,
+            modeExpectedCurrentA: this.getEvControlType(settings) === 'mode'
+              ? Math.max(0, Number(decision.requestedCurrentA || decision.desiredCurrentA) || 0)
+              : 0,
+            currentPowerW: commandedPowerW,
+            maxPowerW: requestedPowerW,
+            pvMaxPowerW: Math.min(requestedPowerW, Math.max(0, Number(decision.pvRequestPowerW) || 0)),
           });
-          unbounded = this.applyEvPvSessionHysteresisFor(index, unbounded, result, settings, rawGridW);
-          const maxPowerW = Math.max(baselineDesiredPowerW, Number(unbounded.requestedPowerW || unbounded.desiredPowerW) || 0);
-          if (Boolean(unbounded.allowed) && maxPowerW > baselineDesiredPowerW + 0.5) {
-            nonSmartSupportEntries.push({
-              index,
-              settings,
-              decision,
-              weight: decision.weight,
-              currentPowerW: baselineDesiredPowerW,
-              maxPowerW,
-            });
-          }
         }
-        nonSmartIncreaseW += baselineDesiredPowerW - commandedPowerW;
         continue;
       }
       if (!decision.allowed || Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0) <= 0) continue;
@@ -7448,25 +7445,112 @@ class HomeFluxEmsApp extends Homey.App {
       });
     }
 
+    // Coordinate Emergency and SoC-target EVs as one portfolio before Smart
+    // EVs get the remaining room. Every EV sees the same physical Peak Guard
+    // headroom and the configured EV weights decide how that shared budget is
+    // divided. This prevents EV2..EV4 from each consuming the full site margin.
+    let nonSmartPvUsedW = 0;
+    let nonSmartIntentionalGridTargetW = 0;
+    let nonSmartAllocation = new Map();
+    let nonSmartPvAllocation = new Map();
+    if (nonSmartEntries.length) {
+      const currentNonSmartPowerW = nonSmartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
+      const nonSmartMaxRequestedW = nonSmartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.maxPowerW) || 0), 0);
+      let nonSmartPeakBudgetW = nonSmartMaxRequestedW;
+      if (Boolean(runtimeSettings.peakShaveEnabled)) {
+        const softTargetW = Math.max(0, (Number(runtimeSettings.peakLimitW) || 0) - Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0));
+        nonSmartPeakBudgetW = Math.max(0, currentNonSmartPowerW + (softTargetW - gridWithoutCurrentBatteryDischargeW));
+      }
+      nonSmartPeakBudgetW = Math.min(nonSmartPeakBudgetW, nonSmartMaxRequestedW);
+
+      // First share the one physical EV PV pool. A SoC-target EV that is only
+      // allowed to use PV may never independently claim the full pool alongside
+      // another EV. Emergency may also consume PV, but may continue with grid
+      // power in the second stage.
+      const nonSmartPvEntries = nonSmartEntries
+        .filter(entry => Math.max(0, Number(entry.pvMaxPowerW) || 0) > 0.5)
+        .map(entry => ({ ...entry, maxPowerW: Math.max(0, Number(entry.pvMaxPowerW) || 0) }));
+      const nonSmartPvBudgetW = Math.min(nonSmartPeakBudgetW, evPvPoolBudgetW);
+      nonSmartPvAllocation = this.allocateWeightedEvPower(nonSmartPvEntries, nonSmartPvBudgetW);
+      nonSmartAllocation = new Map(nonSmartPvAllocation);
+
+      // Grid-capable Emergency/SoC-target EVs may use only the remaining shared
+      // Peak Guard room. The helper already decided whether the current tariff,
+      // guarantee or Emergency mode permits grid energy.
+      const nonSmartGridEntries = nonSmartEntries.filter(entry => Math.max(0, Number(entry.decision.gridRequestPowerW) || 0) > 0.5);
+      if (nonSmartGridEntries.length && nonSmartPeakBudgetW > 0) {
+        nonSmartAllocation = this.allocateWeightedEvPower(nonSmartGridEntries, nonSmartPeakBudgetW, nonSmartAllocation);
+      }
+
+      for (const entry of nonSmartEntries) {
+        const decision = decisions[entry.index];
+        const allocatedPowerW = Math.max(0, Number(nonSmartAllocation.get(entry.index)) || 0);
+        const allocationSettings = this.getEvControlType(entry.settings) === 'mode'
+          ? { ...entry.settings, evModeExpectedCurrentA: entry.modeExpectedCurrentA }
+          : entry.settings;
+        const allocatedCurrentA = this.getEvCurrentForPower(allocatedPowerW, allocationSettings);
+        const actualAllocatedW = allocatedCurrentA * evPowerPerAmp(entry.settings);
+        const pvBudgetForEvW = Math.max(0, Number(nonSmartPvAllocation.get(entry.index)) || 0);
+        const pvAllocatedW = Math.min(actualAllocatedW, pvBudgetForEvW);
+        const gridAllocatedW = Math.max(0, actualAllocatedW - pvAllocatedW);
+
+        decision.desiredCurrentA = allocatedCurrentA;
+        decision.desiredPowerW = Math.round(actualAllocatedW);
+        decision.allowed = allocatedCurrentA > 0;
+        decision.peakLimited = actualAllocatedW + 0.5 < Math.max(0, Number(entry.maxPowerW) || 0);
+        decision.priorityLimited = decision.peakLimited;
+        decision.pvAllocatedW = Math.round(pvAllocatedW);
+        decision.gridAllocatedW = Math.round(gridAllocatedW);
+        decision.batterySupportAllocatedW = 0;
+        decision.intentionalGridImport = gridAllocatedW > 0.5;
+        decision.weight = entry.weight;
+
+        if (this.getEvControlType(entry.settings) === 'mode') {
+          const smartA = this.getEvModeEstimatedCurrentA('smart', entry.settings);
+          const requestedA = Math.max(0, Number(entry.modeExpectedCurrentA) || Number(decision.requestedCurrentA) || 0);
+          const requestedMode = requestedA > smartA ? 'standard' : 'smart';
+          decision.requestedChargeMode = requestedMode;
+          decision.effectiveChargeMode = allocatedCurrentA > 0
+            ? (requestedMode === 'standard' && allocatedCurrentA <= smartA ? 'smart' : requestedMode)
+            : 'stop';
+          decision.modeFallback = requestedMode === 'standard' && decision.effectiveChargeMode === 'smart' ? 'smart' : null;
+        }
+
+        if (allocatedCurrentA <= 0 && decision.peakLimited) {
+          decision.reason = 'Peak Guard laat geen gezamenlijk EV-laadvermogen toe';
+        } else if (decision.peakLimited) {
+          decision.reason = `${String(decision.reason || '').replace(/ · begrensd door Peak Guard/g, '')} · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard`;
+        } else if (nonSmartEntries.length > 1 && allocatedCurrentA > 0) {
+          decision.reason = `${decision.reason} · EV-gewicht ${entry.weight}`;
+        }
+        nonSmartPvUsedW += pvAllocatedW;
+        nonSmartIntentionalGridTargetW += gridAllocatedW;
+      }
+    }
+
     // Battery support is a shared EV energy budget. It never creates or
-    // rewrites a battery command: it only allows EV setpoints to rise. The
-    // normal battery EMS subsequently reacts to the real P1 measurement.
-    const batterySupportCapacityW = this.getEvBatterySupportAvailableW(runtimeSettings, nextBatteryW);
+    // rewrites a battery command: it only allows EV setpoints to rise. While an
+    // external Hybrid EMS owns the batteries, HomeFlux has no publishable
+    // discharge headroom and therefore exposes zero battery support.
+    const batterySupportCapacityW = this.isHybridExternalControlActive(runtimeSettings)
+      ? 0
+      : this.getEvBatterySupportAvailableW(runtimeSettings, nextBatteryW);
     let batterySupportRemainingW = batterySupportCapacityW;
 
-    // Emergency and SoC-target modes retain their normal Peak Guard-limited
-    // decision. When battery support is explicitly enabled, the available
-    // battery headroom may raise those EV setpoints toward their original
-    // request. This support is shared across those EVs according to weight.
+    // Optional support may lift Emergency/SoC-target EVs above the physical
+    // no-battery Peak Guard budget only after HomeFlux owns and can actually
+    // publish the battery support. The extra room is shared by EV weight.
+    const nonSmartSupportEntries = nonSmartEntries.filter(entry => Boolean(entry.decision.batterySupportEnabled));
     if (nonSmartSupportEntries.length && batterySupportRemainingW > 0) {
-      const baseline = new Map();
+      const baseline = new Map(nonSmartAllocation);
       let baselineTotalW = 0;
       let maximumTotalW = 0;
-      for (const entry of nonSmartSupportEntries) {
-        const powerW = Math.max(0, Number(entry.currentPowerW) || 0);
-        baseline.set(entry.index, powerW);
+      for (const entry of nonSmartEntries) {
+        const powerW = Math.max(0, Number(baseline.get(entry.index)) || 0);
         baselineTotalW += powerW;
-        maximumTotalW += Math.max(powerW, Number(entry.maxPowerW) || 0);
+        maximumTotalW += Boolean(entry.decision.batterySupportEnabled)
+          ? Math.max(powerW, Number(entry.maxPowerW) || 0)
+          : powerW;
       }
       const targetTotalW = Math.min(maximumTotalW, baselineTotalW + batterySupportRemainingW);
       const supported = this.allocateWeightedEvPower(nonSmartSupportEntries, targetTotalW, baseline);
@@ -7474,30 +7558,46 @@ class HomeFluxEmsApp extends Homey.App {
       for (const entry of nonSmartSupportEntries) {
         const beforeW = Math.max(0, Number(baseline.get(entry.index)) || 0);
         const supportedW = Math.max(beforeW, Number(supported.get(entry.index)) || 0);
-        const supportedCurrentA = this.getEvCurrentForPower(supportedW, entry.settings);
+        const allocationSettings = this.getEvControlType(entry.settings) === 'mode'
+          ? { ...entry.settings, evModeExpectedCurrentA: entry.modeExpectedCurrentA }
+          : entry.settings;
+        const supportedCurrentA = this.getEvCurrentForPower(supportedW, allocationSettings);
         const actualSupportedW = supportedCurrentA * evPowerPerAmp(entry.settings);
         const decision = decisions[entry.index];
         if (actualSupportedW > beforeW + 0.5) {
+          const supportW = actualSupportedW - beforeW;
           decision.desiredCurrentA = supportedCurrentA;
           decision.desiredPowerW = Math.round(actualSupportedW);
           decision.allowed = supportedCurrentA > 0;
-          decision.peakLimited = false;
+          decision.peakLimited = actualSupportedW + 0.5 < Math.max(0, Number(entry.maxPowerW) || 0);
+          decision.priorityLimited = decision.peakLimited;
+          decision.batterySupportAllocatedW = Math.round(supportW);
           if (this.getEvControlType(entry.settings) === 'mode') {
             const smartA = this.getEvModeEstimatedCurrentA('smart', entry.settings);
             const standardA = this.getEvModeEstimatedCurrentA('standard', entry.settings);
             decision.effectiveChargeMode = supportedCurrentA >= standardA ? 'standard' : (supportedCurrentA >= smartA ? 'smart' : 'stop');
             decision.modeFallback = decision.effectiveChargeMode === 'smart' && Number(decision.requestedCurrentA) > smartA ? 'smart' : null;
           }
-          decision.batterySupportAllocatedW = Math.round(actualSupportedW - beforeW);
-          decision.reason += ` · thuisbatterij ${decision.batterySupportAllocatedW} W extra`;
-          usedSupportW += decision.batterySupportAllocatedW;
-          nonSmartIncreaseW += decision.batterySupportAllocatedW;
+          decision.reason += ` · thuisbatterij ${Math.round(supportW)} W extra`;
+          usedSupportW += supportW;
         }
       }
       batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedSupportW);
     }
 
-    if (!smartEntries.length) return decisions;
+    // Recalculate the actual non-Smart change after shared Peak Guard and any
+    // battery support. Smart EVs use this physical increase when calculating
+    // their remaining site headroom.
+    nonSmartIncreaseW = nonSmartEntries.reduce((sum, entry) => {
+      const desiredW = Math.max(0, Number(decisions[entry.index]?.desiredPowerW) || 0);
+      return sum + desiredW - Math.max(0, Number(entry.currentPowerW) || 0);
+    }, 0);
+
+    if (!smartEntries.length) {
+      const portfolioTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW));
+      for (const decision of decisions) decision.portfolioGridImportTargetW = portfolioTargetW;
+      return decisions;
+    }
     const currentSmartPowerW = smartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
     const predictedGridBeforeSmartChangeW = gridWithoutCurrentBatteryDischargeW + Math.max(0, nonSmartIncreaseW);
     const maxRequestedW = smartEntries.reduce((sum, entry) => sum + entry.maxPowerW, 0);
@@ -7518,8 +7618,10 @@ class HomeFluxEmsApp extends Homey.App {
     // the active EV load prevents the controller from shrinking its own PV
     // budget after a setpoint has taken effect. Only the configured EV share is
     // claimed; the remainder stays available to the normal battery regulator.
-    const pvTargetBudgetW = Math.min(peakBudgetW, maxRequestedW, evPvPoolBudgetW);
+    const smartPvPoolBudgetW = Math.max(0, evPvPoolBudgetW - nonSmartPvUsedW);
+    const pvTargetBudgetW = Math.min(peakBudgetW, maxRequestedW, smartPvPoolBudgetW);
     let allocation = this.allocateWeightedEvPower(smartEntries, pvTargetBudgetW);
+    const allocationAfterPv = new Map(allocation);
     let allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
     const allocatedAfterPvW = allocatedW;
     const transferredBatteryPvW = Math.min(
@@ -7664,10 +7766,11 @@ class HomeFluxEmsApp extends Homey.App {
       decision.priorityLimited = actualAllocatedW + 1 < entry.maxPowerW;
       const beforeBatterySupportW = Math.max(0, Number(allocationBeforeBatterySupport.get(entry.index)) || 0);
       decision.batterySupportAllocatedW = Math.round(Math.max(0, actualAllocatedW - beforeBatterySupportW));
-      const pvForThisEvW = Math.min(actualAllocatedW, Math.max(0, Number(decision.pvAvailableW) || 0));
+      const pvForThisEvW = Math.min(actualAllocatedW, Math.max(0, Number(allocationAfterPv.get(entry.index)) || 0));
       decision.pvAllocatedW = Math.round(pvForThisEvW);
       decision.gridAllocatedW = Math.round(Math.max(0, actualAllocatedW - pvForThisEvW - decision.batterySupportAllocatedW));
-      decision.portfolioGridImportTargetW = Math.round(portfolioEvGridImportTargetW);
+      decision.intentionalGridImport = decision.gridAllocatedW > 0
+        && (Boolean(decision.selectedTariff) || Boolean(decision.guaranteeActive));
       if (allocatedCurrentA <= 0) {
         if (Boolean(runtimeSettings.peakShaveEnabled) && peakBudgetW <= 0) decision.reason = 'Peak Guard laat geen EV-laadvermogen toe';
         else if (!decision.selectedTariff && evPvPoolBudgetW < (Math.max(1, Math.round(Number(entry.settings.evMinCurrentA) || 6)) * evPowerPerAmp(entry.settings))) decision.reason = `PV-aandeel EV-pool (${evPvSharePercent}%) onder minimum laadvermogen`;
@@ -7693,6 +7796,8 @@ class HomeFluxEmsApp extends Homey.App {
         } else if (decision.priorityLimited) decision.reason += ' · verdeeld volgens EV-gewicht';
       }
     }
+    const combinedPortfolioGridImportTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW + portfolioEvGridImportTargetW));
+    for (const decision of decisions) decision.portfolioGridImportTargetW = combinedPortfolioGridImportTargetW;
     return decisions;
   }
 
@@ -7706,6 +7811,10 @@ class HomeFluxEmsApp extends Homey.App {
     );
     result.evDecisions = decisions;
     result.evDecision = decisions[0] || null;
+    result.evIntentionalGridImportW = decisions.reduce((max, decision) => {
+      if (!Boolean(decision?.intentionalGridImport)) return max;
+      return Math.max(max, Math.max(0, Number(decision?.portfolioGridImportTargetW) || 0));
+    }, 0);
     return result.evDecision;
   }
 
@@ -7925,7 +8034,14 @@ class HomeFluxEmsApp extends Homey.App {
     let requestedTargetW = 0;
     for (let index = 0; index < evCount; index += 1) {
       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
-      if (!decision || !Boolean(decision.connected) || !Boolean(decision.selectedTariff)) continue;
+      if (!decision || !Boolean(decision.connected)) continue;
+      // New portfolio decisions explicitly mark whether this EV contributes
+      // intentional grid import. Keep the legacy selected/guarantee fallback so
+      // an in-memory decision created just before an app upgrade remains safe.
+      const intentionalGridImport = decision.intentionalGridImport === undefined
+        ? (Boolean(decision.selectedTariff) || Boolean(decision.guaranteeActive))
+        : Boolean(decision.intentionalGridImport);
+      if (!intentionalGridImport) continue;
       const portfolioTargetW = Math.max(0, Number(decision.portfolioGridImportTargetW) || 0);
       if (portfolioTargetW <= 0 || Math.max(0, Number(decision.desiredCurrentA) || 0) <= 0) continue;
       requestedTargetW = Math.max(requestedTargetW, portfolioTargetW);
@@ -8264,6 +8380,8 @@ class HomeFluxEmsApp extends Homey.App {
     const output = String(body.output || '').trim().toLowerCase();
     const index = Math.max(0, Math.min(3, Math.round(Number(body.instance) || 1) - 1));
     const instance = index + 1;
+    const configuredEvCount = Math.max(0, Math.min(4, Math.round(Number(this.getSettings().evCount) || 0)));
+    if (instance > configuredEvCount) throw new Error(`EV ${instance} is niet geconfigureerd.`);
     const reason = `Settings output test · EV ${instance}`;
     const settings = this.getEvInstanceSettings(index);
     const triggers = index === 0
@@ -9628,8 +9746,21 @@ class HomeFluxEmsApp extends Homey.App {
     this.evBatteryCoordinationCache = { maxChargeW: null, at: now };
   }
 
-  applyCachedEvBatteryCoordination(result) {
-    if (this.latestEvDecision) result.evDecision = this.latestEvDecision;
+  applyCachedEvBatteryCoordination(result, storedSettings = this.getSettings()) {
+    const evCount = this.getEvCount(storedSettings);
+    const decisions = Array.from({ length: evCount }, (_, index) => index === 0
+      ? this.latestEvDecision
+      : this.getExtraEv(index)?.latestDecision).filter(Boolean);
+    if (decisions.length) {
+      result.evDecisions = decisions;
+      result.evDecision = decisions[0] || null;
+      result.evIntentionalGridImportW = decisions.reduce((max, decision) => {
+        if (!Boolean(decision?.intentionalGridImport)) return max;
+        return Math.max(max, Math.max(0, Number(decision?.portfolioGridImportTargetW) || 0));
+      }, 0);
+    } else {
+      result.evIntentionalGridImportW = 0;
+    }
     return result;
   }
 
@@ -9879,6 +10010,11 @@ class HomeFluxEmsApp extends Homey.App {
       && Math.max(0, Number(result?.gridChargeAssistW) || 0) <= 0
       && !Boolean(result?.lowForecastBatterySaveActive)
       && !Boolean(result?.lowForecastDischargeToTargetActive)
+      // Intentional EV grid charging (selected tariff, guaranteed deadline or
+      // Emergency/SoC-target grid power) must remain under HomeFlux ownership.
+      // A native self-consumption EMS would otherwise discharge the home
+      // battery to cancel the very import HomeFlux deliberately allowed.
+      && Math.max(0, Number(result?.evIntentionalGridImportW) || 0) <= 0
       // Hybrid may only own plain zero-import/self-consumption behaviour. Any
       // HomeFlux reserve/floor decision must stay authoritative, otherwise a
       // native EMS could discharge through a planning or safety boundary.
@@ -10177,12 +10313,15 @@ class HomeFluxEmsApp extends Homey.App {
       const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
       const batteryPublishQueued = hybridDelegated ? false : this.queueCommandEmit(result, batteryWantsChange);
       if (!batteryPublishQueued) {
-        const emergency = this.getEffectiveEvMode(storedSettings) === 'emergency';
-        const ev1Settings = this.getEvInstanceSettings(0, storedSettings);
-        ev1Settings.evMode = this.getEffectiveEvMode(storedSettings);
-        const emergencyNeedsBatteryFirst = emergency && Boolean(ev1Settings.evPeakGuardBatteryAssistEmergency);
+        const emergencyInstances = Array.from({ length: this.getEvCount(storedSettings) }, (_, index) => {
+          const evSettings = this.getEvInstanceSettings(index, storedSettings);
+          const mode = this.getEffectiveEvModeFor(index, storedSettings);
+          return { mode, assist: Boolean(evSettings.evPeakGuardBatteryAssistEmergency) };
+        });
+        const anyEmergency = emergencyInstances.some(item => item.mode === 'emergency');
+        const emergencyNeedsBatteryFirst = emergencyInstances.some(item => item.mode === 'emergency' && item.assist);
         this.publishFlexibleLoads(result, this.state.lastTotalCommandW, this.state.lastTotalCommandW, {
-          allowEvIncrease: !batteryWantsChange || (emergency && !emergencyNeedsBatteryFirst),
+          allowEvIncrease: !batteryWantsChange || (anyEmergency && !emergencyNeedsBatteryFirst),
           evDecision: result.evDecision,
           evDecisions: result.evDecisions,
         })
@@ -10814,7 +10953,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.5',
+      version: '0.7.6',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -10891,7 +11030,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.5',
+      version: '0.7.6',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -11177,7 +11316,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.5',
+      version: '0.7.6',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

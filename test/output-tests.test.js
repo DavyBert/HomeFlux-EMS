@@ -18,7 +18,7 @@ function triggerSpy() {
 
 (async () => {
   const app = Object.create(HomeFluxEmsApp.prototype);
-  app.getSettings = () => ({ evPhases: 3, evTargetSoc: 80 });
+  app.getSettings = () => ({ evCount: 1, evPhases: 3, evTargetSoc: 80 });
   app.evCurrentTrigger = triggerSpy();
   app.evAllowedTrigger = triggerSpy();
   app.evModeTrigger = triggerSpy();
@@ -43,6 +43,12 @@ function triggerSpy() {
   assert.equal(app.evAllowedTrigger.calls[0][0].allowed_value, 0);
   await app.testEvOutput({ output: 'mode', mode: 'standard' });
   assert.equal(app.evModeTrigger.calls[0][0].charge_mode, 'standard');
+
+  await assert.rejects(
+    () => app.testEvOutput({ instance: 2, output: 'current', currentA: 6 }),
+    /EV 2 is niet geconfigureerd/,
+    'output test must reject EV instances above configured evCount',
+  );
 
   await app.testHvacOutput({ output: 'power', on: false });
   assert.equal(app.hvacPowerTrigger.calls[0][0].state_value, 0);
