@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.6 — Jouw energie, anders geregeld",
+    "subtitle": "v0.7.7 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -69,10 +69,10 @@
       "boilerTariff": "Laden op tarief",
       "boilerPv": "Laden op zon",
       "boilerWarm": "Opgewarmd",
-      "boilerSkipped": "Laden overgeslagen: {days} dag(en), wacht nog {remaining} dag(en) op zon",
-      "boilerFallbackDue": "Maximale wachttijd bereikt; wacht op toegestaan tarief",
+      "boilerSkipped": "{days}/{target} zonnedag(en) gemist · tarieffallback over {time}",
+      "boilerFallbackDue": "Zonnelimiet bereikt; wacht op toegestaan tarief",
       "boilerWaitingSun": "Wacht op zon",
-      "boilerDaysDetail": "{days} dag(en) overgeslagen · nog {remaining} dag(en) wachten op zon",
+      "boilerDaysDetail": "{days}/{target} zonnedag(en) gemist · tarieffallback over {time}",
       "active": "Actief",
       "monitoring": "Bewaking actief",
       "off": "Uit",
@@ -168,7 +168,8 @@
       "guaranteedAllTariffs": "gegarandeerd · alle tarieven indien nodig",
       "favourableOnly": "niet gegarandeerd · alleen gunstige momenten",
       "flowTarget": "Flow-doel",
-      "evChargingGuarantee": "Laden voor gegarandeerd minimum"
+      "evChargingGuarantee": "Laden voor gegarandeerd minimum",
+      "boilerFallbackReadyDetail": "{days}/{target} zonnedag(en) gemist · tarieffallback actief"
     }
   }
 }

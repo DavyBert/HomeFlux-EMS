@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.6 — Your energy, managed differently",
+    "subtitle": "v0.7.7 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -69,10 +69,10 @@
       "boilerTariff": "Heating on tariff",
       "boilerPv": "Heating from solar",
       "boilerWarm": "Heated",
-      "boilerSkipped": "Heating skipped: {days} day(s), waiting {remaining} more day(s) for solar",
-      "boilerFallbackDue": "Maximum solar wait reached; waiting for an allowed tariff",
+      "boilerSkipped": "{days}/{target} solar day(s) missed · tariff fallback in {time}",
+      "boilerFallbackDue": "Solar-day limit reached; waiting for an allowed tariff",
       "boilerWaitingSun": "Waiting for solar",
-      "boilerDaysDetail": "{days} day(s) skipped · {remaining} day(s) left waiting for solar",
+      "boilerDaysDetail": "{days}/{target} solar day(s) missed · tariff fallback in {time}",
       "active": "Active",
       "monitoring": "Monitoring",
       "off": "Off",
@@ -168,7 +168,8 @@
       "guaranteedAllTariffs": "guaranteed · all tariffs if required",
       "favourableOnly": "not guaranteed · favourable moments only",
       "flowTarget": "Flow target",
-      "evChargingGuarantee": "Charging for guaranteed minimum"
+      "evChargingGuarantee": "Charging for guaranteed minimum",
+      "boilerFallbackReadyDetail": "{days}/{target} solar day(s) missed · tariff fallback active"
     }
   }
 }

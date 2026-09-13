@@ -171,6 +171,126 @@ function makeApp() {
   assert.equal(app.getBoilerWarmUntil(settings), Date.UTC(2026, 7, 28, 7, 0, 0));
 
 
+  // v0.7.6: tariff fallback counts fully missed solar-day windows instead of
+  // elapsed 24-hour periods since the previous cycle. A completion at 06:06
+  // therefore does not move the fallback to 06:06 on following days.
+  {
+    const solarDayApp = makeApp();
+    const solarDaySettings = {
+      ...settings,
+      boilerFallbackDays: 1,
+      boilerFixedChargeWindowEnabled: true,
+      boilerTariffPeriod: 'night',
+      boilerDayStartTime: '07:00',
+      boilerDayEndTime: '23:00',
+    };
+    solarDayApp.settingsCache = { ...solarDaySettings };
+    solarDayApp.state.pvPowerW = 0;
+    solarDayApp.inputSeen.pv = true;
+    solarDayApp.state.batterySoc[0] = 95;
+    solarDayApp.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 6, 6, 0);
+    solarDayApp.boilerState.warmUntilCache = null;
+    solarDayApp.boilerState.trackingStartedAt = Date.UTC(2026, 7, 20, 0, 0, 0);
+    const beforeDayEnd = Date.UTC(2026, 7, 28, 22, 59, 0);
+    solarDayApp.inputUpdatedAt.pv = beforeDayEnd;
+    let solarStatus = solarDayApp.getBoilerSolarFallbackStatus(beforeDayEnd, solarDaySettings);
+    assert.equal(solarStatus.missedSolarDays, 0);
+    assert.equal(solarStatus.fallbackDue, false);
+    assert.equal(solarStatus.nextFallbackAt, Date.UTC(2026, 7, 28, 23, 0, 0));
+
+    const afterDayEnd = Date.UTC(2026, 7, 28, 23, 1, 0);
+    solarDayApp.inputUpdatedAt.pv = afterDayEnd;
+    solarStatus = solarDayApp.getBoilerSolarFallbackStatus(afterDayEnd, solarDaySettings);
+    assert.equal(solarStatus.missedSolarDays, 1);
+    assert.equal(solarStatus.fallbackDue, true);
+    let solarDecision = solarDayApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      solarDaySettings,
+      { now: afterDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.tariffSelected, true);
+    assert.equal(solarDecision.on, true, 'one missed solar day must unlock tariff heating that same night');
+
+    // When the solar-day limit is reached but the current tariff is not one of
+    // the configured fallback tariffs, the status must say it is waiting for
+    // tariff rather than misleadingly returning to a PV-surplus reason.
+    const waitingTariffApp = makeApp();
+    waitingTariffApp.settingsCache = { ...solarDaySettings };
+    waitingTariffApp.state.pvPowerW = 0;
+    waitingTariffApp.inputSeen.pv = true;
+    waitingTariffApp.inputUpdatedAt.pv = afterDayEnd;
+    waitingTariffApp.state.batterySoc[0] = 95;
+    waitingTariffApp.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 6, 6, 0);
+    waitingTariffApp.boilerState.warmUntilCache = null;
+    solarDecision = waitingTariffApp.calculateBoilerDecision(
+      { tariff: { className: 'expensive' } },
+      solarDaySettings,
+      { now: afterDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.fallbackDue, true);
+    assert.equal(solarDecision.tariffSelected, false);
+    assert.match(solarDecision.reason, /wachten op toegestaan boilertarief/i);
+
+    const twoDayApp = makeApp();
+    const twoDaySettings = { ...solarDaySettings, boilerFallbackDays: 2 };
+    twoDayApp.settingsCache = { ...twoDaySettings };
+    twoDayApp.state.pvPowerW = 0;
+    twoDayApp.inputSeen.pv = true;
+    twoDayApp.state.batterySoc[0] = 95;
+    twoDayApp.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 6, 6, 0);
+    twoDayApp.boilerState.warmUntilCache = null;
+    twoDayApp.boilerState.trackingStartedAt = Date.UTC(2026, 7, 20, 0, 0, 0);
+    twoDayApp.inputUpdatedAt.pv = afterDayEnd;
+    solarDecision = twoDayApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      twoDaySettings,
+      { now: afterDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.daysWithoutCycle, 1);
+    assert.equal(solarDecision.fallbackDue, false);
+    assert.equal(solarDecision.on, false, 'two-day fallback must still wait after the first missed solar day');
+    assert.equal(solarDecision.nextFallbackAt, Date.UTC(2026, 7, 29, 23, 0, 0));
+
+    const secondDayEnd = Date.UTC(2026, 7, 29, 23, 1, 0);
+    twoDayApp.inputUpdatedAt.pv = secondDayEnd;
+    solarDecision = twoDayApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      twoDaySettings,
+      { now: secondDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.daysWithoutCycle, 2);
+    assert.equal(solarDecision.fallbackDue, true);
+    assert.equal(solarDecision.on, true, 'two missed solar days must unlock tariff heating after the second day');
+
+    // Exact Europe/Brussels regression from the field case: a cycle completed
+    // at 06:06 must make the 07:00-23:00 solar window count as one missed day,
+    // so the 01:00-07:00 night tariff is already eligible at 01:36 next night.
+    const brusselsApp = makeApp();
+    brusselsApp.homey.clock.getTimezone = () => 'Europe/Brussels';
+    const brusselsSettings = {
+      ...solarDaySettings,
+      timezone: 'Europe/Brussels',
+      boilerFallbackDays: 1,
+    };
+    brusselsApp.settingsCache = { ...brusselsSettings };
+    brusselsApp.state.pvPowerW = 0;
+    brusselsApp.inputSeen.pv = true;
+    brusselsApp.state.batterySoc[0] = 80;
+    brusselsApp.boilerState.lastCompletedAt = new Date('2026-09-13T06:06:00+02:00').getTime();
+    brusselsApp.boilerState.warmUntilCache = null;
+    const brusselsNight = new Date('2026-09-14T01:36:00+02:00').getTime();
+    brusselsApp.inputUpdatedAt.pv = brusselsNight;
+    solarDecision = brusselsApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      brusselsSettings,
+      { now: brusselsNight, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.missedSolarDays, 1);
+    assert.equal(solarDecision.fallbackDue, true);
+    assert.equal(solarDecision.tariffSelected, true);
+    assert.equal(solarDecision.on, true, 'Brussels 06:06 completion must allow the selected night tariff after the missed solar day');
+  }
+
   // Tariff fallback waits until the battery reserve is reached and pauses
   // again below that reserve without losing cumulative cycle progress.
   const tariffSettings = {

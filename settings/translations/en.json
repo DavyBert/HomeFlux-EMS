@@ -811,7 +811,7 @@
     "Stand-by en andere expliciete EMS-modi die geen gewone zelfconsumptie/netimportregeling zijn.": "Standby and other explicit EMS modes that are not normal self-consumption/grid-import control.",
     "Gewone zelfconsumptie en netimport vermijden": "Normal self-consumption and grid-import avoidance",
     "mogen door de externe EMS worden geregeld. Zodra HomeFlux extra strategie, planning of veiligheid moet toepassen, blijft de batterij onder HomeFlux-regie.": "may be controlled by the external EMS. As soon as HomeFlux must apply additional strategy, planning or safety, the battery remains under HomeFlux control.",
-    "v0.7.6 — Jouw energie, anders geregeld": "v0.7.6 — Your energy, managed differently",
+    "v0.7.7 — Jouw energie, anders geregeld": "v0.7.7 — Your energy, managed differently",
     "Minimum vertrouwen voor automatisch aanpassen (%)": "Minimum confidence for automatic changes (%)",
     "Standaard 95%. Toestemming alleen is niet genoeg: HomeFlux wijzigt een automatisch beheerde parameter pas vanaf deze betrouwbaarheid.": "Default 95%. Permission alone is not enough: HomeFlux only changes an auto-managed parameter once this confidence level is reached.",
     "Per automatisch beheerde parameter verschijnt een eigen toegestaan minimum en maximum. HomeFlux vult bij de eerste toestemming een realistisch startbereik in voor die specifieke instelling en respecteert daarbij harde grenzen zoals Maximum SoC. Je kunt deze grenzen daarna zelf aanpassen.": "Each auto-managed parameter gets its own allowed minimum and maximum. On first permission, HomeFlux fills in a realistic starting range for that specific setting while respecting hard limits such as Maximum SoC. You can adjust these limits afterwards.",

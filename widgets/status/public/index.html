@@ -470,11 +470,14 @@
       if (reason.includes('peak guard')) return tr(Homey, 'widget.status.boilerPeakGuard', 'Disabled by Peak Guard');
       if (boiler.warm) return tr(Homey, 'widget.status.boilerWarm', 'Heated');
       const fallbackDays = Math.max(0, Math.round(Number(boiler.fallbackDays) || 0));
-      const daysWithoutCycle = Math.max(0, Math.round(Number(boiler.daysWithoutCycle) || 0));
-      if (fallbackDays > 0 && !boiler.fallbackDue && daysWithoutCycle > 0) {
-        const remaining = Math.max(0, fallbackDays - daysWithoutCycle);
-        return tr(Homey, 'widget.status.boilerSkipped', 'Heating skipped: {days} day(s), waiting {remaining} more day(s) for solar')
-          .replace('{days}', daysWithoutCycle).replace('{remaining}', remaining);
+      const missedSolarDays = Math.max(0, Math.round(Number(boiler.missedSolarDays ?? boiler.daysWithoutCycle) || 0));
+      if (fallbackDays > 0 && !boiler.fallbackDue && missedSolarDays > 0) {
+        const nextAt = Math.max(0, Number(boiler.nextFallbackAt) || 0);
+        const countdown = nextAt > Date.now() ? formatDurationMs(nextAt - Date.now()) : '';
+        return tr(Homey, 'widget.status.boilerSkipped', '{days}/{target} solar day(s) missed · tariff fallback in {time}')
+          .replace('{days}', missedSolarDays)
+          .replace('{target}', fallbackDays)
+          .replace('{time}', countdown || '—');
       }
       if (boiler.fallbackDue && boiler.tariffSelected && !boiler.tariffBatteryReady) return tr(Homey, 'widget.status.boilerFallbackBattery', 'Maximum solar wait reached; waiting for battery SoC');
       if (boiler.fallbackDue && !boiler.tariffSelected) return tr(Homey, 'widget.status.boilerFallbackDue', 'Maximum solar wait reached; waiting for an allowed tariff');
@@ -643,11 +646,18 @@
         let details = '';
         if (enabled(settings, 'showBoilerWait')) {
           const fallbackDays = Math.max(0, Math.round(Number(status.boiler.fallbackDays) || 0));
-          const daysWithoutCycle = Math.max(0, Math.round(Number(status.boiler.daysWithoutCycle) || 0));
+          const missedSolarDays = Math.max(0, Math.round(Number(status.boiler.missedSolarDays ?? status.boiler.daysWithoutCycle) || 0));
           if (fallbackDays > 0 && !status.boiler.fallbackDue) {
-            const remaining = Math.max(0, fallbackDays - daysWithoutCycle);
-            details = tr(Homey, 'widget.status.boilerDaysDetail', '{days} day(s) skipped · {remaining} day(s) left waiting for solar')
-              .replace('{days}', daysWithoutCycle).replace('{remaining}', remaining);
+            const nextAt = Math.max(0, Number(status.boiler.nextFallbackAt) || 0);
+            const countdown = nextAt > Date.now() ? formatDurationMs(nextAt - Date.now()) : '';
+            details = tr(Homey, 'widget.status.boilerDaysDetail', '{days}/{target} solar day(s) missed · tariff fallback in {time}')
+              .replace('{days}', missedSolarDays)
+              .replace('{target}', fallbackDays)
+              .replace('{time}', countdown || '—');
+          } else if (fallbackDays > 0 && status.boiler.fallbackDue) {
+            details = tr(Homey, 'widget.status.boilerFallbackReadyDetail', '{days}/{target} solar day(s) missed · tariff fallback active')
+              .replace('{days}', missedSolarDays)
+              .replace('{target}', fallbackDays);
           }
         }
         addItem(root, String(status.boiler.name || tr(Homey, 'widget.status.boiler', 'Boiler')), boilerState(status.boiler, Homey), details, enabled(settings, 'showReasons') ? reasonText(status.boiler.reason, Homey) : '');

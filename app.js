@@ -3,7 +3,7 @@
 const Homey = require('homey');
 const { HomeyAPI } = require('homey-api');
 const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand } = require('./lib/ems-engine');
-const { localParts, normalizeDynamicPriceResponse, normalizeSequentialPriceArray, sequentialPricePeriodInfo, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
+const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, normalizeSequentialPriceArray, sequentialPricePeriodInfo, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 
@@ -494,7 +494,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.6 initialized');
+    this.log('HomeFlux EMS v0.7.7 initialized');
   }
 
   refreshSettingsCache() {
@@ -2491,9 +2491,73 @@ class HomeFluxEmsApp extends Homey.App {
     return now < this.getBoilerWarmUntil(settings);
   }
 
-  getBoilerDaysWithoutCycle(now = Date.now()) {
-    const since = Number(this.boilerState?.lastCompletedAt || this.boilerState?.trackingStartedAt || now);
-    return Math.max(0, (now - since) / 86400000);
+  getBoilerSolarDayWindow(dateKey, settings = this.getSettings()) {
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const parse = value => {
+      const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+      if (!match) return null;
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      return hour >= 0 && hour < 24 && minute >= 0 && minute < 60 ? (hour * 60) + minute : null;
+    };
+    const startValue = String(settings.boilerDayStartTime || this.getBoilerColdResetTime(settings) || '07:00');
+    const endValue = String(settings.boilerDayEndTime || '23:00');
+    const startMinute = parse(startValue);
+    const endMinute = parse(endValue);
+    if (startMinute === null || endMinute === null) return null;
+    const endDateKey = endMinute <= startMinute ? shiftDateKey(dateKey, 1) : dateKey;
+    const startAt = localDateTimeUtcMs(dateKey, startValue, timezone);
+    const endAt = localDateTimeUtcMs(endDateKey, endValue, timezone);
+    if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || endAt <= startAt) return null;
+    return { dateKey, startAt, endAt, startMinute, endMinute };
+  }
+
+  getBoilerSolarFallbackStatus(now = Date.now(), settings = this.getSettings()) {
+    const fallbackDays = Math.max(0, Math.min(30, Math.round(Number(settings.boilerFallbackDays) || 0)));
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const currentDateKey = localParts(new Date(now), timezone).dateKey;
+    const lastCompletedAt = Number(this.boilerState?.lastCompletedAt || 0);
+    // A completed boiler remains warm until the fixed cold-reset boundary. The
+    // next *full* solar day starts after that boundary, independent of the exact
+    // completion clock time. This prevents a 06:06 completion from making the
+    // fallback drift to 06:06 on following days.
+    const eligibleFrom = lastCompletedAt > 0
+      ? this.getBoilerWarmUntil(settings)
+      : Math.max(0, Number(this.boilerState?.trackingStartedAt || now));
+
+    let missedSolarDays = 0;
+    const futureWindows = [];
+    // Fallback is capped at 30 days. A small margin on either side is enough to
+    // cover the persisted tracking start and the next possible fallback day.
+    for (let offset = -35; offset <= 35; offset += 1) {
+      const dateKey = shiftDateKey(currentDateKey, offset);
+      const window = this.getBoilerSolarDayWindow(dateKey, settings);
+      if (!window || window.startAt < eligibleFrom) continue;
+      if (window.endAt <= now) missedSolarDays += 1;
+      else futureWindows.push(window);
+    }
+
+    const fallbackDue = fallbackDays > 0 && missedSolarDays >= fallbackDays;
+    const remainingSolarDays = fallbackDays > 0 ? Math.max(0, fallbackDays - missedSolarDays) : 0;
+    let nextFallbackAt = 0;
+    if (!fallbackDue && remainingSolarDays > 0 && futureWindows.length >= remainingSolarDays) {
+      futureWindows.sort((a, b) => a.endAt - b.endAt);
+      nextFallbackAt = Number(futureWindows[remainingSolarDays - 1]?.endAt) || 0;
+    }
+    return {
+      fallbackDays,
+      missedSolarDays,
+      remainingSolarDays,
+      fallbackDue,
+      nextFallbackAt,
+      eligibleFrom,
+    };
+  }
+
+  getBoilerDaysWithoutCycle(now = Date.now(), settings = this.getSettings()) {
+    // Legacy method name kept for API/widget compatibility. Since v0.7.6 this
+    // is an integer count of fully missed solar-day windows, not elapsed 24h.
+    return this.getBoilerSolarFallbackStatus(now, settings).missedSolarDays;
   }
 
   isBoilerTariffSelected(settings = this.getSettings(), tariff = null) {
@@ -2524,7 +2588,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.isBoilerCompletedToday(now, settings)) return 0;
 
     const fallbackDays = Math.max(0, Math.min(30, Number(settings.boilerFallbackDays) || 0));
-    if (fallbackDays <= 0 || this.getBoilerDaysWithoutCycle(now) < fallbackDays) return 0;
+    if (fallbackDays <= 0 || this.getBoilerDaysWithoutCycle(now, settings) < fallbackDays) return 0;
     if (!this.isBoilerTariffPeriodAllowed(settings, now)) return 0;
 
     const tariff = findCurrentTariff(new Date(now), settings);
@@ -9077,8 +9141,9 @@ class HomeFluxEmsApp extends Homey.App {
     // Never allow the stop threshold above the start threshold. This keeps the
     // tariff control hysteretic even if settings were imported incorrectly.
     const tariffStopBatterySoc = Math.min(tariffMinBatterySoc, configuredTariffStopSoc);
-    const daysWithoutCycle = this.getBoilerDaysWithoutCycle(now);
-    const fallbackDue = fallbackDays > 0 && daysWithoutCycle >= fallbackDays;
+    const solarFallback = this.getBoilerSolarFallbackStatus(now, settings);
+    const daysWithoutCycle = solarFallback.missedSolarDays;
+    const fallbackDue = solarFallback.fallbackDue;
     const tariffSelected = fallbackDue && this.isBoilerTariffSelected(settings, tariff) && this.isBoilerTariffPeriodAllowed(settings, now);
     const tariffBatteryReady = !hasHomeBattery || (avgSoc !== null && avgSoc >= tariffMinBatterySoc);
     const tariffAllowed = tariffSelected && tariffBatteryReady;
@@ -9151,6 +9216,9 @@ class HomeFluxEmsApp extends Homey.App {
       tariffMinBatterySoc,
       tariffStopBatterySoc,
       daysWithoutCycle,
+      missedSolarDays: daysWithoutCycle,
+      remainingSolarDays: solarFallback.remainingSolarDays,
+      nextFallbackAt: solarFallback.nextFallbackAt,
       fallbackDue,
       tariffSelected,
       tariffBatteryReady,
@@ -9281,6 +9349,8 @@ class HomeFluxEmsApp extends Homey.App {
         decision.reason = avgSoc === null
           ? 'Geselecteerd boilertarief · wachten op batterij-SoC'
           : `Geselecteerd boilertarief · batterij eerst naar ${tariffMinBatterySoc}% (nu ${avgSoc.toFixed(1)}%)`;
+      } else if (fallbackDue && !tariffSelected) {
+        decision.reason = 'Zonnedaglimiet bereikt · wachten op toegestaan boilertarief';
       } else if (hasHomeBattery && avgSoc === null) decision.reason = 'Wachten op batterij-SoC';
       else if (hasHomeBattery && avgSoc < startSoc) decision.reason = `Boiler start pas boven ${startSoc}% batterij`;
       else if (pvSurplusW < powerW) decision.reason = `Wachten op ${powerW} W resterend PV-overschot`;
@@ -10953,7 +11023,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.6',
+      version: '0.7.7',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -11030,7 +11100,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.6',
+      version: '0.7.7',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -11316,7 +11386,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.6',
+      version: '0.7.7',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
