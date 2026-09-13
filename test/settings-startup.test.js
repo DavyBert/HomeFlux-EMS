@@ -15,18 +15,19 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.2');
+  assert.equal(manifest.version, '0.7.3');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
   assert.deepStrictEqual(manifest.api.getAutoTune, { method: 'GET', path: '/auto-tune' });
   assert.deepStrictEqual(manifest.api.refreshAutoTune, { method: 'POST', path: '/auto-tune/refresh' });
   assert.deepStrictEqual(manifest.api.setAutoTunePermission, { method: 'PUT', path: '/auto-tune/permission' });
+  assert.deepStrictEqual(manifest.api.setAutoTuneLimits, { method: 'PUT', path: '/auto-tune/limits' });
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.2 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.2 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.3 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.3 — Your energy, managed differently');
 assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
 assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
 assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');
@@ -44,6 +45,7 @@ assert(!html.includes("if(q('hybridEmsEnabled')) q('hybridEmsEnabled').checked=B
 assert(apiJs.includes('async getAutoTune({ homey })'));
 assert(apiJs.includes('async refreshAutoTune({ homey })'));
 assert(apiJs.includes('async setAutoTunePermission({ homey, body })'));
+assert(apiJs.includes('async setAutoTuneLimits({ homey, body })'));
 assert(apiJs.includes('async applyAutoTuneRecommendation({ homey, body })'));
 assert(apiJs.includes('async setAutoTuneIgnored({ homey, body })'));
 assert(appJs.includes('getAutoTuneRecommendations()'));
@@ -56,6 +58,11 @@ assert(appJs.includes('if (schema < 57)'));
 assert(appJs.includes("this.setSetting('_autoTuneLearning', { days: [] })"));
 assert(appJs.includes("this.setSetting('_autoTunePermissions', {})"));
 assert(appJs.includes("this.setSetting('_autoTuneIgnored', {})"));
+assert(appJs.includes("this.setSetting('_autoTuneLimits', {})"));
+assert(html.includes('id="autoTuneMinConfidencePercent"'), 'Autotune confidence threshold setting missing');
+assert(html.includes('data-auto-tune-confidence='), 'per-parameter confidence control missing');
+assert(html.includes('data-auto-tune-min='), 'per-parameter Autotune minimum missing');
+assert(html.includes('data-auto-tune-max='), 'per-parameter Autotune maximum missing');
 assert(html.includes('data-auto-tune-apply='));
 assert(html.includes('data-auto-tune-ignore='));
 assert(html.includes('id="autoTuneIgnoredCard"'));
@@ -65,6 +72,15 @@ const importedEnergyCompose = JSON.parse(fs.readFileSync(path.join(root, '.homey
 const importedEnergyManifest = appJson.flow.actions.find(card => card.id === 'set_imported_energy_today');
 assert.deepStrictEqual(importedEnergyManifest, { id: 'set_imported_energy_today', ...importedEnergyCompose }, 'generated imported-energy Flow card must match Compose');
 assert(appJs.includes("getActionCard('set_imported_energy_today')"), 'imported energy today Flow listener missing');
+const exportedEnergyCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'flow', 'actions', 'set_exported_energy_today.json'), 'utf8'));
+const exportedEnergyManifest = appJson.flow.actions.find(card => card.id === 'set_exported_energy_today');
+assert.deepStrictEqual(exportedEnergyManifest, { id: 'set_exported_energy_today', ...exportedEnergyCompose }, 'generated exported-energy Flow card must match Compose');
+assert(appJs.includes("getActionCard('set_exported_energy_today')"), 'exported energy today Flow listener missing');
+const exportPriceCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'flow', 'actions', 'set_external_export_price.json'), 'utf8'));
+const exportPriceManifest = appJson.flow.actions.find(card => card.id === 'set_external_export_price');
+assert.deepStrictEqual(exportPriceManifest, { id: 'set_external_export_price', ...exportPriceCompose }, 'generated export-price Flow card must match Compose');
+assert(appJs.includes("getActionCard('set_external_export_price')"), 'external export-price Flow listener missing');
+assert(html.includes('Positief = vergoeding die je ontvangt'), 'export-price sign convention must be explained in settings');
 assert(html.includes("await api('GET', '/settings-snapshot')"));
 assert(html.includes('const snapshot = await loadSettingsSnapshot();'));
 assert(html.includes('let savedSettingsBaseline = new Map();'), 'settings saved baseline missing');
@@ -91,7 +107,7 @@ assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharg
 assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
 assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
 assert(appJs.includes('if (schema < 32)'));
-assert(appJs.includes("settingsSchemaVersion', 61"));
+assert(appJs.includes("settingsSchemaVersion', 62"));
 assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
 for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
   assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);

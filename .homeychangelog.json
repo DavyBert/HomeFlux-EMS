@@ -1,4 +1,8 @@
 {
+  "0.7.3": {
+    "en": "Autotune now uses a configurable confidence threshold (95% by default) plus per-parameter confidence and minimum/maximum boundaries for automatic changes. Savings now includes PV export/feed-in value, supports exported-energy calibration and a live export-price Flow input, with signed export prices for fixed and multi-rate tariffs.",
+    "nl": "Autotune gebruikt nu een instelbare vertrouwensdrempel (standaard 95%) plus een eigen vertrouwenswaarde en minimum-/maximumgrenzen per automatisch beheerde parameter. Winst neemt nu PV-export/injectie mee, ondersteunt kalibratie met geëxporteerde energie en een live exportprijs via Flow, met positieve of negatieve exportprijzen voor vaste en meervoudige tarieven."
+  },
   "0.7.2": {
     "en": "Added persistent guaranteed EV minimum targets by SoC or required kWh, with clear settings fallback and favourable-charging behaviour after the minimum is reached. Hybrid ownership is now more visible in the status widget and EMS device. Improved device/widget guidance in battery configuration and documentation.",
     "nl": "Toegevoegd: blijvende gegarandeerde EV-minimumdoelen via SoC of benodigde kWh, met duidelijke fallback naar instellingen en gunstig verder laden nadat het minimum is bereikt. Hybrid ownership is nu duidelijker zichtbaar in de statuswidget en het EMS-apparaat. Uitleg over apparaat en widgets is verbeterd in batterijconfiguratie en documentatie."

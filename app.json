@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -72,6 +72,10 @@
     "setAutoTunePermission": {
       "method": "PUT",
       "path": "/auto-tune/permission"
+    },
+    "setAutoTuneLimits": {
+      "method": "PUT",
+      "path": "/auto-tune/limits"
     },
     "applyAutoTuneRecommendation": {
       "method": "POST",
@@ -4510,6 +4514,34 @@
       },
       {
         "title": {
+          "en": "Set exported energy today",
+          "nl": "Geëxporteerde energie vandaag"
+        },
+        "hint": {
+          "en": "Send the cumulative grid-export energy for today in kWh. HomeFlux uses it only to calibrate the calculated PV/battery export totals in Savings; it does not change EMS control.",
+          "nl": "Stuur de cumulatieve netinjectie van vandaag in kWh. HomeFlux gebruikt deze alleen om de berekende PV-/batterij-exporttotalen in Winst te kalibreren; dit wijzigt de EMS-sturing niet."
+        },
+        "args": [
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Exported energy today (kWh)",
+              "nl": "Geëxporteerde energie vandaag (kWh)"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 0.001
+          }
+        ],
+        "titleFormatted": {
+          "en": "Exported energy today is [[energy]] kWh",
+          "nl": "Geëxporteerde energie vandaag is [[energy]] kWh"
+        },
+        "id": "set_exported_energy_today"
+      },
+      {
+        "title": {
           "en": "Set external electricity price",
           "nl": "Stel externe elektriciteitsprijs in"
         },
@@ -4588,6 +4620,34 @@
           "nl": "Stel batterijsetpoint externe EMS in op [[power]] W"
         },
         "id": "set_external_ems_setpoint"
+      },
+      {
+        "title": {
+          "en": "Set current export price",
+          "nl": "Stel actuele exportprijs in"
+        },
+        "hint": {
+          "en": "Sets the current feed-in/export price in EUR/kWh for Savings, mainly for dynamic contracts. Positive means compensation you receive; negative means a cost you pay to inject. Fixed and multi-rate contracts use their configured tariff export prices.",
+          "nl": "Stelt de actuele injectie-/exportprijs in EUR/kWh in voor Winst, vooral voor dynamische contracten. Positief betekent een vergoeding die je ontvangt; negatief betekent een kost die je betaalt om te injecteren. Vaste en meervoudige tarieven gebruiken hun ingestelde exportprijs per tarief."
+        },
+        "args": [
+          {
+            "name": "price",
+            "type": "number",
+            "title": {
+              "en": "Export price (EUR/kWh)",
+              "nl": "Exportprijs (EUR/kWh)"
+            },
+            "min": -10,
+            "max": 50,
+            "step": 0.0001
+          }
+        ],
+        "titleFormatted": {
+          "en": "Current export price is [[price]] EUR/kWh",
+          "nl": "Actuele exportprijs is [[price]] EUR/kWh"
+        },
+        "id": "set_external_export_price"
       },
       {
         "title": {

@@ -86,6 +86,32 @@ function bareApp() {
   assert.equal(readiness.degraded.some(item => item.startsWith('SoC batterij')), false);
 }
 
+// v0.7.3 Savings uses signed export/feed-in prices consistently. Positive
+// means compensation received; negative means the user pays to inject.
+{
+  const app = bareApp();
+  app.externalEnergy = { exportPrice:null };
+  app.latestResult = { tariff:{ rateId:'peak', label:'Peak', price:0.31 }, homeyEnergy:{} };
+
+  app.getSettings = () => ({ contractType:'fixed', fixedImportPrice:0.30, fixedFeedInPrice:0.08 });
+  let snap = app.getSavingsTariffSnapshot();
+  assert.equal(snap.feedInPrice, 0.08);
+  assert.equal(snap.feedInSource, 'fixed');
+
+  app.getSettings = () => ({ contractType:'tou', touRates:[{ id:'peak', name:'Peak', importPrice:0.31, feedInPrice:-0.04 }] });
+  snap = app.getSavingsTariffSnapshot();
+  assert.equal(snap.feedInPrice, -0.04);
+  assert.equal(snap.feedInSource, 'tariff');
+
+  app.latestResult = { tariff:{ rateId:'dynamic', label:'Dynamic' }, homeyEnergy:{ currentPrice:0.22, priceClass:'normal' } };
+  app.externalEnergy.exportPrice = -0.06;
+  app.getSettings = () => ({ contractType:'dynamic_hour' });
+  snap = app.getSavingsTariffSnapshot();
+  assert.equal(snap.importPrice, 0.22);
+  assert.equal(snap.feedInPrice, -0.06);
+  assert.equal(snap.feedInSource, 'flow');
+}
+
 // PV export limiting remains usable without a battery: the battery-SoC gate
 // disappears, while the real grid and PV measurements remain authoritative.
 {
@@ -2207,7 +2233,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 61);
+  assert.equal(stored.settingsSchemaVersion, 62);
   assert.deepEqual(stored.evEnergyDeadlineOverrides, []);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
@@ -2257,7 +2283,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.2');
+  assert.equal(simulation.version, '0.7.3');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);

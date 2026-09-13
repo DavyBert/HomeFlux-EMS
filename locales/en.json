@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.2 — Your energy, managed differently",
+    "subtitle": "v0.7.3 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -22,7 +22,8 @@
       "directPvFree": "Direct PV · free",
       "pvToBatteryFree": "PV in battery · free",
       "avoidedEnergyCost": "Avoided energy cost",
-      "avoidedCosts": "Avoided costs"
+      "avoidedCosts": "Avoided costs",
+      "pvExport": "PV export"
     },
     "status": {
       "currentDecision": "Current decision",

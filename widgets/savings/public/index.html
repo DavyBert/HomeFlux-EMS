@@ -197,6 +197,7 @@
             ...chargingItems,
             { label: tr(Homey, 'widget.savings.directPvFree', 'Direct PV · free'), value: 0, kwh: Number(data.directPv?.kwh) || 0, portion: Number(data.directPv?.kwh) || 0, color: '#287b1d' },
             { label: tr(Homey, 'widget.savings.pvToBatteryFree', 'PV in battery · free'), value: 0, kwh: Number(data.batteryCharging?.pvKwh) || 0, portion: Number(data.batteryCharging?.pvKwh) || 0, color: '#78bd57', alwaysShow: true },
+            { label: tr(Homey, 'widget.savings.pvExport', 'PV export'), value: -(Number(data.pvExport?.value) || 0), kwh: Number(data.pvExport?.kwh) || 0, portion: Number(data.pvExport?.kwh) || 0, color: '#5ca97a', alwaysShow: (Number(data.pvExport?.kwh) || 0) > 0 },
           ],
         };
       }
@@ -210,7 +211,8 @@
         progressFallback: 'Avoided costs',
         items: [
           { label: tr(Homey, 'widget.savings.directPv', 'Direct PV'), value: Number(data.directPv?.value) || 0, kwh: Number(data.directPv?.kwh) || 0, portion: Number(data.directPv?.value) || 0, color: '#287b1d' },
-          { label: tr(Homey, 'widget.savings.pvBattery', 'PV from battery'), value: Number(data.pvBattery?.value) || 0, kwh: Number(data.pvBattery?.kwh) || 0, portion: Number(data.pvBattery?.value) || 0, color: '#78bd57' },
+          { label: tr(Homey, 'widget.savings.pvBattery', 'PV from battery'), value: Number(data.pvBatteryHome?.value) || 0, kwh: Number(data.pvBatteryHome?.kwh) || 0, portion: Number(data.pvBatteryHome?.value) || 0, color: '#78bd57' },
+          { label: tr(Homey, 'widget.savings.pvExport', 'PV export'), value: Number(data.pvExport?.value) || 0, kwh: Number(data.pvExport?.kwh) || 0, portion: Math.abs(Number(data.pvExport?.value) || 0), color: '#5ca97a', alwaysShow: (Number(data.pvExport?.kwh) || 0) > 0 },
           { label: tr(Homey, 'widget.savings.loadShift', 'Load shifting'), value: Number(data.loadShift?.value) || 0, kwh: Number(data.loadShift?.kwh) || 0, portion: Number(data.loadShift?.value) || 0, color: '#a06b21' },
         ],
       };

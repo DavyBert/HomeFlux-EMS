@@ -5,7 +5,7 @@ const { HomeyAPI } = require('homey-api');
 const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand } = require('./lib/ems-engine');
 const { localParts, normalizeDynamicPriceResponse, normalizeSequentialPriceArray, sequentialPricePeriodInfo, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
-const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, rawImportedKwh, calibrateImportedEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
+const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 
 class HomeFluxEmsApp extends Homey.App {
   async onInit() {
@@ -296,6 +296,8 @@ class HomeFluxEmsApp extends Homey.App {
     this.externalEnergy = {
       currentPrice: null,
       currentUpdatedAt: 0,
+      exportPrice: null,
+      exportUpdatedAt: 0,
       slots: [],
       curveUpdatedAt: 0,
       error: '',
@@ -492,7 +494,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.2 initialized');
+    this.log('HomeFlux EMS v0.7.3 initialized');
   }
 
   refreshSettingsCache() {
@@ -544,12 +546,14 @@ class HomeFluxEmsApp extends Homey.App {
     const tariff = this.latestResult?.tariff || null;
     let importPrice = Number(tariff?.price);
     let feedInPrice = 0;
+    let feedInSource = 'none';
     let id = String(tariff?.rateId || tariff?.label || type || 'grid');
     let label = String(tariff?.label || (type === 'fixed' ? 'Fixed tariff' : 'Grid'));
 
     if (type === 'fixed') {
       importPrice = Number(settings.fixedImportPrice);
       feedInPrice = Number(settings.fixedFeedInPrice);
+      feedInSource = 'fixed';
       id = 'fixed';
       label = 'Fixed tariff';
     } else if (type === 'tou') {
@@ -559,16 +563,22 @@ class HomeFluxEmsApp extends Homey.App {
       if (rate) {
         if (!Number.isFinite(importPrice)) importPrice = Number(rate.importPrice);
         feedInPrice = Number(rate.feedInPrice);
+        feedInSource = 'tariff';
         id = String(rate.id || id);
         label = String(rate.name || label);
       }
     } else if (isDynamicContract(settings)) {
       const currentPrice = Number(this.latestResult?.homeyEnergy?.currentPrice);
       if (Number.isFinite(currentPrice)) importPrice = currentPrice;
-      // Homey Energy currently supplies the purchase price used by HomeFlux,
-      // not a separate dynamic feed-in price. Therefore battery export is not
-      // credited unless HomeFlux has an explicit feed-in price source.
-      feedInPrice = 0;
+      const externalExportPrice = Number(this.externalEnergy?.exportPrice);
+      if (Number.isFinite(externalExportPrice)) {
+        feedInPrice = externalExportPrice;
+        feedInSource = 'flow';
+      }
+      // Homey Energy currently supplies only the purchase price used by
+      // HomeFlux. Dynamic feed-in is therefore 0 until the dedicated Flow input
+      // supplies an actual export price. Positive = compensation received;
+      // negative = a cost to inject.
       id = String(tariff?.rateId || this.latestResult?.homeyEnergy?.priceClass || 'dynamic');
       label = String(tariff?.label || this.latestResult?.homeyEnergy?.priceClass || 'Dynamic');
     }
@@ -577,7 +587,8 @@ class HomeFluxEmsApp extends Homey.App {
       id: id || 'grid',
       label: label || 'Grid',
       importPrice: Number.isFinite(importPrice) ? Math.max(0, importPrice) : 0,
-      feedInPrice: Number.isFinite(feedInPrice) ? Math.max(0, feedInPrice) : 0,
+      feedInPrice: Number.isFinite(feedInPrice) ? feedInPrice : 0,
+      feedInSource,
     };
   }
 
@@ -590,8 +601,11 @@ class HomeFluxEmsApp extends Homey.App {
 
     const todayKey = this.getSavingsDateKey();
     const storedToday = normalizeDay(this.homey.settings.get('_savingsToday'), todayKey);
+    let rolloverSavingsAdjustment = 0;
     if (storedToday.date && storedToday.date !== todayKey) {
-      normalizedHistory[storedToday.date] = calibrateImportedEnergy(storedToday);
+      const calibratedStoredToday = calibrateEnergy(storedToday);
+      normalizedHistory[storedToday.date] = calibratedStoredToday;
+      rolloverSavingsAdjustment = totalSavings(calibratedStoredToday) - totalSavings(storedToday);
       this.savings.today = emptyDay(todayKey);
     } else {
       storedToday.date = todayKey;
@@ -599,13 +613,17 @@ class HomeFluxEmsApp extends Homey.App {
     }
     this.savings.history = normalizedHistory;
     this.savings.inventory = normalizeInventory(this.homey.settings.get('_savingsInventory'));
-    this.savings.total = Number(this.homey.settings.get('_savingsTotal')) || 0;
+    this.savings.total = (Number(this.homey.settings.get('_savingsTotal')) || 0) + rolloverSavingsAdjustment;
     this.savings.lastSampleAt = Date.now();
   }
 
   archiveSavingsDay(nextDateKey) {
     const current = this.savings.today;
-    if (current?.date) this.savings.history[current.date] = calibrateImportedEnergy(current);
+    if (current?.date) {
+      const calibrated = calibrateEnergy(current);
+      this.savings.total += totalSavings(calibrated) - totalSavings(current);
+      this.savings.history[current.date] = calibrated;
+    }
     const dates = Object.keys(this.savings.history).sort();
     while (dates.length > 4000) delete this.savings.history[dates.shift()];
     this.savings.today = emptyDay(nextDateKey);
@@ -685,47 +703,59 @@ class HomeFluxEmsApp extends Homey.App {
     for (const [date, day] of Object.entries(this.savings.history || {})) {
       if (date >= range.startKey && date < range.endKey) addDays(aggregate, day);
     }
-    if (this.savings.today?.date >= range.startKey && this.savings.today?.date < range.endKey) {
-      addDays(aggregate, calibrateImportedEnergy(this.savings.today));
+    const calibratedToday = calibrateEnergy(this.savings.today);
+    if (calibratedToday?.date >= range.startKey && calibratedToday?.date < range.endKey) {
+      addDays(aggregate, calibratedToday);
     }
 
-    const actualCost = Math.max(0, Number(aggregate.directGridCost) || 0)
+    const grossImportCost = Math.max(0, Number(aggregate.directGridCost) || 0)
       + Math.max(0, Number(aggregate.gridChargeCost) || 0);
+    const signedPvExportValue = pvExportValue(aggregate);
+    // Cost view is net of PV feed-in: positive feed-in compensation lowers the
+    // bill; a negative export price raises it because the user pays to inject.
+    const actualCost = grossImportCost - signedPvExportValue;
     const avoidedCost = avoidedEnergyValue(aggregate);
     const periodSavings = totalSavings(aggregate);
-    // Both percentage bars intentionally use the same metric: the share of the
-    // hypothetical total energy cost that was avoided. Using actual cost plus
-    // net savings as the denominator keeps the value naturally within 0..100%.
-    // Keep the legacy avoidedEnergyCostPercentage field for UI compatibility,
-    // but make it identical to avoidedCostsPercentage so both charts agree.
+    // Avoided-cost percentage stays based on the gross import bill plus positive
+    // savings. This remains meaningful even when feed-in makes the net bill
+    // negative for a very sunny period.
     const positiveSavings = Math.max(0, Number(periodSavings) || 0);
-    const hypotheticalCost = actualCost + positiveSavings;
+    const hypotheticalCost = grossImportCost + positiveSavings;
     const avoidedCostsPercentage = hypotheticalCost > 0
       ? (positiveSavings / hypotheticalCost) * 100
       : 0;
     const avoidedEnergyCostPercentage = avoidedCostsPercentage;
+    const totalPvExportKwh = pvExportKwh(aggregate);
     const chartKwh = Math.max(0, Number(aggregate.directGridKwh) || 0)
       + Math.max(0, Number(aggregate.gridChargeKwh) || 0)
       + Math.max(0, Number(aggregate.directPvKwh) || 0)
-      + Math.max(0, Number(aggregate.pvChargeKwh) || 0);
+      + Math.max(0, Number(aggregate.pvChargeKwh) || 0)
+      + totalPvExportKwh;
+    const currentTariff = this.getSavingsTariffSnapshot();
 
     return {
       period: normalizedPeriod,
       startDate: range.startKey,
       endDate: range.endKey,
-      todaySavings: totalSavings(this.savings.today),
-      totalSavings: Number(this.savings.total) || 0,
+      todaySavings: totalSavings(calibratedToday),
+      totalSavings: (Number(this.savings.total) || 0) + totalSavings(calibratedToday) - totalSavings(this.savings.today),
       periodSavings,
       actualCost,
+      grossImportCost,
+      pvExportValue: signedPvExportValue,
       avoidedEnergyCost: avoidedCost,
       avoidedEnergyCostPercentage,
       avoidedCostsPercentage,
       chartKwh,
       directGrid: { kwh: aggregate.directGridKwh, value: aggregate.directGridCost },
       directPv: { kwh: aggregate.directPvKwh, value: aggregate.directPvValue },
+      directPvExport: { kwh: aggregate.directPvExportKwh, value: aggregate.directPvExportValue },
       pvBattery: { kwh: aggregate.pvBatteryKwh, value: aggregate.pvBatteryValue },
       pvBatteryHome: { kwh: aggregate.pvBatteryHomeKwh, value: aggregate.pvBatteryHomeValue },
+      pvBatteryExport: { kwh: aggregate.pvBatteryExportKwh, value: aggregate.pvBatteryExportValue },
+      pvExport: { kwh: totalPvExportKwh, value: signedPvExportValue },
       loadShift: { kwh: aggregate.shiftKwh, value: aggregate.shiftValue },
+      loadShiftExport: { kwh: aggregate.shiftExportKwh, value: aggregate.shiftExportValue },
       batteryCharging: {
         kwh: aggregate.batteryChargeKwh,
         pvKwh: aggregate.pvChargeKwh,
@@ -737,6 +767,17 @@ class HomeFluxEmsApp extends Homey.App {
         inputKwh: Number(this.savings.today?.importedEnergyKwh) || 0,
         known: Boolean(this.savings.today?.importedEnergyKnown),
         measuredKwh: rawImportedKwh(this.savings.today),
+      },
+      exportedEnergyToday: {
+        inputKwh: Number(this.savings.today?.exportedEnergyKwh) || 0,
+        known: Boolean(this.savings.today?.exportedEnergyKnown),
+        measuredKwh: rawExportedKwh(this.savings.today),
+      },
+      exportPrice: {
+        eurPerKwh: Number(currentTariff.feedInPrice) || 0,
+        source: String(currentTariff.feedInSource || 'none'),
+        // Sign convention: positive = compensation received, negative = cost.
+        positiveMeansCompensation: true,
       },
       trackedBatteryKwh: inventoryKwh(this.savings.inventory),
     };
@@ -1085,6 +1126,70 @@ class HomeFluxEmsApp extends Homey.App {
     return permissions;
   }
 
+  getAutoTuneLimits() {
+    const raw = this.homey.settings.get('_autoTuneLimits');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }
+
+  getDefaultAutoTuneLimit(settingKey, currentValue = null) {
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) return null;
+    const settings = this.getSettings();
+    const current = Number(currentValue !== null && currentValue !== undefined ? currentValue : settings[settingKey]);
+    if (!Number.isFinite(current)) return null;
+    let delta = Math.abs(current) * 0.5;
+    // A literal +/-50% range around zero would lock the parameter at zero.
+    // Use one meaningful unit there so opt-in management can still move from
+    // an initial zero while remaining deliberately narrow.
+    if (delta < 1e-9) delta = 1;
+    let min = current - delta;
+    let max = current + delta;
+    if (settingKey === 'commandIntervalSeconds') {
+      min = Math.max(3, min);
+      max = Math.max(min, max);
+    }
+    const defaultConfidence = Math.max(0, Math.min(100, Number(this.getSettings().autoTuneMinConfidencePercent) || 95));
+    return {
+      min: Math.min(min, max),
+      max: Math.max(min, max),
+      minConfidencePercent: defaultConfidence,
+    };
+  }
+
+  getAutoTuneLimitFor(settingKey, currentValue = null, limits = null) {
+    const stored = (limits || this.getAutoTuneLimits())[settingKey];
+    const min = Number(stored?.min);
+    const max = Number(stored?.max);
+    const fallbackConfidence = Math.max(0, Math.min(100, Number(this.getSettings().autoTuneMinConfidencePercent) || 95));
+    const minConfidencePercent = Number.isFinite(Number(stored?.minConfidencePercent))
+      ? Math.max(0, Math.min(100, Number(stored.minConfidencePercent)))
+      : fallbackConfidence;
+    if (Number.isFinite(min) && Number.isFinite(max) && min <= max) return { min, max, minConfidencePercent };
+    const defaults = this.getDefaultAutoTuneLimit(settingKey, currentValue);
+    return defaults ? { ...defaults, minConfidencePercent } : null;
+  }
+
+  async setAutoTuneLimits(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
+    let min = Number(body.min);
+    let max = Number(body.max);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) throw new Error('Minimum en maximum moeten geldige getallen zijn.');
+    if (min > max) [min, max] = [max, min];
+    if (settingKey === 'commandIntervalSeconds') min = Math.max(3, min);
+    if (min > max) max = min;
+    const limits = this.getAutoTuneLimits();
+    const previous = this.getAutoTuneLimitFor(settingKey, this.getSettings()[settingKey], limits) || {};
+    const requestedConfidence = Number(body.minConfidencePercent);
+    const minConfidencePercent = Number.isFinite(requestedConfidence)
+      ? Math.max(0, Math.min(100, requestedConfidence))
+      : Math.max(0, Math.min(100, Number(previous.minConfidencePercent) || Number(this.getSettings().autoTuneMinConfidencePercent) || 95));
+    limits[settingKey] = { min, max, minConfidencePercent };
+    this.setSetting('_autoTuneLimits', limits);
+    return this.getAutoTuneStatus();
+  }
+
   getAutoTuneIgnored() {
     const raw = this.homey.settings.get('_autoTuneIgnored');
     return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
@@ -1147,6 +1252,8 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     const permissions = this.getAutoTunePermissions();
     const ignored = this.getAutoTuneIgnored();
+    const limits = this.getAutoTuneLimits();
+    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
     const recommendations = [];
     const roundTo = (value, step = 1) => Math.round(Number(value) / step) * step;
     const percentile = (values, q = 0.5) => {
@@ -1164,17 +1271,28 @@ class HomeFluxEmsApp extends Homey.App {
       const numeric = Number(value);
       return Number.isFinite(numeric) ? numeric : null;
     };
+    // Fast telemetry and compact daily planning summaries earn confidence on
+    // different timescales. A few P1 samples can arrive within seconds, while
+    // planning observations represent complete days and must therefore not use
+    // the same sample-count curve.
     const confidence = samples => Math.max(0.5, Math.min(0.97, 0.52 + Math.log10(Math.max(1, Number(samples) || 1)) * 0.2));
+    const planningConfidence = days => Math.max(0.5, Math.min(0.97, 0.52 + (0.45 * (1 - Math.exp(-Math.max(0, Number(days) || 0) / 3.0)))));
     const push = (settingKey, titleNl, titleEn, current, recommended, unit, reasonNl, reasonEn, conf, samples, scope = 'EMS') => {
       if (ignored[settingKey]) return;
       const cur = Number(current); const next = Number(recommended);
       if (!Number.isFinite(cur) || !Number.isFinite(next) || Math.abs(cur - next) < 1e-9) return;
+      const confidencePercent = Math.round(Math.max(0, Math.min(1, Number(conf) || 0)) * 100);
+      const allowedRange = this.getAutoTuneLimitFor(settingKey, cur, limits);
+      const parameterMinConfidence = Number(allowedRange?.minConfidencePercent ?? minConfidencePercent);
       recommendations.push({
         id: settingKey, settingKey, scope, titleNl, titleEn,
         current: cur, recommended: next, unit: unit || '',
-        reasonNl, reasonEn, confidence: Math.round(Math.max(0, Math.min(1, Number(conf) || 0)) * 100),
+        reasonNl, reasonEn, confidence: confidencePercent,
         samples: Math.max(0, Math.round(Number(samples) || 0)),
         autoManaged: Boolean(permissions[settingKey]), canAutoManage: true,
+        minConfidencePercent: parameterMinConfidence,
+        autoEligible: confidencePercent >= parameterMinConfidence,
+        allowedRange,
       });
     };
 
@@ -1382,7 +1500,7 @@ class HomeFluxEmsApp extends Homey.App {
         push('expectedEnergyNeedKwh', 'Verwachte energiebehoefte', 'Expected energy need', currentNeed, desiredNeed, 'kWh',
           `Het geschatte dagelijkse niet-EV-verbruik is ongeveer ${learnedNeed.toFixed(1)} kWh uit ${normalizedDemand.length} bruikbare dagen.${residualNl} Hiermee kan HomeFlux overdag richting 90–100% mikken zonder 's nachts structureel te veel netenergie in de batterij te stoppen.`,
           `Estimated daily non-EV demand is about ${learnedNeed.toFixed(1)} kWh from ${normalizedDemand.length} usable days.${residualEn} This helps HomeFlux aim for 90–100% during the day without systematically putting too much grid energy into the battery overnight.`,
-          confidence(normalizedDemand.length), normalizedDemand.length, 'Planning');
+          planningConfidence(normalizedDemand.length), normalizedDemand.length, 'Planning');
       }
     }
 
@@ -1404,7 +1522,7 @@ class HomeFluxEmsApp extends Homey.App {
           push('batterySaveDischargeAboveSoc', 'Batterij sparen: ontlaadgrens', 'Battery Save discharge floor', currentSaveFloor, desiredSaveFloor, '%',
             `Rond het ochtenddoel blijft gemiddeld ${morningSoc.toFixed(1)}% SoC over, terwijl de harde veiligheidsvloer ${hardFloor.toFixed(0)}% is. Een iets lagere spaargrens kan meer opgeslagen energie 's nachts benutten; harde SoC- en piekreserves blijven beschermd.`,
             `Average SoC around the morning target remains ${morningSoc.toFixed(1)}%, while the hard safety floor is ${hardFloor.toFixed(0)}%. A slightly lower save floor can use more stored energy overnight; hard SoC and peak reserves remain protected.`,
-            confidence(morningSocValues.length), morningSocValues.length, 'Planning');
+            planningConfidence(morningSocValues.length), morningSocValues.length, 'Planning');
         }
       }
     }
@@ -1446,7 +1564,7 @@ class HomeFluxEmsApp extends Homey.App {
           push('lowForecastSelfConsumptionMinKwh', 'Lage-PV-drempel', 'Low-PV threshold', currentLowPv, desiredLowPv, 'kWh',
             `Van ${outcomeDays.length} dagen met forecast/SoC-data bereikten ${successes.length} dagen de 90%-zone rond het dagdoel en ${failures.length} dagen niet. Deze grens onderscheidt beter wanneer PV waarschijnlijk voldoende is en wanneer Batterij sparen zinvol blijft.`,
             `Across ${outcomeDays.length} days with forecast/SoC data, ${successes.length} days reached the 90% zone around the daytime target and ${failures.length} did not. This threshold better distinguishes when PV is likely sufficient and when Battery Save remains useful.`,
-            confidence(outcomeDays.length), outcomeDays.length, 'Planning');
+            planningConfidence(outcomeDays.length), outcomeDays.length, 'Planning');
         }
       }
 
@@ -1458,7 +1576,7 @@ class HomeFluxEmsApp extends Homey.App {
           push('lowForecastAutoSunnySoc', 'SoC-drempel voor zonnedag', 'Sunny-day SoC threshold', currentSunnySoc, desiredSunnySoc, '%',
             `De vrijgave van een voorspelde lage-PV-dag hoort pas te gebeuren wanneer de batterij aantoonbaar in de gewenste 90–100%-zone zit. Maximum-SoC (${maxSoc.toFixed(0)}%) blijft onaangeroerd.`,
             `A forecast low-PV day should only be released after the battery demonstrably reaches the desired 90–100% zone. Maximum SoC (${maxSoc.toFixed(0)}%) remains untouched.`,
-            confidence(outcomeDays.length), outcomeDays.length, 'Planning');
+            planningConfidence(outcomeDays.length), outcomeDays.length, 'Planning');
         }
       }
     }
@@ -1529,7 +1647,9 @@ class HomeFluxEmsApp extends Homey.App {
     const runtime = this.autoTuneRuntime || this.createAutoTuneRuntime();
     const permissions = this.getAutoTunePermissions();
     const ignored = this.getAutoTuneIgnored();
+    const limits = this.getAutoTuneLimits();
     const settings = this.getSettings();
+    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
     const recommendations = this.getAutoTuneRecommendations();
     const recommendationKeys = new Set(recommendations.map(item => item.settingKey));
     const planningDays = Array.isArray(runtime.planning?.days) ? runtime.planning.days.slice(-14) : [];
@@ -1543,10 +1663,13 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       recommendations,
       permissions,
+      limits,
+      minConfidencePercent,
       managed: Object.keys(permissions).filter(key => permissions[key] && !recommendationKeys.has(key)).map(key => {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
         if (!descriptor) return null;
-        return { ...descriptor, current: settings[key], autoManaged: true };
+        const allowedRange = this.getAutoTuneLimitFor(key, settings[key], limits);
+        return { ...descriptor, current: settings[key], autoManaged: true, allowedRange, minConfidencePercent: Number(allowedRange?.minConfidencePercent ?? minConfidencePercent) };
       }).filter(Boolean),
       ignored: Object.keys(ignored).filter(key => ignored[key]).map(key => {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
@@ -1589,6 +1712,7 @@ class HomeFluxEmsApp extends Homey.App {
         changeCooldownHours: 6,
         planningChangeCooldownHours: 24,
         dailySummariesMax: 14,
+        minConfidencePercent,
         protected: ['Peak Guard','minimum/maximum/safety SoC','maximum charge/discharge power','tariffs','EV deadlines','comfort temperatures','priorities','manual time windows'],
       },
     };
@@ -1603,20 +1727,33 @@ class HomeFluxEmsApp extends Homey.App {
 
   async applyAutoTuneRecommendations({ onlyKey = '', force = false } = {}) {
     const permissions = this.getAutoTunePermissions();
+    const limits = this.getAutoTuneLimits();
     const recommendations = this.getAutoTuneRecommendations();
     const lastApplied = this.getAutoTuneLastApplied();
     const now = Date.now();
+    const settings = this.getSettings();
+    const defaultMinConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
     let lastAppliedChanged = false;
     let applied = 0;
     for (const recommendation of recommendations) {
       const key = recommendation.settingKey;
       if (onlyKey && key !== onlyKey) continue;
-      if (!recommendation.canAutoManage || !permissions[key] || recommendation.confidence < 70) continue;
+      const current = Number(this.getSettings()[key]);
+      const allowedRange = this.getAutoTuneLimitFor(key, current, limits);
+      const minConfidencePercent = Number(allowedRange?.minConfidencePercent ?? defaultMinConfidencePercent);
+      // force only bypasses the normal time cooldown. It never bypasses the
+      // user's confidence threshold or the per-parameter allowed range.
+      if (!recommendation.canAutoManage || !permissions[key] || recommendation.confidence < minConfidencePercent) continue;
       const dailyLearnedKeys = new Set(['lowForecastSelfConsumptionMinKwh','expectedEnergyNeedKwh','batterySaveDischargeAboveSoc','lowForecastAutoSunnySoc']);
       const cooldownMs = dailyLearnedKeys.has(key) ? 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
       if (!force && now - Number(lastApplied[key] || 0) < cooldownMs) continue;
-      const current = Number(this.getSettings()[key]);
       let next = Number(recommendation.recommended);
+      if (allowedRange) next = Math.max(Number(allowedRange.min), Math.min(Number(allowedRange.max), next));
+      if (key === 'gridControlWindowSeconds') {
+        const valid = [0, 3, 5, 7, 10].filter(value => !allowedRange || (value >= allowedRange.min && value <= allowedRange.max));
+        if (!valid.length) continue;
+        next = valid.reduce((best, value) => Math.abs(value - next) < Math.abs(best - next) ? value : best, valid[0]);
+      }
       if (key === 'commandIntervalSeconds') next = Math.max(3, next);
       if (!Number.isFinite(current) || !Number.isFinite(next) || Math.abs(current - next) < 1e-9) continue;
       this.setSetting(key, next);
@@ -1650,6 +1787,14 @@ class HomeFluxEmsApp extends Homey.App {
     const ignored = this.getAutoTuneIgnored();
     if (allowed) {
       permissions[settingKey] = true;
+      const limits = this.getAutoTuneLimits();
+      if (!limits[settingKey]) {
+        const defaults = this.getDefaultAutoTuneLimit(settingKey, this.getSettings()[settingKey]);
+        if (defaults) {
+          limits[settingKey] = defaults;
+          this.setSetting('_autoTuneLimits', limits);
+        }
+      }
       if (ignored[settingKey]) {
         delete ignored[settingKey];
         this.setSetting('_autoTuneIgnored', ignored);
@@ -3046,7 +3191,14 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.homey.settings.get('evEnergyDeadlineOverrides') === null) this.setSetting('evEnergyDeadlineOverrides', []);
     }
 
-    this.setSetting('settingsSchemaVersion', 61);
+    if (schema < 62) {
+      // v0.7.3: every opt-in Autotune parameter can be fenced by a persistent
+      // user-defined minimum/maximum. Existing permissions remain valid and
+      // receive a lazy +/-50% default range from their current value.
+      if (this.homey.settings.get('_autoTuneLimits') === null) this.setSetting('_autoTuneLimits', {});
+    }
+
+    this.setSetting('settingsSchemaVersion', 62);
   }
 
   async ensureDefaults() {
@@ -4073,6 +4225,19 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
+    this.homey.flow.getActionCard('set_exported_energy_today').registerRunListener(async args => {
+      const value = Number(args.energy);
+      if (!Number.isFinite(value) || value < 0) return false;
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      const todayKey = this.getSavingsDateKey(now);
+      if (!this.savings.today?.date) this.savings.today = emptyDay(todayKey);
+      if (this.savings.today.date !== todayKey) this.archiveSavingsDay(todayKey);
+      this.savings.today.exportedEnergyKwh = value;
+      this.savings.today.exportedEnergyKnown = true;
+      return true;
+    });
+
     this.homey.flow.getActionCard('set_pv_power').registerRunListener(async args => {
       const value = Number(args.power);
       if (!Number.isFinite(value)) return false;
@@ -4428,6 +4593,19 @@ class HomeFluxEmsApp extends Homey.App {
       this.cachedRuntimeSettings = null;
       this.invalidatePlanningCache(true);
       this.requestContextEvaluate(true, 'external_electricity_price');
+      return true;
+    });
+
+    this.homey.flow.getActionCard('set_external_export_price').registerRunListener(async args => {
+      const price = Number(args.price);
+      if (!Number.isFinite(price)) throw new Error('External export price must be a valid number');
+      const now = Date.now();
+      // Close the previous accounting interval at the old export price before
+      // switching price. This input is accounting-only and never triggers EMS
+      // control or planning by itself.
+      this.recordSavingsSample(now);
+      this.externalEnergy.exportPrice = price;
+      this.externalEnergy.exportUpdatedAt = now;
       return true;
     });
 
@@ -10479,7 +10657,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.2',
+      version: '0.7.3',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -10556,7 +10734,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.2',
+      version: '0.7.3',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -10842,7 +11020,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.2',
+      version: '0.7.3',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

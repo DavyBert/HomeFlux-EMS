@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.7.2');
-assert.equal(appCompose.version, '0.7.2');
-assert.equal(packageJson.version, '0.7.2');
-assert.equal(packageLock.version, '0.7.2');
-assert.equal(packageLock.packages[''].version, '0.7.2');
+assert.equal(manifest.version, '0.7.3');
+assert.equal(appCompose.version, '0.7.3');
+assert.equal(packageJson.version, '0.7.3');
+assert.equal(packageLock.version, '0.7.3');
+assert.equal(packageLock.packages[''].version, '0.7.3');
 assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
 assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
 const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');
@@ -125,6 +125,9 @@ assert(html.includes('grid-template-columns: 108px minmax(0, 1fr);'), 'combined 
 assert(!html.includes('.multi .donut-wrap'), 'combined charts must not shrink the donut');
 assert(html.includes('renderSection(model, Homey, periodLabels[period], shouldShowProgress(model.key))'), 'each stacked chart must render with progress only on its selected target');
 assert(html.includes("widget.savings.directGrid"), 'cost widget must include direct grid use');
+assert(html.includes("widget.savings.pvExport"), 'Savings widget must expose PV export in cost/profit charts');
+assert(html.includes('data.pvBatteryHome'), 'profit widget must keep PV-battery home use separate from exported PV-battery energy');
+assert(html.includes('value: -(Number(data.pvExport?.value) || 0)'), 'cost widget must treat positive export compensation as a cost credit');
 assert(html.includes("widget.savings.pvToBatteryFree"), 'cost widget must include free PV-to-battery energy');
 assert(html.includes("const combineGridCharging = String(settings.combineGridCharging || 'no') === 'yes';"), 'widget must read the combine grid charging setting');
 assert(html.includes('tariffCharging.reduce((sum, item) => sum + (Number(item.kwh) || 0), 0)'), 'combined grid charging must sum tariff kWh');

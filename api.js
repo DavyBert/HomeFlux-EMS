@@ -33,6 +33,10 @@ module.exports = {
     return homey.app.setAutoTunePermission(body || {});
   },
 
+  async setAutoTuneLimits({ homey, body }) {
+    return homey.app.setAutoTuneLimits(body || {});
+  },
+
   async applyAutoTuneRecommendation({ homey, body }) {
     return homey.app.applyAutoTuneRecommendationOnce(body || {});
   },

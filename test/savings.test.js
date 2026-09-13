@@ -8,6 +8,9 @@ const {
   totalSavings,
   avoidedEnergyValue,
   calibrateImportedEnergy,
+  calibrateExportedEnergy,
+  pvExportValue,
+  pvExportKwh,
 } = require('../lib/savings');
 
 const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
@@ -117,5 +120,55 @@ const oneKwhAtFiveMinutesW = 12000;
   integrateInterval({ day, inventory, seconds:fiveMinutes, gridW:0, pvW:0, batteryW:oneKwhAtFiveMinutesW, importPrice:0.35, tariff:{id:'peak',label:'Peak'}, capacityKwh:20 });
   close(totalSavings(day), 0);
 }
+
+// v0.7.3: direct PV export is part of Savings. Positive export price is
+// compensation received; a negative price is a real injection cost.
+{
+  const day = emptyDay('2026-09-02');
+  const inventory = emptyInventory();
+  integrateInterval({ day, inventory, seconds:fiveMinutes, gridW:-oneKwhAtFiveMinutesW, pvW:oneKwhAtFiveMinutesW, batteryW:0, importPrice:0.30, feedInPrice:0.08, tariff:{id:'sun',label:'Sun'}, capacityKwh:20 });
+  close(day.directPvExportKwh, 1);
+  close(day.directPvExportValue, 0.08);
+  close(pvExportKwh(day), 1);
+  close(pvExportValue(day), 0.08);
+  close(totalSavings(day), 0.08);
+}
+
+{
+  const day = emptyDay('2026-09-02');
+  const inventory = emptyInventory();
+  integrateInterval({ day, inventory, seconds:fiveMinutes, gridW:-oneKwhAtFiveMinutesW, pvW:oneKwhAtFiveMinutesW, batteryW:0, importPrice:0.30, feedInPrice:-0.05, tariff:{id:'negative',label:'Negative export'}, capacityKwh:20 });
+  close(day.directPvExportValue, -0.05);
+  close(totalSavings(day), -0.05);
+}
+
+// Export calibration scales every measured export bucket proportionally to the
+// cumulative meter export without mutating the raw day record.
+{
+  const day = emptyDay('2026-09-02');
+  day.directPvExportKwh = 2;
+  day.directPvExportValue = 0.16;
+  day.pvBatteryExportKwh = 1;
+  day.pvBatteryExportValue = 0.08;
+  day.shiftExportKwh = 1;
+  day.shiftExportValue = 0.05;
+  day.shiftHomeKwh = 1;
+  day.shiftHomeValue = 0.10;
+  day.shiftKwh = 2;
+  day.shiftValue = 0.15;
+  day.pvBatteryKwh = 1;
+  day.pvBatteryValue = 0.08;
+  day.exportedEnergyKwh = 8;
+  day.exportedEnergyKnown = true;
+  const calibrated = calibrateExportedEnergy(day);
+  close(calibrated.directPvExportKwh, 4);
+  close(calibrated.directPvExportValue, 0.32);
+  close(calibrated.pvBatteryExportKwh, 2);
+  close(calibrated.pvBatteryExportValue, 0.16);
+  close(calibrated.shiftExportKwh, 2);
+  close(calibrated.shiftExportValue, 0.10);
+  close(day.directPvExportKwh, 2);
+}
+
 
 console.log('savings tests passed');

@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.2 — Jouw energie, anders geregeld",
+    "subtitle": "v0.7.3 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -22,7 +22,8 @@
       "directPvFree": "PV rechtstreeks · gratis",
       "pvToBatteryFree": "PV in batterij · gratis",
       "avoidedEnergyCost": "Vermeden energiekost",
-      "avoidedCosts": "Vermeden kosten"
+      "avoidedCosts": "Vermeden kosten",
+      "pvExport": "PV-export"
     },
     "status": {
       "currentDecision": "Huidige beslissing",

@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set current export price",
+    "nl": "Stel actuele exportprijs in"
+  },
+  "hint": {
+    "en": "Sets the current feed-in/export price in EUR/kWh for Savings, mainly for dynamic contracts. Positive means compensation you receive; negative means a cost you pay to inject. Fixed and multi-rate contracts use their configured tariff export prices.",
+    "nl": "Stelt de actuele injectie-/exportprijs in EUR/kWh in voor Winst, vooral voor dynamische contracten. Positief betekent een vergoeding die je ontvangt; negatief betekent een kost die je betaalt om te injecteren. Vaste en meervoudige tarieven gebruiken hun ingestelde exportprijs per tarief."
+  },
+  "args": [
+    {
+      "name": "price",
+      "type": "number",
+      "title": {
+        "en": "Export price (EUR/kWh)",
+        "nl": "Exportprijs (EUR/kWh)"
+      },
+      "min": -10,
+      "max": 50,
+      "step": 0.0001
+    }
+  ],
+  "titleFormatted": {
+    "en": "Current export price is [[price]] EUR/kWh",
+    "nl": "Actuele exportprijs is [[price]] EUR/kWh"
+  }
+}

@@ -36,6 +36,7 @@ function appWithSettings(overrides = {}) {
     lowForecastAutoSunnyEnabled: true,
     lowForecastAutoSunnySoc: 90,
     lowForecastAutoSunnyMinutes: 10,
+    autoTuneMinConfidencePercent: 95,
     balanceEnabled: false,
     balanceDeadbandPct: 1,
     balanceStrength: 0.2,
@@ -311,17 +312,58 @@ function appWithSettings(overrides = {}) {
   assert.equal((zeroMin.recommended + zeroMax.recommended) / 2, 10, 'zero-band midpoint must preserve the configured grid bias');
 }
 
-// Permission is opt-in and applying a recommendation records the change.
+// Permission is opt-in, but v0.7.3 only applies automatically when the
+// per-parameter confidence threshold is reached. Enabling permission creates a
+// persistent default +/-50% allowed range around the current value.
 (async () => {
   const { app, store } = appWithSettings();
   for (let i = 0; i < 40; i += 1) app.noteAutoTuneGridSample(i % 2 ? 320 : 0, 1_000_000 + i * 1000);
   const rec = app.getAutoTuneRecommendations().find(item => item.settingKey === 'commandDeadbandW');
   assert.ok(rec);
+  assert.ok(rec.confidence < 95, '40 rapid samples should still be below the default 95% auto threshold');
   const result = await app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: true });
   assert.equal(store._autoTunePermissions.commandDeadbandW, true);
-  assert.notEqual(store.commandDeadbandW, 25);
+  assert.equal(store.commandDeadbandW, 25, 'permission alone must not apply below confidence threshold');
+  assert.deepEqual(store._autoTuneLimits.commandDeadbandW, { min:12.5, max:37.5, minConfidencePercent:95 });
+  assert.ok(result.recommendations.some(item => item.settingKey === 'commandDeadbandW' && item.autoManaged));
+
+  // With enough independent observations, the default 95% threshold becomes
+  // eligible without the user lowering it. The +/-50% fence still applies.
+  const highConfidence = appWithSettings();
+  for (let i = 0; i < 220; i += 1) highConfidence.app.noteAutoTuneGridSample(i % 2 ? 320 : 0, 1_500_000 + i * 1000);
+  const highRec = highConfidence.app.getAutoTuneRecommendations().find(item => item.settingKey === 'commandDeadbandW');
+  assert.ok(highRec && highRec.confidence >= 95, 'enough rapid observations should eventually pass the default 95% threshold');
+  await highConfidence.app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: true });
+  assert.ok(highConfidence.store.commandDeadbandW > 25, 'default 95% confidence must allow automatic management once confidence is high enough');
+  assert.ok(highConfidence.store.commandDeadbandW <= 37.5, 'automatic change must remain within the default +50% fence');
+
+  // Daily planning confidence grows on a daily timescale rather than as if
+  // every day were a rapid P1 sample. Four days stay below the default 95%,
+  // while roughly ten usable days can cross it.
+  const planningConfidence = appWithSettings({ expectedEnergyNeedKwh: 20, totalCapacityKwh: 20 });
+  planningConfidence.app.autoTuneRuntime.planning.days = Array.from({ length: 4 }, (_, i) => ({
+    dateKey: `2026-09-${String(i + 1).padStart(2, '0')}`, sampleHours:24,
+    estimatedDemandKwh:12 + (i % 2), forecastKwh:8, peakSoc:95,
+    solarTargetSoc:94, nightTargetSoc:16, maxSocLimit:100,
+  }));
+  const fourDayRec = planningConfidence.app.getAutoTuneRecommendations().find(item => item.settingKey === 'expectedEnergyNeedKwh');
+  assert.ok(fourDayRec && fourDayRec.confidence < 95, 'four planning days must not already reach 95% confidence');
+  planningConfidence.app.autoTuneRuntime.planning.days = Array.from({ length: 10 }, (_, i) => ({
+    dateKey: `2026-09-${String(i + 1).padStart(2, '0')}`, sampleHours:24,
+    estimatedDemandKwh:12 + (i % 2), forecastKwh:8, peakSoc:95,
+    solarTargetSoc:94, nightTargetSoc:16, maxSocLimit:100,
+  }));
+  const tenDayRec = planningConfidence.app.getAutoTuneRecommendations().find(item => item.settingKey === 'expectedEnergyNeedKwh');
+  assert.ok(tenDayRec && tenDayRec.confidence >= 95, 'about ten usable planning days should be able to reach the default 95% confidence');
+
+  // The user can independently lower/raise the confidence threshold for this
+  // parameter and fence the value HomeFlux may choose. The recommendation is
+  // clamped to the approved boundary instead of escaping it.
+  await app.setAutoTuneLimits({ settingKey:'commandDeadbandW', min:20, max:30, minConfidencePercent:80 });
+  const applied = await app.applyAutoTuneRecommendations({ onlyKey:'commandDeadbandW', force:true });
+  assert.equal(applied, 1);
+  assert.equal(store.commandDeadbandW, 30);
   assert.ok(Array.isArray(store._autoTuneHistory) && store._autoTuneHistory.length >= 1);
-  assert.ok(result.managed.some(item => item.settingKey === 'commandDeadbandW'));
   const disabled = await app.setAutoTunePermission({ settingKey: 'commandDeadbandW', allowed: false });
   assert.equal(Boolean(store._autoTunePermissions.commandDeadbandW), false);
   assert.equal(disabled.managed.some(item => item.settingKey === 'commandDeadbandW'), false);

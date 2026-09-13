@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set exported energy today",
+    "nl": "Geëxporteerde energie vandaag"
+  },
+  "hint": {
+    "en": "Send the cumulative grid-export energy for today in kWh. HomeFlux uses it only to calibrate the calculated PV/battery export totals in Savings; it does not change EMS control.",
+    "nl": "Stuur de cumulatieve netinjectie van vandaag in kWh. HomeFlux gebruikt deze alleen om de berekende PV-/batterij-exporttotalen in Winst te kalibreren; dit wijzigt de EMS-sturing niet."
+  },
+  "args": [
+    {
+      "name": "energy",
+      "type": "number",
+      "title": {
+        "en": "Exported energy today (kWh)",
+        "nl": "Geëxporteerde energie vandaag (kWh)"
+      },
+      "min": 0,
+      "max": 10000,
+      "step": 0.001
+    }
+  ],
+  "titleFormatted": {
+    "en": "Exported energy today is [[energy]] kWh",
+    "nl": "Geëxporteerde energie vandaag is [[energy]] kWh"
+  }
+}

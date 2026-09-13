@@ -19,6 +19,12 @@ Add the **HomeFlux EMS device** in Homey for quick operational changes without b
 
 For EV planning, the existing SoC-by-time and kWh-by-time Flow cards can provide a persistent **minimum target**. A guaranteed target may use any tariff when that is required to secure the deadline; a non-guaranteed target keeps trying on favourable PV/tariff moments. If no Flow target has been supplied, HomeFlux clearly falls back to the EV target and time configured in settings.
 
+### Autotune and Savings
+
+Autotune can observe the control signals HomeFlux already receives and recommend safe, non-critical tuning changes without adding extra polling. Automatic management is explicit opt-in: the global confidence threshold defaults to **95%**, and every managed parameter can have its own confidence threshold plus an allowed minimum/maximum range. When permission is first granted, that range defaults to 50% below and 50% above the current value.
+
+Savings includes direct PV use, PV energy later used from the battery, load shifting and **PV export/feed-in**. Fixed and multi-rate contracts can define a feed-in price per tariff. For dynamic export prices, a Flow card can provide the current export price. The sign convention is intentionally simple: **positive = compensation received; negative = a cost to inject**. A separate Flow input can provide the cumulative exported energy for today to calibrate the calculated export total against the real meter.
+
 ## Nederlands
 
 HomeFlux EMS is een Homey-gebaseerd energiebeheersysteem dat batterijen, zonnepanelen en flexibele verbruikers aanstuurt rond **het energiecontract dat je werkelijk gebruikt**. Het is dus niet alleen bedoeld voor dynamische prijzen: HomeFlux is juist ontworpen om ook volwaardig te werken met **vaste contracten met twee of meer uurtarieven**, zoals piek/dal of andere meervoudige tariefperiodes.
@@ -34,6 +40,12 @@ In plaats van het EMS vast te koppelen aan één merk batterij, omvormer of laad
 Voeg het **HomeFlux EMS-apparaat** toe in Homey voor snelle operationele aanpassingen zonder extra Flow en voor een overzicht van de actieve override, **wie de batterijregeling in handen heeft (HomeFlux of een externe EMS)**, EV-status en EV-planning. HomeFlux bevat daarnaast een **EMS-statuswidget** voor live strategie/planning en een **Winst-widget** voor kost- en besparingsvisualisatie.
 
 Voor EV-planning kunnen de bestaande Flow-kaarten voor SoC-tegen-tijd en kWh-tegen-tijd een blijvend **minimumdoel** instellen. Een gegarandeerd doel mag elk tarief gebruiken wanneer dat nodig is om de deadline te verzekeren; een niet-gegarandeerd doel blijft proberen op gunstige PV-/tariefmomenten. Is geen Flow-doel ingestuurd, dan valt HomeFlux zichtbaar terug op het EV-doel en tijdstip uit de instellingen.
+
+### Autotune en Winst
+
+Autotune kan de regelsignalen observeren die HomeFlux toch al ontvangt en veilige, niet-kritische afstellingen aanbevelen zonder extra polling. Automatisch beheer blijft expliciet opt-in: de globale vertrouwensdrempel staat standaard op **95%**, en elke beheerde parameter kan een eigen vertrouwensdrempel en toegestane minimum-/maximumwaarde krijgen. Bij de eerste toestemming staat die band standaard op 50% onder en 50% boven de huidige waarde.
+
+Winst neemt rechtstreeks PV-gebruik, PV uit de batterij, laadverschuiving en **PV-export/injectie** mee. Bij vaste en meervoudige tarieven kan per tarief een injectieprijs worden ingesteld. Voor dynamische exportprijzen kan een Flow-kaart de actuele exportprijs aanleveren. De tekenconventie is bewust eenvoudig: **positief = vergoeding die je ontvangt; negatief = kost om te injecteren**. Een aparte Flow-input kan de cumulatieve geëxporteerde energie van vandaag aanleveren om de berekende export te kalibreren met de echte meterstand.
 
 ## Homey API permission
 
