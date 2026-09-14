@@ -7,6 +7,16 @@ const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceRespo
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 
+function parseFiniteInputNumber(value) {
+  // Number(null), Number('') and Number(false) are all 0 in JavaScript. Flow/API
+  // inputs must not let those missing/non-numeric values masquerade as a fresh
+  // 0 W meter measurement.
+  if (value === null || value === undefined || typeof value === 'boolean') return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 class HomeFluxEmsApp extends Homey.App {
   async onInit() {
     this.state = {
@@ -126,6 +136,8 @@ class HomeFluxEmsApp extends Homey.App {
     this.statusTimer = null;
     this.statusPublishing = false;
     this.pendingStatusResult = null;
+    this.pendingStatusSignature = '';
+    this.lastPublishedStatusSignature = '';
     this.lastStatusPublishAt = 0;
     this.lastStatusTokenValues = new Map();
     this.lastTriggeredStatusText = null;
@@ -203,6 +215,10 @@ class HomeFluxEmsApp extends Homey.App {
     this.hvacBoostMode = null;
     this.hvacManagedPowerOn = false;
     this.lastHvacControlAt = 0;
+    // v0.7.8: one single-flight, latest-wins output queue per HVAC instance.
+    // A slow Flow response can retain at most one in-flight decision and one
+    // pending replacement instead of one Promise/decision per recalculation.
+    this.hvacPublishSlots = Array.from({ length: 4 }, () => ({ publishing: false, pending: null }));
 
     // v0.3.49: EV 1 and HVAC 1 retain every historical setting, Flow ID and
     // runtime field. Instances 2-4 use isolated runtime objects so multiple
@@ -494,7 +510,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.7 initialized');
+    this.log('HomeFlux EMS v0.7.8 initialized');
   }
 
   refreshSettingsCache() {
@@ -535,6 +551,26 @@ class HomeFluxEmsApp extends Homey.App {
       : Number(raw);
     const fallback = Number.isFinite(Number(DEFAULTS.batteryCount)) ? Number(DEFAULTS.batteryCount) : 0;
     return Math.max(0, Math.min(8, Math.round(Number.isFinite(configured) ? configured : fallback)));
+  }
+
+  getGridFreshness(settings = this.getSettings(), now = Date.now()) {
+    const timeoutMs = Math.max(60000, Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 6000);
+    const updatedAt = Number(this.inputUpdatedAt?.grid) || 0;
+    const value = parseFiniteInputNumber(this.state?.gridPowerW);
+    const seen = Boolean(this.inputSeen?.grid);
+    const ageMs = seen && updatedAt > 0 ? Math.max(0, Number(now) - updatedAt) : null;
+    return {
+      fresh: seen && value !== null && updatedAt > 0 && ageMs !== null && ageMs <= timeoutMs,
+      seen,
+      value,
+      updatedAt,
+      timeoutMs,
+      ageSeconds: ageMs === null ? null : Math.round(ageMs / 1000),
+    };
+  }
+
+  getNextLocalDateKey(at = Date.now()) {
+    return shiftDateKey(this.getLocalDateKey(new Date(Number(at) || Date.now())), 1);
   }
 
   getSavingsDateKey(at = Date.now()) {
@@ -586,7 +622,7 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       id: id || 'grid',
       label: label || 'Grid',
-      importPrice: Number.isFinite(importPrice) ? Math.max(0, importPrice) : 0,
+      importPrice: Number.isFinite(importPrice) ? importPrice : 0,
       feedInPrice: Number.isFinite(feedInPrice) ? feedInPrice : 0,
       feedInSource,
     };
@@ -641,16 +677,28 @@ class HomeFluxEmsApp extends Homey.App {
     const seconds = Math.max(0, (now - previousAt) / 1000);
     if (seconds <= 0 || seconds > 300) return;
     if (!this.inputSeen?.grid || !this.inputSeen?.pv) return;
-    if (!Number.isFinite(Number(this.state.gridPowerW)) || !Number.isFinite(Number(this.state.pvPowerW))) return;
 
-    const tariff = this.getSavingsTariffSnapshot();
+    // Never extrapolate cost/savings from a dead P1 stream. lastSampleAt was
+    // advanced above on purpose so a later recovery cannot back-fill the stale
+    // gap with one old value. A stale non-zero PV sample is also unsafe for the
+    // source split; a stable 0 W PV value is allowed to age overnight.
+    const settings = this.getSettings();
+    const gridFreshness = this.getGridFreshness(settings, now);
+    if (!gridFreshness.fresh) return;
+    const pvPowerW = parseFiniteInputNumber(this.state.pvPowerW);
+    if (pvPowerW === null) return;
+    const pvUpdatedAt = Number(this.inputUpdatedAt?.pv) || 0;
+    const pvFresh = pvPowerW === 0 || (pvUpdatedAt > 0 && (now - pvUpdatedAt) <= 5 * 60 * 1000);
+    if (!pvFresh) return;
+
+    const tariff = this.getSavingsTariffSnapshot(settings);
     const before = totalSavings(this.savings.today);
     integrateInterval({
       day: this.savings.today,
       inventory: this.savings.inventory,
       seconds,
-      gridW: Number(this.state.gridPowerW),
-      pvW: Number(this.state.pvPowerW),
+      gridW: gridFreshness.value,
+      pvW: pvPowerW,
       batteryW: Number(this.state.lastTotalCommandW) || 0,
       importPrice: tariff.importPrice,
       feedInPrice: tariff.feedInPrice,
@@ -708,8 +756,10 @@ class HomeFluxEmsApp extends Homey.App {
       addDays(aggregate, calibratedToday);
     }
 
-    const grossImportCost = Math.max(0, Number(aggregate.directGridCost) || 0)
-      + Math.max(0, Number(aggregate.gridChargeCost) || 0);
+    // Purchase prices are signed. During negative-price intervals importing
+    // energy is a credit, so the real import bill may legitimately be negative.
+    const grossImportCost = (Number(aggregate.directGridCost) || 0)
+      + (Number(aggregate.gridChargeCost) || 0);
     const signedPvExportValue = pvExportValue(aggregate);
     // Cost view is net of PV feed-in: positive feed-in compensation lowers the
     // bill; a negative export price raises it because the user pays to inject.
@@ -4408,8 +4458,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.handleExternalEmsSetpoint(args.power));
 
     this.homey.flow.getActionCard('set_grid_power').registerRunListener(async args => {
-      const value = Number(args.power);
-      if (!Number.isFinite(value)) return false;
+      const value = parseFiniteInputNumber(args.power);
+      if (value === null) return false;
       const inputSettings = this.getSettings();
       const wasGridReady = this.getInputReadiness(inputSettings).ready;
       const now = Date.now();
@@ -5564,8 +5614,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.homeyEnergy.zone = this.extractScalar(zoneResponse);
       this.homeyEnergy.interval = this.extractScalar(intervalResponse);
 
-      const today = this.getLocalDateKey(new Date());
-      const tomorrow = this.getLocalDateKey(new Date(Date.now() + 30 * 60 * 60 * 1000));
+      const today = this.getLocalDateKey(new Date(nowMs));
+      const tomorrow = this.getNextLocalDateKey(nowMs);
       const dates = [...new Set([today, tomorrow])];
       const allSlots = [];
       const shapes = [];
@@ -6307,12 +6357,10 @@ class HomeFluxEmsApp extends Homey.App {
     const missing = [];
     const degraded = [];
     const now = Date.now();
-    // The grid meter is the only hard control prerequisite. If it is absent or
-    // stale we cannot know import/export and therefore must not steer batteries.
-    const gridTimeoutMs = Math.max(60000, Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 6000);
-    const gridFresh = Boolean(this.inputSeen.grid)
-      && Number(this.inputUpdatedAt.grid || 0) > 0
-      && (now - Number(this.inputUpdatedAt.grid)) <= gridTimeoutMs;
+    // The grid meter is the only hard control prerequisite. If it is absent,
+    // invalid or stale we cannot know import/export and therefore must not steer.
+    const gridFreshness = this.getGridFreshness(settings, now);
+    const gridFresh = gridFreshness.fresh;
     if (!gridFresh) missing.push(this.inputSeen.grid ? 'netvermogen verouderd' : 'netvermogen');
 
     // PV and forecast improve planning but are not proof of actual grid flow.
@@ -6340,9 +6388,7 @@ class HomeFluxEmsApp extends Homey.App {
       missing,
       degraded,
       gridFresh,
-      gridAgeSeconds: this.inputSeen.grid && this.inputUpdatedAt.grid
-        ? Math.max(0, Math.round((now - this.inputUpdatedAt.grid) / 1000))
-        : null,
+      gridAgeSeconds: gridFreshness.ageSeconds,
       priceDataReady: !degraded.some(item => item.includes('prijs-slots')),
       forecastDataReady: Boolean(this.inputSeen.forecast),
       forecastTomorrowDataReady: Boolean(this.inputSeen.forecastTomorrow),
@@ -8607,6 +8653,8 @@ class HomeFluxEmsApp extends Homey.App {
 
   calculateHvacControl(result = this.latestResult, evDecision = this.latestEvDecision, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
     const settings = options.settings || this.getSettings();
+    const now = Number(options.now) || Date.now();
+    const gridFreshness = this.getGridFreshness(settings, now);
     const allowStart = options.allowStart !== false;
     const instanceIndex = Math.max(0, Math.min(3, Number(options.instanceIndex) || 0));
     const enabled = Boolean(settings.hvacEnabled);
@@ -8666,6 +8714,8 @@ class HomeFluxEmsApp extends Homey.App {
       startEligible: false,
       startAllowedByPriority: allowStart,
       energySource: 'none',
+      gridFresh: gridFreshness.fresh,
+      gridAgeSeconds: gridFreshness.ageSeconds,
     };
 
     const resetBoostState = () => {
@@ -8705,6 +8755,17 @@ class HomeFluxEmsApp extends Homey.App {
       return decision;
     }
 
+    // A stale P1 value may never be interpreted as current PV surplus or spare
+    // Peak Guard headroom. Existing HomeFlux-managed HVAC sessions fail safe by
+    // returning to their baseline; inactive units simply wait for a fresh meter.
+    if (!gridFreshness.fresh) {
+      if (this.hvacBaselineSetpoint !== null || this.hvacManagedPowerOn) {
+        return restoreImmediately('Netmeting verouderd · HVAC terug naar normaal');
+      }
+      decision.reason = this.inputSeen.grid ? 'Wachten op verse netmeting' : 'Wachten op netmeting';
+      return decision;
+    }
+
     // Outdoor temperature is deliberately NOT a prerequisite anymore. It is
     // only used for fan-speed selection when that output is enabled.
     const requiredInputs = Number.isFinite(room) && Number.isFinite(actualSetpoint) && Boolean(mode);
@@ -8727,7 +8788,7 @@ class HomeFluxEmsApp extends Homey.App {
     // with an inverted pair otherwise create immediate start/stop oscillation.
     const stopW = Math.min(startW, Math.max(0, Number.isFinite(configuredStopW) ? configuredStopW : 200));
     const intervalMs = Math.max(1, Number(settings.hvacControlIntervalMinutes) || 5) * 60000;
-    const intervalReady = this.lastHvacControlAt <= 0 || (Date.now() - this.lastHvacControlAt) >= intervalMs;
+    const intervalReady = this.lastHvacControlAt <= 0 || (now - this.lastHvacControlAt) >= intervalMs;
     const hasPvBoost = Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW <= -startW;
     const configuredFastImportW = Number(settings.hvacFastResetImportW);
     const fastImportW = Math.max(0, Number.isFinite(configuredFastImportW) ? configuredFastImportW : 1000);
@@ -8782,7 +8843,7 @@ class HomeFluxEmsApp extends Homey.App {
           if ((direction > 0 && next > baseline) || (direction < 0 && next < baseline)) next = baseline;
           decision.setpointCommand = Math.round(next * 2) / 2;
           if (Boolean(settings.hvacAllowFanControl)) decision.fanTarget = this.getHvacFanScale(settings).min;
-          this.lastHvacControlAt = Date.now();
+          this.lastHvacControlAt = now;
           decision.reason = targetReached
             ? `Comfortdoel bereikt · ${activeMode === 'heat' ? 'verwarmen' : 'koelen'} geleidelijk terug`
             : 'Geen PV/batterijdoorgang · HVAC-setpoint geleidelijk terug';
@@ -8876,7 +8937,7 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    if (decision.setpointCommand !== null || decision.powerCommand !== null || decision.modeCommand) this.lastHvacControlAt = Date.now();
+    if (decision.setpointCommand !== null || decision.powerCommand !== null || decision.modeCommand) this.lastHvacControlAt = now;
     const priorityLabel = String(settings.hvacPriority || 'comfort') === 'pv' ? 'PV-overschot minimaliseren' : 'Comfort eerst';
     if (!decision.reason) decision.reason = `${controlMode === 'cool' ? 'Koelen' : 'Verwarmen'} op ruimtetemperatuur · ${priorityLabel}`;
     return decision;
@@ -8981,8 +9042,51 @@ class HomeFluxEmsApp extends Homey.App {
     ));
   }
 
+  getHvacPublishSlot(index) {
+    const safeIndex = Math.max(0, Math.min(3, Number(index) || 0));
+    if (!Array.isArray(this.hvacPublishSlots)) {
+      this.hvacPublishSlots = Array.from({ length: 4 }, () => ({ publishing: false, pending: null }));
+    }
+    if (!this.hvacPublishSlots[safeIndex]) this.hvacPublishSlots[safeIndex] = { publishing: false, pending: null };
+    return this.hvacPublishSlots[safeIndex];
+  }
+
   async publishHvacDecisionFor(index, decision) {
-    if (index === 0) return this.publishHvacDecision(decision);
+    if (!decision) return;
+    const safeIndex = Math.max(0, Math.min(3, Number(index) || 0));
+    const slot = this.getHvacPublishSlot(safeIndex);
+    // Latest-wins coalescing keeps the queue strictly bounded: while one Flow
+    // trigger is awaiting downstream actions, any number of recalculations can
+    // replace this single pending object but cannot create more open requests.
+    slot.pending = { ...decision };
+    if (slot.publishing) return;
+
+    slot.publishing = true;
+    try {
+      while (slot.pending) {
+        const next = slot.pending;
+        slot.pending = null;
+        await this._publishHvacDecisionNowFor(safeIndex, next);
+      }
+    } finally {
+      slot.publishing = false;
+      // If the active trigger failed while a newer decision arrived, preserve
+      // that newest decision and retry it in a fresh single-flight worker.
+      if (slot.pending) {
+        const latest = slot.pending;
+        slot.pending = null;
+        this.publishHvacDecisionFor(safeIndex, latest)
+          .catch(err => this.error(`HVAC ${safeIndex + 1} queued output failed`, err));
+      }
+    }
+  }
+
+  async publishHvacDecision(decision) {
+    return this.publishHvacDecisionFor(0, decision);
+  }
+
+  async _publishHvacDecisionNowFor(index, decision) {
+    if (index === 0) return this._publishHvacDecisionNow(decision);
     const runtime = this.getExtraHvac(index);
     if (!runtime || !decision) return;
     const settings = this.getHvacInstanceSettings(index);
@@ -9028,10 +9132,12 @@ class HomeFluxEmsApp extends Homey.App {
         runtime.lastPublishedFanSpeed = targetSpeed;
       }
     }
-    runtime.latestDecision = decision;
+    // Do not overwrite a newer calculated decision that arrived while this
+    // Flow trigger was still running.
+    if (!this.getHvacPublishSlot(index).pending) runtime.latestDecision = decision;
   }
 
-  async publishHvacDecision(decision) {
+  async _publishHvacDecisionNow(decision) {
     if (!decision) return;
     const settings = this.getSettings();
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
@@ -9123,6 +9229,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   calculateBoilerDecision(result = this.latestResult, settings = this.getSettings(), options = {}) {
     const now = Number(options.now) || Date.now();
+    const gridFreshness = this.getGridFreshness(settings, now);
     this.updateBoilerRuntimeClock(now);
     const enabled = this.getBoilerCount(settings) > 0 && Boolean(settings.boilerEnabled);
     const hasHomeBattery = this.getBatteryCount(settings) > 0;
@@ -9231,6 +9338,8 @@ class HomeFluxEmsApp extends Homey.App {
       currentBatteryCommandW: Math.round(currentBatteryCommandW),
       nextBatteryCommandW: Math.round(nextBatteryCommandW),
       predictedGridAfterBatteryW: predictedGridAfterBatteryW === null ? null : Math.round(predictedGridAfterBatteryW),
+      gridFresh: gridFreshness.fresh,
+      gridAgeSeconds: gridFreshness.ageSeconds,
       reason: '',
     };
 
@@ -9259,6 +9368,27 @@ class HomeFluxEmsApp extends Homey.App {
         this.persistBoilerRuntime();
       }
       decision.reason = 'Boiler-module uit';
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    // The boiler is a grid-significant load. Never start or keep a HomeFlux-
+    // managed heating cycle from an old P1 value. Preserve accumulated cycle
+    // time so the cycle can continue safely after the meter recovers.
+    if (!gridFreshness.fresh && running) {
+      decision.on = false;
+      decision.running = false;
+      decision.outputCommand = false;
+      decision.reason = 'Netmeting verouderd · boiler gestopt';
+      this.boilerState.outputOn = false;
+      this.boilerState.activeSource = '';
+      this.boilerState.peakSupportRequestedAt = 0;
+      this.persistBoilerRuntime();
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+    if (!gridFreshness.fresh && !warm) {
+      decision.reason = this.inputSeen.grid ? 'Wachten op verse netmeting' : 'Wachten op netmeting';
       this.boilerState.latestDecision = decision;
       return decision;
     }
@@ -10476,12 +10606,8 @@ class HomeFluxEmsApp extends Homey.App {
     });
   }
 
-  queueStatusUpdate(result, force = false) {
-    const signature = this.getStatusResultSignature(result);
-    if (!force && signature && signature === this.lastQueuedStatusSignature) return;
-    if (signature) this.lastQueuedStatusSignature = signature;
-    this.pendingStatusResult = result;
-    if (this.statusPublishing) return;
+  schedulePendingStatusPublish(force = false) {
+    if (this.statusPublishing || !this.pendingStatusResult) return;
 
     const minIntervalMs = 1000;
     const wait = force ? 0 : Math.max(0, minIntervalMs - (Date.now() - this.lastStatusPublishAt));
@@ -10502,11 +10628,30 @@ class HomeFluxEmsApp extends Homey.App {
     }
   }
 
+  queueStatusUpdate(result, force = false) {
+    const signature = this.getStatusResultSignature(result);
+    if (!force && signature) {
+      // Coalesce duplicates against the value that is actually pending. Do not
+      // compare a pending update with a signature that was merely queued while
+      // an older status was still publishing; that used to strand the pending
+      // result forever after the active publication completed.
+      if (this.pendingStatusResult && signature === this.pendingStatusSignature) return;
+      if (!this.statusPublishing && !this.pendingStatusResult && signature === this.lastPublishedStatusSignature) return;
+    }
+
+    this.pendingStatusResult = result;
+    this.pendingStatusSignature = signature;
+    this.lastQueuedStatusSignature = signature;
+    this.schedulePendingStatusPublish(force);
+  }
+
   async publishPendingStatus() {
     if (this.statusPublishing) return;
     const result = this.pendingStatusResult;
     if (!result) return;
+    const signature = this.pendingStatusSignature || this.getStatusResultSignature(result);
     this.pendingStatusResult = null;
+    this.pendingStatusSignature = '';
     this.statusPublishing = true;
 
     try {
@@ -10561,9 +10706,13 @@ class HomeFluxEmsApp extends Homey.App {
 
       await this.syncEmsDevices(result);
       this.lastStatusPublishAt = Date.now();
+      this.lastPublishedStatusSignature = signature;
+      this.lastQueuedStatusSignature = signature;
     } finally {
       this.statusPublishing = false;
-      if (this.pendingStatusResult) this.queueStatusUpdate(this.pendingStatusResult);
+      // The latest pending result is already stored; schedule it directly
+      // instead of feeding it through duplicate detection again.
+      if (this.pendingStatusResult) this.schedulePendingStatusPublish(false);
     }
   }
 
@@ -11023,7 +11172,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.7',
+      version: '0.7.8',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -11100,7 +11249,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.7',
+      version: '0.7.8',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -11386,7 +11535,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.7',
+      version: '0.7.8',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -11533,10 +11682,11 @@ class HomeFluxEmsApp extends Homey.App {
     let planningInputChanged = false;
     let gridInputChanged = false;
 
-    if (body.gridPowerW !== undefined && Number.isFinite(Number(body.gridPowerW))) {
+    const apiGridPowerW = parseFiniteInputNumber(body.gridPowerW);
+    if (body.gridPowerW !== undefined && apiGridPowerW !== null) {
       const now = Date.now();
       this.recordSavingsSample(now);
-      this.state.gridPowerW = Number(body.gridPowerW);
+      this.state.gridPowerW = apiGridPowerW;
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
       this.recordGridSample(this.state.gridPowerW, now);

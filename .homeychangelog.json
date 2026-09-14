@@ -1,4 +1,8 @@
 {
+  "0.7.8": {
+    "en": "Safety and reliability fixes: stale grid measurements can no longer start or keep HVAC/boiler loads running, delayed HVAC Flow outputs are serialized with a bounded latest-wins queue, tomorrow pricing uses the next local calendar day, queued status updates can no longer get stranded, negative purchase prices remain signed in Savings, stale measurements no longer keep accumulating costs, and invalid null/blank grid inputs no longer refresh the meter as 0 W.",
+    "nl": "Veiligheids- en betrouwbaarheidsfixes: verouderde netmetingen kunnen HVAC/boiler niet meer starten of actief houden, vertraagde HVAC-Flow-uitvoer wordt geserialiseerd met een begrensde latest-wins-wachtrij, morgenprijzen gebruiken de volgende lokale kalenderdag, wachtende statusupdates kunnen niet meer blijven hangen, negatieve aankoopprijzen blijven negatief in Winst/Kost, verouderde metingen tellen geen kosten meer door en ongeldige null/lege netinputs vernieuwen de meter niet langer als 0 W."
+  },
   "0.7.7": {
     "en": "Version bump of the final 0.7.6 candidate with no additional functional changes.",
     "nl": "Versiebump van de definitieve 0.7.6-kandidaat zonder bijkomende functionele wijzigingen."

@@ -15,7 +15,7 @@ const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'
 const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.7');
+  assert.equal(manifest.version, '0.7.8');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -26,8 +26,8 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.7 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.7 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.8 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.8 — Your energy, managed differently');
 assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
 assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
 assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');

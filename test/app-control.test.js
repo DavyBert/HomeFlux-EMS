@@ -14,6 +14,7 @@ Module._load = originalLoad;
 
 function bareApp() {
   const app = Object.create(HomeFluxEmsApp.prototype);
+  const initializedAt = Date.now();
   app.state = {
     gridPowerW: 0,
     pvPowerW: 0,
@@ -34,8 +35,8 @@ function bareApp() {
     batterySoc: [true, true, true, true, false, false, false, false],
   };
   app.inputUpdatedAt = {
-    grid: 0,
-    pv: 0,
+    grid: initializedAt,
+    pv: initializedAt,
     forecast: 0,
     forecastTomorrow: 0,
     batterySoc: Array(8).fill(0),
@@ -2366,7 +2367,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.7');
+  assert.equal(simulation.version, '0.7.8');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);

@@ -28,9 +28,10 @@ function makeApp() {
     },
   };
   app.settingsCache = { ...DEFAULTS, timezone: 'UTC' };
+  const initializedAt = Date.now();
   app.state = { batterySoc: [95], gridPowerW: -2500, pvPowerW: 0 };
-  app.inputSeen = { batterySoc: [true], pv: false };
-  app.inputUpdatedAt = { pv: 0 };
+  app.inputSeen = { grid: true, batterySoc: [true], pv: false };
+  app.inputUpdatedAt = { grid: initializedAt, pv: 0 };
   app.lastPublishedPvLimitPercent = 100;
   app.boilerState = {
     outputOn: false, cycleAccumulatedMs: 0, lastTickAt: 0, lastCompletedAt: 0,
@@ -99,7 +100,7 @@ function makeApp() {
   // Outdoor temperature is one shared HVAC climate input for every instance.
   app.state.hvacOutdoorTemperatureC = 12.5;
   app.inputSeen.hvac = { outdoorTemperature: true };
-  app.inputUpdatedAt = { hvac: { outdoorTemperature: 123456 } };
+  app.inputUpdatedAt = { ...app.inputUpdatedAt, hvac: { outdoorTemperature: 123456 } };
   app.extraHvacInstances = [
     { state: { roomTemperatureC: 20, outdoorTemperatureC: 99, mode: 'heat', setpointC: 21, fanSpeed: 100 }, seen: { roomTemperature: true, outdoorTemperature: false, mode: true, setpoint: true, fanSpeed: true }, updatedAt: { roomTemperature: 1, outdoorTemperature: 0, mode: 1, setpoint: 1, fanSpeed: 1 } },
     { state: {}, seen: {}, updatedAt: {} },
