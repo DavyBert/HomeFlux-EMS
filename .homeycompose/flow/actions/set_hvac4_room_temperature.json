@@ -19,5 +19,6 @@
   "titleFormatted": {
     "en": "Set HVAC 4 room temperature to [[temperature]] C",
     "nl": "Stel HVAC 4 ruimtetemperatuur in op [[temperature]] C"
-  }
+  },
+  "deprecated": true
 }

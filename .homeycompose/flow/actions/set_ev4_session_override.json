@@ -43,5 +43,6 @@
   "titleFormatted": {
     "en": "EV 4 override for one session: [[mode]]",
     "nl": "EV 4-override voor één laadbeurt: [[mode]]"
-  }
+  },
+  "deprecated": true
 }

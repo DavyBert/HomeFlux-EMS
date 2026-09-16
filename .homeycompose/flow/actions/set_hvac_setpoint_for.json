@@ -1,0 +1,62 @@
+{
+  "title": {
+    "en": "Set HVAC setpoint",
+    "nl": "Stel HVAC-setpoint in"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "dropdown",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "HVAC 1",
+            "nl": "HVAC 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "HVAC 2",
+            "nl": "HVAC 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "HVAC 3",
+            "nl": "HVAC 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "HVAC 4",
+            "nl": "HVAC 4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setpoint",
+      "type": "number",
+      "title": {
+        "en": "Setpoint (C)",
+        "nl": "Setpoint (C)"
+      },
+      "min": 5,
+      "max": 35,
+      "step": 0.5
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[hvac]] setpoint to [[setpoint]] C",
+    "nl": "Stel [[hvac]]-setpoint in op [[setpoint]] C"
+  },
+  "deprecated": true
+}

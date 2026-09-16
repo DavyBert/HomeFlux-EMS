@@ -46,5 +46,6 @@
   "titleFormatted": {
     "en": "[[hvac]] is actively managed",
     "nl": "[[hvac]] wordt actief gestuurd"
-  }
+  },
+  "deprecated": true
 }

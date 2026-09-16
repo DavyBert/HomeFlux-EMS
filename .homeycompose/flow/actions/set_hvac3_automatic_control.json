@@ -32,5 +32,6 @@
   "titleFormatted": {
     "en": "Set HVAC 3 automatic control to [[enabled]]",
     "nl": "Stel HVAC 3 automatische sturing in op [[enabled]]"
-  }
+  },
+  "deprecated": true
 }

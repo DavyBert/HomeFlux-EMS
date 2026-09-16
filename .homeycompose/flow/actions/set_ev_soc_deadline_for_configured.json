@@ -1,0 +1,72 @@
+{
+  "title": {
+    "en": "Set EV minimum SoC by time",
+    "nl": "Stel EV: minimum-SoC tegen tijd in"
+  },
+  "hint": {
+    "en": "Sets a persistent minimum SoC and deadline for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. Guarantee = No tries to secure the minimum on configured favourable tariffs/PV; Yes may use any tariff when required. After the minimum SoC is reached, charging may continue on favourable moments. Peak Guard always remains absolute. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Stelt een blijvende minimum-SoC en deadline voor de geselecteerde EV in. Het doel blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. Doel gegarandeerd = Nee probeert het minimum via ingestelde gunstige tarieven/PV te halen; Ja mag elk tarief gebruiken wanneer dat nodig is. Na de minimum-SoC mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "autocomplete",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "placeholder": {
+        "en": "Select configured EV",
+        "nl": "Kies geconfigureerde EV"
+      }
+    },
+    {
+      "name": "target_soc",
+      "type": "number",
+      "title": {
+        "en": "Minimum SoC (%)",
+        "nl": "Minimum-SoC (%)"
+      },
+      "min": 1,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "name": "time",
+      "type": "text",
+      "title": {
+        "en": "Deadline (HH:mm)",
+        "nl": "Deadline (uu:mm)"
+      },
+      "placeholder": "07:00"
+    },
+    {
+      "name": "guarantee",
+      "type": "dropdown",
+      "title": {
+        "en": "Guarantee target?",
+        "nl": "Doel gegarandeerd?"
+      },
+      "values": [
+        {
+          "id": "no",
+          "title": {
+            "en": "No — favourable moments only",
+            "nl": "Nee — alleen gunstige momenten"
+          }
+        },
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes — all tariffs if required",
+            "nl": "Ja — alle tarieven indien nodig"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]]: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+    "nl": "[[ev]]: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+  }
+}

@@ -77,5 +77,6 @@
   "titleFormatted": {
     "en": "[[ev]] mode is [[mode]]",
     "nl": "[[ev]]-modus is [[mode]]"
-  }
+  },
+  "deprecated": true
 }

@@ -1,0 +1,87 @@
+Base archive: HomeFlux-EMS-v0.7.12.zip
+Base SHA256: eacd475ffd8749db21c2af4189947324d42acbea490b63f9507ccceb680aa574
+
+Verified: app.js is identical after removing only the added Flow adapter and choice-provider wiring. All existing handler bodies are unchanged.
+Root manifest metadata, slogan, permissions, version and dependency lock are unchanged.
+
+Changed files at audit time:
+.homeychangelog.json
+.homeycompose/flow/actions/clear_ev_soc_deadline_override_for.json
+.homeycompose/flow/actions/end_ev_charging_session_for.json
+.homeycompose/flow/actions/set_battery_soc.json
+.homeycompose/flow/actions/set_ev_energy_deadline_for.json
+.homeycompose/flow/actions/set_ev_session_override_for.json
+.homeycompose/flow/actions/set_ev_soc_deadline_for.json
+.homeycompose/flow/actions/set_ev_soc_for.json
+.homeycompose/flow/actions/set_ev_status_for.json
+.homeycompose/flow/actions/set_hvac_automatic_control_for.json
+.homeycompose/flow/actions/set_hvac_fan_speed_for.json
+.homeycompose/flow/actions/set_hvac_mode_for.json
+.homeycompose/flow/actions/set_hvac_room_temperature_for.json
+.homeycompose/flow/actions/set_hvac_setpoint_for.json
+.homeycompose/flow/conditions/ev_charging_is_allowed.json
+.homeycompose/flow/conditions/ev_is_charging.json
+.homeycompose/flow/conditions/ev_is_connected.json
+.homeycompose/flow/conditions/ev_mode_is.json
+.homeycompose/flow/conditions/hvac_is_active.json
+.homeycompose/flow/triggers/ev_charge_current_updated_for.json
+.homeycompose/flow/triggers/ev_charge_mode_updated_for.json
+.homeycompose/flow/triggers/ev_charging_allowed_updated_for.json
+.homeycompose/flow/triggers/hvac_fan_updated_for.json
+.homeycompose/flow/triggers/hvac_mode_updated_for.json
+.homeycompose/flow/triggers/hvac_power_updated_for.json
+.homeycompose/flow/triggers/hvac_setpoint_updated_for.json
+.homeycompose/flow/triggers/request_battery_soc_needed_for.json
+.homeycompose/flow/triggers/request_ev_soc_needed_for.json
+.homeycompose/flow/triggers/split_command_battery_charge_mode_for.json
+.homeycompose/flow/triggers/split_command_battery_charge_power_for.json
+.homeycompose/flow/triggers/split_command_battery_discharge_mode_for.json
+.homeycompose/flow/triggers/split_command_battery_discharge_power_for.json
+README.md
+app.js
+app.json
+docs/FLOW-MIGRATION-0.7.12.md
+package.json
+settings/index.html
+test/flow-slot-cards.test.js
+test/regressions-0.7.8.test.js
+
+Added files at audit time:
+.homeycompose/flow/actions/clear_ev_soc_deadline_override_for_configured.json
+.homeycompose/flow/actions/end_ev_charging_session_for_configured.json
+.homeycompose/flow/actions/set_battery_soc_configured.json
+.homeycompose/flow/actions/set_ev_energy_deadline_for_configured.json
+.homeycompose/flow/actions/set_ev_session_override_for_configured.json
+.homeycompose/flow/actions/set_ev_soc_deadline_for_configured.json
+.homeycompose/flow/actions/set_ev_soc_for_configured.json
+.homeycompose/flow/actions/set_ev_status_for_configured.json
+.homeycompose/flow/actions/set_hvac_automatic_control_for_configured.json
+.homeycompose/flow/actions/set_hvac_fan_speed_for_configured.json
+.homeycompose/flow/actions/set_hvac_mode_for_configured.json
+.homeycompose/flow/actions/set_hvac_room_temperature_for_configured.json
+.homeycompose/flow/actions/set_hvac_setpoint_for_configured.json
+.homeycompose/flow/conditions/ev_charging_is_allowed_configured.json
+.homeycompose/flow/conditions/ev_is_charging_configured.json
+.homeycompose/flow/conditions/ev_is_connected_configured.json
+.homeycompose/flow/conditions/ev_mode_is_configured.json
+.homeycompose/flow/conditions/hvac_is_active_configured.json
+.homeycompose/flow/triggers/ev_charge_current_updated_for_configured.json
+.homeycompose/flow/triggers/ev_charge_mode_updated_for_configured.json
+.homeycompose/flow/triggers/ev_charging_allowed_updated_for_configured.json
+.homeycompose/flow/triggers/hvac_fan_updated_for_configured.json
+.homeycompose/flow/triggers/hvac_mode_updated_for_configured.json
+.homeycompose/flow/triggers/hvac_power_updated_for_configured.json
+.homeycompose/flow/triggers/hvac_setpoint_updated_for_configured.json
+.homeycompose/flow/triggers/request_battery_soc_needed_for_configured.json
+.homeycompose/flow/triggers/request_ev_soc_needed_for_configured.json
+.homeycompose/flow/triggers/split_command_battery_charge_mode_for_configured.json
+.homeycompose/flow/triggers/split_command_battery_charge_power_for_configured.json
+.homeycompose/flow/triggers/split_command_battery_discharge_mode_for_configured.json
+.homeycompose/flow/triggers/split_command_battery_discharge_power_for_configured.json
+docs/CONFIGURED-FLOW-MAPPING.json
+lib/configured-flow-cards.js
+test/configured-flow-cards.test.js
+test/fixtures/flow-0.7.12-dropdown.json
+test/helpers/flow-cards.js
+
+Unchanged existing files: 261

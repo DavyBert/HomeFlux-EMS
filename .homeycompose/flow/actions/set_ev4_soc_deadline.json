@@ -56,5 +56,6 @@
   "titleFormatted": {
     "en": "EV 4: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
     "nl": "EV 4: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
-  }
+  },
+  "deprecated": true
 }

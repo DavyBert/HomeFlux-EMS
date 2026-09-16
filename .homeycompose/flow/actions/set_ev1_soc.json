@@ -23,5 +23,6 @@
   "titleFormatted": {
     "en": "Set EV 1 SoC to [[soc]]%",
     "nl": "Stel EV 1-SoC in op [[soc]]%"
-  }
+  },
+  "deprecated": true
 }

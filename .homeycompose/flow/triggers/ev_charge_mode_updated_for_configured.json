@@ -1,0 +1,48 @@
+{
+  "title": {
+    "en": "EV charge mode is updated",
+    "nl": "EV-laadmodus is bijgewerkt"
+  },
+  "hint": {
+    "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "tokens": [
+    {
+      "name": "charge_mode",
+      "type": "string",
+      "title": {
+        "en": "Charge mode",
+        "nl": "Laadmodus"
+      },
+      "example": "smart"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Slim laden toegestaan"
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] charge mode is updated",
+    "nl": "[[ev]]-laadmodus is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "autocomplete",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "placeholder": {
+        "en": "Select configured EV",
+        "nl": "Kies geconfigureerde EV"
+      }
+    }
+  ]
+}

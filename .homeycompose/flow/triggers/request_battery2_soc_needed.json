@@ -10,5 +10,6 @@
   "hint": {
     "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
     "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
-  }
+  },
+  "deprecated": true
 }

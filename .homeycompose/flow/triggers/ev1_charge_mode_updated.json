@@ -26,5 +26,6 @@
       },
       "example": "Slim laden toegestaan"
     }
-  ]
+  ],
+  "deprecated": true
 }

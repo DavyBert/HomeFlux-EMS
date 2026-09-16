@@ -460,6 +460,7 @@ function hvacSettings() {
   const flowApp = baseApp(now);
   const listeners = {};
   const card = id => ({
+    registerArgumentAutocompleteListener() { return this; },
     trigger: async () => true,
     registerRunListener(fn) { listeners[id] = fn; return this; },
   });

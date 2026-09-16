@@ -1,0 +1,28 @@
+{
+  "title": {
+    "en": "Battery: switch to discharge mode",
+    "nl": "Batterij: schakel naar ontlaadmodus"
+  },
+  "hint": {
+    "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "titleFormatted": {
+    "en": "[[battery]]: switch to discharge mode",
+    "nl": "[[battery]]: schakel naar ontlaadmodus"
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "autocomplete",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "placeholder": {
+        "en": "Select configured battery",
+        "nl": "Kies geconfigureerde batterij"
+      }
+    }
+  ]
+}

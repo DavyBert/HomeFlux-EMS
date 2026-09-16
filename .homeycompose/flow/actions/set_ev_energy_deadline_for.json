@@ -1,0 +1,99 @@
+{
+  "title": {
+    "en": "Set EV energy needed by time",
+    "nl": "Stel EV: kWh nodig tegen tijd in"
+  },
+  "hint": {
+    "en": "Sets a persistent minimum energy target for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps deadline charging on configured favourable tariffs/PV; Yes may use any tariff when required to secure the minimum. After the minimum is reached, charging may continue on favourable moments. Peak Guard always remains absolute.",
+    "nl": "Stelt een blijvend minimum-energiedoel voor de geselecteerde EV in. Het blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee gebruikt voor de deadline alleen ingestelde gunstige tarieven/PV; Ja mag elk tarief gebruiken wanneer dat nodig is om het minimum te garanderen. Na het minimum mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut."
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "dropdown",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "EV 1",
+            "nl": "EV 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "EV 2",
+            "nl": "EV 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "EV 3",
+            "nl": "EV 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "EV 4",
+            "nl": "EV 4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "energy",
+      "type": "number",
+      "title": {
+        "en": "Energy needed (kWh)",
+        "nl": "Nodige energie (kWh)"
+      },
+      "min": 0,
+      "max": 250,
+      "step": 0.1
+    },
+    {
+      "name": "time",
+      "type": "text",
+      "title": {
+        "en": "Deadline (HH:mm)",
+        "nl": "Deadline (uu:mm)"
+      },
+      "placeholder": "07:00"
+    },
+    {
+      "name": "guarantee",
+      "type": "dropdown",
+      "title": {
+        "en": "Guarantee target?",
+        "nl": "Doel gegarandeerd?"
+      },
+      "values": [
+        {
+          "id": "no",
+          "title": {
+            "en": "No — favourable moments only",
+            "nl": "Nee — alleen gunstige momenten"
+          }
+        },
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes — all tariffs if required",
+            "nl": "Ja — alle tarieven indien nodig"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]]: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+    "nl": "[[ev]]: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+  },
+  "deprecated": true
+}

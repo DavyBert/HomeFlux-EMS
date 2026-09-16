@@ -1,0 +1,52 @@
+{
+  "title": {
+    "en": "Set HVAC automatic control",
+    "nl": "Stel HVAC automatische sturing in"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "autocomplete",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "placeholder": {
+        "en": "Select configured HVAC",
+        "nl": "Kies geconfigureerde HVAC"
+      }
+    },
+    {
+      "name": "enabled",
+      "type": "dropdown",
+      "title": {
+        "en": "Automatic control",
+        "nl": "Automatische sturing"
+      },
+      "values": [
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        },
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[hvac]] automatic control to [[enabled]]",
+    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]"
+  },
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

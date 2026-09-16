@@ -53,5 +53,6 @@
       },
       "example": 80
     }
-  ]
+  ],
+  "deprecated": true
 }

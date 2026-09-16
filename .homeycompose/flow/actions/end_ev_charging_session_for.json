@@ -1,0 +1,55 @@
+{
+  "title": {
+    "en": "EV charging session has ended",
+    "nl": "Laadsessie EV is beëindigd"
+  },
+  "hint": {
+    "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws the selected EV grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until the selected EV reconnects.",
+    "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van de geselecteerde EV onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot de geselecteerde EV opnieuw wordt aangesloten."
+  },
+  "titleFormatted": {
+    "en": "[[ev]] charging session has ended",
+    "nl": "Laadsessie [[ev]] is beëindigd"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "dropdown",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "EV 1",
+            "nl": "EV 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "EV 2",
+            "nl": "EV 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "EV 3",
+            "nl": "EV 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "EV 4",
+            "nl": "EV 4"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

@@ -6,5 +6,6 @@
   "hint": {
     "en": "Clears the persistent Flow minimum target for EV 4, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
     "nl": "Wist het blijvende Flow-minimumdoel voor EV 4, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
-  }
+  },
+  "deprecated": true
 }

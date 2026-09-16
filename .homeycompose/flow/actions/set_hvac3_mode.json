@@ -53,5 +53,6 @@
   "titleFormatted": {
     "en": "Set HVAC 3 mode to [[mode]]",
     "nl": "Stel HVAC 3-modus in op [[mode]]"
-  }
+  },
+  "deprecated": true
 }

@@ -19,5 +19,6 @@
   "titleFormatted": {
     "en": "Set HVAC 3 fan speed to [[speed]]",
     "nl": "Stel HVAC 3-ventilatorsnelheid in op [[speed]]"
-  }
+  },
+  "deprecated": true
 }

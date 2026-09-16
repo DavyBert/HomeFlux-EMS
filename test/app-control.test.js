@@ -2234,7 +2234,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 65);
+  assert.equal(stored.settingsSchemaVersion, 66);
   assert.deepEqual(stored.evEnergyDeadlineOverrides, []);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
@@ -2273,7 +2273,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.settingsCache = null;
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 65);
+  assert.equal(stored.settingsSchemaVersion, 66);
   assert.equal(stored.gridControlWindowSeconds, 5);
   assert.equal(stored.evFeedbackTolerancePercent, 15);
   assert.equal(stored.ev2FeedbackTolerancePercent, 20);
@@ -2316,7 +2316,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     evMinCurrentA:6, evMaxCurrentA:32,
   });
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 65);
+  assert.equal(stored.settingsSchemaVersion, 66);
   assert.deepEqual(stored._autoTuneLimits.lowForecastAutoSunnySoc, { min:70, max:85, minConfidencePercent:95, userDefined:false });
   assert.deepEqual(stored._autoTuneLimits.commandDeadbandW, { min:25, max:250, minConfidencePercent:95, userDefined:false });
   assert.deepEqual(stored._autoTuneLimits.balanceStrength, { min:0.12, max:0.31, minConfidencePercent:90, userDefined:true });
@@ -2333,8 +2333,37 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.settingsCache = null;
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 65);
+  assert.equal(stored.settingsSchemaVersion, 66);
   assert.equal(stored.evIdleHouseLoadW, 0);
+}
+
+// v0.7.10 maintenance: standard tariff charging is exclusive with the PV-only
+// path, while grid top-up remains available only as an addition to PV charging.
+{
+  const app = bareApp();
+  const stored = {
+    settingsSchemaVersion: 65,
+    touRates: [
+      { id:'cheap', evChargeAllowed:true, evPvChargeAllowed:true, evPvGridTopUpAllowed:true, ev2ChargeAllowed:true, ev2PvChargeAllowed:true, ev2PvGridTopUpAllowed:true },
+      { id:'normal', evChargeAllowed:false, evPvChargeAllowed:true, evPvGridTopUpAllowed:true },
+      { id:'off', evChargeAllowed:false, evPvChargeAllowed:false, evPvGridTopUpAllowed:true },
+    ],
+  };
+  app.homey.settings = {
+    get: key => Object.prototype.hasOwnProperty.call(stored, key) ? stored[key] : null,
+    set: (key, value) => { stored[key] = value; },
+  };
+  app.settingsCache = null;
+  app.migrateSettings();
+  assert.equal(stored.settingsSchemaVersion, 66);
+  assert.equal(stored.touRates[0].evPvChargeAllowed, false);
+  assert.equal(stored.touRates[0].evPvGridTopUpAllowed, false);
+  assert.equal(stored.touRates[0].ev2PvChargeAllowed, false);
+  assert.equal(stored.touRates[0].ev2PvGridTopUpAllowed, false);
+  assert.equal(stored.touRates[1].evPvChargeAllowed, true);
+  assert.equal(stored.touRates[1].evPvGridTopUpAllowed, true);
+  assert.equal(stored.touRates[2].evPvChargeAllowed, false);
+  assert.equal(stored.touRates[2].evPvGridTopUpAllowed, false);
 }
 
 // v0.3.80: planning simulation is a pure calculation. It uses the entered SoC,
@@ -2367,7 +2396,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.8');
+  assert.equal(simulation.version, '0.7.12');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2545,6 +2574,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.state.lastTotalCommandW = 9040;
   app.state.batterySoc = [80];
   app.lastPublishedEvCurrentA = 16;
+  app.lastPublishedEvAllowed = true;
   app.lastEvPublishedAt = now - 20000;
   app.getPvCurtailmentHeadroomW = () => 0;
   app.getRuntimeSettings = settings => settings;
@@ -3200,6 +3230,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.lastPublishedEvChargeMode = 'smart';
   app.lastPublishedEvCurrentA = 0;
+  app.lastPublishedEvAllowed = true;
   assert.equal(app.getEvCommandedPowerW(0, settings), 7 * 230);
   assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 7);
 

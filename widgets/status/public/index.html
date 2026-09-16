@@ -325,8 +325,19 @@
     function evBatteryCoordinationText(ev, Homey) {
       const supportW = Math.max(0, Number(ev?.batterySupportAllocatedW) || 0);
       const batteryW = Math.max(0, Number(ev?.batteryDischargeW) || 0);
-      const gridTargetW = Math.max(0, Number(ev?.evGridImportTargetW) || 0);
+      const gridTargetW = Math.max(0, Number(ev?.evGridImportActiveTargetW) || 0);
       const desiredA = Math.max(0, Number(ev?.desiredCurrentA) || 0);
+      if (Boolean(ev?.evHouseLoadHold)) {
+        const baseline = Number(ev?.evHouseBaselineW);
+        const reference = ev?.evHouseBaselineW !== null && ev?.evHouseBaselineW !== undefined && Number.isFinite(baseline)
+          ? ` · ${tr(Homey, 'widget.status.evHouseReference', 'house reference')} ${coordinationPower(baseline)}` : '';
+        return `${tr(Homey, 'widget.status.evNoLoadGridStopped', 'No EV load detected for 1 minute · grid permission withdrawn')}${reference}`;
+      }
+      if (String(ev?.evGridImportControlState || '') === 'house_load_observation') {
+        const seconds = Math.max(0, Math.round(Number(ev?.evGridImportGraceRemainingSeconds) || 0));
+        return tr(Homey, 'widget.status.evHouseObservation', 'House load is back near its reference · EV grid permission stops in {seconds}s if this continues')
+          .replace('{seconds}', seconds);
+      }
       if (supportW > 0) {
         return tr(Homey, 'widget.status.evBatterySupport', 'Home battery intentionally supports the EV with {power} extra charging power')
           .replace('{power}', coordinationPower(supportW));
@@ -419,10 +430,38 @@
       return parts.join(' · ');
     }
 
+    function evSessionText(ev, Homey) {
+      const session = ev?.session || {};
+      const state = String(session.state || 'idle');
+      if (state === 'ended' && Number(session.endedAt) > 0) {
+        const reason = String(session.endedReason || '');
+        const source = reason === 'flow'
+          ? ` · ${tr(Homey, 'widget.status.viaFlow', 'by Flow')}`
+          : reason === 'house_load'
+            ? ` · ${tr(Homey, 'widget.status.automaticHouseLoad', 'automatically by house measurement')}` : '';
+        return `${tr(Homey, 'widget.status.evSessionEnded', 'Session ended')} ${formatTime(session.endedAt)}${source}`;
+      }
+      if (state === 'charging' && Number(session.startedAt) > 0) {
+        const source = String(session.detectionSource || '') === 'house_load'
+          ? tr(Homey, 'widget.status.houseMeasurement', 'house measurement')
+          : tr(Homey, 'widget.status.currentFeedback', 'current feedback');
+        return `${tr(Homey, 'widget.status.evSessionStarted', 'Started')} ${formatTime(session.startedAt)} · ${source}`;
+      }
+      if (state === 'paused' && Number(session.startedAt) > 0) {
+        return `${tr(Homey, 'widget.status.evChargingPaused', 'Charging paused')} · ${tr(Homey, 'widget.status.evSessionStarted', 'started')} ${formatTime(session.startedAt)}`;
+      }
+      if (state === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
+      return '';
+    }
+
     function evState(ev, Homey) {
       if (!ev || !ev.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
       if (ev.received && ev.received.connected === false) return tr(Homey, 'widget.status.waitingForStatus', 'Waiting for status');
+      const sessionState = String(ev.session?.state || '');
+      if (sessionState === 'ended') return tr(Homey, 'widget.status.evSessionEnded', 'Session ended');
       if (!ev.connected) return tr(Homey, 'widget.status.evNotConnected', 'Not connected');
+      if (sessionState === 'paused') return tr(Homey, 'widget.status.evChargingPaused', 'Charging paused');
+      if (sessionState === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
       if (ev.peakLimited) return tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
       const active = Number(ev.desiredCurrentA || ev.outputCurrentA || ev.actualCurrentA || 0) > 0 && (ev.allowed || ev.outputAllowed || Number(ev.actualCurrentA) > 0);
       const source = String(ev.source || 'off');
@@ -601,6 +640,8 @@
               details.push(ev.connected ? tr(Homey, 'widget.status.connected', 'Connected') : tr(Homey, 'widget.status.notConnected', 'Not connected'));
               const amps = Math.max(0, Number(ev.outputCurrentA || ev.desiredCurrentA || ev.actualCurrentA) || 0);
               if (amps > 0) details.push(`${Math.round(amps * 10) / 10} A`);
+              const session = evSessionText(ev, Homey);
+              if (session) details.push(session);
             }
             const reasons = [];
             if (enabled(settings, 'showReasons')) {

@@ -1,0 +1,28 @@
+{
+  "title": {
+    "en": "[[hvac]] is actively managed",
+    "nl": "[[hvac]] wordt actief gestuurd"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "autocomplete",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "placeholder": {
+        "en": "Select configured HVAC",
+        "nl": "Kies geconfigureerde HVAC"
+      }
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[hvac]] is actively managed",
+    "nl": "[[hvac]] wordt actief gestuurd"
+  },
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

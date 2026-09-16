@@ -1,0 +1,71 @@
+{
+  "title": {
+    "en": "HVAC mode command is updated",
+    "nl": "HVAC-modusopdracht is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "mode",
+      "type": "string",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "example": "cool"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Koelen met PV-overschot"
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[hvac]] mode command is updated",
+    "nl": "[[hvac]]-modusopdracht is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "dropdown",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "HVAC 1",
+            "nl": "HVAC 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "HVAC 2",
+            "nl": "HVAC 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "HVAC 3",
+            "nl": "HVAC 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "HVAC 4",
+            "nl": "HVAC 4"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

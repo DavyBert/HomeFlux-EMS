@@ -31,5 +31,6 @@
       },
       "example": "Laden met PV-overschot"
     }
-  ]
+  ],
+  "deprecated": true
 }

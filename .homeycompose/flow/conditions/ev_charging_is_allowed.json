@@ -46,5 +46,6 @@
   "titleFormatted": {
     "en": "HomeFlux allows [[ev]] to charge",
     "nl": "HomeFlux laat [[ev]] laden"
-  }
+  },
+  "deprecated": true
 }

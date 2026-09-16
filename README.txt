@@ -10,3 +10,7 @@ The goal: increase useful self-consumption, buy energy at the right moments, pro
 Use the optional HomeFlux EMS device for quick control/status and add the EMS status and Savings widgets to keep planning, ownership and cost impact visible on your Homey dashboard.
 
 Autotune can auto-manage individually approved parameters only above a configurable confidence threshold and within user-defined limits. Savings also includes PV export/feed-in; positive export prices are compensation, negative prices are injection costs.
+
+
+0.7.12
+Consolidated 120 numbered Battery, EV and HVAC Flow cards into 25 selectable-slot cards for inputs, output commands and SoC requests. Existing numbered cards are deprecated, not removed: saved Flows retain their original arguments, tokens and behaviour. Updated Help and configuration references. Energy management, safety limits, planning and the slogan remain unchanged.

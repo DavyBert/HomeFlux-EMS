@@ -19,5 +19,6 @@
   "titleFormatted": {
     "en": "Set HVAC 1 setpoint to [[setpoint]] C",
     "nl": "Stel HVAC 1-setpoint in op [[setpoint]] C"
-  }
+  },
+  "deprecated": true
 }

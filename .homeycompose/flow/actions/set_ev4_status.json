@@ -47,5 +47,6 @@
   "titleFormatted": {
     "en": "Set EV 4: [[connected]], [[charge_current]] A",
     "nl": "Stel EV 4 in: [[connected]], [[charge_current]] A"
-  }
+  },
+  "deprecated": true
 }

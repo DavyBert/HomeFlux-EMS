@@ -1,0 +1,94 @@
+{
+  "title": {
+    "en": "Battery: charge power is updated",
+    "nl": "Batterij: laadvermogen is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the power token for the selected Battery charge power. After a charge-mode switch this fires 1 second later.",
+    "nl": "Gebruik de power-tag voor het laadvermogen van de geselecteerde Batterij. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+  },
+  "tokens": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Charge power (W)",
+        "nl": "Laadvermogen (W)"
+      },
+      "example": 1000
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[battery]]: charge power is updated",
+    "nl": "[[battery]]: laadvermogen is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "dropdown",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "Battery 1",
+            "nl": "Batterij 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "Battery 2",
+            "nl": "Batterij 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "Battery 3",
+            "nl": "Batterij 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "Battery 4",
+            "nl": "Batterij 4"
+          }
+        },
+        {
+          "id": "5",
+          "title": {
+            "en": "Battery 5",
+            "nl": "Batterij 5"
+          }
+        },
+        {
+          "id": "6",
+          "title": {
+            "en": "Battery 6",
+            "nl": "Batterij 6"
+          }
+        },
+        {
+          "id": "7",
+          "title": {
+            "en": "Battery 7",
+            "nl": "Batterij 7"
+          }
+        },
+        {
+          "id": "8",
+          "title": {
+            "en": "Battery 8",
+            "nl": "Batterij 8"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

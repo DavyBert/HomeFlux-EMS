@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.7.8');
-assert.equal(appCompose.version, '0.7.8');
-assert.equal(packageJson.version, '0.7.8');
-assert.equal(packageLock.version, '0.7.8');
-assert.equal(packageLock.packages[''].version, '0.7.8');
+assert.equal(manifest.version, '0.7.12');
+assert.equal(appCompose.version, '0.7.12');
+assert.equal(packageJson.version, '0.7.12');
+assert.equal(packageLock.version, '0.7.12');
+assert.equal(packageLock.packages[''].version, '0.7.12');
 assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
 assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
 const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');
@@ -42,6 +42,8 @@ assert(statusHtml.includes("enabled(settings, 'showNextCharge')"), 'status widge
 assert(statusHtml.includes("enabled(settings, 'showPlanningPhase')"), 'status widget must allow active planning phase to be selected');
 assert(statusHtml.includes("enabled(settings, 'showPlanningForecast')"), 'status widget must allow planning forecast to be selected');
 assert(statusHtml.includes("enabled(settings, 'showPlanningNeed')"), 'status widget must allow remaining planning need to be selected');
+assert(statusHtml.includes('evSessionText'), 'status widget must render EV session start/end state');
+assert(statusHtml.includes('evHouseBaselineW'), 'status widget must expose the learned house reference during EV coordination');
 assert(statusHtml.includes("enabled(settings, 'showPlanningGrid')"), 'status widget must allow planned grid energy to be selected');
 assert(statusHtml.includes("enabled(settings, 'showPlanningSolar')"), 'status widget must allow expected PV energy to be selected');
 assert(statusHtml.includes("enabled(settings, 'showReasons')"), 'status widget must allow decision reasons to be selected');

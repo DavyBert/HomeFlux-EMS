@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.7.8",
+  "version": "0.7.12",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -669,6 +669,449 @@
       },
       {
         "title": {
+          "en": "EV charge current is updated",
+          "nl": "EV-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV charger current. Peak Guard can always reduce it.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV target SoC (%)",
+              "nl": "EV-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] charge current is updated",
+          "nl": "[[ev]]-laadstroom is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "ev_charge_current_updated_for"
+      },
+      {
+        "title": {
+          "en": "EV charge current is updated",
+          "nl": "EV-laadstroom is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use this output to set the EV charger current. Peak Guard can always reduce it. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "tokens": [
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Charge current (A)",
+              "nl": "Laadstroom (A)"
+            },
+            "example": 10
+          },
+          {
+            "name": "charge_power",
+            "type": "number",
+            "title": {
+              "en": "Estimated charge power (W)",
+              "nl": "Geschat laadvermogen (W)"
+            },
+            "example": 6900
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "title": {
+              "en": "Source",
+              "nl": "Bron"
+            },
+            "example": "pv"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "EV target SoC (%)",
+              "nl": "EV-doel SoC (%)"
+            },
+            "example": 80
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] charge current is updated",
+          "nl": "[[ev]]-laadstroom is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "id": "ev_charge_current_updated_for_configured"
+      },
+      {
+        "title": {
+          "en": "EV charge mode is updated",
+          "nl": "EV-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] charge mode is updated",
+          "nl": "[[ev]]-laadmodus is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "ev_charge_mode_updated_for"
+      },
+      {
+        "title": {
+          "en": "EV charge mode is updated",
+          "nl": "EV-laadmodus is bijgewerkt"
+        },
+        "hint": {
+          "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "tokens": [
+          {
+            "name": "charge_mode",
+            "type": "string",
+            "title": {
+              "en": "Charge mode",
+              "nl": "Laadmodus"
+            },
+            "example": "smart"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Slim laden toegestaan"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] charge mode is updated",
+          "nl": "[[ev]]-laadmodus is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "id": "ev_charge_mode_updated_for_configured"
+      },
+      {
+        "title": {
+          "en": "EV charging permission is updated",
+          "nl": "EV laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] charging permission is updated",
+          "nl": "[[ev]] laden toegestaan is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "ev_charging_allowed_updated_for"
+      },
+      {
+        "title": {
+          "en": "EV charging permission is updated",
+          "nl": "EV laden toegestaan is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "allowed",
+            "type": "string",
+            "title": {
+              "en": "Charging allowed",
+              "nl": "Laden toegestaan"
+            },
+            "example": "Ja"
+          },
+          {
+            "name": "allowed_value",
+            "type": "number",
+            "title": {
+              "en": "Allowed (1/0)",
+              "nl": "Toegestaan (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Laden met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] charging permission is updated",
+          "nl": "[[ev]] laden toegestaan is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "ev_charging_allowed_updated_for_configured"
+      },
+      {
+        "title": {
           "en": "EV target cannot be reached",
           "nl": "EV-doel kan niet worden gehaald"
         },
@@ -781,6 +1224,7 @@
             "example": 80
           }
         ],
+        "deprecated": true,
         "id": "ev1_charge_current_updated"
       },
       {
@@ -812,6 +1256,7 @@
             "example": "Slim laden toegestaan"
           }
         ],
+        "deprecated": true,
         "id": "ev1_charge_mode_updated"
       },
       {
@@ -848,6 +1293,7 @@
             "example": "Laden met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "ev1_charging_allowed_updated"
       },
       {
@@ -906,6 +1352,7 @@
             "example": 80
           }
         ],
+        "deprecated": true,
         "id": "ev2_charge_current_updated"
       },
       {
@@ -937,6 +1384,7 @@
             "example": "Slim laden toegestaan"
           }
         ],
+        "deprecated": true,
         "id": "ev2_charge_mode_updated"
       },
       {
@@ -973,6 +1421,7 @@
             "example": "Laden met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "ev2_charging_allowed_updated"
       },
       {
@@ -1031,6 +1480,7 @@
             "example": 80
           }
         ],
+        "deprecated": true,
         "id": "ev3_charge_current_updated"
       },
       {
@@ -1062,6 +1512,7 @@
             "example": "Slim laden toegestaan"
           }
         ],
+        "deprecated": true,
         "id": "ev3_charge_mode_updated"
       },
       {
@@ -1098,6 +1549,7 @@
             "example": "Laden met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "ev3_charging_allowed_updated"
       },
       {
@@ -1156,6 +1608,7 @@
             "example": 80
           }
         ],
+        "deprecated": true,
         "id": "ev4_charge_current_updated"
       },
       {
@@ -1187,6 +1640,7 @@
             "example": "Slim laden toegestaan"
           }
         ],
+        "deprecated": true,
         "id": "ev4_charge_mode_updated"
       },
       {
@@ -1223,6 +1677,7 @@
             "example": "Laden met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "ev4_charging_allowed_updated"
       },
       {
@@ -1255,6 +1710,544 @@
           }
         ],
         "id": "external_ems_self_consumption_requested"
+      },
+      {
+        "title": {
+          "en": "HVAC fan command is updated",
+          "nl": "HVAC-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] fan command is updated",
+          "nl": "[[hvac]]-ventilatoropdracht is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "hvac_fan_updated_for"
+      },
+      {
+        "title": {
+          "en": "HVAC fan command is updated",
+          "nl": "HVAC-ventilatoropdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "action",
+            "type": "string",
+            "title": {
+              "en": "Fan action",
+              "nl": "Ventilatoractie"
+            },
+            "example": "higher"
+          },
+          {
+            "name": "current_speed",
+            "type": "number",
+            "title": {
+              "en": "Current fan speed value",
+              "nl": "Huidige ventilatorwaarde"
+            },
+            "example": 200
+          },
+          {
+            "name": "target_speed",
+            "type": "number",
+            "title": {
+              "en": "Target fan speed value",
+              "nl": "Doelwaarde ventilator"
+            },
+            "example": 300
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] fan command is updated",
+          "nl": "[[hvac]]-ventilatoropdracht is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "hvac_fan_updated_for_configured"
+      },
+      {
+        "title": {
+          "en": "HVAC mode command is updated",
+          "nl": "HVAC-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] mode command is updated",
+          "nl": "[[hvac]]-modusopdracht is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "hvac_mode_updated_for"
+      },
+      {
+        "title": {
+          "en": "HVAC mode command is updated",
+          "nl": "HVAC-modusopdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "example": "cool"
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] mode command is updated",
+          "nl": "[[hvac]]-modusopdracht is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "hvac_mode_updated_for_configured"
+      },
+      {
+        "title": {
+          "en": "HVAC power command is updated",
+          "nl": "HVAC aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] power command is updated",
+          "nl": "[[hvac]] aan/uit-opdracht is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "hvac_power_updated_for"
+      },
+      {
+        "title": {
+          "en": "HVAC power command is updated",
+          "nl": "HVAC aan/uit-opdracht is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "nl": "Status"
+            },
+            "example": "Aan"
+          },
+          {
+            "name": "state_value",
+            "type": "number",
+            "title": {
+              "en": "State (1/0)",
+              "nl": "Status (1/0)"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "Koelen met PV-overschot"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] power command is updated",
+          "nl": "[[hvac]] aan/uit-opdracht is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "hvac_power_updated_for_configured"
+      },
+      {
+        "title": {
+          "en": "HVAC setpoint command is updated",
+          "nl": "HVAC-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] setpoint command is updated",
+          "nl": "[[hvac]]-setpoint is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "hvac_setpoint_updated_for"
+      },
+      {
+        "title": {
+          "en": "HVAC setpoint command is updated",
+          "nl": "HVAC-setpoint is bijgewerkt"
+        },
+        "tokens": [
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "example": 21.5
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Reason",
+              "nl": "Reden"
+            },
+            "example": "PV-overschot weg - setpoint geleidelijk terug"
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] setpoint command is updated",
+          "nl": "[[hvac]]-setpoint is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "hvac_setpoint_updated_for_configured"
       },
       {
         "title": {
@@ -1299,6 +2292,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac1_fan_updated"
       },
       {
@@ -1326,6 +2320,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac1_mode_updated"
       },
       {
@@ -1362,6 +2357,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac1_power_updated"
       },
       {
@@ -1389,6 +2385,7 @@
             "example": "PV-overschot weg - setpoint geleidelijk terug"
           }
         ],
+        "deprecated": true,
         "id": "hvac1_setpoint_updated"
       },
       {
@@ -1434,6 +2431,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac2_fan_updated"
       },
       {
@@ -1461,6 +2459,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac2_mode_updated"
       },
       {
@@ -1497,6 +2496,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac2_power_updated"
       },
       {
@@ -1524,6 +2524,7 @@
             "example": "PV-overschot weg - setpoint geleidelijk terug"
           }
         ],
+        "deprecated": true,
         "id": "hvac2_setpoint_updated"
       },
       {
@@ -1569,6 +2570,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac3_fan_updated"
       },
       {
@@ -1596,6 +2598,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac3_mode_updated"
       },
       {
@@ -1632,6 +2635,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac3_power_updated"
       },
       {
@@ -1659,6 +2663,7 @@
             "example": "PV-overschot weg - setpoint geleidelijk terug"
           }
         ],
+        "deprecated": true,
         "id": "hvac3_setpoint_updated"
       },
       {
@@ -1704,6 +2709,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac4_fan_updated"
       },
       {
@@ -1731,6 +2737,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac4_mode_updated"
       },
       {
@@ -1767,6 +2774,7 @@
             "example": "Koelen met PV-overschot"
           }
         ],
+        "deprecated": true,
         "id": "hvac4_power_updated"
       },
       {
@@ -1794,6 +2802,7 @@
             "example": "PV-overschot weg - setpoint geleidelijk terug"
           }
         ],
+        "deprecated": true,
         "id": "hvac4_setpoint_updated"
       },
       {
@@ -1856,6 +2865,119 @@
       },
       {
         "title": {
+          "en": "Request Battery SoC is needed",
+          "nl": "SoC Batterij is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request [[battery]] SoC is needed",
+          "nl": "SoC [[battery]] is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "Battery 1",
+                  "nl": "Batterij 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "Battery 2",
+                  "nl": "Batterij 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "Battery 3",
+                  "nl": "Batterij 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "Battery 4",
+                  "nl": "Batterij 4"
+                }
+              },
+              {
+                "id": "5",
+                "title": {
+                  "en": "Battery 5",
+                  "nl": "Batterij 5"
+                }
+              },
+              {
+                "id": "6",
+                "title": {
+                  "en": "Battery 6",
+                  "nl": "Batterij 6"
+                }
+              },
+              {
+                "id": "7",
+                "title": {
+                  "en": "Battery 7",
+                  "nl": "Batterij 7"
+                }
+              },
+              {
+                "id": "8",
+                "title": {
+                  "en": "Battery 8",
+                  "nl": "Batterij 8"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "request_battery_soc_needed_for"
+      },
+      {
+        "title": {
+          "en": "Request Battery SoC is needed",
+          "nl": "SoC Batterij is nodig"
+        },
+        "titleFormatted": {
+          "en": "Request [[battery]] SoC is needed",
+          "nl": "SoC [[battery]] is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "autocomplete",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "placeholder": {
+              "en": "Select configured battery",
+              "nl": "Kies geconfigureerde batterij"
+            }
+          }
+        ],
+        "id": "request_battery_soc_needed_for_configured"
+      },
+      {
+        "title": {
           "en": "Request Battery 1 SoC is needed",
           "nl": "SoC batterij 1 is nodig"
         },
@@ -1867,6 +2989,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery1_soc_needed"
       },
       {
@@ -1882,6 +3005,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery2_soc_needed"
       },
       {
@@ -1897,6 +3021,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery3_soc_needed"
       },
       {
@@ -1912,6 +3037,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery4_soc_needed"
       },
       {
@@ -1927,6 +3053,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery5_soc_needed"
       },
       {
@@ -1942,6 +3069,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery6_soc_needed"
       },
       {
@@ -1957,6 +3085,7 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery7_soc_needed"
       },
       {
@@ -1972,7 +3101,93 @@
           "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
           "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
         },
+        "deprecated": true,
         "id": "request_battery8_soc_needed"
+      },
+      {
+        "title": {
+          "en": "EV SoC is needed",
+          "nl": "EV-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "[[ev]] SoC is needed",
+          "nl": "[[ev]]-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV SoC support. It stops completely when EV SoC support is disabled.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV-SoC. Deze opvraag stopt volledig wanneer EV-SoC wordt uitgeschakeld."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "request_ev_soc_needed_for"
+      },
+      {
+        "title": {
+          "en": "EV SoC is needed",
+          "nl": "EV-SoC is nodig"
+        },
+        "titleFormatted": {
+          "en": "[[ev]] SoC is needed",
+          "nl": "[[ev]]-SoC is nodig"
+        },
+        "hint": {
+          "en": "Fires every 3 minutes and once after enabling EV SoC support. It stops completely when EV SoC support is disabled. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Start elke 3 minuten en één keer na het inschakelen van EV-SoC. Deze opvraag stopt volledig wanneer EV-SoC wordt uitgeschakeld. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "id": "request_ev_soc_needed_for_configured"
       },
       {
         "title": {
@@ -1987,6 +3202,7 @@
           "en": "Fires every 3 minutes and once after enabling EV SoC support. It stops completely when EV SoC support is disabled.",
           "nl": "Start elke 3 minuten en één keer na het inschakelen van EV-SoC. Deze opvraag stopt volledig wanneer EV-SoC wordt uitgeschakeld."
         },
+        "deprecated": true,
         "id": "request_ev1_soc_needed"
       },
       {
@@ -2002,6 +3218,7 @@
           "en": "Fires every 3 minutes and once after enabling EV 2 SoC support. It stops completely when EV 2 SoC support is disabled.",
           "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 2-SoC. Deze opvraag stopt volledig wanneer EV 2-SoC wordt uitgeschakeld."
         },
+        "deprecated": true,
         "id": "request_ev2_soc_needed"
       },
       {
@@ -2017,6 +3234,7 @@
           "en": "Fires every 3 minutes and once after enabling EV 3 SoC support. It stops completely when EV 3 SoC support is disabled.",
           "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 3-SoC. Deze opvraag stopt volledig wanneer EV 3-SoC wordt uitgeschakeld."
         },
+        "deprecated": true,
         "id": "request_ev3_soc_needed"
       },
       {
@@ -2032,6 +3250,7 @@
           "en": "Fires every 3 minutes and once after enabling EV 4 SoC support. It stops completely when EV 4 SoC support is disabled.",
           "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 4-SoC. Deze opvraag stopt volledig wanneer EV 4-SoC wordt uitgeschakeld."
         },
+        "deprecated": true,
         "id": "request_ev4_soc_needed"
       },
       {
@@ -2081,6 +3300,502 @@
       },
       {
         "title": {
+          "en": "Battery: switch to charge mode",
+          "nl": "Batterij: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "titleFormatted": {
+          "en": "[[battery]]: switch to charge mode",
+          "nl": "[[battery]]: schakel naar laadmodus"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "Battery 1",
+                  "nl": "Batterij 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "Battery 2",
+                  "nl": "Batterij 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "Battery 3",
+                  "nl": "Batterij 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "Battery 4",
+                  "nl": "Batterij 4"
+                }
+              },
+              {
+                "id": "5",
+                "title": {
+                  "en": "Battery 5",
+                  "nl": "Batterij 5"
+                }
+              },
+              {
+                "id": "6",
+                "title": {
+                  "en": "Battery 6",
+                  "nl": "Batterij 6"
+                }
+              },
+              {
+                "id": "7",
+                "title": {
+                  "en": "Battery 7",
+                  "nl": "Batterij 7"
+                }
+              },
+              {
+                "id": "8",
+                "title": {
+                  "en": "Battery 8",
+                  "nl": "Batterij 8"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "split_command_battery_charge_mode_for"
+      },
+      {
+        "title": {
+          "en": "Battery: switch to charge mode",
+          "nl": "Batterij: schakel naar laadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "titleFormatted": {
+          "en": "[[battery]]: switch to charge mode",
+          "nl": "[[battery]]: schakel naar laadmodus"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "autocomplete",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "placeholder": {
+              "en": "Select configured battery",
+              "nl": "Kies geconfigureerde batterij"
+            }
+          }
+        ],
+        "id": "split_command_battery_charge_mode_for_configured"
+      },
+      {
+        "title": {
+          "en": "Battery: charge power is updated",
+          "nl": "Batterij: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for the selected Battery charge power. After a charge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van de geselecteerde Batterij. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[battery]]: charge power is updated",
+          "nl": "[[battery]]: laadvermogen is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "Battery 1",
+                  "nl": "Batterij 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "Battery 2",
+                  "nl": "Batterij 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "Battery 3",
+                  "nl": "Batterij 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "Battery 4",
+                  "nl": "Batterij 4"
+                }
+              },
+              {
+                "id": "5",
+                "title": {
+                  "en": "Battery 5",
+                  "nl": "Batterij 5"
+                }
+              },
+              {
+                "id": "6",
+                "title": {
+                  "en": "Battery 6",
+                  "nl": "Batterij 6"
+                }
+              },
+              {
+                "id": "7",
+                "title": {
+                  "en": "Battery 7",
+                  "nl": "Batterij 7"
+                }
+              },
+              {
+                "id": "8",
+                "title": {
+                  "en": "Battery 8",
+                  "nl": "Batterij 8"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "split_command_battery_charge_power_for"
+      },
+      {
+        "title": {
+          "en": "Battery: charge power is updated",
+          "nl": "Batterij: laadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for the selected Battery charge power. After a charge-mode switch this fires 1 second later. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Gebruik de power-tag voor het laadvermogen van de geselecteerde Batterij. Na een wissel naar laadmodus start deze kaart 1 seconde later. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Charge power (W)",
+              "nl": "Laadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[battery]]: charge power is updated",
+          "nl": "[[battery]]: laadvermogen is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "autocomplete",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "placeholder": {
+              "en": "Select configured battery",
+              "nl": "Kies geconfigureerde batterij"
+            }
+          }
+        ],
+        "id": "split_command_battery_charge_power_for_configured"
+      },
+      {
+        "title": {
+          "en": "Battery: switch to discharge mode",
+          "nl": "Batterij: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
+          "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+        },
+        "titleFormatted": {
+          "en": "[[battery]]: switch to discharge mode",
+          "nl": "[[battery]]: schakel naar ontlaadmodus"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "Battery 1",
+                  "nl": "Batterij 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "Battery 2",
+                  "nl": "Batterij 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "Battery 3",
+                  "nl": "Batterij 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "Battery 4",
+                  "nl": "Batterij 4"
+                }
+              },
+              {
+                "id": "5",
+                "title": {
+                  "en": "Battery 5",
+                  "nl": "Batterij 5"
+                }
+              },
+              {
+                "id": "6",
+                "title": {
+                  "en": "Battery 6",
+                  "nl": "Batterij 6"
+                }
+              },
+              {
+                "id": "7",
+                "title": {
+                  "en": "Battery 7",
+                  "nl": "Batterij 7"
+                }
+              },
+              {
+                "id": "8",
+                "title": {
+                  "en": "Battery 8",
+                  "nl": "Batterij 8"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "split_command_battery_discharge_mode_for"
+      },
+      {
+        "title": {
+          "en": "Battery: switch to discharge mode",
+          "nl": "Batterij: schakel naar ontlaadmodus"
+        },
+        "hint": {
+          "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "titleFormatted": {
+          "en": "[[battery]]: switch to discharge mode",
+          "nl": "[[battery]]: schakel naar ontlaadmodus"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "autocomplete",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "placeholder": {
+              "en": "Select configured battery",
+              "nl": "Kies geconfigureerde batterij"
+            }
+          }
+        ],
+        "id": "split_command_battery_discharge_mode_for_configured"
+      },
+      {
+        "title": {
+          "en": "Battery: discharge power is updated",
+          "nl": "Batterij: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for the selected Battery discharge power. After a discharge-mode switch this fires 1 second later.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van de geselecteerde Batterij. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[battery]]: discharge power is updated",
+          "nl": "[[battery]]: ontlaadvermogen is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "dropdown",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "Battery 1",
+                  "nl": "Batterij 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "Battery 2",
+                  "nl": "Batterij 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "Battery 3",
+                  "nl": "Batterij 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "Battery 4",
+                  "nl": "Batterij 4"
+                }
+              },
+              {
+                "id": "5",
+                "title": {
+                  "en": "Battery 5",
+                  "nl": "Batterij 5"
+                }
+              },
+              {
+                "id": "6",
+                "title": {
+                  "en": "Battery 6",
+                  "nl": "Batterij 6"
+                }
+              },
+              {
+                "id": "7",
+                "title": {
+                  "en": "Battery 7",
+                  "nl": "Batterij 7"
+                }
+              },
+              {
+                "id": "8",
+                "title": {
+                  "en": "Battery 8",
+                  "nl": "Batterij 8"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "split_command_battery_discharge_power_for"
+      },
+      {
+        "title": {
+          "en": "Battery: discharge power is updated",
+          "nl": "Batterij: ontlaadvermogen is bijgewerkt"
+        },
+        "hint": {
+          "en": "Use the power token for the selected Battery discharge power. After a discharge-mode switch this fires 1 second later. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Gebruik de power-tag voor het ontlaadvermogen van de geselecteerde Batterij. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "en": "Discharge power (W)",
+              "nl": "Ontlaadvermogen (W)"
+            },
+            "example": 1000
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[battery]]: discharge power is updated",
+          "nl": "[[battery]]: ontlaadvermogen is bijgewerkt"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "autocomplete",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "placeholder": {
+              "en": "Select configured battery",
+              "nl": "Kies geconfigureerde batterij"
+            }
+          }
+        ],
+        "id": "split_command_battery_discharge_power_for_configured"
+      },
+      {
+        "title": {
           "en": "Battery 1: switch to charge mode",
           "nl": "Batterij 1: schakel naar laadmodus"
         },
@@ -2088,6 +3803,7 @@
           "en": "Only fires when split command is enabled for battery 1 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 1 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery1_charge_mode"
       },
       {
@@ -2110,6 +3826,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery1_charge_power"
       },
       {
@@ -2121,6 +3838,7 @@
           "en": "Only fires when split command is enabled for battery 1 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 1 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery1_discharge_mode"
       },
       {
@@ -2143,6 +3861,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery1_discharge_power"
       },
       {
@@ -2154,6 +3873,7 @@
           "en": "Only fires when split command is enabled for battery 2 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 2 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery2_charge_mode"
       },
       {
@@ -2176,6 +3896,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery2_charge_power"
       },
       {
@@ -2187,6 +3908,7 @@
           "en": "Only fires when split command is enabled for battery 2 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 2 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery2_discharge_mode"
       },
       {
@@ -2209,6 +3931,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery2_discharge_power"
       },
       {
@@ -2220,6 +3943,7 @@
           "en": "Only fires when split command is enabled for battery 3 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 3 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery3_charge_mode"
       },
       {
@@ -2242,6 +3966,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery3_charge_power"
       },
       {
@@ -2253,6 +3978,7 @@
           "en": "Only fires when split command is enabled for battery 3 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 3 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery3_discharge_mode"
       },
       {
@@ -2275,6 +4001,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery3_discharge_power"
       },
       {
@@ -2286,6 +4013,7 @@
           "en": "Only fires when split command is enabled for battery 4 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 4 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery4_charge_mode"
       },
       {
@@ -2308,6 +4036,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery4_charge_power"
       },
       {
@@ -2319,6 +4048,7 @@
           "en": "Only fires when split command is enabled for battery 4 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 4 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery4_discharge_mode"
       },
       {
@@ -2341,6 +4071,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery4_discharge_power"
       },
       {
@@ -2352,6 +4083,7 @@
           "en": "Only fires when split command is enabled for battery 5 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 5 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery5_charge_mode"
       },
       {
@@ -2374,6 +4106,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery5_charge_power"
       },
       {
@@ -2385,6 +4118,7 @@
           "en": "Only fires when split command is enabled for battery 5 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 5 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery5_discharge_mode"
       },
       {
@@ -2407,6 +4141,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery5_discharge_power"
       },
       {
@@ -2418,6 +4153,7 @@
           "en": "Only fires when split command is enabled for battery 6 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 6 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery6_charge_mode"
       },
       {
@@ -2440,6 +4176,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery6_charge_power"
       },
       {
@@ -2451,6 +4188,7 @@
           "en": "Only fires when split command is enabled for battery 6 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 6 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery6_discharge_mode"
       },
       {
@@ -2473,6 +4211,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery6_discharge_power"
       },
       {
@@ -2484,6 +4223,7 @@
           "en": "Only fires when split command is enabled for battery 7 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 7 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery7_charge_mode"
       },
       {
@@ -2506,6 +4246,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery7_charge_power"
       },
       {
@@ -2517,6 +4258,7 @@
           "en": "Only fires when split command is enabled for battery 7 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 7 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery7_discharge_mode"
       },
       {
@@ -2539,6 +4281,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery7_discharge_power"
       },
       {
@@ -2550,6 +4293,7 @@
           "en": "Only fires when split command is enabled for battery 8 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 8 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery8_charge_mode"
       },
       {
@@ -2572,6 +4316,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery8_charge_power"
       },
       {
@@ -2583,6 +4328,7 @@
           "en": "Only fires when split command is enabled for battery 8 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
           "nl": "Start alleen wanneer split command voor batterij 8 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
         },
+        "deprecated": true,
         "id": "split_command_battery8_discharge_mode"
       },
       {
@@ -2605,6 +4351,7 @@
             "example": 1000
           }
         ],
+        "deprecated": true,
         "id": "split_command_battery8_discharge_power"
       }
     ],
@@ -3000,10 +4747,40 @@
           "en": "HomeFlux allows [[ev]] to charge",
           "nl": "HomeFlux laat [[ev]] laden"
         },
+        "deprecated": true,
         "id": "ev_charging_is_allowed"
       },
       {
         "title": {
+          "en": "HomeFlux allows [[ev]] to charge",
+          "nl": "HomeFlux laat [[ev]] laden"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "HomeFlux allows [[ev]] to charge",
+          "nl": "HomeFlux laat [[ev]] laden"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "ev_charging_is_allowed_configured"
+      },
+      {
+        "title": {
           "en": "[[ev]] is charging",
           "nl": "[[ev]] is aan het laden"
         },
@@ -3051,7 +4828,37 @@
           "en": "[[ev]] is charging",
           "nl": "[[ev]] is aan het laden"
         },
+        "deprecated": true,
         "id": "ev_is_charging"
+      },
+      {
+        "title": {
+          "en": "[[ev]] is charging",
+          "nl": "[[ev]] is aan het laden"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] is charging",
+          "nl": "[[ev]] is aan het laden"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "ev_is_charging_configured"
       },
       {
         "title": {
@@ -3102,7 +4909,37 @@
           "en": "[[ev]] is connected",
           "nl": "[[ev]] is aangesloten"
         },
+        "deprecated": true,
         "id": "ev_is_connected"
+      },
+      {
+        "title": {
+          "en": "[[ev]] is connected",
+          "nl": "[[ev]] is aangesloten"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] is connected",
+          "nl": "[[ev]] is aangesloten"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "ev_is_connected_configured"
       },
       {
         "title": {
@@ -3184,7 +5021,68 @@
           "en": "[[ev]] mode is [[mode]]",
           "nl": "[[ev]]-modus is [[mode]]"
         },
+        "deprecated": true,
         "id": "ev_mode_is"
+      },
+      {
+        "title": {
+          "en": "[[ev]] mode is [[mode]]",
+          "nl": "[[ev]]-modus is [[mode]]"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] mode is [[mode]]",
+          "nl": "[[ev]]-modus is [[mode]]"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "ev_mode_is_configured"
       },
       {
         "title": {
@@ -3307,10 +5205,125 @@
           "en": "[[hvac]] is actively managed",
           "nl": "[[hvac]] wordt actief gestuurd"
         },
+        "deprecated": true,
         "id": "hvac_is_active"
+      },
+      {
+        "title": {
+          "en": "[[hvac]] is actively managed",
+          "nl": "[[hvac]] wordt actief gestuurd"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[hvac]] is actively managed",
+          "nl": "[[hvac]] wordt actief gestuurd"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "hvac_is_active_configured"
       }
     ],
     "actions": [
+      {
+        "title": {
+          "en": "Clear EV planning override",
+          "nl": "Wis EV-planningsoverride"
+        },
+        "hint": {
+          "en": "Clears the persistent Flow minimum target for the selected EV, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
+          "nl": "Wist het blijvende Flow-minimumdoel voor de geselecteerde EV, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
+        },
+        "titleFormatted": {
+          "en": "Clear [[ev]] planning override",
+          "nl": "Wis [[ev]]-planningsoverride"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "clear_ev_soc_deadline_override_for"
+      },
+      {
+        "title": {
+          "en": "Clear EV planning override",
+          "nl": "Wis EV-planningsoverride"
+        },
+        "hint": {
+          "en": "Clears the persistent Flow minimum target for the selected EV, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Wist het blijvende Flow-minimumdoel voor de geselecteerde EV, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "titleFormatted": {
+          "en": "Clear [[ev]] planning override",
+          "nl": "Wis [[ev]]-planningsoverride"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "id": "clear_ev_soc_deadline_override_for_configured"
+      },
       {
         "title": {
           "en": "Clear EV 1 planning override",
@@ -3320,6 +5333,7 @@
           "en": "Clears the persistent Flow minimum target for EV 1, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
           "nl": "Wist het blijvende Flow-minimumdoel voor EV 1, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
         },
+        "deprecated": true,
         "id": "clear_ev1_soc_deadline_override"
       },
       {
@@ -3331,6 +5345,7 @@
           "en": "Clears the persistent Flow minimum target for EV 2, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
           "nl": "Wist het blijvende Flow-minimumdoel voor EV 2, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
         },
+        "deprecated": true,
         "id": "clear_ev2_soc_deadline_override"
       },
       {
@@ -3342,6 +5357,7 @@
           "en": "Clears the persistent Flow minimum target for EV 3, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
           "nl": "Wist het blijvende Flow-minimumdoel voor EV 3, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
         },
+        "deprecated": true,
         "id": "clear_ev3_soc_deadline_override"
       },
       {
@@ -3353,7 +5369,141 @@
           "en": "Clears the persistent Flow minimum target for EV 4, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
           "nl": "Wist het blijvende Flow-minimumdoel voor EV 4, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
         },
+        "deprecated": true,
         "id": "clear_ev4_soc_deadline_override"
+      },
+      {
+        "title": {
+          "en": "EV charging session has ended",
+          "nl": "Laadsessie EV is beëindigd"
+        },
+        "hint": {
+          "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws the selected EV grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until the selected EV reconnects.",
+          "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van de geselecteerde EV onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot de geselecteerde EV opnieuw wordt aangesloten."
+        },
+        "titleFormatted": {
+          "en": "[[ev]] charging session has ended",
+          "nl": "Laadsessie [[ev]] is beëindigd"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "end_ev_charging_session_for"
+      },
+      {
+        "title": {
+          "en": "EV charging session has ended",
+          "nl": "Laadsessie EV is beëindigd"
+        },
+        "hint": {
+          "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws the selected EV grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until the selected EV reconnects. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van de geselecteerde EV onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot de geselecteerde EV opnieuw wordt aangesloten. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "titleFormatted": {
+          "en": "[[ev]] charging session has ended",
+          "nl": "Laadsessie [[ev]] is beëindigd"
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          }
+        ],
+        "id": "end_ev_charging_session_for_configured"
+      },
+      {
+        "title": {
+          "en": "EV 1 charging session has ended",
+          "nl": "Laadsessie EV 1 is beëindigd"
+        },
+        "hint": {
+          "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws EV 1 grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until EV 1 reconnects.",
+          "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van EV 1 onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot EV 1 opnieuw wordt aangesloten."
+        },
+        "deprecated": true,
+        "id": "end_ev1_charging_session"
+      },
+      {
+        "title": {
+          "en": "EV 2 charging session has ended",
+          "nl": "Laadsessie EV 2 is beëindigd"
+        },
+        "hint": {
+          "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws EV 2 grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until EV 2 reconnects.",
+          "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van EV 2 onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot EV 2 opnieuw wordt aangesloten."
+        },
+        "deprecated": true,
+        "id": "end_ev2_charging_session"
+      },
+      {
+        "title": {
+          "en": "EV 3 charging session has ended",
+          "nl": "Laadsessie EV 3 is beëindigd"
+        },
+        "hint": {
+          "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws EV 3 grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until EV 3 reconnects.",
+          "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van EV 3 onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot EV 3 opnieuw wordt aangesloten."
+        },
+        "deprecated": true,
+        "id": "end_ev3_charging_session"
+      },
+      {
+        "title": {
+          "en": "EV 4 charging session has ended",
+          "nl": "Laadsessie EV 4 is beëindigd"
+        },
+        "hint": {
+          "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws EV 4 grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until EV 4 reconnects.",
+          "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van EV 4 onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot EV 4 opnieuw wordt aangesloten."
+        },
+        "deprecated": true,
+        "id": "end_ev4_charging_session"
       },
       {
         "title": {
@@ -3510,7 +5660,803 @@
           "en": "Set [[battery]] SoC to [[soc]]%",
           "nl": "Stel [[battery]] SoC in op [[soc]]%"
         },
+        "deprecated": true,
         "id": "set_battery_soc"
+      },
+      {
+        "title": {
+          "en": "Set battery SoC",
+          "nl": "Stel batterij-SoC in"
+        },
+        "args": [
+          {
+            "name": "battery",
+            "type": "autocomplete",
+            "title": {
+              "en": "Battery",
+              "nl": "Batterij"
+            },
+            "placeholder": {
+              "en": "Select configured battery",
+              "nl": "Kies geconfigureerde batterij"
+            }
+          },
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SoC (%)",
+              "nl": "SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[battery]] SoC to [[soc]]%",
+          "nl": "Stel [[battery]] SoC in op [[soc]]%"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "set_battery_soc_configured"
+      },
+      {
+        "title": {
+          "en": "Set EV energy needed by time",
+          "nl": "Stel EV: kWh nodig tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent minimum energy target for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps deadline charging on configured favourable tariffs/PV; Yes may use any tariff when required to secure the minimum. After the minimum is reached, charging may continue on favourable moments. Peak Guard always remains absolute.",
+          "nl": "Stelt een blijvend minimum-energiedoel voor de geselecteerde EV in. Het blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee gebruikt voor de deadline alleen ingestelde gunstige tarieven/PV; Ja mag elk tarief gebruiken wanneer dat nodig is om het minimum te garanderen. Na het minimum mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Energy needed (kWh)",
+              "nl": "Nodige energie (kWh)"
+            },
+            "min": 0,
+            "max": 250,
+            "step": 0.1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — favourable moments only",
+                  "nl": "Nee — alleen gunstige momenten"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — all tariffs if required",
+                  "nl": "Ja — alle tarieven indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]]: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "[[ev]]: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "deprecated": true,
+        "id": "set_ev_energy_deadline_for"
+      },
+      {
+        "title": {
+          "en": "Set EV energy needed by time",
+          "nl": "Stel EV: kWh nodig tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent minimum energy target for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps deadline charging on configured favourable tariffs/PV; Yes may use any tariff when required to secure the minimum. After the minimum is reached, charging may continue on favourable moments. Peak Guard always remains absolute. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Stelt een blijvend minimum-energiedoel voor de geselecteerde EV in. Het blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee gebruikt voor de deadline alleen ingestelde gunstige tarieven/PV; Ja mag elk tarief gebruiken wanneer dat nodig is om het minimum te garanderen. Na het minimum mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          },
+          {
+            "name": "energy",
+            "type": "number",
+            "title": {
+              "en": "Energy needed (kWh)",
+              "nl": "Nodige energie (kWh)"
+            },
+            "min": 0,
+            "max": 250,
+            "step": 0.1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — favourable moments only",
+                  "nl": "Nee — alleen gunstige momenten"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — all tariffs if required",
+                  "nl": "Ja — alle tarieven indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]]: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "[[ev]]: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev_energy_deadline_for_configured"
+      },
+      {
+        "title": {
+          "en": "Override EV mode for one charging session",
+          "nl": "Override EV-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected the selected EV operating mode for one connection session. If the the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured the selected EV mode is never overwritten.",
+          "nl": "Gebruik tijdelijk de gekozen de geselecteerde EV-werkingsmodus voor één verbindingssessie. Is de de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde de geselecteerde EV-modus wordt nooit overschreven."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 1 operating mode",
+              "nl": "EV 1-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] override for one session: [[mode]]",
+          "nl": "[[ev]]-override voor één laadbeurt: [[mode]]"
+        },
+        "deprecated": true,
+        "id": "set_ev_session_override_for"
+      },
+      {
+        "title": {
+          "en": "Override EV mode for one charging session",
+          "nl": "Override EV-modus voor één laadbeurt"
+        },
+        "hint": {
+          "en": "Temporarily use the selected the selected EV operating mode for one connection session. If the the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured the selected EV mode is never overwritten. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Gebruik tijdelijk de gekozen de geselecteerde EV-werkingsmodus voor één verbindingssessie. Is de de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde de geselecteerde EV-modus wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 1 operating mode",
+              "nl": "EV 1-werkingsmodus"
+            },
+            "values": [
+              {
+                "id": "smart",
+                "title": {
+                  "en": "Smart",
+                  "nl": "Slim"
+                }
+              },
+              {
+                "id": "soc_target",
+                "title": {
+                  "en": "SoC target",
+                  "nl": "Op SoC-doel"
+                }
+              },
+              {
+                "id": "emergency",
+                "title": {
+                  "en": "Emergency charge",
+                  "nl": "Emergency charge"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]] override for one session: [[mode]]",
+          "nl": "[[ev]]-override voor één laadbeurt: [[mode]]"
+        },
+        "id": "set_ev_session_override_for_configured"
+      },
+      {
+        "title": {
+          "en": "Set EV minimum SoC by time",
+          "nl": "Stel EV: minimum-SoC tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent minimum SoC and deadline for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. Guarantee = No tries to secure the minimum on configured favourable tariffs/PV; Yes may use any tariff when required. After the minimum SoC is reached, charging may continue on favourable moments. Peak Guard always remains absolute.",
+          "nl": "Stelt een blijvende minimum-SoC en deadline voor de geselecteerde EV in. Het doel blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. Doel gegarandeerd = Nee probeert het minimum via ingestelde gunstige tarieven/PV te halen; Ja mag elk tarief gebruiken wanneer dat nodig is. Na de minimum-SoC mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Minimum SoC (%)",
+              "nl": "Minimum-SoC (%)"
+            },
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — favourable moments only",
+                  "nl": "Nee — alleen gunstige momenten"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — all tariffs if required",
+                  "nl": "Ja — alle tarieven indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]]: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "[[ev]]: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "deprecated": true,
+        "id": "set_ev_soc_deadline_for"
+      },
+      {
+        "title": {
+          "en": "Set EV minimum SoC by time",
+          "nl": "Stel EV: minimum-SoC tegen tijd in"
+        },
+        "hint": {
+          "en": "Sets a persistent minimum SoC and deadline for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. Guarantee = No tries to secure the minimum on configured favourable tariffs/PV; Yes may use any tariff when required. After the minimum SoC is reached, charging may continue on favourable moments. Peak Guard always remains absolute. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Stelt een blijvende minimum-SoC en deadline voor de geselecteerde EV in. Het doel blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. Doel gegarandeerd = Nee probeert het minimum via ingestelde gunstige tarieven/PV te halen; Ja mag elk tarief gebruiken wanneer dat nodig is. Na de minimum-SoC mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Minimum SoC (%)",
+              "nl": "Minimum-SoC (%)"
+            },
+            "min": 1,
+            "max": 100,
+            "step": 1
+          },
+          {
+            "name": "time",
+            "type": "text",
+            "title": {
+              "en": "Deadline (HH:mm)",
+              "nl": "Deadline (uu:mm)"
+            },
+            "placeholder": "07:00"
+          },
+          {
+            "name": "guarantee",
+            "type": "dropdown",
+            "title": {
+              "en": "Guarantee target?",
+              "nl": "Doel gegarandeerd?"
+            },
+            "values": [
+              {
+                "id": "no",
+                "title": {
+                  "en": "No — favourable moments only",
+                  "nl": "Nee — alleen gunstige momenten"
+                }
+              },
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes — all tariffs if required",
+                  "nl": "Ja — alle tarieven indien nodig"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "[[ev]]: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
+          "nl": "[[ev]]: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+        },
+        "id": "set_ev_soc_deadline_for_configured"
+      },
+      {
+        "title": {
+          "en": "Set EV SoC",
+          "nl": "Stel EV-SoC in"
+        },
+        "hint": {
+          "en": "Push the current the selected EV state of charge to HomeFlux. Only used when the selected EV SoC support is enabled in settings.",
+          "nl": "Stuur de actuele de geselecteerde EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer de geselecteerde EV-SoC in de instellingen is ingeschakeld."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV 1 SoC (%)",
+              "nl": "EV 1 SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[ev]] SoC to [[soc]]%",
+          "nl": "Stel [[ev]]-SoC in op [[soc]]%"
+        },
+        "deprecated": true,
+        "id": "set_ev_soc_for"
+      },
+      {
+        "title": {
+          "en": "Set EV SoC",
+          "nl": "Stel EV-SoC in"
+        },
+        "hint": {
+          "en": "Push the current the selected EV state of charge to HomeFlux. Only used when the selected EV SoC support is enabled in settings. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Stuur de actuele de geselecteerde EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer de geselecteerde EV-SoC in de instellingen is ingeschakeld. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          },
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "EV 1 SoC (%)",
+              "nl": "EV 1 SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[ev]] SoC to [[soc]]%",
+          "nl": "Stel [[ev]]-SoC in op [[soc]]%"
+        },
+        "id": "set_ev_soc_for_configured"
+      },
+      {
+        "title": {
+          "en": "Set EV status",
+          "nl": "Stel EV-status in"
+        },
+        "hint": {
+          "en": "Push the selected EV availability and actual charging current to HomeFlux. the selected EV SoC has its own Flow card.",
+          "nl": "Stuur de geselecteerde EV-beschikbaarheid en werkelijke laadstroom naar HomeFlux. de geselecteerde EV-SoC heeft een aparte Flow-kaart."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "EV 1",
+                  "nl": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "EV 2",
+                  "nl": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "EV 3",
+                  "nl": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "EV 4",
+                  "nl": "EV 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 1 available",
+              "nl": "EV 1 beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[ev]]: [[connected]], [[charge_current]] A",
+          "nl": "Stel [[ev]] in: [[connected]], [[charge_current]] A"
+        },
+        "deprecated": true,
+        "id": "set_ev_status_for"
+      },
+      {
+        "title": {
+          "en": "Set EV status",
+          "nl": "Stel EV-status in"
+        },
+        "hint": {
+          "en": "Push the selected EV availability and actual charging current to HomeFlux. the selected EV SoC has its own Flow card. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Stuur de geselecteerde EV-beschikbaarheid en werkelijke laadstroom naar HomeFlux. de geselecteerde EV-SoC heeft een aparte Flow-kaart. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "args": [
+          {
+            "name": "ev",
+            "type": "autocomplete",
+            "title": {
+              "en": "EV",
+              "nl": "EV"
+            },
+            "placeholder": {
+              "en": "Select configured EV",
+              "nl": "Kies geconfigureerde EV"
+            }
+          },
+          {
+            "name": "connected",
+            "type": "dropdown",
+            "title": {
+              "en": "EV 1 available",
+              "nl": "EV 1 beschikbaar/aangesloten"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          },
+          {
+            "name": "charge_current",
+            "type": "number",
+            "title": {
+              "en": "Actual charge current (A)",
+              "nl": "Actuele laadstroom (A)"
+            },
+            "min": 0,
+            "max": 64,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[ev]]: [[connected]], [[charge_current]] A",
+          "nl": "Stel [[ev]] in: [[connected]], [[charge_current]] A"
+        },
+        "id": "set_ev_status_for_configured"
       },
       {
         "title": {
@@ -3571,6 +6517,7 @@
           "en": "EV 1: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 1: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev1_energy_deadline"
       },
       {
@@ -3619,6 +6566,7 @@
           "en": "EV 1 override for one session: [[mode]]",
           "nl": "EV 1-override voor één laadbeurt: [[mode]]"
         },
+        "deprecated": true,
         "id": "set_ev1_session_override"
       },
       {
@@ -3647,6 +6595,7 @@
           "en": "Set EV 1 SoC to [[soc]]%",
           "nl": "Stel EV 1-SoC in op [[soc]]%"
         },
+        "deprecated": true,
         "id": "set_ev1_soc"
       },
       {
@@ -3708,6 +6657,7 @@
           "en": "EV 1: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 1: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev1_soc_deadline"
       },
       {
@@ -3760,6 +6710,7 @@
           "en": "Set EV 1: [[connected]], [[charge_current]] A",
           "nl": "Stel EV 1 in: [[connected]], [[charge_current]] A"
         },
+        "deprecated": true,
         "id": "set_ev1_status"
       },
       {
@@ -3821,6 +6772,7 @@
           "en": "EV 2: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 2: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev2_energy_deadline"
       },
       {
@@ -3869,6 +6821,7 @@
           "en": "EV 2 override for one session: [[mode]]",
           "nl": "EV 2-override voor één laadbeurt: [[mode]]"
         },
+        "deprecated": true,
         "id": "set_ev2_session_override"
       },
       {
@@ -3897,6 +6850,7 @@
           "en": "Set EV 2 SoC to [[soc]]%",
           "nl": "Stel EV 2-SoC in op [[soc]]%"
         },
+        "deprecated": true,
         "id": "set_ev2_soc"
       },
       {
@@ -3958,6 +6912,7 @@
           "en": "EV 2: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 2: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev2_soc_deadline"
       },
       {
@@ -4010,6 +6965,7 @@
           "en": "Set EV 2: [[connected]], [[charge_current]] A",
           "nl": "Stel EV 2 in: [[connected]], [[charge_current]] A"
         },
+        "deprecated": true,
         "id": "set_ev2_status"
       },
       {
@@ -4071,6 +7027,7 @@
           "en": "EV 3: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 3: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev3_energy_deadline"
       },
       {
@@ -4119,6 +7076,7 @@
           "en": "EV 3 override for one session: [[mode]]",
           "nl": "EV 3-override voor één laadbeurt: [[mode]]"
         },
+        "deprecated": true,
         "id": "set_ev3_session_override"
       },
       {
@@ -4147,6 +7105,7 @@
           "en": "Set EV 3 SoC to [[soc]]%",
           "nl": "Stel EV 3-SoC in op [[soc]]%"
         },
+        "deprecated": true,
         "id": "set_ev3_soc"
       },
       {
@@ -4208,6 +7167,7 @@
           "en": "EV 3: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 3: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev3_soc_deadline"
       },
       {
@@ -4260,6 +7220,7 @@
           "en": "Set EV 3: [[connected]], [[charge_current]] A",
           "nl": "Stel EV 3 in: [[connected]], [[charge_current]] A"
         },
+        "deprecated": true,
         "id": "set_ev3_status"
       },
       {
@@ -4321,6 +7282,7 @@
           "en": "EV 4: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 4: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev4_energy_deadline"
       },
       {
@@ -4369,6 +7331,7 @@
           "en": "EV 4 override for one session: [[mode]]",
           "nl": "EV 4-override voor één laadbeurt: [[mode]]"
         },
+        "deprecated": true,
         "id": "set_ev4_session_override"
       },
       {
@@ -4397,6 +7360,7 @@
           "en": "Set EV 4 SoC to [[soc]]%",
           "nl": "Stel EV 4-SoC in op [[soc]]%"
         },
+        "deprecated": true,
         "id": "set_ev4_soc"
       },
       {
@@ -4458,6 +7422,7 @@
           "en": "EV 4: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
           "nl": "EV 4: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
         },
+        "deprecated": true,
         "id": "set_ev4_soc_deadline"
       },
       {
@@ -4510,6 +7475,7 @@
           "en": "Set EV 4: [[connected]], [[charge_current]] A",
           "nl": "Stel EV 4 in: [[connected]], [[charge_current]] A"
         },
+        "deprecated": true,
         "id": "set_ev4_status"
       },
       {
@@ -4792,6 +7758,409 @@
       },
       {
         "title": {
+          "en": "Set HVAC automatic control",
+          "nl": "Stel HVAC automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] automatic control to [[enabled]]",
+          "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]"
+        },
+        "deprecated": true,
+        "id": "set_hvac_automatic_control_for"
+      },
+      {
+        "title": {
+          "en": "Set HVAC automatic control",
+          "nl": "Stel HVAC automatische sturing in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          },
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": {
+              "en": "Automatic control",
+              "nl": "Automatische sturing"
+            },
+            "values": [
+              {
+                "id": "yes",
+                "title": {
+                  "en": "Yes",
+                  "nl": "Ja"
+                }
+              },
+              {
+                "id": "no",
+                "title": {
+                  "en": "No",
+                  "nl": "Nee"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] automatic control to [[enabled]]",
+          "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "set_hvac_automatic_control_for_configured"
+      },
+      {
+        "title": {
+          "en": "Set HVAC fan speed",
+          "nl": "Stel HVAC-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] fan speed to [[speed]]",
+          "nl": "Stel [[hvac]]-ventilatorsnelheid in op [[speed]]"
+        },
+        "deprecated": true,
+        "id": "set_hvac_fan_speed_for"
+      },
+      {
+        "title": {
+          "en": "Set HVAC fan speed",
+          "nl": "Stel HVAC-ventilatorsnelheid in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          },
+          {
+            "name": "speed",
+            "type": "number",
+            "title": {
+              "en": "Fan speed value",
+              "nl": "Ventilatorsnelheid waarde"
+            },
+            "min": 0,
+            "max": 10000,
+            "step": 1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] fan speed to [[speed]]",
+          "nl": "Stel [[hvac]]-ventilatorsnelheid in op [[speed]]"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "set_hvac_fan_speed_for_configured"
+      },
+      {
+        "title": {
+          "en": "Set HVAC mode",
+          "nl": "Stel HVAC-modus in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] mode to [[mode]]",
+          "nl": "Stel [[hvac]]-modus in op [[mode]]"
+        },
+        "deprecated": true,
+        "id": "set_hvac_mode_for"
+      },
+      {
+        "title": {
+          "en": "Set HVAC mode",
+          "nl": "Stel HVAC-modus in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "off",
+                "title": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              },
+              {
+                "id": "cool",
+                "title": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              },
+              {
+                "id": "heat",
+                "title": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "auto",
+                "title": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "fan",
+                "title": {
+                  "en": "Fan only",
+                  "nl": "Alleen ventilatie"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] mode to [[mode]]",
+          "nl": "Stel [[hvac]]-modus in op [[mode]]"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "set_hvac_mode_for_configured"
+      },
+      {
+        "title": {
           "en": "Set HVAC outdoor temperature",
           "nl": "Stel HVAC buitentemperatuur in"
         },
@@ -4813,6 +8182,212 @@
           "nl": "Stel HVAC buitentemperatuur in op [[temperature]] C"
         },
         "id": "set_hvac_outdoor_temperature"
+      },
+      {
+        "title": {
+          "en": "Set HVAC room temperature",
+          "nl": "Stel HVAC ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] room temperature to [[temperature]] C",
+          "nl": "Stel [[hvac]] ruimtetemperatuur in op [[temperature]] C"
+        },
+        "deprecated": true,
+        "id": "set_hvac_room_temperature_for"
+      },
+      {
+        "title": {
+          "en": "Set HVAC room temperature",
+          "nl": "Stel HVAC ruimtetemperatuur in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          },
+          {
+            "name": "temperature",
+            "type": "number",
+            "title": {
+              "en": "Room temperature (C)",
+              "nl": "Ruimtetemperatuur (C)"
+            },
+            "min": -20,
+            "max": 60,
+            "step": 0.1
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] room temperature to [[temperature]] C",
+          "nl": "Stel [[hvac]] ruimtetemperatuur in op [[temperature]] C"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "set_hvac_room_temperature_for_configured"
+      },
+      {
+        "title": {
+          "en": "Set HVAC setpoint",
+          "nl": "Stel HVAC-setpoint in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "dropdown",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "values": [
+              {
+                "id": "1",
+                "title": {
+                  "en": "HVAC 1",
+                  "nl": "HVAC 1"
+                }
+              },
+              {
+                "id": "2",
+                "title": {
+                  "en": "HVAC 2",
+                  "nl": "HVAC 2"
+                }
+              },
+              {
+                "id": "3",
+                "title": {
+                  "en": "HVAC 3",
+                  "nl": "HVAC 3"
+                }
+              },
+              {
+                "id": "4",
+                "title": {
+                  "en": "HVAC 4",
+                  "nl": "HVAC 4"
+                }
+              }
+            ]
+          },
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] setpoint to [[setpoint]] C",
+          "nl": "Stel [[hvac]]-setpoint in op [[setpoint]] C"
+        },
+        "deprecated": true,
+        "id": "set_hvac_setpoint_for"
+      },
+      {
+        "title": {
+          "en": "Set HVAC setpoint",
+          "nl": "Stel HVAC-setpoint in"
+        },
+        "args": [
+          {
+            "name": "hvac",
+            "type": "autocomplete",
+            "title": {
+              "en": "HVAC",
+              "nl": "HVAC"
+            },
+            "placeholder": {
+              "en": "Select configured HVAC",
+              "nl": "Kies geconfigureerde HVAC"
+            }
+          },
+          {
+            "name": "setpoint",
+            "type": "number",
+            "title": {
+              "en": "Setpoint (C)",
+              "nl": "Setpoint (C)"
+            },
+            "min": 5,
+            "max": 35,
+            "step": 0.5
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set [[hvac]] setpoint to [[setpoint]] C",
+          "nl": "Stel [[hvac]]-setpoint in op [[setpoint]] C"
+        },
+        "hint": {
+          "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+        },
+        "id": "set_hvac_setpoint_for_configured"
       },
       {
         "title": {
@@ -4849,6 +8424,7 @@
           "en": "Set HVAC 1 automatic control to [[enabled]]",
           "nl": "Stel HVAC 1 automatische sturing in op [[enabled]]"
         },
+        "deprecated": true,
         "id": "set_hvac1_automatic_control"
       },
       {
@@ -4873,6 +8449,7 @@
           "en": "Set HVAC 1 fan speed to [[speed]]",
           "nl": "Stel HVAC 1-ventilatorsnelheid in op [[speed]]"
         },
+        "deprecated": true,
         "id": "set_hvac1_fan_speed"
       },
       {
@@ -4931,6 +8508,7 @@
           "en": "Set HVAC 1 mode to [[mode]]",
           "nl": "Stel HVAC 1-modus in op [[mode]]"
         },
+        "deprecated": true,
         "id": "set_hvac1_mode"
       },
       {
@@ -4955,6 +8533,7 @@
           "en": "Set HVAC 1 room temperature to [[temperature]] C",
           "nl": "Stel HVAC 1 ruimtetemperatuur in op [[temperature]] C"
         },
+        "deprecated": true,
         "id": "set_hvac1_room_temperature"
       },
       {
@@ -4979,6 +8558,7 @@
           "en": "Set HVAC 1 setpoint to [[setpoint]] C",
           "nl": "Stel HVAC 1-setpoint in op [[setpoint]] C"
         },
+        "deprecated": true,
         "id": "set_hvac1_setpoint"
       },
       {
@@ -5016,6 +8596,7 @@
           "en": "Set HVAC 2 automatic control to [[enabled]]",
           "nl": "Stel HVAC 2 automatische sturing in op [[enabled]]"
         },
+        "deprecated": true,
         "id": "set_hvac2_automatic_control"
       },
       {
@@ -5040,6 +8621,7 @@
           "en": "Set HVAC 2 fan speed to [[speed]]",
           "nl": "Stel HVAC 2-ventilatorsnelheid in op [[speed]]"
         },
+        "deprecated": true,
         "id": "set_hvac2_fan_speed"
       },
       {
@@ -5098,6 +8680,7 @@
           "en": "Set HVAC 2 mode to [[mode]]",
           "nl": "Stel HVAC 2-modus in op [[mode]]"
         },
+        "deprecated": true,
         "id": "set_hvac2_mode"
       },
       {
@@ -5122,6 +8705,7 @@
           "en": "Set HVAC 2 room temperature to [[temperature]] C",
           "nl": "Stel HVAC 2 ruimtetemperatuur in op [[temperature]] C"
         },
+        "deprecated": true,
         "id": "set_hvac2_room_temperature"
       },
       {
@@ -5146,6 +8730,7 @@
           "en": "Set HVAC 2 setpoint to [[setpoint]] C",
           "nl": "Stel HVAC 2-setpoint in op [[setpoint]] C"
         },
+        "deprecated": true,
         "id": "set_hvac2_setpoint"
       },
       {
@@ -5183,6 +8768,7 @@
           "en": "Set HVAC 3 automatic control to [[enabled]]",
           "nl": "Stel HVAC 3 automatische sturing in op [[enabled]]"
         },
+        "deprecated": true,
         "id": "set_hvac3_automatic_control"
       },
       {
@@ -5207,6 +8793,7 @@
           "en": "Set HVAC 3 fan speed to [[speed]]",
           "nl": "Stel HVAC 3-ventilatorsnelheid in op [[speed]]"
         },
+        "deprecated": true,
         "id": "set_hvac3_fan_speed"
       },
       {
@@ -5265,6 +8852,7 @@
           "en": "Set HVAC 3 mode to [[mode]]",
           "nl": "Stel HVAC 3-modus in op [[mode]]"
         },
+        "deprecated": true,
         "id": "set_hvac3_mode"
       },
       {
@@ -5289,6 +8877,7 @@
           "en": "Set HVAC 3 room temperature to [[temperature]] C",
           "nl": "Stel HVAC 3 ruimtetemperatuur in op [[temperature]] C"
         },
+        "deprecated": true,
         "id": "set_hvac3_room_temperature"
       },
       {
@@ -5313,6 +8902,7 @@
           "en": "Set HVAC 3 setpoint to [[setpoint]] C",
           "nl": "Stel HVAC 3-setpoint in op [[setpoint]] C"
         },
+        "deprecated": true,
         "id": "set_hvac3_setpoint"
       },
       {
@@ -5350,6 +8940,7 @@
           "en": "Set HVAC 4 automatic control to [[enabled]]",
           "nl": "Stel HVAC 4 automatische sturing in op [[enabled]]"
         },
+        "deprecated": true,
         "id": "set_hvac4_automatic_control"
       },
       {
@@ -5374,6 +8965,7 @@
           "en": "Set HVAC 4 fan speed to [[speed]]",
           "nl": "Stel HVAC 4-ventilatorsnelheid in op [[speed]]"
         },
+        "deprecated": true,
         "id": "set_hvac4_fan_speed"
       },
       {
@@ -5432,6 +9024,7 @@
           "en": "Set HVAC 4 mode to [[mode]]",
           "nl": "Stel HVAC 4-modus in op [[mode]]"
         },
+        "deprecated": true,
         "id": "set_hvac4_mode"
       },
       {
@@ -5456,6 +9049,7 @@
           "en": "Set HVAC 4 room temperature to [[temperature]] C",
           "nl": "Stel HVAC 4 ruimtetemperatuur in op [[temperature]] C"
         },
+        "deprecated": true,
         "id": "set_hvac4_room_temperature"
       },
       {
@@ -5480,6 +9074,7 @@
           "en": "Set HVAC 4 setpoint to [[setpoint]] C",
           "nl": "Stel HVAC 4-setpoint in op [[setpoint]] C"
         },
+        "deprecated": true,
         "id": "set_hvac4_setpoint"
       },
       {

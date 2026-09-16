@@ -56,5 +56,6 @@
   "titleFormatted": {
     "en": "EV 1: [[energy]] kWh needed by [[time]] · guaranteed: [[guarantee]]",
     "nl": "EV 1: [[energy]] kWh nodig tegen [[time]] · gegarandeerd: [[guarantee]]"
-  }
+  },
+  "deprecated": true
 }

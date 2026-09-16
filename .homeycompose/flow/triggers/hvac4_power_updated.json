@@ -31,5 +31,6 @@
       },
       "example": "Koelen met PV-overschot"
     }
-  ]
+  ],
+  "deprecated": true
 }

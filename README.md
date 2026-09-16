@@ -3,6 +3,26 @@
 **Your energy, managed differently**  
 **Jouw energie, anders geregeld**
 
+## 0.7.12
+
+Consolidated numbered Battery, EV and HVAC Flow cards into generic cards. All 31 slot selectors now dynamically offer only configured slots, including inputs, outputs, SoC requests and conditions. EV/HVAC names are shown; zero configured devices gives an empty selection. Numbered cards and previous fixed-dropdown cards remain deprecated but functional for existing Flows. Energy management, safety limits, planning and the slogan remain unchanged.
+
+Save the Battery/EV/HVAC counts before selecting a slot in Flow. Selection follows those counts, not live connection/charging state or temporary automatic-control toggles. Existing Flows are not automatically converted.
+
+See [Flow migration](docs/FLOW-MIGRATION-0.7.12.md) for the card mapping and upgrade checks.
+
+## 0.7.11
+
+Added a per-EV night-planning option that can charge an EV from home-battery energy above the calculated night target SoC. The source starts only when the remaining time and available surplus can transfer more than 1.0 kWh to that EV, never creates grid-import permission, and remains bounded by Peak Guard and battery limits. Once started, it may continue until the calculated battery target is reached.
+
+## 0.7.10
+
+Added EV charging-session tracking for EV 1 through EV 4, including explicit Flow cards to end a session and visible start/end state in Live status, the EMS device and the status widget. For mode-controlled charging, HomeFlux learns a bounded forty-minute physical house-load reference from existing P1/PV updates. Only measured load above that reference is released to the grid; after one minute back near normal house load, grid permission is withdrawn and ordinary battery control resumes. With multiple chargers this protection works at portfolio level and never guesses which individual EV stopped. Peak Guard remains absolute.
+
+## 0.7.9
+
+Fixed EV PV coordination after a STOP, preserved physically active battery charging under external Hybrid EMS control, and prevented SoC-target mode control from creating unauthorized grid demand. The shared EV budget is covered for one to four EVs with Current, Mode and Hybrid control.
+
 ## English
 
 HomeFlux EMS is a Homey-based energy management system built to coordinate batteries, solar production and flexible loads around **the energy contract you actually have**. It is not limited to dynamic pricing: HomeFlux is specifically designed to work just as well with **fixed contracts that use two or more time-of-use tariff periods**, including peak/off-peak and multi-rate schedules.
@@ -19,7 +39,7 @@ Add the **HomeFlux EMS device** in Homey for quick operational changes without b
 
 For EV planning, the existing SoC-by-time and kWh-by-time Flow cards can provide a persistent **minimum target**. A guaranteed target may use any tariff when that is required to secure the deadline; a non-guaranteed target keeps trying on favourable PV/tariff moments. If no Flow target has been supplied, HomeFlux clearly falls back to the EV target and time configured in settings.
 
-The EV settings also include an **idle house load** estimate. This value is advisory only: it lets Settings show how much EV current, or which mode-only charging level, can physically fit below Peak Guard without PV or battery reserve. Live control never uses this estimate and continues to rely on the real P1 measurement.
+The EV settings also include an **idle house load** estimate. HomeFlux normally learns a physical house-load reference from up to forty one-minute averages before EV charging starts; the configured estimate is the startup fallback until enough clean observations exist. For mode-controlled EVs, only measured load above this reference can receive intentional grid room. With multiple EVs this remains one safe portfolio value rather than an unreliable per-charger guess. Settings also uses the estimate to show how much EV current, or which mode-only charging level, can physically fit below Peak Guard without PV or battery reserve.
 
 ### Autotune and Savings
 
@@ -43,7 +63,7 @@ Voeg het **HomeFlux EMS-apparaat** toe in Homey voor snelle operationele aanpass
 
 Voor EV-planning kunnen de bestaande Flow-kaarten voor SoC-tegen-tijd en kWh-tegen-tijd een blijvend **minimumdoel** instellen. Een gegarandeerd doel mag elk tarief gebruiken wanneer dat nodig is om de deadline te verzekeren; een niet-gegarandeerd doel blijft proberen op gunstige PV-/tariefmomenten. Is geen Flow-doel ingestuurd, dan valt HomeFlux zichtbaar terug op het EV-doel en tijdstip uit de instellingen.
 
-In de EV-instellingen kan ook het **rustverbruik van de woning** worden ingevuld. Die waarde is uitsluitend informatief: Instellingen toont daarmee hoeveel EV-laadstroom, of welke modus bij mode-only sturing, fysiek binnen Peak Guard past zonder PV of batterijreserve. De live regeling gebruikt deze schatting nooit en blijft altijd op de werkelijke P1-meting sturen.
+In de EV-instellingen kan ook het **rustverbruik van de woning** worden ingevuld. HomeFlux leert normaal vóór het EV-laden een fysieke woningreferentie uit maximaal veertig éénminuutsgemiddelden; de ingestelde schatting is de opstartfallback zolang nog onvoldoende zuivere waarnemingen bestaan. Bij modussturing kan alleen het gemeten verbruik boven deze referentie bewuste netruimte voor de EV krijgen. Bij meerdere EV’s blijft dit één veilige portefeuillewaarde en wordt niet gegokt welke afzonderlijke lader stopte. Instellingen gebruikt de schatting daarnaast om te tonen hoeveel EV-laadstroom, of welke modus bij mode-only sturing, fysiek binnen Peak Guard past zonder PV of batterijreserve.
 
 ### Autotune en Winst
 

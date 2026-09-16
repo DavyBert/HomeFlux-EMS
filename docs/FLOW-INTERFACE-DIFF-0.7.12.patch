@@ -1,0 +1,89 @@
+--- original/app.js
++++ configured-slots/app.js
+@@ -2,6 +2,7 @@
+ 
+ const Homey = require('homey');
+ const { SlotFlowCards } = require('./lib/flow-slot-cards');
++const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
+ const { HomeyAPI } = require('homey-api');
+ const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand } = require('./lib/ems-engine');
+ const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, normalizeSequentialPriceArray, sequentialPricePeriodInfo, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
+@@ -4474,8 +4475,32 @@
+     }));
+   }
+ 
++  getConfiguredFlowSlots(kind) {
++    const settings = this.getSettings();
++    const nl = String(this.homey.i18n?.getLanguage?.() || 'en').toLowerCase().startsWith('nl');
++    const count = kind === 'battery' ? this.getBatteryCount(settings)
++      : kind === 'ev' ? this.getEvCount(settings)
++        : kind === 'hvac' ? this.getHvacCount(settings) : 0;
++    const label = kind === 'battery' ? (nl ? 'Batterij' : 'Battery') : kind.toUpperCase();
++    return Array.from({ length: count }, (_, index) => {
++      const baseName = `${label} ${index + 1}`;
++      const customName = kind === 'ev' ? this.getEvInstanceName(index, settings)
++        : kind === 'hvac' ? this.getHvacInstanceName(index, settings) : baseName;
++      // Counts define configured slots. A disconnected EV, or HVAC with its
++      // automatic control temporarily disabled, must remain selectable.
++      return {
++        id: String(index + 1), kind,
++        name: customName === baseName ? baseName : `${baseName} - ${customName}`,
++      };
++    });
++  }
++
+   registerFlowCards() {
+-    this.slotFlowCards = new SlotFlowCards(this.homey.flow);
++    this.configuredFlowCards = new ConfiguredFlowCards(this.homey.flow, {
++      getSlots: kind => this.getConfiguredFlowSlots(kind),
++      getLanguage: () => this.homey.i18n?.getLanguage?.() || 'en',
++    });
++    this.slotFlowCards = new SlotFlowCards(this.configuredFlowCards);
+     this.commandTrigger = this.homey.flow.getTriggerCard('battery_commands_updated');
+     this.calculatedSetpointTrigger = this.homey.flow.getTriggerCard('battery_setpoint_calculated');
+     this.balanceWarningTrigger = this.homey.flow.getTriggerCard('battery_balance_warning');
+@@ -4618,7 +4643,7 @@
+       return true;
+     });
+ 
+-    this.homey.flow.getActionCard('set_battery_soc').registerRunListener(async args => {
++    this.configuredFlowCards.getActionCard('set_battery_soc').registerRunListener(async args => {
+       const index = Math.max(1, Math.min(8, Number(args.battery))) - 1;
+       const value = Number(args.soc);
+       if (!Number.isFinite(value)) return false;
+@@ -5161,30 +5186,30 @@
+       const soc = this.getAverageBatterySoc(this.getSettings());
+       return soc !== null && Number(soc) > Number(args.soc || 0);
+     });
+-    this.homey.flow.getConditionCard('ev_is_connected').registerRunListener(async args => {
++    this.configuredFlowCards.getConditionCard('ev_is_connected').registerRunListener(async args => {
+       const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+       if (index >= this.getEvCount()) return false;
+       const input = this.getEvInputSnapshot(index);
+       return Boolean(input?.seen?.connected) && Boolean(input?.connected);
+     });
+-    this.homey.flow.getConditionCard('ev_is_charging').registerRunListener(async args => {
++    this.configuredFlowCards.getConditionCard('ev_is_charging').registerRunListener(async args => {
+       const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+       if (index >= this.getEvCount()) return false;
+       const input = this.getEvInputSnapshot(index);
+       return Boolean(input?.seen?.chargeCurrent) && Number(input?.chargeCurrentA || 0) > 0.05;
+     });
+-    this.homey.flow.getConditionCard('ev_charging_is_allowed').registerRunListener(async args => {
++    this.configuredFlowCards.getConditionCard('ev_charging_is_allowed').registerRunListener(async args => {
+       const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+       if (index >= this.getEvCount()) return false;
+       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+       return Boolean(decision?.allowed);
+     });
+-    this.homey.flow.getConditionCard('ev_mode_is').registerRunListener(async args => {
++    this.configuredFlowCards.getConditionCard('ev_mode_is').registerRunListener(async args => {
+       const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+       if (index >= this.getEvCount()) return false;
+       return String(this.getEffectiveEvModeFor(index, this.getSettings())) === String(args.mode || '');
+     });
+-    this.homey.flow.getConditionCard('hvac_is_active').registerRunListener(async args => {
++    this.configuredFlowCards.getConditionCard('hvac_is_active').registerRunListener(async args => {
+       const index = Math.max(1, Math.min(4, Number(args.hvac) || 1)) - 1;
+       if (index >= this.getHvacCount()) return false;
+       return this.isHvacManagedActiveFor(index);

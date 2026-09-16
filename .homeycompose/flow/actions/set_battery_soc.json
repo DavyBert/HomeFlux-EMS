@@ -85,5 +85,6 @@
   "titleFormatted": {
     "en": "Set [[battery]] SoC to [[soc]]%",
     "nl": "Stel [[battery]] SoC in op [[soc]]%"
-  }
+  },
+  "deprecated": true
 }

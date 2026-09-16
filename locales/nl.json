@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.8 — Jouw energie, anders geregeld",
+    "subtitle": "v0.7.12 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -169,6 +169,17 @@
       "favourableOnly": "niet gegarandeerd · alleen gunstige momenten",
       "flowTarget": "Flow-doel",
       "evChargingGuarantee": "Laden voor gegarandeerd minimum",
+      "evSessionStarted": "Gestart",
+      "evSessionEnded": "Sessie beëindigd",
+      "evChargingPaused": "Laden onderbroken",
+      "evSessionWaiting": "Aangesloten · wacht op laden",
+      "currentFeedback": "stroommeting",
+      "houseMeasurement": "woningmeting",
+      "viaFlow": "via Flow",
+      "automaticHouseLoad": "automatisch via woningmeting",
+      "evNoLoadGridStopped": "Geen EV-belasting gedurende 1 minuut gedetecteerd · netvrijgave gestopt",
+      "evHouseObservation": "Woningverbruik opnieuw rond de referentie · EV-netvrijgave stopt over {seconds} s als dit zo blijft",
+      "evHouseReference": "woningreferentie",
       "boilerFallbackReadyDetail": "{days}/{target} zonnedag(en) gemist · tarieffallback actief"
     }
   }

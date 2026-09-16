@@ -1,0 +1,86 @@
+{
+  "title": {
+    "en": "Override EV mode for one charging session",
+    "nl": "Override EV-modus voor één laadbeurt"
+  },
+  "hint": {
+    "en": "Temporarily use the selected the selected EV operating mode for one connection session. If the the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured the selected EV mode is never overwritten.",
+    "nl": "Gebruik tijdelijk de gekozen de geselecteerde EV-werkingsmodus voor één verbindingssessie. Is de de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde de geselecteerde EV-modus wordt nooit overschreven."
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "dropdown",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "EV 1",
+            "nl": "EV 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "EV 2",
+            "nl": "EV 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "EV 3",
+            "nl": "EV 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "EV 4",
+            "nl": "EV 4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "EV 1 operating mode",
+        "nl": "EV 1-werkingsmodus"
+      },
+      "values": [
+        {
+          "id": "smart",
+          "title": {
+            "en": "Smart",
+            "nl": "Slim"
+          }
+        },
+        {
+          "id": "soc_target",
+          "title": {
+            "en": "SoC target",
+            "nl": "Op SoC-doel"
+          }
+        },
+        {
+          "id": "emergency",
+          "title": {
+            "en": "Emergency charge",
+            "nl": "Emergency charge"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] override for one session: [[mode]]",
+    "nl": "[[ev]]-override voor één laadbeurt: [[mode]]"
+  },
+  "deprecated": true
+}

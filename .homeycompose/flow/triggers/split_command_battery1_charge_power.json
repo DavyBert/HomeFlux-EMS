@@ -17,5 +17,6 @@
       },
       "example": 1000
     }
-  ]
+  ],
+  "deprecated": true
 }

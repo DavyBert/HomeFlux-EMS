@@ -1,0 +1,75 @@
+{
+  "title": {
+    "en": "Set HVAC automatic control",
+    "nl": "Stel HVAC automatische sturing in"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "dropdown",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "HVAC 1",
+            "nl": "HVAC 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "HVAC 2",
+            "nl": "HVAC 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "HVAC 3",
+            "nl": "HVAC 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "HVAC 4",
+            "nl": "HVAC 4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "enabled",
+      "type": "dropdown",
+      "title": {
+        "en": "Automatic control",
+        "nl": "Automatische sturing"
+      },
+      "values": [
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        },
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[hvac]] automatic control to [[enabled]]",
+    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]"
+  },
+  "deprecated": true
+}

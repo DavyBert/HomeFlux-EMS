@@ -46,5 +46,6 @@
   "titleFormatted": {
     "en": "[[ev]] is connected",
     "nl": "[[ev]] is aangesloten"
-  }
+  },
+  "deprecated": true
 }

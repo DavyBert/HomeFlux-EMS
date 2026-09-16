@@ -417,6 +417,14 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   assert.equal(full.desiredCurrentA, 16);
   assert.equal(full.source, 'pv+topup');
   assert.ok(full.gridRequestPowerW > 0);
+
+  // Minimum top-up must also be able to START when real PV is below the
+  // charger's 6 A minimum. 900 W PV + 480 W grid becomes one valid 6 A step.
+  const minimum = calculateEvDecision({ settings: baseSettings({ ...common, evPvStartSurplusW: 500, evPvGridTopUpMode: 'minimum' }), connected: true, soc: 50, actualCurrentA: 0, gridPowerW: -900, currentBatteryCommandW: 0, nextBatteryCommandW: 0, tariff, pvAvailableWOverride: 900, now: new Date('2026-09-09T12:00:00+02:00') });
+  assert.equal(minimum.desiredCurrentA, 6);
+  assert.equal(minimum.source, 'pv+topup');
+  assert.equal(minimum.pvRequestPowerW, 900);
+  assert.equal(minimum.gridRequestPowerW, 480);
 }
 
 // v0.6.1: SoC-target mode obeys the same per-EV tariff policy as Smart mode.

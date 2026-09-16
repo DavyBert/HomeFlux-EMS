@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.7.8 — Your energy, managed differently",
+    "subtitle": "v0.7.12 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -169,6 +169,17 @@
       "favourableOnly": "not guaranteed · favourable moments only",
       "flowTarget": "Flow target",
       "evChargingGuarantee": "Charging for guaranteed minimum",
+      "evSessionStarted": "Started",
+      "evSessionEnded": "Session ended",
+      "evChargingPaused": "Charging paused",
+      "evSessionWaiting": "Connected · waiting for charging",
+      "currentFeedback": "current feedback",
+      "houseMeasurement": "house measurement",
+      "viaFlow": "by Flow",
+      "automaticHouseLoad": "automatically by house measurement",
+      "evNoLoadGridStopped": "No EV load detected for 1 minute · grid permission withdrawn",
+      "evHouseObservation": "House load is back near its reference · EV grid permission stops in {seconds}s if this continues",
+      "evHouseReference": "house reference",
       "boilerFallbackReadyDetail": "{days}/{target} solar day(s) missed · tariff fallback active"
     }
   }

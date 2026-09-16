@@ -46,5 +46,6 @@
   "titleFormatted": {
     "en": "[[ev]] is charging",
     "nl": "[[ev]] is aan het laden"
-  }
+  },
+  "deprecated": true
 }

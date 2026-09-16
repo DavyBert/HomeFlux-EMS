@@ -1,0 +1,59 @@
+{
+  "title": {
+    "en": "[[ev]] mode is [[mode]]",
+    "nl": "[[ev]]-modus is [[mode]]"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "autocomplete",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "placeholder": {
+        "en": "Select configured EV",
+        "nl": "Kies geconfigureerde EV"
+      }
+    },
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "values": [
+        {
+          "id": "smart",
+          "title": {
+            "en": "Smart",
+            "nl": "Slim"
+          }
+        },
+        {
+          "id": "soc_target",
+          "title": {
+            "en": "SoC target",
+            "nl": "Op SoC-doel"
+          }
+        },
+        {
+          "id": "emergency",
+          "title": {
+            "en": "Emergency charge",
+            "nl": "Emergency charge"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] mode is [[mode]]",
+    "nl": "[[ev]]-modus is [[mode]]"
+  },
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}
