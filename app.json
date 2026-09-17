@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "0.7.12",
+  "version": "0.7.13",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -5969,8 +5969,8 @@
           "nl": "Override EV-modus voor één laadbeurt"
         },
         "hint": {
-          "en": "Temporarily use the selected the selected EV operating mode for one connection session. If the the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured the selected EV mode is never overwritten. Only slots within the saved device count are offered. At count 0 the list is empty.",
-          "nl": "Gebruik tijdelijk de gekozen de geselecteerde EV-werkingsmodus voor één verbindingssessie. Is de de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde de geselecteerde EV-modus wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+          "en": "Temporarily use the selected operating mode for the selected EV for one connection session. If the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured mode for the selected EV is never overwritten. Only slots within the saved device count are offered. At count 0 the list is empty.",
+          "nl": "Gebruik tijdelijk de gekozen werkingsmodus voor de geselecteerde EV gedurende één verbindingssessie. Is de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde modus van de geselecteerde EV wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
         },
         "args": [
           {

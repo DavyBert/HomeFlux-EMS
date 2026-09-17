@@ -198,6 +198,49 @@ function appWithSettings(overrides = {}) {
   assert.ok(rec.recommended >= 12 && rec.recommended <= 14, `unexpected learned demand ${rec.recommended}`);
 }
 
+// Expected energy need may only be raised after the battery has demonstrated
+// a real shortage by dropping below 20% average SoC on a usable learning day.
+{
+  const noShortage = appWithSettings({ expectedEnergyNeedKwh: 10, totalCapacityKwh: 20 });
+  noShortage.app.autoTuneRuntime.planning.days = [
+    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:14, forecastKwh:7, peakSoc:82, solarTargetSoc:80, nightTargetSoc:22, minObservedSoc:20, maxSocLimit:100 },
+    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:15, forecastKwh:8, peakSoc:84, solarTargetSoc:82, nightTargetSoc:23, minObservedSoc:24, maxSocLimit:100 },
+    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:14, forecastKwh:8, peakSoc:83, solarTargetSoc:81, nightTargetSoc:22, minObservedSoc:26, maxSocLimit:100 },
+  ];
+  assert.equal(noShortage.app.getAutoTuneRecommendations().some(item => item.settingKey === 'expectedEnergyNeedKwh'), false,
+    'expected energy need must not increase while learned battery SoC stayed at or above 20%');
+
+  const shortage = appWithSettings({ expectedEnergyNeedKwh: 10, totalCapacityKwh: 20 });
+  shortage.app.autoTuneRuntime.planning.days = [
+    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:14, forecastKwh:7, peakSoc:82, solarTargetSoc:80, nightTargetSoc:18, minObservedSoc:18.5, maxSocLimit:100 },
+    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:15, forecastKwh:8, peakSoc:84, solarTargetSoc:82, nightTargetSoc:22, minObservedSoc:24, maxSocLimit:100 },
+    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:14, forecastKwh:8, peakSoc:83, solarTargetSoc:81, nightTargetSoc:21, minObservedSoc:23, maxSocLimit:100 },
+  ];
+  const rec = shortage.app.getAutoTuneRecommendations().find(item => item.settingKey === 'expectedEnergyNeedKwh');
+  assert.ok(rec && rec.recommended > 10, 'a measured SoC below 20% may authorize an increase');
+}
+
+// The user-defined desired SoC biases expected-energy learning without becoming
+// a hard EMS SoC setting. A lower target should learn a lower energy need.
+{
+  const make = targetSoc => {
+    const ctx = appWithSettings({ expectedEnergyNeedKwh: 30, totalCapacityKwh: 20 });
+    ctx.store._autoTuneLimits = { expectedEnergyNeedKwh: { min:0, max:60, minConfidencePercent:95, userDefined:true, targetSoc } };
+    ctx.app.autoTuneRuntime.planning.days = [
+      { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:15, forecastKwh:8, peakSoc:86, solarTargetSoc:85, nightTargetSoc:16, minObservedSoc:15, maxSocLimit:100 },
+      { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:15, forecastKwh:9, peakSoc:87, solarTargetSoc:85, nightTargetSoc:17, minObservedSoc:16, maxSocLimit:100 },
+      { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:15, forecastKwh:9, peakSoc:86, solarTargetSoc:85, nightTargetSoc:16, minObservedSoc:15, maxSocLimit:100 },
+    ];
+    return ctx.app.getAutoTuneRecommendations().find(item => item.settingKey === 'expectedEnergyNeedKwh');
+  };
+  const target80 = make(80);
+  const target95 = make(95);
+  assert.ok(target80 && target95);
+  assert.ok(target80.recommended < target95.recommended, 'desired SoC must influence learned expected energy need');
+  assert.equal(target80.allowedRange.targetSoc, 80);
+  assert.equal(target95.allowedRange.targetSoc, 95);
+}
+
 // A consistently high morning residual trims the learned energy need slightly,
 // nudging night planning toward a lower morning SoC without touching Min/Safety.
 {
@@ -256,6 +299,7 @@ function appWithSettings(overrides = {}) {
   assert.equal(last.forecastKwh, null);
   assert.equal(last.peakSoc, null);
   assert.equal(last.solarTargetSoc, null);
+  assert.equal(last.minObservedSoc, null);
   assert.ok(Array.isArray(store._autoTuneLearning.days));
   assert.equal(store._autoTuneLearning.days.length, 14);
 }
@@ -272,6 +316,7 @@ function appWithSettings(overrides = {}) {
   app.state.batterySoc[0] = 17;
   app.recordAutoTunePlanningSample(Date.parse('2026-09-10T06:55:00+02:00'), app.getSettings());
   assert.equal(app.autoTuneRuntime.planning.currentDay.nightTargetSoc, 17);
+  assert.equal(app.autoTuneRuntime.planning.currentDay.minObservedSoc, 17);
   app.state.pvPowerW = 600;
   app.state.batterySoc[0] = 21;
   app.recordAutoTunePlanningSample(Date.parse('2026-09-10T07:05:00+02:00'), app.getSettings());
@@ -418,7 +463,13 @@ function appWithSettings(overrides = {}) {
   await realistic.app.setAutoTunePermission({ settingKey: 'lowForecastSelfConsumptionMinKwh', allowed: true });
   assert.deepEqual(realistic.store._autoTuneLimits.lowForecastSelfConsumptionMinKwh, { min:0, max:40, minConfidencePercent:95, userDefined:false });
   await realistic.app.setAutoTunePermission({ settingKey: 'expectedEnergyNeedKwh', allowed: true });
-  assert.deepEqual(realistic.store._autoTuneLimits.expectedEnergyNeedKwh, { min:0, max:60, minConfidencePercent:95, userDefined:false });
+  assert.deepEqual(realistic.store._autoTuneLimits.expectedEnergyNeedKwh, { min:0, max:60, minConfidencePercent:95, userDefined:false, targetSoc:85 });
+  await realistic.app.setAutoTuneLimits({ settingKey:'expectedEnergyNeedKwh', min:0, max:60, minConfidencePercent:90, targetSoc:80 });
+  assert.deepEqual(realistic.store._autoTuneLimits.expectedEnergyNeedKwh, { min:0, max:60, minConfidencePercent:90, userDefined:true, targetSoc:80 });
+  const expectedNeedManaged = realistic.app.getAutoTuneStatus().managed.find(item => item.settingKey === 'expectedEnergyNeedKwh');
+  assert.ok(expectedNeedManaged);
+  assert.equal(expectedNeedManaged.allowedRange.targetSoc, 80);
+  assert.equal(expectedNeedManaged.allowedRange.targetSocMax, 85);
   await realistic.app.setAutoTunePermission({ settingKey: 'balanceStrength', allowed: true });
   assert.deepEqual(realistic.store._autoTuneLimits.balanceStrength, { min:0.1, max:0.35, minConfidencePercent:95, userDefined:false });
   await realistic.app.setAutoTunePermission({ settingKey: 'evModeSmartCurrentA', allowed: true });

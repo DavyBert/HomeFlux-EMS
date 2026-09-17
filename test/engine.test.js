@@ -1823,11 +1823,9 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.ok(plan.energyNeedKwh > 0);
 }
 
-// v0.3.84: when explicitly enabled, the selected-month minimum also applies
-// to night planning. Demand and reserve are added before tomorrow's PV is
-// credited, so the forecast cannot be counted twice. This mirrors the reported
-// 18% SoC / 13.43 kWh forecast case where a 100% peak minimum must drive the
-// overnight target to 100% when forecast energy is insufficient.
+// When explicitly enabled, the selected-month minimum also applies to night
+// planning as a floor. A 100% floor must still drive the target to 100%,
+// without adding that floor as another energy requirement.
 {
   const plan = buildSocPlan(
     state({
@@ -1859,7 +1857,7 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(plan.peakReserveTargetSoc, 100);
   assert.equal(plan.peakReserveNightTargetSoc, 100);
   assert.equal(plan.targetSoc, 100);
-  assert.ok(plan.peakReserveNightCombinedGapKwh > 19.44);
+  assert.equal(plan.peakReserveNightCombinedGapKwh, 0);
 }
 
 // v0.6.1: the configured monthly minimum is a hard floor in night planning.
@@ -2364,7 +2362,7 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.ok(result.totalCommandW >= 995 && result.totalCommandW <= 1005, `expected about 1000 W discharge after leaving a 2000 W charge, got ${result.totalCommandW}`);
 }
 
-// v0.6.2: monthly minimum SoC selection is explicit and phase-aware.
+// v0.7.13: monthly minimum SoC selection is explicit and phase-aware.
 // Selected months use the selected minimum during day planning. Non-selected
 // months use the separate sunny-month minimum only when its option is enabled.
 // Night planning applies the same applicable minimum only when the night option
@@ -2456,6 +2454,60 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
   assert.equal(selectedNightEnabled.peakReserveActive, true);
   assert.equal(selectedNightEnabled.peakReserveNightActive, true);
   assert.equal(selectedNightEnabled.targetSoc, 60);
+}
+
+// v0.7.13: selected- and non-selected-month minimums are lower floors only.
+// Forecast need is always calculated from the technical Minimum SoC, during
+// both day planning and (when enabled) night planning.
+{
+  const floorSettings = {
+    expectedEnergyNeedKwh: 5,
+    totalCapacityKwh: 20,
+    minSoc: 10,
+    safetySoc: 15,
+    maxSoc: 100,
+    peakReserveTargetSoc: 50,
+    peakReserveMonth8: true,
+  };
+  const selectedDayBelowFloor = buildSocPlan(
+    state({ forecastRemainingKwh: 0, forecastDailyMaxKwh: 0 }),
+    baseSettings(floorSettings),
+    new Date('2026-08-25T12:00:00+02:00'),
+  );
+  assert.equal(selectedDayBelowFloor.forecastEnergyTargetSoc, 35);
+  assert.equal(selectedDayBelowFloor.targetSoc, 50);
+
+  const selectedDayAboveFloor = buildSocPlan(
+    state({ forecastRemainingKwh: 0, forecastDailyMaxKwh: 0 }),
+    baseSettings({ ...floorSettings, expectedEnergyNeedKwh: 12.4 }),
+    new Date('2026-08-25T12:00:00+02:00'),
+  );
+  assert.equal(selectedDayAboveFloor.forecastEnergyTargetSoc, 72);
+  assert.equal(selectedDayAboveFloor.targetSoc, 72);
+
+  const selectedNightBelowFloor = buildSocPlan(
+    state({ planningForecastDay: 'tomorrow', nightPlanningActive: true, forecastTomorrowKwh: 0 }),
+    baseSettings({ ...floorSettings, peakReserveNightEnabled: true }),
+    new Date('2026-08-24T22:00:00+02:00'),
+  );
+  assert.equal(selectedNightBelowFloor.forecastEnergyTargetSoc, 35);
+  assert.equal(selectedNightBelowFloor.targetSoc, 50);
+
+  const sunnyNightAboveFloor = buildSocPlan(
+    state({ planningForecastDay: 'tomorrow', nightPlanningActive: true, forecastTomorrowKwh: 0 }),
+    baseSettings({
+      ...floorSettings,
+      expectedEnergyNeedKwh: 12.4,
+      peakReserveMonth8: false,
+      sunnyMonthsMinSocEnabled: true,
+      sunnyMonthsMinSoc: 50,
+      peakReserveNightEnabled: true,
+    }),
+    new Date('2026-08-24T22:00:00+02:00'),
+  );
+  assert.equal(sunnyNightAboveFloor.peakReserveStrategy, 'sunny_month_min_soc');
+  assert.equal(sunnyNightAboveFloor.forecastEnergyTargetSoc, 72);
+  assert.equal(sunnyNightAboveFloor.targetSoc, 72);
 }
 
 // v0.6.5: an essential tariff boiler can reserve Peak Guard headroom before it

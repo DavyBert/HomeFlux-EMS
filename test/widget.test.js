@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.7.12');
-assert.equal(appCompose.version, '0.7.12');
-assert.equal(packageJson.version, '0.7.12');
-assert.equal(packageLock.version, '0.7.12');
-assert.equal(packageLock.packages[''].version, '0.7.12');
+assert.equal(manifest.version, '0.7.13');
+assert.equal(appCompose.version, '0.7.13');
+assert.equal(packageJson.version, '0.7.13');
+assert.equal(packageLock.version, '0.7.13');
+assert.equal(packageLock.packages[''].version, '0.7.13');
 assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
 assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
 const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');

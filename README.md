@@ -3,9 +3,13 @@
 **Your energy, managed differently**  
 **Jouw energie, anders geregeld**
 
+## 0.7.13
+
+Seasonal summer/winter minimum SoC values now act only as lower floors for day planning and, when enabled, night planning. Forecast demand is always calculated from the technical Minimum SoC. HomeFlux therefore uses `max(forecast target, applicable seasonal minimum)` and no longer adds the seasonal minimum to the calculated energy shortfall.
+
 ## 0.7.12
 
-Consolidated numbered Battery, EV and HVAC Flow cards into generic cards. All 31 slot selectors now dynamically offer only configured slots, including inputs, outputs, SoC requests and conditions. EV/HVAC names are shown; zero configured devices gives an empty selection. Numbered cards and previous fixed-dropdown cards remain deprecated but functional for existing Flows. Energy management, safety limits, planning and the slogan remain unchanged.
+Consolidated numbered Battery, EV and HVAC Flow cards into generic cards. All 31 slot selectors now dynamically offer only configured slots, including inputs, outputs, SoC requests and conditions. EV/HVAC names are shown; zero configured devices gives an empty selection. Numbered cards and previous fixed-dropdown cards remain deprecated but functional for existing Flows.
 
 Save the Battery/EV/HVAC counts before selecting a slot in Flow. Selection follows those counts, not live connection/charging state or temporary automatic-control toggles. Existing Flows are not automatically converted.
 

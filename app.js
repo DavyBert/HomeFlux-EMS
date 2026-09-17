@@ -536,7 +536,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.12 initialized');
+    this.log('HomeFlux EMS v0.7.13 initialized');
   }
 
   refreshSettingsCache() {
@@ -990,6 +990,7 @@ class HomeFluxEmsApp extends Homey.App {
     const solarTargetSoc = optionalNumber(day.solarTargetSoc);
     const nightTargetSoc = optionalNumber(day.nightTargetSoc);
     const maxSocLimit = optionalNumber(day.maxSocLimit);
+    const minObservedSoc = optionalNumber(day.minObservedSoc);
     const summary = {
       dateKey: String(day.dateKey),
       sampleHours: Math.round(sampleHours * 10) / 10,
@@ -998,6 +999,7 @@ class HomeFluxEmsApp extends Homey.App {
       peakSoc: peakSoc !== null ? Math.round(peakSoc * 10) / 10 : null,
       solarTargetSoc: solarTargetSoc !== null ? Math.round(solarTargetSoc * 10) / 10 : null,
       nightTargetSoc: nightTargetSoc !== null ? Math.round(nightTargetSoc * 10) / 10 : null,
+      minObservedSoc: minObservedSoc !== null ? Math.round(minObservedSoc * 10) / 10 : null,
       maxSocLimit: maxSocLimit !== null ? Math.round(maxSocLimit * 10) / 10 : null,
       lowForecastPromoted: Boolean(day.lowForecastPromoted),
     };
@@ -1044,6 +1046,7 @@ class HomeFluxEmsApp extends Homey.App {
         peakSoc: null,
         solarTargetSoc: null,
         nightTargetSoc: null,
+        minObservedSoc: null,
         maxSocLimit: Math.max(0, Math.min(100, Number(settings.maxSoc) || 100)),
         lowForecastPromoted: false,
       };
@@ -1060,6 +1063,7 @@ class HomeFluxEmsApp extends Homey.App {
     const avgSoc = this.getAverageBatterySoc(settings);
     if (avgSoc !== null && Number.isFinite(Number(avgSoc))) {
       day.peakSoc = day.peakSoc === null ? Number(avgSoc) : Math.max(Number(day.peakSoc), Number(avgSoc));
+      day.minObservedSoc = day.minObservedSoc === null ? Number(avgSoc) : Math.min(Number(day.minObservedSoc), Number(avgSoc));
       const minute = Number(parts.minuteOfDay);
       const solarTarget = this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60);
       const nightTarget = this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60);
@@ -1220,12 +1224,20 @@ class HomeFluxEmsApp extends Homey.App {
     if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
     if (min > max) min = max = Math.max(hardMin, Math.min(hardMax, Number(currentValue ?? settings[settingKey]) || 0));
     const defaultConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
-    return {
+    const result = {
       min,
       max,
       minConfidencePercent: defaultConfidence,
       userDefined: false,
     };
+    if (String(settingKey) === 'expectedEnergyNeedKwh') {
+      const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+      const targetMax = Math.max(targetMin, Math.min(100, Number(settings.maxSoc) || 100));
+      result.targetSocMin = targetMin;
+      result.targetSocMax = targetMax;
+      result.targetSoc = Math.max(targetMin, Math.min(targetMax, 95));
+    }
+    return result;
   }
 
   getAutoTuneLimitFor(settingKey, currentValue = null, limits = null) {
@@ -1247,7 +1259,18 @@ class HomeFluxEmsApp extends Homey.App {
       if (min > max) [min, max] = [max, min];
       const allowedValues = this.getAutoTuneAllowedValues(settingKey);
       const hasSelectableValue = !allowedValues.length || allowedValues.some(value => value >= min && value <= max);
-      if (hasSelectableValue) return { min, max, minConfidencePercent, userDefined: Boolean(stored?.userDefined) };
+      if (hasSelectableValue) {
+        const result = { min, max, minConfidencePercent, userDefined: Boolean(stored?.userDefined) };
+        if (String(settingKey) === 'expectedEnergyNeedKwh') {
+          const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+          const targetMax = Math.max(targetMin, Math.min(100, Number(settings.maxSoc) || 100));
+          const storedTarget = Number(stored?.targetSoc);
+          result.targetSocMin = targetMin;
+          result.targetSocMax = targetMax;
+          result.targetSoc = Math.max(targetMin, Math.min(targetMax, Number.isFinite(storedTarget) ? storedTarget : 95));
+        }
+        return result;
+      }
     }
     const defaults = this.getDefaultAutoTuneLimit(settingKey, currentValue);
     return defaults ? { ...defaults, minConfidencePercent } : null;
@@ -1278,7 +1301,18 @@ class HomeFluxEmsApp extends Homey.App {
     const minConfidencePercent = Number.isFinite(requestedConfidence)
       ? Math.max(0, Math.min(100, requestedConfidence))
       : Math.max(0, Math.min(100, Number(previous.minConfidencePercent) || Number(settings.autoTuneMinConfidencePercent) || 95));
-    limits[settingKey] = { min, max, minConfidencePercent, userDefined: true };
+    const nextLimit = { min, max, minConfidencePercent, userDefined: true };
+    if (settingKey === 'expectedEnergyNeedKwh') {
+      const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+      const targetMax = Math.max(targetMin, Math.min(100, Number(settings.maxSoc) || 100));
+      const requestedTarget = Number(body.targetSoc);
+      const previousTarget = Number(previous.targetSoc);
+      const targetSoc = Number.isFinite(requestedTarget)
+        ? requestedTarget
+        : (Number.isFinite(previousTarget) ? previousTarget : 95);
+      nextLimit.targetSoc = Math.max(targetMin, Math.min(targetMax, targetSoc));
+    }
+    limits[settingKey] = nextLimit;
     this.setSetting('_autoTuneLimits', limits);
     return this.getAutoTuneStatus();
   }
@@ -1652,6 +1686,7 @@ class HomeFluxEmsApp extends Homey.App {
         peakSoc: optionalNumber(currentDay.peakSoc),
         solarTargetSoc: optionalNumber(currentDay.solarTargetSoc),
         nightTargetSoc: optionalNumber(currentDay.nightTargetSoc),
+        minObservedSoc: optionalNumber(currentDay.minObservedSoc),
         maxSocLimit: optionalNumber(currentDay.maxSocLimit) ?? Number(settings.maxSoc),
       });
     }
@@ -1667,21 +1702,52 @@ class HomeFluxEmsApp extends Homey.App {
     if (batteryPresent && normalizedDemand.length >= 2) {
       const learnedNeed = median(normalizedDemand);
       const currentNeed = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
+      const energyNeedLimits = this.getAutoTuneLimitFor('expectedEnergyNeedKwh', currentNeed, limits) || {};
+      const storedEnergyNeedTarget = Number(limits?.expectedEnergyNeedKwh?.targetSoc);
+      const targetSocConfigured = Number.isFinite(storedEnergyNeedTarget);
+      const targetSoc = Math.max(0, Math.min(100, Number(energyNeedLimits.targetSoc) || 95));
       let desiredNeed = Math.max(0, Math.min(100, roundTo(learnedNeed, 0.5)));
+      const capacity = Math.max(0, Number(settings.totalCapacityKwh) || 0);
+
+      // The desired battery target only becomes active after the user grants
+      // Autotune management for this parameter (which stores the default 95%)
+      // or explicitly saves a target. Until then, recommendation behaviour stays
+      // compatible with the previous demand-only learner.
+      const daytimeSocValues = demandDays
+        .map(day => optionalNumber(day.solarTargetSoc) ?? optionalNumber(day.peakSoc))
+        .filter(value => value !== null);
+      const daytimeSoc = median(daytimeSocValues);
+      if (targetSocConfigured && daytimeSoc !== null && capacity > 0) {
+        const targetCorrectionKwh = capacity * ((targetSoc - daytimeSoc) / 100);
+        const maxCorrectionKwh = Math.max(0.5, desiredNeed * 0.2);
+        desiredNeed = Math.max(0, Math.min(100, roundTo(desiredNeed + Math.max(-maxCorrectionKwh, Math.min(maxCorrectionKwh, targetCorrectionKwh)), 0.5)));
+      }
+
       const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
       const morningSoc = median(morningSocValues);
-      const capacity = Math.max(0, Number(settings.totalCapacityKwh) || 0);
       const morningFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
       if (morningSoc !== null && capacity > 0 && morningSoc > morningFloor + 5) {
         const excessKwh = capacity * ((morningSoc - (morningFloor + 2)) / 100);
         desiredNeed = Math.max(0, roundTo(desiredNeed - Math.min(excessKwh * 0.35, desiredNeed * 0.2), 0.5));
       }
-      if (Math.abs(desiredNeed - currentNeed) >= Math.max(1, currentNeed * 0.08)) {
+
+      // Raising expected energy need is only justified after a usable learning
+      // day has shown a real shortage: average battery SoC below 20%. Legacy
+      // summaries without a measured minimum never authorize an increase.
+      const minSocValues = demandDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
+      const lowestObservedSoc = minSocValues.length ? Math.min(...minSocValues) : null;
+      const shortageObserved = minSocValues.some(value => value < 20);
+      const isIncrease = desiredNeed > currentNeed + 1e-9;
+      if ((!isIncrease || shortageObserved) && Math.abs(desiredNeed - currentNeed) >= Math.max(1, currentNeed * 0.08)) {
         const residualNl = morningSoc !== null ? ` Gemiddelde SoC rond het ochtenddoel is ${morningSoc.toFixed(1)}%.` : '';
         const residualEn = morningSoc !== null ? ` Average SoC around the morning target is ${morningSoc.toFixed(1)}%.` : '';
+        const targetNl = daytimeSoc !== null ? ` Gewenste batterij-SoC is ${targetSoc.toFixed(0)}%; rond het dagdoel werd gemiddeld ${daytimeSoc.toFixed(1)}% bereikt.` : ` Gewenste batterij-SoC is ${targetSoc.toFixed(0)}%.`;
+        const targetEn = daytimeSoc !== null ? ` Desired battery SoC is ${targetSoc.toFixed(0)}%; around the daytime target the average reached SoC is ${daytimeSoc.toFixed(1)}%.` : ` Desired battery SoC is ${targetSoc.toFixed(0)}%.`;
+        const shortageNl = lowestObservedSoc !== null ? ` Laagste gemeten SoC in deze leerdagen is ${lowestObservedSoc.toFixed(1)}%.` : '';
+        const shortageEn = lowestObservedSoc !== null ? ` Lowest measured SoC across these learning days is ${lowestObservedSoc.toFixed(1)}%.` : '';
         push('expectedEnergyNeedKwh', 'Verwachte energiebehoefte', 'Expected energy need', currentNeed, desiredNeed, 'kWh',
-          `Het geschatte dagelijkse niet-EV-verbruik is ongeveer ${learnedNeed.toFixed(1)} kWh uit ${normalizedDemand.length} bruikbare dagen.${residualNl} Hiermee kan HomeFlux overdag richting 90–100% mikken zonder 's nachts structureel te veel netenergie in de batterij te stoppen.`,
-          `Estimated daily non-EV demand is about ${learnedNeed.toFixed(1)} kWh from ${normalizedDemand.length} usable days.${residualEn} This helps HomeFlux aim for 90–100% during the day without systematically putting too much grid energy into the battery overnight.`,
+          `Het geschatte dagelijkse niet-EV-verbruik is ongeveer ${learnedNeed.toFixed(1)} kWh uit ${normalizedDemand.length} bruikbare dagen.${targetNl}${residualNl}${shortageNl} Een verhoging wordt alleen voorgesteld wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam.`,
+          `Estimated daily non-EV demand is about ${learnedNeed.toFixed(1)} kWh from ${normalizedDemand.length} usable days.${targetEn}${residualEn}${shortageEn} An increase is only suggested after the battery actually dropped below 20% SoC on a usable learning day.`,
           planningConfidence(normalizedDemand.length), normalizedDemand.length, 'Planning');
       }
     }
@@ -1966,7 +2032,10 @@ class HomeFluxEmsApp extends Homey.App {
       if (!limits[settingKey]) {
         const defaults = this.getDefaultAutoTuneLimit(settingKey, this.getSettings()[settingKey]);
         if (defaults) {
-          limits[settingKey] = defaults;
+          const storedDefaults = { ...defaults };
+          delete storedDefaults.targetSocMin;
+          delete storedDefaults.targetSocMax;
+          limits[settingKey] = storedDefaults;
           this.setSetting('_autoTuneLimits', limits);
         }
       }
@@ -11886,7 +11955,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.12',
+      version: '0.7.13',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -11963,7 +12032,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.12',
+      version: '0.7.13',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12268,7 +12337,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.12',
+      version: '0.7.13',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
