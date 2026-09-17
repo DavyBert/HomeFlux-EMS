@@ -536,7 +536,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.13 initialized');
+    this.log('HomeFlux EMS v0.7.14 initialized');
   }
 
   refreshSettingsCache() {
@@ -1808,10 +1808,22 @@ class HomeFluxEmsApp extends Homey.App {
       }
       if (desiredLowPv !== null) {
         desiredLowPv = Math.max(0, Math.min(100, roundTo(desiredLowPv, 0.5)));
-        if (Math.abs(desiredLowPv - currentLowPv) >= Math.max(0.5, currentLowPv * 0.08)) {
+        // Raising the low-PV threshold makes Battery Save apply to more days.
+        // Only do that after a usable learning day has shown a real shortage:
+        // average battery SoC below 20%. Legacy summaries without a measured
+        // minimum never authorize an increase. Lowering the threshold remains
+        // allowed when the learned PV/outcome relation shows it is too high.
+        const lowPvMinSocValues = outcomeDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
+        const lowPvLowestObservedSoc = lowPvMinSocValues.length ? Math.min(...lowPvMinSocValues) : null;
+        const lowPvShortageObserved = lowPvMinSocValues.some(value => value < 20);
+        const lowPvIncrease = desiredLowPv > currentLowPv + 1e-9;
+        if ((!lowPvIncrease || lowPvShortageObserved)
+          && Math.abs(desiredLowPv - currentLowPv) >= Math.max(0.5, currentLowPv * 0.08)) {
+          const shortageNl = lowPvLowestObservedSoc !== null ? ` Laagste gemeten SoC in deze leerdagen is ${lowPvLowestObservedSoc.toFixed(1)}%.` : '';
+          const shortageEn = lowPvLowestObservedSoc !== null ? ` Lowest measured SoC across these learning days is ${lowPvLowestObservedSoc.toFixed(1)}%.` : '';
           push('lowForecastSelfConsumptionMinKwh', 'Lage-PV-drempel', 'Low-PV threshold', currentLowPv, desiredLowPv, 'kWh',
-            `Van ${outcomeDays.length} dagen met forecast/SoC-data bereikten ${successes.length} dagen de 90%-zone rond het dagdoel en ${failures.length} dagen niet. Deze grens onderscheidt beter wanneer PV waarschijnlijk voldoende is en wanneer Batterij sparen zinvol blijft.`,
-            `Across ${outcomeDays.length} days with forecast/SoC data, ${successes.length} days reached the 90% zone around the daytime target and ${failures.length} did not. This threshold better distinguishes when PV is likely sufficient and when Battery Save remains useful.`,
+            `Van ${outcomeDays.length} dagen met forecast/SoC-data bereikten ${successes.length} dagen de 90%-zone rond het dagdoel en ${failures.length} dagen niet.${shortageNl} Deze grens onderscheidt beter wanneer PV waarschijnlijk voldoende is en wanneer Batterij sparen zinvol blijft. Een verhoging wordt alleen voorgesteld wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam.`,
+            `Across ${outcomeDays.length} days with forecast/SoC data, ${successes.length} days reached the 90% zone around the daytime target and ${failures.length} did not.${shortageEn} This threshold better distinguishes when PV is likely sufficient and when Battery Save remains useful. An increase is only suggested after the battery actually dropped below 20% SoC on a usable learning day.`,
             planningConfidence(outcomeDays.length), outcomeDays.length, 'Planning');
         }
       }
@@ -11955,7 +11967,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.13',
+      version: '0.7.14',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12032,7 +12044,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.13',
+      version: '0.7.14',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12337,7 +12349,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.13',
+      version: '0.7.14',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

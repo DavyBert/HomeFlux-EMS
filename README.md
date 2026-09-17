@@ -3,6 +3,10 @@
 **Your energy, managed differently**  
 **Jouw energie, anders geregeld**
 
+## 0.7.14
+
+Autotune now raises the Low-PV threshold only after a usable learning day actually dropped below 20% battery SoC. A threshold that is too high may still be reduced without requiring a low-SoC event.
+
 ## 0.7.13
 
 Seasonal summer/winter minimum SoC values now act only as lower floors for day planning and, when enabled, night planning. Forecast demand is always calculated from the technical Minimum SoC. HomeFlux therefore uses `max(forecast target, applicable seasonal minimum)` and no longer adds the seasonal minimum to the calculated energy shortfall.

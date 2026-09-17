@@ -16,7 +16,7 @@ const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'trans
 const flowActionIds = new Set(appJson.flow.actions.map(card => card.id));
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '0.7.13');
+  assert.equal(manifest.version, '0.7.14');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -27,8 +27,8 @@ for (const manifest of [appJson, composeJson]) {
   assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
   assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
 }
-assert.equal(localeNl.settings.subtitle, 'v0.7.13 — Jouw energie, anders geregeld');
-assert.equal(localeEn.settings.subtitle, 'v0.7.13 — Your energy, managed differently');
+assert.equal(localeNl.settings.subtitle, 'v0.7.14 — Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'v0.7.14 — Your energy, managed differently');
 for (let instance = 1; instance <= 4; instance += 1) {
   const cardId = `end_ev${instance}_charging_session`;
   assert(flowActionIds.has(cardId), `${cardId} missing from generated manifest`);

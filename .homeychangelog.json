@@ -1,4 +1,8 @@
 {
+  "0.7.14": {
+    "en": "Autotune now increases the Low-PV threshold only after a usable learning day actually dropped below 20% battery SoC. If the battery remained at or above 20%, the threshold may still be lowered when the learned PV/outcome data shows it is unnecessarily high.",
+    "nl": "Autotune verhoogt de Lage-PV-drempel nu alleen wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam. Bleef de batterij op of boven 20%, dan mag de drempel nog wel worden verlaagd wanneer de geleerde PV-/resultaatdata toont dat hij onnodig hoog staat."
+  },
   "0.7.13": {
     "en": "Seasonal summer/winter minimum SoC values now act only as lower floors for day planning and, when enabled, night planning. Forecast demand is always calculated from the technical Minimum SoC, so the seasonal floor is no longer added to the calculated energy shortfall. Autotune will no longer increase Expected energy need unless a usable learning day actually dropped below 20% battery SoC, and automatic management of this parameter now includes a configurable desired battery SoC target.",
     "nl": "De seizoensminimum-SoC voor zomer en winter werkt nu alleen als ondergrens voor de dagplanning en, indien ingeschakeld, de nachtplanning. De forecastbehoefte wordt altijd vanaf de technische Minimum SoC berekend, zodat het seizoensminimum niet meer bij het berekende energietekort wordt opgeteld. Autotune verhoogt Verwachte energiebehoefte niet langer tenzij de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam; bij automatisch beheer van deze parameter is nu ook de gewenste batterij-doel-SoC instelbaar."

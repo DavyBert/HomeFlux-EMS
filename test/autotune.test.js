@@ -155,14 +155,42 @@ function appWithSettings(overrides = {}) {
 {
   const { app } = appWithSettings({ lowForecastSelfConsumptionMinKwh: 5, maxSoc: 100 });
   app.autoTuneRuntime.planning.days = [
-    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:13, forecastKwh:5, solarTargetSoc:72, peakSoc:80, nightTargetSoc:16, maxSocLimit:100 },
-    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:13, forecastKwh:6, solarTargetSoc:82, peakSoc:86, nightTargetSoc:17, maxSocLimit:100 },
-    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:13, forecastKwh:11, solarTargetSoc:94, peakSoc:96, nightTargetSoc:16, maxSocLimit:100 },
-    { dateKey:'2026-09-04', sampleHours:24, estimatedDemandKwh:13, forecastKwh:12, solarTargetSoc:97, peakSoc:99, nightTargetSoc:15, maxSocLimit:100 },
+    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:13, forecastKwh:5, solarTargetSoc:72, peakSoc:80, nightTargetSoc:16, minObservedSoc:18.5, maxSocLimit:100 },
+    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:13, forecastKwh:6, solarTargetSoc:82, peakSoc:86, nightTargetSoc:17, minObservedSoc:22, maxSocLimit:100 },
+    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:13, forecastKwh:11, solarTargetSoc:94, peakSoc:96, nightTargetSoc:16, minObservedSoc:24, maxSocLimit:100 },
+    { dateKey:'2026-09-04', sampleHours:24, estimatedDemandKwh:13, forecastKwh:12, solarTargetSoc:97, peakSoc:99, nightTargetSoc:15, minObservedSoc:25, maxSocLimit:100 },
   ];
   const rec = app.getAutoTuneRecommendations().find(item => item.settingKey === 'lowForecastSelfConsumptionMinKwh');
   assert.ok(rec, 'forecast/outcome history should recommend a low-PV threshold');
   assert.ok(rec.recommended >= 8 && rec.recommended <= 9.5, `unexpected learned low-PV threshold ${rec.recommended}`);
+}
+
+
+// v0.7.14: Low-PV may only move upward after a usable learning day showed
+// a real shortage below 20% average battery SoC. Exactly 20% does not count.
+{
+  const { app } = appWithSettings({ lowForecastSelfConsumptionMinKwh: 5, maxSoc: 100 });
+  app.autoTuneRuntime.planning.days = [
+    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:13, forecastKwh:5, solarTargetSoc:72, peakSoc:80, nightTargetSoc:20, minObservedSoc:20, maxSocLimit:100 },
+    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:13, forecastKwh:6, solarTargetSoc:82, peakSoc:86, nightTargetSoc:22, minObservedSoc:22, maxSocLimit:100 },
+    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:13, forecastKwh:11, solarTargetSoc:94, peakSoc:96, nightTargetSoc:24, minObservedSoc:24, maxSocLimit:100 },
+    { dateKey:'2026-09-04', sampleHours:24, estimatedDemandKwh:13, forecastKwh:12, solarTargetSoc:97, peakSoc:99, nightTargetSoc:25, minObservedSoc:25, maxSocLimit:100 },
+  ];
+  const rec = app.getAutoTuneRecommendations().find(item => item.settingKey === 'lowForecastSelfConsumptionMinKwh');
+  assert.equal(rec, undefined, 'low-PV threshold must not increase while learned battery SoC stayed at or above 20%');
+}
+
+// A Low-PV threshold that is demonstrably too high may still move downward
+// without a <20% event; the shortage gate applies only to increases.
+{
+  const { app } = appWithSettings({ lowForecastSelfConsumptionMinKwh: 15, maxSoc: 100 });
+  app.autoTuneRuntime.planning.days = [
+    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:13, forecastKwh:8, solarTargetSoc:95, peakSoc:96, nightTargetSoc:30, minObservedSoc:25, maxSocLimit:100 },
+    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:13, forecastKwh:9, solarTargetSoc:96, peakSoc:97, nightTargetSoc:31, minObservedSoc:26, maxSocLimit:100 },
+    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:13, forecastKwh:10, solarTargetSoc:97, peakSoc:98, nightTargetSoc:32, minObservedSoc:27, maxSocLimit:100 },
+  ];
+  const rec = app.getAutoTuneRecommendations().find(item => item.settingKey === 'lowForecastSelfConsumptionMinKwh');
+  assert.ok(rec && rec.recommended < 15, 'low-PV threshold may still decrease without a <20% shortage');
 }
 
 
