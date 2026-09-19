@@ -17,14 +17,31 @@ const legacyIds = new Set(Object.values(definitions).flatMap(items => items.flat
 // conditions, token names/types and translated titles from accidental changes.
 assert.equal(legacyIds.size, 120);
 const dropdownIds = new Set(CONFIGURED_CARDS.map(d => d.legacy));
+const displayMetadataChangeIds = new Set(['set_external_ems_setpoint']);
+const withoutDisplayMetadata = card => {
+  if (!card) return card;
+  const { title, hint, titleFormatted, args = [], ...rest } = card;
+  return {
+    ...rest,
+    args: args.map(arg => {
+      const { title: argTitle, ...argRest } = arg;
+      return argRest;
+    }),
+  };
+};
 for (const kind of ['actions', 'triggers', 'conditions']) {
   const current = new Map(manifest.flow[kind].map(c => [c.id, c]));
   assert.equal(current.size, manifest.flow[kind].length, 'No duplicate card IDs');
   for (const previous of baseline[kind]) {
     const card = current.get(previous.id);
     assert.ok(card, `Old card removed: ${previous.id}`);
-    assert.deepEqual(card, (legacyIds.has(card.id) || dropdownIds.has(card.id)) ? { ...previous, deprecated: true } : previous,
-      `Old schema changed: ${previous.id}`);
+    const expected = (legacyIds.has(card.id) || dropdownIds.has(card.id)) ? { ...previous, deprecated: true } : previous;
+    if (displayMetadataChangeIds.has(previous.id)) {
+      assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
+        `Old functional schema changed: ${previous.id}`);
+    } else {
+      assert.deepEqual(card, expected, `Old schema changed: ${previous.id}`);
+    }
   }
   for (const card of current.values()) {
     const composed = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.homeycompose', 'flow', kind, `${card.id}.json`), 'utf8'));

@@ -536,7 +536,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.14 initialized');
+    this.log('HomeFlux EMS v0.7.15 initialized');
   }
 
   refreshSettingsCache() {
@@ -8924,13 +8924,40 @@ class HomeFluxEmsApp extends Homey.App {
     let confirmedEvPowerW = 0;
     let confirmationRequired = false;
     let modeControlRelevant = false;
+    let configuredEvPowerCeilingW = 0;
+    let modeConfiguredPowerCeilingW = 0;
 
     for (const { index, decision } of relevant) {
       const settings = this.getEvInstanceSettings(index, storedSettings);
-      if (this.getEvControlType(settings) === 'mode') modeControlRelevant = true;
-      if (!['current','hybrid'].includes(this.getEvControlType(settings))) continue;
-      const input = this.getEvInputSnapshot(index) || {};
+      const controlType = this.getEvControlType(settings);
       const desiredA = Math.max(0, Number(decision.desiredCurrentA) || 0);
+      const perAmpW = evPowerPerAmp(settings);
+
+      // Every intentional EV grid allowance is bounded by the power HomeFlux
+      // can actually attribute to that EV. For mode-only chargers this ceiling
+      // is the configured Smart/Standard current converted to watts. This keeps
+      // unrelated household loads (oven, heat pump, microwave, ...) from
+      // inflating the EV budget merely because they also appear in P1.
+      if (controlType === 'mode') {
+        modeControlRelevant = true;
+        const publishedMode = index === 0
+          ? String(this.lastPublishedEvChargeMode || '')
+          : String(this.getExtraEv(index)?.lastPublishedChargeMode || '');
+        const decisionMode = String(decision.effectiveChargeMode || decision.requestedChargeMode || '').toLowerCase();
+        const activeMode = ['smart','standard'].includes(decisionMode)
+          ? decisionMode
+          : (['smart','standard'].includes(publishedMode.toLowerCase())
+            ? publishedMode.toLowerCase()
+            : (desiredA > this.getEvModeEstimatedCurrentA('smart', settings) ? 'standard' : 'smart'));
+        const modePowerW = this.getEvModeEstimatedCurrentA(activeMode, settings) * perAmpW;
+        modeConfiguredPowerCeilingW += modePowerW;
+        configuredEvPowerCeilingW += modePowerW;
+      } else {
+        configuredEvPowerCeilingW += Math.max(0, Number(decision.desiredPowerW) || (desiredA * perAmpW));
+      }
+
+      if (!['current','hybrid'].includes(controlType)) continue;
+      const input = this.getEvInputSnapshot(index) || {};
       const publishedState = this.getEvPublishedCurrentState(index);
       const publishedA = publishedState.currentA;
       const publishedAt = publishedState.publishedAt;
@@ -8981,6 +9008,9 @@ class HomeFluxEmsApp extends Homey.App {
     const rawGridImportW = Math.max(0, Number(this.state?.gridPowerW) || 0);
     const physicalImportBeforeBatteryW = Math.max(0, rawGridImportW + batteryDischargeW);
     let physicalAllowanceW = physicalImportBeforeBatteryW;
+    if (configuredEvPowerCeilingW > 0) {
+      physicalAllowanceW = Math.min(physicalAllowanceW, configuredEvPowerCeilingW);
+    }
     if (confirmationRequired) physicalAllowanceW = Math.min(physicalAllowanceW, Math.max(0, confirmedEvPowerW));
     const detection = this.evSessionDetection || {};
     const baselineW = detection.portfolioBaselineW === null || detection.portfolioBaselineW === undefined
@@ -9016,6 +9046,8 @@ class HomeFluxEmsApp extends Homey.App {
       waitingResponseInstances,
       physicalImportBeforeBatteryW: Math.round(physicalImportBeforeBatteryW),
       confirmedEvPowerW: Math.round(confirmedEvPowerW),
+      configuredEvPowerCeilingW: Math.round(configuredEvPowerCeilingW),
+      modeConfiguredPowerCeilingW: Math.round(modeConfiguredPowerCeilingW),
       houseBaselineW: Number.isFinite(baselineW) ? Math.round(baselineW) : null,
       houseToleranceW: Number.isFinite(baselineW) ? Math.round(getHouseLoadToleranceW(baselineW)) : null,
       physicalSiteLoadW: Number.isFinite(Number(detection.physicalSiteLoadW)) ? Math.round(Number(detection.physicalSiteLoadW)) : null,
@@ -11967,7 +11999,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.14',
+      version: '0.7.15',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12044,7 +12076,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.14',
+      version: '0.7.15',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12349,7 +12381,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.14',
+      version: '0.7.15',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

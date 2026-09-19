@@ -11,6 +11,18 @@ const baseline = require('./fixtures/flow-0.7.12-dropdown.json');
 const getters = { actions: 'getActionCard', triggers: 'getTriggerCard', conditions: 'getConditionCard' };
 const selected = (kind, slot, name = `${kind.toUpperCase()} ${slot}`) => ({ id: String(slot), kind, name });
 const replaced = new Set(CONFIGURED_CARDS.map(d => d.legacy));
+const displayMetadataChangeIds = new Set(['set_external_ems_setpoint']);
+const withoutDisplayMetadata = card => {
+  if (!card) return card;
+  const { title, hint, titleFormatted, args = [], ...rest } = card;
+  return {
+    ...rest,
+    args: args.map(arg => {
+      const { title: argTitle, ...argRest } = arg;
+      return argRest;
+    }),
+  };
+};
 const cardFor = (flow, d) => flow[getters[d.kind]](d.id);
 const selection = (d, slot) => ({ [d.argument]: selected(d.argument, slot) });
 
@@ -19,8 +31,14 @@ assert.equal(new Set(CONFIGURED_CARDS.map(d => d.id)).size, 31);
 for (const kind of Object.keys(getters)) {
   const current = new Map(manifest.flow[kind].map(c => [c.id, c]));
   for (const old of baseline[kind]) {
-    assert.deepEqual(current.get(old.id), replaced.has(old.id) ? { ...old, deprecated: true } : old,
-      `Original 0.7.12 card/schema changed: ${old.id}`);
+    const card = current.get(old.id);
+    const expected = replaced.has(old.id) ? { ...old, deprecated: true } : old;
+    if (displayMetadataChangeIds.has(old.id)) {
+      assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
+        `Original 0.7.12 functional schema changed: ${old.id}`);
+    } else {
+      assert.deepEqual(card, expected, `Original 0.7.12 card/schema changed: ${old.id}`);
+    }
   }
   for (const card of current.values()) {
     const composed = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.homeycompose/flow', kind, `${card.id}.json`), 'utf8'));

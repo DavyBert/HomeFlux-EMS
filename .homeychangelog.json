@@ -1,4 +1,8 @@
 {
+  "0.7.15": {
+    "en": "Mode-only EV grid import is now capped by the configured Smart/Standard mode power as well as detected EV load and the configured EV grid-import allowance, so unrelated household loads cannot increase the EV budget. Renamed the external Hybrid EMS feedback Flow card to “Report external EMS battery power” while keeping the existing card ID and Flow compatibility.",
+    "nl": "Netimport voor EV’s met modussturing wordt nu behalve door de gedetecteerde EV-belasting en ingestelde EV-netimportlimiet ook begrensd door het ingestelde Smart/Standard-modusvermogen, zodat extra huishoudverbruik het EV-budget niet kan verhogen. De feedback-Flow-kaart voor een externe Hybrid EMS heet nu “Rapporteer batterijvermogen externe EMS”; het bestaande kaart-ID en bestaande Flows blijven compatibel."
+  },
   "0.7.14": {
     "en": "Autotune now increases the Low-PV threshold only after a usable learning day actually dropped below 20% battery SoC. If the battery remained at or above 20%, the threshold may still be lowered when the learned PV/outcome data shows it is unnecessarily high.",
     "nl": "Autotune verhoogt de Lage-PV-drempel nu alleen wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam. Bleef de batterij op of boven 20%, dan mag de drempel nog wel worden verlaagd wanneer de geleerde PV-/resultaatdata toont dat hij onnodig hoog staat."
