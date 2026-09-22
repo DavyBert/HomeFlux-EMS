@@ -2234,7 +2234,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.settingsCache = null;
   app.migrateSettings();
   assert.equal(stored.peakReserveTargetSoc, 100);
-  assert.equal(stored.settingsSchemaVersion, 66);
+  assert.equal(stored.settingsSchemaVersion, 68);
   assert.deepEqual(stored.evEnergyDeadlineOverrides, []);
   assert.deepEqual(stored._autoTuneLearning, { days: [] });
   assert.deepEqual(stored._autoTuneIgnored, {});
@@ -2273,7 +2273,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.settingsCache = null;
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 66);
+  assert.equal(stored.settingsSchemaVersion, 68);
   assert.equal(stored.gridControlWindowSeconds, 5);
   assert.equal(stored.evFeedbackTolerancePercent, 15);
   assert.equal(stored.ev2FeedbackTolerancePercent, 20);
@@ -2316,7 +2316,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     evMinCurrentA:6, evMaxCurrentA:32,
   });
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 66);
+  assert.equal(stored.settingsSchemaVersion, 68);
   assert.deepEqual(stored._autoTuneLimits.lowForecastAutoSunnySoc, { min:70, max:85, minConfidencePercent:95, userDefined:false });
   assert.deepEqual(stored._autoTuneLimits.commandDeadbandW, { min:25, max:250, minConfidencePercent:95, userDefined:false });
   assert.deepEqual(stored._autoTuneLimits.balanceStrength, { min:0.12, max:0.31, minConfidencePercent:90, userDefined:true });
@@ -2333,7 +2333,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.settingsCache = null;
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 66);
+  assert.equal(stored.settingsSchemaVersion, 68);
   assert.equal(stored.evIdleHouseLoadW, 0);
 }
 
@@ -2355,7 +2355,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   };
   app.settingsCache = null;
   app.migrateSettings();
-  assert.equal(stored.settingsSchemaVersion, 66);
+  assert.equal(stored.settingsSchemaVersion, 68);
   assert.equal(stored.touRates[0].evPvChargeAllowed, false);
   assert.equal(stored.touRates[0].evPvGridTopUpAllowed, false);
   assert.equal(stored.touRates[0].ev2PvChargeAllowed, false);
@@ -2396,7 +2396,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '0.7.15');
+  assert.equal(simulation.version, '0.7.16');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);

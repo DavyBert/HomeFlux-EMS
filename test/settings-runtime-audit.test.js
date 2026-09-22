@@ -45,6 +45,7 @@ const splitSuffixes = [
 for (let battery = 1; battery <= 8; battery += 1) {
   persisted.add(`battery${battery}MaxChargeW`);
   persisted.add(`battery${battery}MaxDischargeW`);
+  persisted.add(`battery${battery}CapacityKwh`);
   for (const suffix of splitSuffixes) persisted.add(`splitCommandBattery${battery}${suffix}`);
 }
 

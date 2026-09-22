@@ -4,8 +4,9 @@ const Homey = require('homey');
 const { SlotFlowCards } = require('./lib/flow-slot-cards');
 const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
 const { HomeyAPI } = require('homey-api');
-const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand } = require('./lib/ems-engine');
+const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh } = require('./lib/ems-engine');
 const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, normalizeSequentialPriceArray, sequentialPricePeriodInfo, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
+const { migrateVoltage } = require('./settings/ev-headroom');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
@@ -536,7 +537,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.15 initialized');
+    this.log('HomeFlux EMS v0.7.16 initialized');
   }
 
   refreshSettingsCache() {
@@ -729,7 +730,7 @@ class HomeFluxEmsApp extends Homey.App {
       importPrice: tariff.importPrice,
       feedInPrice: tariff.feedInPrice,
       tariff,
-      capacityKwh: Number(this.getSettings().totalCapacityKwh) || 0,
+      capacityKwh: configuredBatteryCapacityKwh(this.getSettings()),
     });
     const delta = totalSavings(this.savings.today) - before;
     if (Number.isFinite(delta)) this.savings.total += delta;
@@ -1379,7 +1380,7 @@ class HomeFluxEmsApp extends Homey.App {
     const key = String(settingKey || '');
     const maxSoc = Math.max(0, Math.min(100, Number(settings.maxSoc) || 100));
     const hardSocFloor = Math.max(0, Math.min(maxSoc, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
-    const batteryCapacityKwh = Math.max(0, Number(settings.totalCapacityKwh) || 0);
+    const batteryCapacityKwh = configuredBatteryCapacityKwh(settings);
     const expectedNeedKwh = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
     const planningUpperKwh = Math.max(10, Math.min(100, Math.max(expectedNeedKwh * 2, batteryCapacityKwh * 2, 20)));
     const currentNeedUpperKwh = Math.max(20, Math.min(100, Math.max(expectedNeedKwh * 1.25, batteryCapacityKwh * 3, 30)));
@@ -1707,7 +1708,7 @@ class HomeFluxEmsApp extends Homey.App {
       const targetSocConfigured = Number.isFinite(storedEnergyNeedTarget);
       const targetSoc = Math.max(0, Math.min(100, Number(energyNeedLimits.targetSoc) || 95));
       let desiredNeed = Math.max(0, Math.min(100, roundTo(learnedNeed, 0.5)));
-      const capacity = Math.max(0, Number(settings.totalCapacityKwh) || 0);
+      const capacity = configuredBatteryCapacityKwh(settings);
 
       // The desired battery target only becomes active after the user grants
       // Autotune management for this parameter (which stores the default 95%)
@@ -2399,7 +2400,7 @@ class HomeFluxEmsApp extends Homey.App {
   getEvInstanceSettings(index, source = this.getSettings()) {
     const fields = [
       'Enabled','SocEnabled','SocFreshnessMinutes','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
-      'BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','Phases','MinCurrentA','MaxCurrentA',
+      'BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA',
       'StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled',
       'PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
     ];
@@ -3613,7 +3614,33 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    this.setSetting('settingsSchemaVersion', 66);
+    if (schema < 67) {
+      // Initialize EVs without a voltage choice to the 230 V supply default.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}Voltage`) == null) this.setSetting(`${stem}Voltage`, 230);
+        if (this.homey.settings.get(`${stem}VoltageReference`) == null) this.setSetting(`${stem}VoltageReference`, Number(this.homey.settings.get(`${stem}Phases`)) === 1 ? 'phase' : 'line');
+      }
+      // Seed equal capacities from the existing group total, preserving its
+      // energy and setpoint distribution until actual capacities are entered.
+      const count = Math.max(1, Number(this.homey.settings.get('batteryCount') ?? DEFAULTS.batteryCount));
+      const total = Math.max(0, Number(this.homey.settings.get('totalCapacityKwh') ?? DEFAULTS.totalCapacityKwh));
+      for (let battery = 1; battery <= 8; battery += 1) {
+        if (this.homey.settings.get(`battery${battery}CapacityKwh`) == null) this.setSetting(`battery${battery}CapacityKwh`, total / count);
+      }
+    }
+    if (schema < 68) {
+      // 0.7.16 UI refinement: three-phase voltage always means line-to-line.
+      // Also upgrades the first 0.7.16 build without changing the app version.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        const phases = Number(this.homey.settings.get(`${stem}Phases`)) === 1 ? 1 : 3;
+        const voltage = migrateVoltage(phases, this.homey.settings.get(`${stem}Voltage`), this.homey.settings.get(`${stem}VoltageReference`) || 'phase');
+        this.setSetting(`${stem}Voltage`, voltage);
+        this.setSetting(`${stem}VoltageReference`, phases === 1 ? 'phase' : 'line');
+      }
+    }
+    this.setSetting('settingsSchemaVersion', 68);
   }
 
   async ensureDefaults() {
@@ -6114,15 +6141,9 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getAverageBatterySocForLowForecastPromotion(settings = this.getSettings()) {
-    const count = this.getBatteryCount(settings);
-    const values = [];
-    for (let index = 0; index < count; index += 1) {
-      if (!this.inputSeen.batterySoc[index]) continue;
-      const value = Number(this.state.batterySoc[index]);
-      if (Number.isFinite(value)) values.push(value);
-    }
-    if (!values.length) return null;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+    const batterySoc = Array.from({ length: this.getBatteryCount(settings) }, (_, index) =>
+      this.inputSeen.batterySoc[index] ? this.state.batterySoc[index] : null);
+    return computeAverageSoc({ batterySoc }, settings);
   }
 
   getTodayStrategyForecastKwh() {
@@ -6985,15 +7006,9 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getAverageBatterySoc(settings = this.getSettings()) {
-    const count = this.getBatteryCount(settings);
-    const values = [];
-    for (let index = 0; index < count; index += 1) {
-      if (!this.inputSeen.batterySoc[index]) continue;
-      const value = Number(this.state.batterySoc[index]);
-      if (Number.isFinite(value)) values.push(value);
-    }
-    if (!values.length) return null;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+    const batterySoc = Array.from({ length: this.getBatteryCount(settings) }, (_, index) =>
+      this.inputSeen.batterySoc[index] ? this.state.batterySoc[index] : null);
+    return computeAverageSoc({ batterySoc }, settings);
   }
 
 
@@ -9317,8 +9332,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (output === 'current') {
       const currentA = Math.max(0, Math.min(64, Number(body.currentA)));
       if (!Number.isFinite(currentA)) throw new Error('Ongeldige EV-testlaadstroom.');
-      const phases = Math.max(1, Math.min(3, Math.round(Number(settings.evPhases) || 1)));
-      const powerW = Math.round(currentA * 230 * phases);
+      const powerW = Math.round(currentA * evPowerPerAmp(settings));
       if (!triggers.current) throw new Error(`EV ${instance}-laadstroom Flow-trigger is niet beschikbaar.`);
       await triggers.current.trigger({
         charge_current: currentA,
@@ -11943,6 +11957,8 @@ class HomeFluxEmsApp extends Homey.App {
         soc: physical.socAvailable ? physical.soc : null,
         socAvailable: physical.socAvailable,
         phases: Number(physical.evSettings.evPhases) === 1 ? 1 : 3,
+        voltage: Number(physical.evSettings.evVoltage) || 230,
+        voltageReference: physical.evSettings.evVoltageReference || 'phase',
         controlType,
         actualCurrentA: physical.actualCurrentA,
         actualPowerW: physical.actualPowerW,
@@ -11999,7 +12015,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.15',
+      version: '0.7.16',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12076,7 +12092,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.15',
+      version: '0.7.16',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12381,7 +12397,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.15',
+      version: '0.7.16',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
