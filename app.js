@@ -537,7 +537,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.7.16 initialized');
+    this.log('HomeFlux EMS v0.8.1 initialized');
   }
 
   refreshSettingsCache() {
@@ -10909,8 +10909,11 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     const intervalMs = Math.max(1, Number(controlSettings.commandIntervalSeconds) || DEFAULTS.commandIntervalSeconds || 10) * 1000;
-    const earliest = this.lastControlEvalAt > 0 ? this.lastControlEvalAt + intervalMs : now;
-    const wait = immediate && now >= earliest ? 0 : Math.max(0, earliest - now);
+    // Only an actual command publication reserves the battery interval. A
+    // calculation that sends nothing must leave the next P1 correction free.
+    const earliest = Math.max(this.nextCommandAllowedAt || 0,
+      this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
+    const wait = Math.max(0, earliest - now);
 
     if (wait === 0) {
       if (this.controlTimer) {
@@ -10926,9 +10929,9 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.controlTimer) return true;
     this.controlTimer = this.homey.setTimeout(() => {
       this.controlTimer = null;
-      const latestSettings = this.getSettings();
-      if (this.shouldRunFastEvaluation(false, latestSettings, Date.now())) this.evaluateFastNow(false);
-      else this.fastEvaluationSkipped += 1;
+      // Another output may have reserved a later slot while this timer was
+      // pending. Recheck that boundary and calculate from the newest P1 data.
+      this.requestEvaluate(false);
     }, wait);
     return true;
   }
@@ -12015,7 +12018,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.7.16',
+      version: '0.8.1',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12092,7 +12095,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.7.16',
+      version: '0.8.1',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12397,7 +12400,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.7.16',
+      version: '0.8.1',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

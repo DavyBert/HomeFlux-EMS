@@ -26,6 +26,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.8.1
+
+The minimum battery command interval now runs from the last published command. A calculation that sends no command no longer restarts the waiting time, allowing a new P1 deviation to be handled as soon as the command interval has expired.
+
 ### 0.7.16
 
 Added phase-specific voltage choices for each EV: 230 V by default for single phase and 230 V line-to-line for three phases, with automatic current/power conversion. Current/power conversion, charging plans and Peak Guard checks use the configured voltage. Individual battery settings now include storage capacity in kWh; power sharing, Battery Balance and group SoC/planning account for different capacities while respecting each battery’s power and SoC limits.
