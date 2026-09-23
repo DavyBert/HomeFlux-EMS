@@ -26,6 +26,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.8.2
+
+Battery feedback now re-evaluates a persistent grid deviation outside the configured zero band, even when the meter changes by less than the signal threshold.
+
 ### 0.8.1
 
 The minimum battery command interval now runs from the last published command. A calculation that sends no command no longer restarts the waiting time, allowing a new P1 deviation to be handled as soon as the command interval has expired.

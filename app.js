@@ -537,7 +537,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.8.1 initialized');
+    this.log('HomeFlux EMS v0.8.2 initialized');
   }
 
   refreshSettingsCache() {
@@ -10798,8 +10798,8 @@ class HomeFluxEmsApp extends Homey.App {
     const deadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
     const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
     // 50 W filters ordinary P1 jitter while remaining far below the power step
-    // of typical batteries. Crossing the configured zero band always bypasses
-    // this delta threshold.
+    // of typical batteries. Crossing the zero band or a remaining feedback
+    // error outside it bypasses this delta threshold.
     return Math.max(50, deadband, step);
   }
 
@@ -10854,6 +10854,12 @@ class HomeFluxEmsApp extends Homey.App {
     const baseMode = String(this.latestResult.baseMode || '');
     const feedbackMode = ['self_consumption', 'avoid_import', 'solar_capture'].includes(baseMode);
     if (!feedbackMode && !current.peak && String(this.latestResult.override || '') !== 'peak_shave') return false;
+
+    // A remaining error needs another feedback step even when P1 barely moves.
+    // requestEvaluate still waits for the last command's minimum interval, and
+    // the output gates still enforce SoC, power limits and meaningful changes.
+    // Inside the zero band, retain the delta filter to ignore meter noise.
+    if ((feedbackMode && current.zone !== 'inside') || current.peak) return true;
 
     const pvThreshold = Math.max(0, Number(settings.pvDeltaThresholdW) || 0);
     if (pvThreshold > 0 && Math.abs(current.pvW - previous.pvW) >= pvThreshold) return true;
@@ -12018,7 +12024,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.8.1',
+      version: '0.8.2',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12095,7 +12101,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.8.1',
+      version: '0.8.2',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12400,7 +12406,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.8.1',
+      version: '0.8.2',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
