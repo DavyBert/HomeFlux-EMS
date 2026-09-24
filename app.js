@@ -1,4 +1,6 @@
 'use strict';
+const { sourceOrder, fitCalibration, validCalibration, normalizeSecondary } = require('./lib/price-normalization');
+const { extractMathExpression } = require('./lib/price-formula');
 
 const Homey = require('homey');
 const { SlotFlowCards } = require('./lib/flow-slot-cards');
@@ -397,7 +399,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
+        if (key === '_dynamicPriceCalibration' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache();
         this.markFlexibleLoadsDirty();
@@ -537,7 +539,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.8.3 initialized');
+    this.log('HomeFlux EMS v0.8.4 initialized');
   }
 
   refreshSettingsCache() {
@@ -2327,6 +2329,15 @@ class HomeFluxEmsApp extends Homey.App {
     // lightweight one-minute check requests exactly one immediate safety pass
     // when the grid value becomes stale; it does not create a periodic full EMS
     // evaluation while the meter remains healthy.
+    if (isDynamicContract(settings)) {
+      const selection = this.getDynamicPriceSelection(settings, new Date(now));
+      const signature = `${selection.source}|${selection.calibrationState}`;
+      if (this.priceSourceHeartbeatSignature !== signature) {
+        this.priceSourceHeartbeatSignature = signature;
+        this.invalidatePlanningCache();
+        this.requestContextEvaluate(true, 'dynamic_price_source_changed');
+      }
+    }
     const readiness = this.getInputReadiness(settings);
     if (!readiness.gridFresh && Boolean(this.latestResult?.inputReady)) {
       this.requestContextEvaluate(true, 'grid_stale');
@@ -2399,7 +2410,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvInstanceSettings(index, source = this.getSettings()) {
     const fields = [
-      'Enabled','SocEnabled','SocFreshnessMinutes','Mode','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
+      'Enabled','SocEnabled','SocFreshnessMinutes','Mode','EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
       'BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA',
       'StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled',
       'PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
@@ -2410,6 +2421,7 @@ class HomeFluxEmsApp extends Homey.App {
     settings.touRates = (Array.isArray(source.touRates) ? source.touRates : []).map(rate => ({
       ...rate,
       evChargeAllowed: Boolean(rate?.[`${stem}ChargeAllowed`]),
+      evEmergencyChargeAllowed: rate?.[`${stem}EmergencyChargeAllowed`] !== false,
       evPvChargeAllowed: rate?.[`${stem}PvChargeAllowed`] !== false,
       evPvMinSurplusW: Math.max(0, Number(rate?.[`${stem}PvMinSurplusW`]) || 0),
       evPvStopGridImportW: Math.max(0, Number(rate?.[`${stem}PvStopGridImportW`] ?? 1000) || 0),
@@ -3421,7 +3433,7 @@ class HomeFluxEmsApp extends Homey.App {
       // v0.5.5: Homey Energy stays the default/primary dynamic price source.
       // External fallback is opt-in so upgrades never change price behaviour.
       const source = String(this.homey.settings.get('dynamicPriceSource') || 'homey');
-      if (!['homey', 'homey_external_fallback'].includes(source)) this.setSetting('dynamicPriceSource', 'homey');
+      if (!['homey', 'homey_external_fallback', 'external_homey_fallback', 'external'].includes(source)) this.setSetting('dynamicPriceSource', 'homey');
     }
 
     if (schema < 53) {
@@ -3646,7 +3658,32 @@ class HomeFluxEmsApp extends Homey.App {
         this.setSetting(`${stem}VoltageReference`, phases === 1 ? 'phase' : 'line');
       }
     }
-    this.setSetting('settingsSchemaVersion', 68);
+    if (schema < 69) {
+      // Refine 0.8.4 emergency charging into independent per-tariff permissions.
+      // Preserve an enabled legacy restriction; otherwise retain unrestricted emergency charging.
+      const rates = this.homey.settings.get('touRates');
+      const migrated = Array.isArray(rates) ? rates.map(rate => ({ ...rate })) : null;
+      for (let index = 1; index <= 4; index++) {
+        const stem = index === 1 ? 'ev' : `ev${index}`;
+        const restricted = this.homey.settings.get(`${stem}EmergencyUseTariff`) === true;
+        if (migrated) for (const rate of migrated) {
+          const key = `${stem}EmergencyChargeAllowed`;
+          if (rate[key] == null) rate[key] = restricted ? Boolean(rate[`${stem}ChargeAllowed`]) && !rate.avoidGridImport : true;
+        }
+        const permissions = {
+          EmergencyDynamicCheapEnabled: !restricted || this.homey.settings.get(`${stem}DynamicCheapEnabled`) === true,
+          EmergencyDynamicNormalEnabled: !restricted || this.homey.settings.get(`${stem}DynamicNormalEnabled`) === true,
+          EmergencyDynamicExpensiveEnabled: !restricted || this.homey.settings.get(`${stem}DynamicExpensiveEnabled`) === true,
+          EmergencyFixedWindowEnabled: !restricted || this.homey.settings.get(`${stem}FixedChargeWindowEnabled`) === true,
+          EmergencyFixedOutsideWindowEnabled: !restricted,
+        };
+        for (const [suffix, value] of Object.entries(permissions)) {
+          if (this.homey.settings.get(`${stem}${suffix}`) == null) this.setSetting(`${stem}${suffix}`, value);
+        }
+      }
+      if (migrated) this.setSetting('touRates', migrated);
+    }
+    this.setSetting('settingsSchemaVersion', 69);
   }
 
   async ensureDefaults() {
@@ -5845,6 +5882,14 @@ class HomeFluxEmsApp extends Homey.App {
         }
       } catch (err) { /* optional metadata */ }
 
+      let userCosts = null;
+      if (typeof energy.getDynamicElectricityPriceUserCosts === 'function') {
+        userCosts = await energy.getDynamicElectricityPriceUserCosts();
+      }
+      const formulaKey = extractMathExpression(userCosts);
+      this.homeyEnergy.formulaKey = formulaKey;
+      this.homeyEnergy.formulaKnown = true;
+
       this.homeyEnergy.priceType = this.extractScalar(typeResponse);
       this.homeyEnergy.zone = this.extractScalar(zoneResponse);
       this.homeyEnergy.interval = this.extractScalar(intervalResponse);
@@ -5854,13 +5899,15 @@ class HomeFluxEmsApp extends Homey.App {
       const dates = [...new Set([today, tomorrow])];
       const allSlots = [];
       const shapes = [];
+      this.homeyEnergy.priceImportError = '';
       for (const date of dates) {
         try {
           const response = await energy.fetchDynamicElectricityPrices({ date });
           shapes.push(`${date}:${this.describeApiValue(response)}`);
-          allSlots.push(...normalizeDynamicPriceResponse(response, { dateHint: date, timezone }));
+          allSlots.push(...normalizeDynamicPriceResponse(response, { dateHint: date, timezone, userCosts }));
         } catch (err) {
           shapes.push(`${date}:error(${this.compactApiError(err)})`);
+          this.homeyEnergy.priceImportError = err.message || String(err);
         }
       }
 
@@ -5872,14 +5919,16 @@ class HomeFluxEmsApp extends Homey.App {
         if (!unique.has(key)) unique.set(key, slot);
       }
       this.homeyEnergy.slots = [...unique.values()];
-      this.homeyEnergy.available = true;
+      this.homeyEnergy.available = this.homeyEnergy.slots.length > 0;
       this.homeyEnergy.lastUpdatedAt = Date.now();
       this.homeyEnergy.responseShape = shapes.join(' · ');
       if (!this.homeyEnergy.slots.length) {
         const typeText = this.homeyEnergy.priceType === null || this.homeyEnergy.priceType === undefined
           ? ''
           : String(this.homeyEnergy.priceType);
-        if (typeText && !typeText.toLowerCase().includes('dynamic')) {
+        if (this.homeyEnergy.priceImportError) {
+          this.homeyEnergy.error = this.homeyEnergy.priceImportError;
+        } else if (typeText && !typeText.toLowerCase().includes('dynamic')) {
           this.homeyEnergy.error = `Homey Energy gebruikt prijstype “${typeText}”. De HomeFlux EMS-contractkeuze staat hier los van; zet Homey Energy zelf op Dynamisch om Homey's dynamische prijs-slots te gebruiken.`;
         } else if (typeText.toLowerCase().includes('dynamic')) {
           this.homeyEnergy.error = `Homey Energy staat op Dynamisch, maar HomeFlux EMS herkent nog geen prijs-slots. API-vorm: ${this.homeyEnergy.responseShape || 'onbekend'}.`;
@@ -5898,6 +5947,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.homeyEnergy.available = false;
       this.homeyEnergy.error = err && err.message ? err.message : String(err);
       this.error('Could not read Homey Energy prices', err);
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(true, 'homey_energy_prices_unavailable');
       return this.getHomeyEnergyStatus();
     } finally {
       this.homeyEnergy.refreshing = false;
@@ -5909,7 +5960,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   isExternalPriceFallbackEnabled(settings = this.getSettings()) {
-    return String(settings.dynamicPriceSource || 'homey') === 'homey_external_fallback';
+    return Boolean(sourceOrder(settings.dynamicPriceSource)[1]);
   }
 
   getEffectiveHomeySlots(settings = this.getSettings()) {
@@ -5930,47 +5981,55 @@ class HomeFluxEmsApp extends Homey.App {
     return value;
   }
 
-  getDynamicPriceSelection(settings = this.getSettings(), now = new Date()) {
-    const homeyEnergy = this.homeyEnergy || {};
-    const externalEnergy = this.externalEnergy || {};
+  getDynamicPriceSelection(settings = this.getSettings(), now = new Date(), { readOnly = false } = {}) {
+    const homey = this.homeyEnergy || {}, external = this.externalEnergy || {};
     const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
-    const homeySlots = this.getEffectiveHomeySlots(settings);
-    const externalSlots = this.getEffectiveExternalPriceSlots(settings);
-    const cheapHours = Number(settings.cheapHours) || 3;
-    const expensiveHours = Number(settings.expensiveHours) || 3;
-    const homeyAnalysis = analyzePriceSlots(homeySlots, now, timezone, cheapHours, expensiveHours);
-    const externalAnalysis = analyzePriceSlots(externalSlots, now, timezone, cheapHours, expensiveHours);
-    const nowMs = now.getTime();
-    const homeyAgeMs = homeyEnergy.lastUpdatedAt ? Math.max(0, nowMs - Number(homeyEnergy.lastUpdatedAt)) : null;
-    const homeyFresh = homeyAnalysis.currentPrice !== null && homeyAgeMs !== null && homeyAgeMs <= 20 * 60 * 1000;
-    // A pushed day-ahead curve is considered current while it actually covers
-    // the present slot. It may legitimately have been received hours earlier.
-    const externalCurveReady = externalAnalysis.currentPrice !== null && externalAnalysis.slotCount > 0;
-    const externalCurrentAgeMs = externalEnergy.currentUpdatedAt
-      ? Math.max(0, nowMs - Number(externalEnergy.currentUpdatedAt))
-      : null;
-    const externalCurrentFresh = Number.isFinite(Number(externalEnergy.currentPrice))
-      && externalCurrentAgeMs !== null && externalCurrentAgeMs <= 20 * 60 * 1000;
-    const fallbackEnabled = this.isExternalPriceFallbackEnabled(settings);
-
-    if (homeyFresh) {
-      return {
-        source: 'homey', slots: homeySlots, analysis: homeyAnalysis,
-        homeyFresh, homeyAgeMs, externalCurveReady, externalCurrentFresh,
-        externalCurrentAgeMs, fallbackEnabled,
-      };
+    const rows = readOnly
+      ? { homey: resamplePriceSlots(homey.slots || [], this.getDynamicTargetInterval(settings)), external: resamplePriceSlots(external.slots || [], this.getDynamicTargetInterval(settings)) }
+      : { homey: this.getEffectiveHomeySlots(settings), external: this.getEffectiveExternalPriceSlots(settings) };
+    const analyze = slots => analyzePriceSlots(slots, now, timezone, Number(settings.cheapHours) || 3, Number(settings.expensiveHours) || 3);
+    const analyses = {homey: analyze(rows.homey), external: analyze(rows.external)};
+    const time = now.getTime();
+    const homeyAgeMs = homey.lastUpdatedAt ? Math.max(0, time-Number(homey.lastUpdatedAt)) : null;
+    const homeyFresh = homey.available !== false && analyses.homey.currentPrice !== null && homeyAgeMs !== null && homeyAgeMs <= 20*60000;
+    const externalCurveReady = analyses.external.currentPrice !== null && analyses.external.slotCount > 0;
+    const externalCurrentAgeMs = external.currentUpdatedAt ? Math.max(0, time-Number(external.currentUpdatedAt)) : null;
+    const externalCurrentFresh = external.currentPrice != null && Number.isFinite(Number(external.currentPrice)) && externalCurrentAgeMs !== null && externalCurrentAgeMs <= 20*60000;
+    const ready = {homey:homeyFresh, external:externalCurveReady};
+    const [primarySource, secondarySource] = sourceOrder(settings.dynamicPriceSource);
+    const stored = this.dynamicPriceCalibration === undefined ? this.homey.settings?.get?.('_dynamicPriceCalibration') : this.dynamicPriceCalibration;
+    let model = stored && typeof stored === 'object' ? stored : null;
+    const formulaKey = homey.formulaKnown ? String(homey.formulaKey || '') : (model?.formulaKey || '');
+    const context = JSON.stringify([primarySource,secondarySource,timezone,this.getDynamicTargetInterval(settings),homey.zone ?? model?.zone ?? null,formulaKey]);
+    const attemptKey = `${context}|${homey.lastUpdatedAt || 0}|${external.curveUpdatedAt || 0}|${homeyFresh}|${externalCurveReady}`;
+    let calibrationReason = this.priceCalibrationReason || 'waiting';
+    if (secondarySource && ready[primarySource] && ready[secondarySource] && this.priceCalibrationAttemptKey !== attemptKey) {
+      const fit = fitCalibration(rows[primarySource], rows[secondarySource], time);
+      calibrationReason = fit.reason;
+      if (fit.model) model = {...fit.model,context,formulaKey,zone:homey.zone ?? null};
+      else if (fit.reason === 'incompatible_curves' || model?.context !== context) model = null;
+      if (!readOnly) {
+        this.priceCalibrationAttemptKey = attemptKey;
+        this.priceCalibrationReason = calibrationReason;
+        this.homey.settings?.set?.('_dynamicPriceCalibration', model);
+      }
     }
-    if (fallbackEnabled && externalCurveReady) {
-      return {
-        source: 'external', slots: externalSlots, analysis: externalAnalysis,
-        homeyFresh, homeyAgeMs, externalCurveReady, externalCurrentFresh,
-        externalCurrentAgeMs, fallbackEnabled,
-      };
-    }
+    if (!readOnly) this.dynamicPriceCalibration = model;
+    const calibrated = Boolean(secondarySource && model?.context === context && validCalibration(model,time));
+    const normalized = calibrated ? normalizeSecondary(rows[secondarySource],model) : [];
+    const secondaryAnalysis = analyze(normalized);
+    const fallbackReady = Boolean(secondarySource && ready[secondarySource] && calibrated && secondaryAnalysis.currentPrice !== null);
+    const source = ready[primarySource] ? primarySource : fallbackReady ? secondarySource : 'none';
+    const slots = source === primarySource ? rows[primarySource] : source === secondarySource ? normalized : [];
+    const calibrationState = !secondarySource ? 'disabled' : calibrated ? 'ready' : model?.context === context && time>Number(model.validUntil) ? 'expired' : calibrationReason;
     return {
-      source: 'none', slots: [], analysis: analyzePriceSlots([], now, timezone, cheapHours, expensiveHours),
-      homeyFresh, homeyAgeMs, externalCurveReady, externalCurrentFresh,
-      externalCurrentAgeMs, fallbackEnabled,
+      source, slots, analysis: source === primarySource ? analyses[primarySource] : source === secondarySource ? secondaryAnalysis : analyze([]),
+      homeyFresh,homeyAgeMs,externalCurveReady,externalCurrentFresh,externalCurrentAgeMs,
+      fallbackEnabled:Boolean(secondarySource),fallbackActive:source !== 'none' && source === secondarySource,fallbackReady,
+      primarySource,secondarySource,calibrationState,
+      primary: {source:primarySource,price:analyses[primarySource].currentPrice,ready:ready[primarySource]},
+      secondary: secondarySource ? {source:secondarySource,price:secondaryAnalysis.currentPrice,sourcePrice:analyses[secondarySource].currentPrice,ready:fallbackReady,normalized:calibrated} : null,
+      calibration: calibrated ? {scale:model.scale,offset:model.offset,learnedAt:model.learnedAt,validUntil:model.validUntil} : null,
     };
   }
 
@@ -6034,7 +6093,7 @@ class HomeFluxEmsApp extends Homey.App {
     const slots = this.getEffectiveExternalPriceSlots(settings);
     const analysis = analyzePriceSlots(slots, now, timezone, Number(settings.cheapHours) || 3, Number(settings.expensiveHours) || 3);
     const currentAgeMs = externalEnergy.currentUpdatedAt ? Math.max(0, now.getTime() - Number(externalEnergy.currentUpdatedAt)) : null;
-    const currentFresh = Number.isFinite(Number(externalEnergy.currentPrice)) && currentAgeMs !== null && currentAgeMs <= 20 * 60 * 1000;
+    const currentFresh = externalEnergy.currentPrice != null && Number.isFinite(Number(externalEnergy.currentPrice)) && currentAgeMs !== null && currentAgeMs <= 20 * 60 * 1000;
     return {
       available: analysis.currentPrice !== null || currentFresh,
       curveReady: analysis.currentPrice !== null && analysis.slotCount > 0,
@@ -6067,10 +6126,9 @@ class HomeFluxEmsApp extends Homey.App {
     else if (analysis.isExpensiveNow) priceClass = 'duur';
     else if (analysis.currentPrice !== null) priceClass = 'normaal';
 
-    let currentPrice = analysis.currentPrice;
-    if (selection.source === 'external' && selection.externalCurrentFresh) {
-      currentPrice = Number(externalEnergy.currentPrice);
-    }
+    // The selected curve is authoritative for both planning and accounting.
+    // A standalone price input must not bypass secondary normalization.
+    const currentPrice = analysis.currentPrice;
     const sourceUpdatedAt = selection.source === 'homey'
       ? Number(homeyEnergy.lastUpdatedAt) || 0
       : selection.source === 'external'
@@ -6079,7 +6137,14 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       source: selection.source,
       fallbackEnabled: selection.fallbackEnabled,
-      fallbackActive: selection.source === 'external',
+      fallbackActive: selection.fallbackActive,
+      fallbackReady: selection.fallbackReady,
+      primarySource: selection.primarySource,
+      secondarySource: selection.secondarySource,
+      primary: selection.primary,
+      secondary: selection.secondary,
+      calibrationState: selection.calibrationState,
+      calibration: selection.calibration,
       available: selection.source !== 'none',
       refreshing: homeyEnergy.refreshing,
       priceType: homeyEnergy.priceType,
@@ -6113,7 +6178,7 @@ class HomeFluxEmsApp extends Homey.App {
       externalCurrentAgeSeconds: selection.externalCurrentAgeMs === null ? null : Math.round(selection.externalCurrentAgeMs / 1000),
       error: selection.source === 'none'
         ? (selection.fallbackEnabled
-          ? (externalEnergy.error || homeyEnergy.error || 'Geen bruikbare dynamische prijsdata')
+          ? (selection.calibrationState !== 'ready' ? 'Reserveprijzen nog niet betrouwbaar afgestemd op de primaire bron' : externalEnergy.error || homeyEnergy.error || 'Geen bruikbare dynamische prijsdata')
           : (homeyEnergy.error || 'Geen bruikbare Homey Energy prijsdata'))
         : '',
       responseShape: selection.source === 'external' ? externalEnergy.responseShape || 'external Flow' : homeyEnergy.responseShape || '',
@@ -6122,9 +6187,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   usesHomeyEnergyPrices(settings = this.getSettings()) {
-    // Homey Energy remains the primary source for every dynamic contract, also
-    // when the optional external Flow fallback is enabled.
-    return isDynamicContract(settings);
+    return isDynamicContract(settings) && sourceOrder(settings.dynamicPriceSource).includes('homey');
   }
 
   getHomeyEngineSlots(settings = this.getSettings(), now = new Date()) {
@@ -11885,17 +11948,7 @@ class HomeFluxEmsApp extends Homey.App {
       const targetInterval = this.getDynamicTargetInterval(settings);
       const simulatedDateKey = localParts(simulatedAt, timezone).dateKey;
       const sourceNow = new Date();
-      const homeySourceSlots = resamplePriceSlots(this.homeyEnergy?.slots || [], targetInterval);
-      const externalSourceSlots = resamplePriceSlots(this.externalEnergy?.slots || [], targetInterval);
-      const sourceTimezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
-      const homeySourceAnalysis = analyzePriceSlots(homeySourceSlots, sourceNow, sourceTimezone, Number(settings.cheapHours) || 3, Number(settings.expensiveHours) || 3);
-      const externalSourceAnalysis = analyzePriceSlots(externalSourceSlots, sourceNow, sourceTimezone, Number(settings.cheapHours) || 3, Number(settings.expensiveHours) || 3);
-      const homeySourceAgeMs = this.homeyEnergy?.lastUpdatedAt ? Math.max(0, sourceNow.getTime() - Number(this.homeyEnergy.lastUpdatedAt)) : null;
-      const homeySourceFresh = homeySourceAnalysis.currentPrice !== null && homeySourceAgeMs !== null && homeySourceAgeMs <= 20 * 60 * 1000;
-      const externalSourceReady = externalSourceAnalysis.currentPrice !== null && externalSourceAnalysis.slotCount > 0;
-      const selectedSourceSlots = homeySourceFresh
-        ? homeySourceSlots
-        : (this.isExternalPriceFallbackEnabled(settings) && externalSourceReady ? externalSourceSlots : []);
+      const selectedSourceSlots = this.getDynamicPriceSelection(settings, sourceNow, { readOnly: true }).slots;
       const dynamicSlots = selectedSourceSlots
         .filter(slot => slot.dateKey === simulatedDateKey && Number.isFinite(Number(slot.price)) && Number.isFinite(Number(slot.minute)))
         .sort((a, b) => a.minute - b.minute)
@@ -12030,7 +12083,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.8.3',
+      version: '0.8.4',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12107,7 +12160,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.8.3',
+      version: '0.8.4',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12267,7 +12320,12 @@ class HomeFluxEmsApp extends Homey.App {
       source: String(effectivePrice.source || 'none'),
       fallbackEnabled: Boolean(effectivePrice.fallbackEnabled),
       fallbackActive: Boolean(effectivePrice.fallbackActive),
-      fallbackReady: Boolean(effectivePrice.externalCurveReady),
+      fallbackReady: Boolean(effectivePrice.fallbackReady),
+      primary: effectivePrice.primary || null,
+      secondary: effectivePrice.secondary || null,
+      primarySource: effectivePrice.primarySource,
+      secondarySource: effectivePrice.secondarySource,
+      calibrationState: effectivePrice.calibrationState,
       homeyFresh: Boolean(effectivePrice.homeyFresh),
       externalCurrentFresh: Boolean(effectivePrice.externalCurrentFresh),
       lastUpdatedAt: priceLastUpdatedAt,
@@ -12412,7 +12470,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.8.3',
+      version: '0.8.4',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

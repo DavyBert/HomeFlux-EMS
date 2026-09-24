@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.8.3');
-assert.equal(appCompose.version, '0.8.3');
-assert.equal(packageJson.version, '0.8.3');
-assert.equal(packageLock.version, '0.8.3');
-assert.equal(packageLock.packages[''].version, '0.8.3');
+assert.equal(manifest.version, '0.8.4');
+assert.equal(appCompose.version, '0.8.4');
+assert.equal(packageJson.version, '0.8.4');
+assert.equal(packageLock.version, '0.8.4');
+assert.equal(packageLock.packages[''].version, '0.8.4');
 assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
 assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
 const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');
@@ -175,8 +175,8 @@ for (const [name, expectedHash] of Object.entries(statusPreviewHashes)) {
 assert(statusHtml.includes('evBatteryCoordinationText(ev, Homey)'), 'status widget must explain EV/battery coordination');
 assert(statusHtml.includes("enabled(settings, 'showEvPlanning')"), 'status widget must allow EV next-decision planning to be selected');
 assert(statusHtml.includes('evNextDecisionText(ev, Homey)'), 'status widget must show the upcoming EV decision and wait state');
-assert(statusHtml.includes('externalFallbackActive'), 'status widget must show when the external price fallback is active');
-assert(statusHtml.includes('externalFallbackReady'), 'status widget must show whether the external fallback is ready');
+assert(statusHtml.includes('secondaryActive'), 'status widget must identify the active secondary source in either source order');
+assert(statusHtml.includes('priceAlignmentWaiting'), 'status widget must identify a secondary source awaiting normalization');
 
 const widgetApi = require('../widgets/savings/api');
 (async () => {

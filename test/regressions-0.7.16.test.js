@@ -74,7 +74,7 @@ assert.equal(result.effectiveCapacityKwh, 15);
   app.homey = { settings: { get: key => stored[key] ?? null, set: (key, value) => { stored[key] = value; } }, clock: { getTimezone: () => 'UTC' } };
   await app.migrateSettings();
   await app.ensureDefaults();
-  assert.equal(stored.settingsSchemaVersion, 68);
+  assert.equal(stored.settingsSchemaVersion, 69);
   for (let i = 1; i <= 4; i++) {
     const stem = i === 1 ? 'ev' : `ev${i}`;
     assert.equal(stored[`${stem}Voltage`], 230);

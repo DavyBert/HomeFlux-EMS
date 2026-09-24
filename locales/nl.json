@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.8.3 — Jouw energie, anders geregeld",
+    "subtitle": "v0.8.4 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -180,7 +180,17 @@
       "evNoLoadGridStopped": "Geen EV-belasting gedurende 1 minuut gedetecteerd · netvrijgave gestopt",
       "evHouseObservation": "Woningverbruik opnieuw rond de referentie · EV-netvrijgave stopt over {seconds} s als dit zo blijft",
       "evHouseReference": "woningreferentie",
-      "boilerFallbackReadyDetail": "{days}/{target} zonnedag(en) gemist · tarieffallback actief"
+      "boilerFallbackReadyDetail": "{days}/{target} zonnedag(en) gemist · tarieffallback actief",
+      "externalService": "Externe dienst",
+      "secondaryActive": "Reservebron actief",
+      "primaryActive": "Primaire bron actief",
+      "noSecondaryPrice": "Geen secundaire bron",
+      "priceAlignmentWaiting": "Wachten op prijsafstemming",
+      "primaryPrice": "Primaire prijs",
+      "secondaryPrice": "Secundaire prijs · origineel → afgestemd",
+      "evEmergencyTariffWait": "Noodladen wacht op geselecteerd tarief",
+      "secondaryReady": "Reservebron gereed",
+      "secondaryNotReady": "Reservebron niet gereed"
     }
   }
 }

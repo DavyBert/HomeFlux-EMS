@@ -850,7 +850,19 @@
     "Batterij 6 - vermogen en capaciteit": "Battery 6 - power and capacity",
     "Batterij 7 - vermogen en capaciteit": "Battery 7 - power and capacity",
     "Batterij 8 - vermogen en capaciteit": "Battery 8 - power and capacity",
-    "Bij 1 fase kies je de spanning over de laadaansluiting, standaard 230 V. Bij 3 fasen kies je de spanning tussen de fasen (L-L), standaard 230 V. HomeFlux gebruikt automatisch de juiste omrekening. Voor een 230/400 V-net kies je dus 400 V bij 3 fasen.": "For single phase, select the voltage across the charging connection, default 230 V. For three phases, select the voltage between phases (L-L), default 230 V. HomeFlux automatically applies the correct conversion. For a 230/400 V supply, select 400 V with three phases."
+    "Bij 1 fase kies je de spanning over de laadaansluiting, standaard 230 V. Bij 3 fasen kies je de spanning tussen de fasen (L-L), standaard 230 V. HomeFlux gebruikt automatisch de juiste omrekening. Voor een 230/400 V-net kies je dus 400 V bij 3 fasen.": "For single phase, select the voltage across the charging connection, default 230 V. For three phases, select the voltage between phases (L-L), default 230 V. HomeFlux automatically applies the correct conversion. For a 230/400 V supply, select 400 V with three phases.",
+    "De eerste bron is leidend. De reservebron wordt afgestemd op overlappende prijzen van de eerste bron. Homey-toeslagen en prijsformules worden meegenomen. Een externe dienst moet een volledige prijscurve aanleveren via Flow.": "The first source takes priority. The secondary source is aligned using overlapping prices from the primary source. Homey surcharges and price formulas are included. An external service must supply a full price curve through Flow.",
+    "Tarief ook gebruiken voor EV-laden bij emergency charge": "Also apply the tariff to EV emergency charging",
+    "Indien ingeschakeld wacht noodladen buiten de geselecteerde EV-laadtarieven. Dit geldt ook bij noodladen via Flow. Standaard uit.": "When enabled, emergency charging waits outside the selected EV charging tariffs. This also applies to emergency charging through Flow. Disabled by default.",
+    "Homey Energy + externe dienst": "Homey Energy + external service",
+    "Externe dienst + Homey Energy": "External service + Homey Energy",
+    "Alleen externe dienst": "External service only",
+    "Externe dienst": "External service",
+    "Noodladen binnen het vaste laadvenster": "Emergency charging inside the fixed charging window",
+    "Noodladen buiten het vaste laadvenster": "Emergency charging outside the fixed charging window",
+    "Noodladen op dit tarief · Goedkoop": "Emergency charging on this tariff · Cheap",
+    "Noodladen op dit tarief · Normaal": "Emergency charging on this tariff · Normal",
+    "Noodladen op dit tarief · Duur": "Emergency charging on this tariff · Expensive"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

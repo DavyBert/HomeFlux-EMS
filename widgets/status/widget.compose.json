@@ -51,6 +51,24 @@
       "value": true
     },
     {
+      "id": "showPrimaryPrice",
+      "type": "checkbox",
+      "title": {
+        "en": "Show primary price",
+        "nl": "Primaire prijs tonen"
+      },
+      "value": true
+    },
+    {
+      "id": "showSecondaryPrice",
+      "type": "checkbox",
+      "title": {
+        "en": "Show secondary price (including no secondary source)",
+        "nl": "Secundaire prijs tonen (ook zonder secundaire bron)"
+      },
+      "value": true
+    },
+    {
       "id": "showEmsMode",
       "type": "checkbox",
       "title": {

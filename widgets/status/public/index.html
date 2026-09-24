@@ -115,34 +115,39 @@
       return [label, time, until].filter(Boolean).join(' · ');
     }
 
+    function priceSourceName(source, Homey) {
+      return source === 'homey' ? 'Homey Energy' : tr(Homey, 'widget.status.externalService', 'External service');
+    }
+
     function priceDataText(status, Homey) {
       const info = status.priceData || {};
       if (!info.required) return tr(Homey, 'widget.status.priceConfigured', 'Configured tariff');
-      const source = String(info.source || 'none');
-      if (!info.ready || source === 'none') {
-        if (info.fallbackEnabled) return tr(Homey, 'widget.status.priceUnavailableFallback', 'Unavailable · external fallback not ready');
-        return tr(Homey, 'widget.status.priceUnavailable', 'Unavailable');
+      if (!info.ready || info.source === 'none') return tr(Homey, 'widget.status.priceUnavailable', 'Unavailable');
+      const role = info.fallbackActive
+        ? tr(Homey, 'widget.status.secondaryActive', 'Secondary source active')
+        : tr(Homey, 'widget.status.primaryActive', 'Primary source active');
+      const parts = [priceSourceName(info.source, Homey), role];
+      if (info.fallbackEnabled) parts.push(info.fallbackReady
+        ? tr(Homey, 'widget.status.secondaryReady', 'Secondary source ready')
+        : tr(Homey, 'widget.status.secondaryNotReady', 'Secondary source not ready'));
+      if (info.ageSeconds != null && Number.isFinite(Number(info.ageSeconds))) {
+        const minutes = Math.max(0, Math.floor(Number(info.ageSeconds) / 60));
+        parts.push(minutes < 1 ? tr(Homey, 'widget.status.updatedNow', 'updated just now')
+          : tr(Homey, 'widget.status.updatedMinutes', 'updated {minutes} min ago').replace('{minutes}', minutes));
       }
+      return parts.join(' · ');
+    }
 
-      const ageSeconds = Number(info.ageSeconds);
-      let ageText = '';
-      if (Number.isFinite(ageSeconds)) {
-        const minutes = Math.max(0, Math.floor(ageSeconds / 60));
-        ageText = minutes < 1
-          ? tr(Homey, 'widget.status.updatedNow', 'updated just now')
-          : tr(Homey, 'widget.status.updatedMinutes', 'updated {minutes} min ago').replace('{minutes}', minutes);
-      }
-      if (source === 'external') {
-        const active = tr(Homey, 'widget.status.externalFallbackActive', 'External fallback active · OK');
-        return ageText ? `${active} · ${ageText}` : active;
-      }
-      const state = tr(Homey, 'widget.status.homeyPrimaryOk', 'Homey Energy primary · OK');
-      const fallback = info.fallbackEnabled
-        ? (info.fallbackReady
-          ? tr(Homey, 'widget.status.externalFallbackReady', 'fallback OK')
-          : tr(Homey, 'widget.status.externalFallbackNotReady', 'fallback not ready'))
-        : '';
-      return [state, fallback, ageText].filter(Boolean).join(' · ');
+    function sourcePriceText(status, Homey, secondary = false) {
+      const info = status.priceData || {};
+      const data = secondary ? info.secondary : info.primary;
+      if (!data) return secondary ? tr(Homey, 'widget.status.noSecondaryPrice', 'No secondary source') : '—';
+      const price = value => value == null || !Number.isFinite(Number(value)) ? '—' : `€ ${Number(value).toFixed(4)}/kWh`;
+      const parts = [priceSourceName(data.source, Homey), price(secondary ? data.sourcePrice : data.price)];
+      if (secondary && data.normalized) parts.push('→ ' + price(data.price));
+      if (secondary && !data.normalized) parts.push(tr(Homey, 'widget.status.priceAlignmentWaiting', 'Waiting for price alignment'));
+      else if (!data.ready) parts.push(tr(Homey, 'widget.status.priceUnavailable', 'Unavailable'));
+      return parts.join(' · ');
     }
 
     function nextChargeText(status, Homey) {
@@ -313,6 +318,7 @@
     function reasonText(reason, Homey) {
       const text = String(reason || '').trim();
       if (!text) return '';
+      if (text === 'Emergency charge wacht op geselecteerd laadtarief') return tr(Homey, 'widget.status.evEmergencyTariffWait', 'Emergency charge waiting for selected tariff');
       return `${tr(Homey, 'widget.status.reason', 'Reason')}: ${text}`;
     }
 
@@ -460,6 +466,7 @@
       const sessionState = String(ev.session?.state || '');
       if (sessionState === 'ended') return tr(Homey, 'widget.status.evSessionEnded', 'Session ended');
       if (!ev.connected) return tr(Homey, 'widget.status.evNotConnected', 'Not connected');
+      if (ev.emergencyTariffBlocked) return tr(Homey, 'widget.status.evEmergencyTariffWait', 'Emergency charge waiting for selected tariff');
       if (sessionState === 'paused') return tr(Homey, 'widget.status.evChargingPaused', 'Charging paused');
       if (sessionState === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
       if (ev.peakLimited) return tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
@@ -605,6 +612,8 @@
       if (enabled(settings, 'showTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.currentTariff', 'Current tariff'), String(status.tariff?.label || '—'));
       if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status, Homey));
       if (enabled(settings, 'showPriceStatus')) addMetric(generalGrid, tr(Homey, 'widget.status.priceData', 'Price data'), priceDataText(status, Homey));
+      if (status.priceData?.required && enabled(settings, 'showPrimaryPrice')) addMetric(generalGrid, tr(Homey, 'widget.status.primaryPrice', 'Primary price'), sourcePriceText(status, Homey));
+      if (status.priceData?.required && enabled(settings, 'showSecondaryPrice')) addMetric(generalGrid, tr(Homey, 'widget.status.secondaryPrice', 'Secondary price · original → aligned'), sourcePriceText(status, Homey, true));
       if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
       if (enabled(settings, 'showControlOwner')) addMetric(generalGrid, tr(Homey, 'widget.status.controlOwner', 'Battery control'), hybridControlOwnerText(status, Homey));
       if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));

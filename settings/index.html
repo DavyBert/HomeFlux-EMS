@@ -1197,9 +1197,11 @@
 <label class="homey-form-label" for="dynamicPriceSource">Prijsbron</label>
 <select class="homey-form-select" id="dynamicPriceSource">
 <option selected="" value="homey">Alleen Homey Energy</option>
-<option value="homey_external_fallback">Homey Energy + externe Flow fallback</option>
+<option value="homey_external_fallback">Homey Energy + externe dienst</option>
+<option value="external_homey_fallback">Externe dienst + Homey Energy</option>
+<option value="external">Alleen externe dienst</option>
 </select>
-<div class="muted">Homey Energy blijft primair. Met externe fallback gebruikt HomeFlux automatisch de aangeleverde curve wanneer Homey-prijzen ontbreken of verouderd zijn.</div>
+<div class="muted">De eerste bron is leidend. De reservebron wordt afgestemd op overlappende prijzen van de eerste bron. Homey-toeslagen en prijsformules worden meegenomen. Een externe dienst moet een volledige prijscurve aanleveren via Flow.</div>
 </div>
 <div class="row">
 <div class="homey-form-group"><label class="homey-form-label" for="cheapHours">Goedkoopste uren voor laden</label><input class="homey-form-input" id="cheapHours" max="12" min="0.25" step="0.25" type="number"/></div>
@@ -1238,9 +1240,10 @@
 <div class="statusline">Dynamische prijsbronnen</div>
 <div id="dynamicHomeySourceState">Wachten op Homey Energy…</div>
 <div class="muted" id="dynamicHomeySourceDetail"></div>
-<div class="statusline" style="margin-top:10px">Externe Flow fallback</div>
+<div class="statusline" style="margin-top:10px">Externe dienst</div>
 <div id="dynamicExternalSourceState">Nog geen externe prijscurve ontvangen</div>
 <div class="muted" id="dynamicExternalSourceDetail"></div>
+<div class="muted" id="dynamicCalibrationState"></div>
 <div class="savebar" style="margin-top:10px">
 <button class="homey-button-secondary" id="refreshHomeyEnergyDynamic" type="button">Homey Energy prijzen vernieuwen</button>
 <span class="ok" id="homeyEnergyDynamicRefreshState"></span>
@@ -1366,9 +1369,9 @@
 <div class="card hidden" id="evInputStatusCard"><h3>Benodigde inputs · EV 1</h3><div class="status-grid"><div class="card" id="evConfigSocCard"><div class="muted">EV SoC</div><div class="metric" id="evConfigInputSoc">WACHT</div></div><div class="card"><div class="muted">Aangesloten</div><div class="metric" id="evConfigInputConnected">WACHT</div></div><div class="card"><div class="muted">Laadstroom</div><div class="metric" id="evConfigInputCurrent">WACHT</div></div></div><div class="statusline" id="evConfigInputSummary">Inputs: wachten op data</div><div class="muted">Kies EV 1 in de kaarten: “Stel EV-status in”, “Stel EV-SoC in” en “EV-SoC is nodig”.</div></div>
 <fieldset class="homey-form-fieldset" id="evTariffSettings"><legend class="homey-form-legend">EV — laden koppelen aan tarieven</legend>
 <div class="card"><div class="muted">Actief energiecontract</div><div class="statusline" id="evSelectedContractTitle">—</div><div class="muted" id="evSelectedContractDetail"></div></div>
-<div class="card hidden" id="evTariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="evFixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label></div>
+<div class="card hidden" id="evTariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="evFixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="evEmergencyFixedWindowEnabled" type="checkbox"/> <span>Noodladen binnen het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="evEmergencyFixedOutsideWindowEnabled" type="checkbox"/> <span>Noodladen buiten het vaste laadvenster</span></label></div>
 <div class="card hidden" id="evTariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 1</div><div id="evTouRateSummary"></div></div>
-<div class="card hidden" id="evTariffDynamicCard"><div class="statusline" id="evDynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="evDynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="evDynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="evDynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
+<div class="card hidden" id="evTariffDynamicCard"><div class="statusline" id="evDynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="evDynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="evEmergencyDynamicCheapEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Goedkoop</span></label><label class="homey-form-checkbox"><input id="evDynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="evEmergencyDynamicNormalEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Normaal</span></label><label class="homey-form-checkbox"><input id="evDynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label><label class="homey-form-checkbox"><input id="evEmergencyDynamicExpensiveEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Duur</span></label></div>
 </fieldset>
 <div class="card output-test-card" id="evOutputTestCard1" data-ev-output-test-instance="1"><h3>EV 1 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 1-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="evTestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="evTestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="1" data-output="current" type="button">Test laadstroom-kaart</button></div>
@@ -1429,9 +1432,9 @@
 <div class="card hidden" id="ev2InputStatusCard"><h3>Benodigde inputs · EV 2</h3><div class="status-grid"><div class="card" id="ev2ConfigSocCard"><div class="muted">EV SoC</div><div class="metric" id="ev2ConfigInputSoc">WACHT</div></div><div class="card"><div class="muted">Aangesloten</div><div class="metric" id="ev2ConfigInputConnected">WACHT</div></div><div class="card"><div class="muted">Laadstroom</div><div class="metric" id="ev2ConfigInputCurrent">WACHT</div></div></div><div class="statusline" id="ev2ConfigInputSummary">Inputs: wachten op data</div><div class="muted">Kies EV 2 in de kaarten: “Stel EV-status in”, “Stel EV-SoC in” en “EV-SoC is nodig”.</div></div>
 <fieldset class="homey-form-fieldset" id="ev2TariffSettings"><legend class="homey-form-legend">EV — laden koppelen aan tarieven</legend>
 <div class="card"><div class="muted">Actief energiecontract</div><div class="statusline" id="ev2SelectedContractTitle">—</div><div class="muted" id="ev2SelectedContractDetail"></div></div>
-<div class="card hidden" id="ev2TariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="ev2FixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label></div>
+<div class="card hidden" id="ev2TariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="ev2FixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="ev2EmergencyFixedWindowEnabled" type="checkbox"/> <span>Noodladen binnen het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="ev2EmergencyFixedOutsideWindowEnabled" type="checkbox"/> <span>Noodladen buiten het vaste laadvenster</span></label></div>
 <div class="card hidden" id="ev2TariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 2</div><div id="ev2TouRateSummary"></div></div>
-<div class="card hidden" id="ev2TariffDynamicCard"><div class="statusline" id="ev2DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev2DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev2DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev2DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
+<div class="card hidden" id="ev2TariffDynamicCard"><div class="statusline" id="ev2DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev2DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev2EmergencyDynamicCheapEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev2DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev2EmergencyDynamicNormalEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Normaal</span></label><label class="homey-form-checkbox"><input id="ev2DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label><label class="homey-form-checkbox"><input id="ev2EmergencyDynamicExpensiveEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Duur</span></label></div>
 </fieldset>
 <div class="card output-test-card" id="evOutputTestCard2" data-ev-output-test-instance="2"><h3>EV 2 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 2-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev2TestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="ev2TestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="2" data-output="current" type="button">Test laadstroom-kaart</button></div>
@@ -1492,9 +1495,9 @@
 <div class="card hidden" id="ev3InputStatusCard"><h3>Benodigde inputs · EV 3</h3><div class="status-grid"><div class="card" id="ev3ConfigSocCard"><div class="muted">EV SoC</div><div class="metric" id="ev3ConfigInputSoc">WACHT</div></div><div class="card"><div class="muted">Aangesloten</div><div class="metric" id="ev3ConfigInputConnected">WACHT</div></div><div class="card"><div class="muted">Laadstroom</div><div class="metric" id="ev3ConfigInputCurrent">WACHT</div></div></div><div class="statusline" id="ev3ConfigInputSummary">Inputs: wachten op data</div><div class="muted">Kies EV 3 in de kaarten: “Stel EV-status in”, “Stel EV-SoC in” en “EV-SoC is nodig”.</div></div>
 <fieldset class="homey-form-fieldset" id="ev3TariffSettings"><legend class="homey-form-legend">EV — laden koppelen aan tarieven</legend>
 <div class="card"><div class="muted">Actief energiecontract</div><div class="statusline" id="ev3SelectedContractTitle">—</div><div class="muted" id="ev3SelectedContractDetail"></div></div>
-<div class="card hidden" id="ev3TariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="ev3FixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label></div>
+<div class="card hidden" id="ev3TariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="ev3FixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="ev3EmergencyFixedWindowEnabled" type="checkbox"/> <span>Noodladen binnen het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="ev3EmergencyFixedOutsideWindowEnabled" type="checkbox"/> <span>Noodladen buiten het vaste laadvenster</span></label></div>
 <div class="card hidden" id="ev3TariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 3</div><div id="ev3TouRateSummary"></div></div>
-<div class="card hidden" id="ev3TariffDynamicCard"><div class="statusline" id="ev3DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev3DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev3DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev3DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
+<div class="card hidden" id="ev3TariffDynamicCard"><div class="statusline" id="ev3DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev3DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev3EmergencyDynamicCheapEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev3DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev3EmergencyDynamicNormalEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Normaal</span></label><label class="homey-form-checkbox"><input id="ev3DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label><label class="homey-form-checkbox"><input id="ev3EmergencyDynamicExpensiveEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Duur</span></label></div>
 </fieldset>
 <div class="card output-test-card" id="evOutputTestCard3" data-ev-output-test-instance="3"><h3>EV 3 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 3-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev3TestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="ev3TestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="3" data-output="current" type="button">Test laadstroom-kaart</button></div>
@@ -1555,9 +1558,9 @@
 <div class="card hidden" id="ev4InputStatusCard"><h3>Benodigde inputs · EV 4</h3><div class="status-grid"><div class="card" id="ev4ConfigSocCard"><div class="muted">EV SoC</div><div class="metric" id="ev4ConfigInputSoc">WACHT</div></div><div class="card"><div class="muted">Aangesloten</div><div class="metric" id="ev4ConfigInputConnected">WACHT</div></div><div class="card"><div class="muted">Laadstroom</div><div class="metric" id="ev4ConfigInputCurrent">WACHT</div></div></div><div class="statusline" id="ev4ConfigInputSummary">Inputs: wachten op data</div><div class="muted">Kies EV 4 in de kaarten: “Stel EV-status in”, “Stel EV-SoC in” en “EV-SoC is nodig”.</div></div>
 <fieldset class="homey-form-fieldset" id="ev4TariffSettings"><legend class="homey-form-legend">EV — laden koppelen aan tarieven</legend>
 <div class="card"><div class="muted">Actief energiecontract</div><div class="statusline" id="ev4SelectedContractTitle">—</div><div class="muted" id="ev4SelectedContractDetail"></div></div>
-<div class="card hidden" id="ev4TariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="ev4FixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label></div>
+<div class="card hidden" id="ev4TariffFixedCard"><div class="statusline">Vast tarief</div><label class="homey-form-checkbox"><input id="ev4FixedChargeWindowEnabled" type="checkbox"/> <span>EV standaard laden in het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="ev4EmergencyFixedWindowEnabled" type="checkbox"/> <span>Noodladen binnen het vaste laadvenster</span></label><label class="homey-form-checkbox"><input id="ev4EmergencyFixedOutsideWindowEnabled" type="checkbox"/> <span>Noodladen buiten het vaste laadvenster</span></label></div>
 <div class="card hidden" id="ev4TariffTouCard"><div class="statusline">Vaste tijdstarieven · EV 4</div><div id="ev4TouRateSummary"></div></div>
-<div class="card hidden" id="ev4TariffDynamicCard"><div class="statusline" id="ev4DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev4DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev4DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev4DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label></div>
+<div class="card hidden" id="ev4TariffDynamicCard"><div class="statusline" id="ev4DynamicContractTitle">Dynamisch</div><label class="homey-form-checkbox"><input id="ev4DynamicCheapEnabled" type="checkbox"/> <span>Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev4EmergencyDynamicCheapEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Goedkoop</span></label><label class="homey-form-checkbox"><input id="ev4DynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label><label class="homey-form-checkbox"><input id="ev4EmergencyDynamicNormalEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Normaal</span></label><label class="homey-form-checkbox"><input id="ev4DynamicExpensiveEnabled" type="checkbox"/> <span>Duur</span></label><label class="homey-form-checkbox"><input id="ev4EmergencyDynamicExpensiveEnabled" type="checkbox"/> <span>Noodladen op dit tarief · Duur</span></label></div>
 </fieldset>
 <div class="card output-test-card" id="evOutputTestCard4" data-ev-output-test-instance="4"><h3>EV 4 output-test</h3><p class="muted">Vuurt alleen de gekozen EV 4-uitgang één keer af. Gekoppelde Flows kunnen het echte laadpunt bedienen.</p><div class="grid">
 <div class="homey-form-group"><label class="homey-form-label" for="ev4TestCurrentA">Test laadstroom (A)</label><input class="homey-form-input" id="ev4TestCurrentA" min="0" max="64" step="1" type="number" value="6"/><button class="homey-button-secondary test-ev-output" data-instance="4" data-output="current" type="button">Test laadstroom-kaart</button></div>
@@ -2078,9 +2081,9 @@ async function onHomeyReady(Homey) {
   const numeric = new Set(['batteryCount','autoTuneMinConfidencePercent','hybridWatchdogMinW','hybridWatchdogMaxW','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','evIdleHouseLoadW','evPvSharePercent','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
   const boolean = new Set(['hybridEmsEnabled','balanceEnabled','balanceWarningEnabled','controlEnabled','adaptiveLiveControlEnabled','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandPauseEnabled','exportLimitEnabled','peakShaveEnabled','overrideResumeOnTariffChange','dynamicUseBatteryNormalHours','lowForecastAutoSunnyEnabled','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','peakReserveNightEnabled','boilerEnabled','boilerPeakGuardBatterySupportEnabled','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled']);
   const jsonArray = new Set(['flexibleLoadPriorityOrder']);
-  const evSuffixes = ['Enabled','Name','SocEnabled','SocFreshnessMinutes','Mode','ControlType','SmartGridPriority','Weight','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
+  const evSuffixes = ['Enabled','Name','SocEnabled','SocFreshnessMinutes','Mode','EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','ControlType','SmartGridPriority','Weight','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','TargetTime','GuaranteeTarget','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','SkipFeedbackValidation','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
   const evNumericSuffixes = new Set(['SocFreshnessMinutes','Weight','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','Phases','Voltage','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','FeedbackTolerancePercent','PeakGuardStopHoldSeconds']);
-  const evBooleanSuffixes = new Set(['Enabled','SocEnabled','GuaranteeTarget','AllowUnselectedTariffForDeadline','SkipFeedbackValidation','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled']);
+  const evBooleanSuffixes = new Set(['EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','Enabled','SocEnabled','GuaranteeTarget','AllowUnselectedTariffForDeadline','SkipFeedbackValidation','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled']);
   const hvacSuffixes = ['Enabled','Name','AutomaticControlEnabled','AllowOnBattery','UsePvSurplus','ComfortMinC','ComfortMaxC','EnergyDeviationC','HeatingActivationBelowC','CoolingActivationAboveC','Priority','CoolingFanProfile','HeatingFanProfile','ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW','AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl','FanMinValue','FanMaxValue','FanStepValue'];
   const hvacNumericSuffixes = new Set(['ComfortMinC','ComfortMaxC','EnergyDeviationC','HeatingActivationBelowC','CoolingActivationAboveC','ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW','FanMinValue','FanMaxValue','FanStepValue']);
   const hvacBooleanSuffixes = new Set(['Enabled','AutomaticControlEnabled','AllowOnBattery','UsePvSurplus','AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl']);
@@ -2361,7 +2364,7 @@ async function onHomeyReady(Homey) {
     const modeHelp = q(`${stem}ModeHelp`);
     if (modeHelp) {
       modeHelp.textContent = mode === 'emergency'
-        ? (uiLanguage === 'nl' ? 'Start onmiddellijk op maximaal laadvermogen, begrensd door Peak Guard.' : 'Starts immediately at maximum charging power, limited by Peak Guard.')
+        ? (uiLanguage === 'nl' ? 'Laadt op maximaal laadvermogen, begrensd door Peak Guard. Noodladen gebruikt alleen de eigen geselecteerde tarieven hieronder.' : 'Charges at maximum power, limited by Peak Guard. Emergency charging uses only its own selected tariffs below.')
         : mode === 'soc_target'
           ? (uiLanguage === 'nl' ? 'Laadt tot het SoC-doel volgens de ingestelde tarief- en PV-regels. Alleen een gegarandeerde deadline mag indien nodig extra tarieven gebruiken.' : 'Charges to the SoC target using the configured tariff and PV rules. Only a guaranteed deadline may use extra tariffs when required.')
           : (socEnabled
@@ -2964,9 +2967,13 @@ async function onHomeyReady(Homey) {
     const isDynamic = q('contractType').value.startsWith('dynamic');
     const source = q('dynamicPriceSource').value || 'homey';
     q('homeyDynamicSourceBlock').classList.toggle('hidden', !isDynamic);
-    q('dynamicPriceSourceRule').textContent = source === 'homey_external_fallback'
-      ? 'Homey Energy is primair. Bij ontbrekende of verouderde Homey-prijzen schakelt HomeFlux automatisch over op de externe Flow-prijscurve. Zonder bruikbare curve blijft de veilige fallback actief.'
-      : 'Homey Energy bepaalt de actuele prijs-slots. Zonder geldige prijsdata wordt nooit van het net geladen en worden geen prijzen verzonnen; zelfconsumptie, PV-overschot opvangen en Peak Guard blijven actief.';
+    const externalName = uiLanguage === 'nl' ? 'Externe dienst' : 'External service';
+    const names = { homey: 'Homey Energy', homey_external_fallback: 'Homey Energy → ' + externalName, external_homey_fallback: externalName + ' → Homey Energy', external: externalName };
+    q('dynamicPriceSourceRule').textContent = (uiLanguage === 'nl'
+      ? 'Bronvolgorde: ' : 'Source order: ') + names[source] + (uiLanguage === 'nl'
+      ? '. De reservebron wordt alleen gebruikt na betrouwbare prijsafstemming.'
+      : '. The secondary source is used only after reliable price alignment.');
+    q('refreshHomeyEnergyDynamic').disabled = source === 'external';
   }
 
   function renderEvContractUi() {
@@ -3004,11 +3011,12 @@ async function onHomeyReady(Homey) {
         detail = uiLanguage === 'nl' ? 'Deze EV volgt zijn eigen toestemming voor het vaste laadvenster.' : 'This EV follows its own permission for the fixed charging window.';
       } else if (type === 'tou') {
         title = uiLanguage === 'nl' ? 'Vaste tijdstarieven' : 'Time-of-use tariffs';
-        detail = uiLanguage === 'nl' ? 'Standaard laden, PV-laden en eventuele netaanvulling kies je hier per EV en per tarief.' : 'Choose standard charging, PV charging and optional grid top-up here per EV and tariff.';
+        detail = uiLanguage === 'nl' ? 'Kies standaardladen, noodladen, PV-laden en netaanvulling afzonderlijk per EV en per tarief. Voor noodladen kan je alle tarieven selecteren.' : 'Select standard charging, emergency charging, PV charging and grid top-up independently per EV and tariff. You can select all tariffs for emergency charging.';
         const host = q(`${stem}TouRateSummary`);
         if (host) {
           host.innerHTML = rates.length ? '' : `<div class="muted">${uiLanguage === 'nl' ? 'Nog geen tarieven ingesteld.' : 'No tariffs configured yet.'}</div>`;
           rates.slice(0,12).forEach((rate,index) => {
+            const emergencyKey=evRateKey(instance,'EmergencyChargeAllowed');
             const standardKey=evRateKey(instance,'ChargeAllowed');
             const pvKey=evRateKey(instance,'PvChargeAllowed');
             const topUpKey=evRateKey(instance,'PvGridTopUpAllowed');
@@ -3020,10 +3028,11 @@ async function onHomeyReady(Homey) {
             const line=document.createElement('div'); line.className='rate-device-block';
             line.innerHTML=`<div class="rate-device-title">${escapeHtml(rate.name || (uiLanguage==='nl'?'Tarief':'Tariff'))}</div>
               <label class="homey-form-checkbox${standardDisabled?' rate-conflict-disabled':''}"><input type="checkbox" data-ev-rate-i="${index}" data-ev-rate-k="${standardKey}" ${standardActive?'checked':''} ${standardDisabled?'disabled':''}> <span>${uiLanguage==='nl'?'Standaard laden op dit tarief':'Standard charging on this tariff'}</span></label>
+              <label class="homey-form-checkbox"><input type="checkbox" data-ev-rate-i="${index}" data-ev-rate-k="${emergencyKey}" ${rate[emergencyKey]!==false?'checked':''}> <span>${uiLanguage==='nl'?'Noodladen op dit tarief':'Emergency charging on this tariff'}</span></label>
               <label class="homey-form-checkbox${pvDisabled?' rate-conflict-disabled':''}"><input type="checkbox" data-ev-rate-i="${index}" data-ev-rate-k="${pvKey}" ${pvActive?'checked':''} ${pvDisabled?'disabled':''}> <span>${uiLanguage==='nl'?'PV-laden op dit tarief':'PV charging on this tariff'}</span></label>
               <label class="homey-form-checkbox${topUpDisabled?' rate-conflict-disabled':''}"><input type="checkbox" data-ev-rate-i="${index}" data-ev-rate-k="${topUpKey}" ${rate[topUpKey]?'checked':''} ${topUpDisabled?'disabled':''}> <span>${uiLanguage==='nl'?'Netaanvulling bij PV-laden toestaan':'Allow grid top-up during PV charging'}</span></label>
               ${standardActive?`<div class="muted">${uiLanguage==='nl'?'Standaard laden gebruikt dit tarief volledig; beschikbare PV wordt automatisch eerst benut.':'Standard charging uses this tariff directly; available PV is automatically used first.'}</div>`:''}
-              ${rate.avoidGridImport?`<div class="muted">${uiLanguage==='nl'?'Netimport vermijden heeft voorrang; PV-only laden blijft mogelijk.':'Avoid grid import has priority; PV-only charging remains available.'}</div>`:''}`;
+              ${rate.avoidGridImport?`<div class="muted">${uiLanguage==='nl'?'Netimport vermijden blokkeert standaardladen en PV-netaanvulling. Noodladen volgt zijn eigen vinkje.':'Avoid grid import blocks standard charging and PV grid top-up. Emergency charging follows its own checkbox.'}</div>`:''}`;
             host.appendChild(line);
           });
           host.querySelectorAll('[data-ev-rate-k]').forEach(input => input.addEventListener('change', () => {
@@ -3129,11 +3138,13 @@ async function onHomeyReady(Homey) {
       evMaxGridImportW: Math.max(0, Number(rate.evMaxGridImportW) || 0),
     };
     for (let instance = 1; instance <= MAX_FLEX_INSTANCES; instance += 1) {
-      const standardKey=evRateKey(instance,'ChargeAllowed');
+      const emergencyKey=evRateKey(instance,'EmergencyChargeAllowed');
+            const standardKey=evRateKey(instance,'ChargeAllowed');
       const pvKey=evRateKey(instance,'PvChargeAllowed');
       const startKey=evRateKey(instance,'PvMinSurplusW');
       const stopKey=evRateKey(instance,'PvStopGridImportW');
       const topUpKey=evRateKey(instance,'PvGridTopUpAllowed');
+      next[emergencyKey]=next[emergencyKey] !== false;
       next[standardKey]=Boolean(next[standardKey]);
       next[pvKey]=next[pvKey] !== false;
       next[startKey]=Math.max(0,Number(next[startKey]) || 0);
@@ -3200,7 +3211,8 @@ async function onHomeyReady(Homey) {
       const evBlocks=[];
       const boilerBlock = '';
       for(let instance=1;instance<=evCount;instance+=1){
-        const standardKey=evRateKey(instance,'ChargeAllowed');
+        const emergencyKey=evRateKey(instance,'EmergencyChargeAllowed');
+            const standardKey=evRateKey(instance,'ChargeAllowed');
         const pvKey=evRateKey(instance,'PvChargeAllowed');
         const startKey=evRateKey(instance,'PvMinSurplusW');
         const stopKey=evRateKey(instance,'PvStopGridImportW');
@@ -4633,22 +4645,19 @@ async function onHomeyReady(Homey) {
         const sourceSetting = q('dynamicPriceSource').value || 'homey';
         const activeSource = String(priceData.source || 'none');
         const homeySlots = Number(homeyRaw.slotsToday || 0);
-        q('dynamicHomeySourceState').textContent = priceData.homeyFresh
-          ? `Homey Energy primair · OK · ${homeySlots} slots vandaag`
-          : (homeySlots > 0 ? 'Homey Energy verouderd' : 'Homey Energy niet beschikbaar');
-        q('dynamicHomeySourceDetail').textContent = homeyRaw.error || (homeySlots > 0
-          ? `Homey bron ${homeyRaw.sourceIntervalMinutes || '?'} min → EMS ${homeyRaw.slotIntervalMinutes || '?'} min · huidige prijs ${homeyRaw.currentPrice === null || homeyRaw.currentPrice === undefined ? 'onbekend' : `€ ${Number(homeyRaw.currentPrice).toFixed(4)}/kWh`}`
-          : 'Geen bruikbare Homey Energy-prijscurve.');
-
-        q('dynamicExternalSourceState').textContent = external.curveReady
-          ? `${activeSource === 'external' ? 'Fallback actief' : 'Fallback gereed'} · OK · ${Number(external.slotsToday || 0)} slots vandaag`
-          : (sourceSetting === 'homey_external_fallback' ? 'Fallback niet gereed' : 'Fallback niet ingeschakeld');
-        const externalParts = [];
-        if (external.curveUpdatedAt) externalParts.push(`curve ontvangen ${new Date(external.curveUpdatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`);
-        if (external.currentFresh && Number.isFinite(Number(external.currentPrice))) externalParts.push(`actuele prijs € ${Number(external.currentPrice).toFixed(4)}/kWh`);
-        if (external.error) externalParts.push(external.error);
-        if (!externalParts.length) externalParts.push('Wacht op de generieke externe prijs-Flow-kaarten.');
-        q('dynamicExternalSourceDetail').textContent = externalParts.join(' · ');
+        const primary = priceData.primarySource || 'homey';
+        const secondary = priceData.secondarySource;
+        const role = source => source === primary ? (uiLanguage === 'nl' ? 'primair' : 'primary') : source === secondary ? (uiLanguage === 'nl' ? 'reserve' : 'secondary') : (uiLanguage === 'nl' ? 'uitgeschakeld' : 'disabled');
+        const price = value => value == null ? '—' : `€ ${Number(value).toFixed(4)}/kWh`;
+        q('dynamicHomeySourceState').textContent = `Homey Energy · ${role('homey')} · ${priceData.homeyFresh ? 'OK' : '—'}${activeSource === 'homey' ? ' · ✓' : ''}`;
+        q('dynamicHomeySourceDetail').textContent = homeyRaw.error || `${price(homeyRaw.currentPrice)} · ${homeySlots} slots`;
+        q('dynamicExternalSourceState').textContent = `${uiLanguage === 'nl' ? 'Externe dienst' : 'External service'} · ${role('external')} · ${external.curveReady ? 'OK' : '—'}${activeSource === 'external' ? ' · ✓' : ''}`;
+        q('dynamicExternalSourceDetail').textContent = external.error || `${price(external.curveCurrentPrice)} · ${Number(external.slotsToday || 0)} slots`;
+        q('dynamicCalibrationState').textContent = !secondary
+          ? (uiLanguage === 'nl' ? 'Geen secundaire prijsbron.' : 'No secondary price source.')
+          : priceData.fallbackReady
+            ? (uiLanguage === 'nl' ? 'Afgestemde reserveprijs: ' : 'Aligned secondary price: ') + price(priceData.secondary?.price)
+            : (uiLanguage === 'nl' ? 'Reservebron nog niet bruikbaar: wachten op actuele, vergelijkbare prijzen van beide bronnen.' : 'Secondary source not ready: waiting for current, comparable prices from both sources.');
       }
       q('homeyEnergyState').textContent = homeyRaw.available
         ? (homeyRaw.error ? `Homey Energy bereikbaar · ${homeyRaw.error}` : 'Homey Energy prijsdata beschikbaar')

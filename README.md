@@ -7,10 +7,10 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 ## Quick start
 
 1. **Configure HomeFlux**  
-   Add your battery count, capacity, battery limits, tariff periods and Peak Guard limit in Settings, then save the configuration. For batteries with different power limits and/or capacities, enable the individual settings and enter each battery’s capacity in kWh and power limits in W.
+   Add your battery count, capacity, battery limits, tariff periods and Peak Guard limit in Settings, then save the configuration. For a dynamic contract, choose Homey Energy, an external service, or a primary source with the other as fallback; Homey price formulas are included. For batteries with different power limits and/or capacities, enable the individual settings and enter each battery’s capacity in kWh and power limits in W.
 
 2. **Feed the basic inputs through Flow**  
-   Use **Set grid power**, **Set PV power** and **Set battery SoC**. For battery planning, also provide **Set remaining PV forecast** and **Set tomorrow PV forecast**. Grid power uses positive = import and negative = export.
+   Use **Set grid power**, **Set PV power** and **Set battery SoC**. For battery planning, also provide **Set remaining PV forecast** and **Set tomorrow PV forecast**. Grid power uses positive = import and negative = export. If you select an external price source, supply a full curve with **External electricity price curve** or **Set PBTH electricity price curve**.
 
 3. **Send the battery output to your battery integration**  
    Use **Battery commands are updated** for batteries that accept a power setpoint. If your battery requires separate charge/discharge modes and power values, enable Split Command and use the corresponding **Battery: switch to charge/discharge mode** and **Battery: charge/discharge power is updated** cards.
@@ -25,6 +25,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 0.8.4
+
+Choose Homey Energy, an external price service, or either as primary with the other as fallback. Secondary prices are aligned to the primary price level. Homey price formulas are included in price imports. The status widget can show both source prices. Each EV has independent emergency-charging permissions per tariff, allowing all tariffs to be selected separately from standard and PV charging.
 
 ### 0.8.3
 

@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.8.3 — Your energy, managed differently",
+    "subtitle": "v0.8.4 — Your energy, managed differently",
     "language": "en"
   },
   "widget": {
@@ -180,7 +180,17 @@
       "evNoLoadGridStopped": "No EV load detected for 1 minute · grid permission withdrawn",
       "evHouseObservation": "House load is back near its reference · EV grid permission stops in {seconds}s if this continues",
       "evHouseReference": "house reference",
-      "boilerFallbackReadyDetail": "{days}/{target} solar day(s) missed · tariff fallback active"
+      "boilerFallbackReadyDetail": "{days}/{target} solar day(s) missed · tariff fallback active",
+      "externalService": "External service",
+      "secondaryActive": "Secondary source active",
+      "primaryActive": "Primary source active",
+      "noSecondaryPrice": "No secondary source",
+      "priceAlignmentWaiting": "Waiting for price alignment",
+      "primaryPrice": "Primary price",
+      "secondaryPrice": "Secondary price · original → aligned",
+      "evEmergencyTariffWait": "Emergency charge waiting for selected tariff",
+      "secondaryReady": "Secondary source ready",
+      "secondaryNotReady": "Secondary source not ready"
     }
   }
 }
