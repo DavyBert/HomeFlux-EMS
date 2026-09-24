@@ -26,6 +26,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.8.3
+
+Fixed a settings-page translation loop affecting English and other non-Dutch languages. Added startup time-outs with a settings fallback and a visible error when loading fails. Corrected battery power and HVAC defaults for new installations.
+
 ### 0.8.2
 
 Battery feedback now re-evaluates a persistent grid deviation outside the configured zero band, even when the meter changes by less than the signal threshold.

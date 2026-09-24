@@ -1,4 +1,8 @@
 {
+  "0.8.3": {
+    "en": "Fixed a settings-page translation loop affecting English and other non-Dutch languages. Added startup time-outs with a settings fallback and a visible error when loading fails. Corrected battery power and HVAC defaults for new installations.",
+    "nl": "Een vertaallus op de instellingenpagina bij Engels en andere niet-Nederlandse talen verholpen. Opstart-time-outs toegevoegd met een alternatieve instellingenophaling en een zichtbare foutmelding wanneer laden mislukt. Standaardwaarden voor batterijvermogen en HVAC bij nieuwe installaties gecorrigeerd."
+  },
   "0.8.2": {
     "en": "Battery feedback now re-evaluates a persistent grid deviation outside the configured zero band, even when the meter changes by less than the signal threshold.",
     "nl": "De batterijregeling beoordeelt een blijvende netafwijking buiten de ingestelde nulpuntzone opnieuw, ook wanneer de meter minder verandert dan de signaaldrempel."

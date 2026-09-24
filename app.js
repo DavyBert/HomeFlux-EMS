@@ -537,7 +537,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.8.2 initialized');
+    this.log('HomeFlux EMS v0.8.3 initialized');
   }
 
   refreshSettingsCache() {
@@ -2823,8 +2823,10 @@ class HomeFluxEmsApp extends Homey.App {
 
     if (schema < 3) {
       const count = this.getBatteryCount({ batteryCount: this.homey.settings.get('batteryCount') });
-      const oldCharge = Number(this.homey.settings.get('maxChargePerBatteryW'));
-      const oldDischarge = Number(this.homey.settings.get('maxDischargePerBatteryW'));
+      const oldChargeRaw = this.homey.settings.get('maxChargePerBatteryW');
+      const oldCharge = oldChargeRaw == null ? NaN : Number(oldChargeRaw);
+      const oldDischargeRaw = this.homey.settings.get('maxDischargePerBatteryW');
+      const oldDischarge = oldDischargeRaw == null ? NaN : Number(oldDischargeRaw);
 
       if (Number.isFinite(oldCharge) && oldCharge > 3000) {
         this.setSetting('maxTotalChargeW', oldCharge);
@@ -3214,8 +3216,10 @@ class HomeFluxEmsApp extends Homey.App {
         const stem = instance === 1 ? 'hvac' : `hvac${instance}`;
         const key = `${stem}EnergyDeviationC`;
         if (this.homey.settings.get(key) === null) {
-          const heatingTarget = Number(this.homey.settings.get(`${stem}ComfortMinC`));
-          const coolingTarget = Number(this.homey.settings.get(`${stem}ComfortMaxC`));
+          const heatingTargetRaw = this.homey.settings.get(`${stem}ComfortMinC`);
+          const heatingTarget = heatingTargetRaw == null ? NaN : Number(heatingTargetRaw);
+          const coolingTargetRaw = this.homey.settings.get(`${stem}ComfortMaxC`);
+          const coolingTarget = coolingTargetRaw == null ? NaN : Number(coolingTargetRaw);
           const legacyWidth = Number.isFinite(heatingTarget) && Number.isFinite(coolingTarget)
             ? Math.abs(coolingTarget - heatingTarget)
             : 2;
@@ -3352,8 +3356,10 @@ class HomeFluxEmsApp extends Homey.App {
       // upgrade and seed each battery from the existing shared maxima so merely
       // enabling the option never changes a user's configured hardware ceiling.
       if (this.homey.settings.get('individualBatteryPowerLimitsEnabled') === null) this.setSetting('individualBatteryPowerLimitsEnabled', false);
-      const storedSharedCharge = Number(this.homey.settings.get('maxChargePerBatteryW'));
-      const storedSharedDischarge = Number(this.homey.settings.get('maxDischargePerBatteryW'));
+      const storedSharedChargeRaw = this.homey.settings.get('maxChargePerBatteryW');
+      const storedSharedCharge = storedSharedChargeRaw == null ? NaN : Number(storedSharedChargeRaw);
+      const storedSharedDischargeRaw = this.homey.settings.get('maxDischargePerBatteryW');
+      const storedSharedDischarge = storedSharedDischargeRaw == null ? NaN : Number(storedSharedDischargeRaw);
       const sharedCharge = Math.max(0, Number.isFinite(storedSharedCharge) ? storedSharedCharge : (Number(DEFAULTS.maxChargePerBatteryW) || 2300));
       const sharedDischarge = Math.max(0, Number.isFinite(storedSharedDischarge) ? storedSharedDischarge : (Number(DEFAULTS.maxDischargePerBatteryW) || 2400));
       for (let battery = 1; battery <= 8; battery += 1) {
@@ -12024,7 +12030,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.8.2',
+      version: '0.8.3',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12101,7 +12107,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.8.2',
+      version: '0.8.3',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12406,7 +12412,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.8.2',
+      version: '0.8.3',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

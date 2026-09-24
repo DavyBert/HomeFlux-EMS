@@ -1867,7 +1867,7 @@
 </div>
 </section>
 <div class="savebar">
-<button class="homey-button-primary-full" id="save" type="button">Instellingen opslaan</button>
+<button class="homey-button-primary-full" id="save" type="button" disabled>Instellingen opslaan</button>
 <span class="ok" id="saveState"></span>
 </div>
 <script>
@@ -1885,12 +1885,32 @@ async function onHomeyReady(Homey) {
   }
   document.documentElement.lang = uiLanguage;
 
+  // Bound startup reads even if a bridge callback or response body never arrives.
+  function withStartupTimeout(operation, label, timeoutMs = 10000, onTimeout = () => {}) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(uiLanguage === 'nl'
+          ? `Laden duurt te lang (${label}). Sluit deze pagina en probeer opnieuw.`
+          : `Loading timed out (${label}). Close this page and try again.`));
+        onTimeout();
+      }, timeoutMs);
+    });
+    return Promise.race([Promise.resolve().then(operation), timeout])
+      .finally(() => clearTimeout(timer));
+  }
+
   async function loadUiTranslations() {
     const language = uiLanguage === 'nl' ? 'nl' : 'en';
     try {
-      const response = await fetch(`translations/${language}.json`, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const bundle = await response.json();
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const bundle = await withStartupTimeout(async () => {
+        const response = await fetch(`translations/${language}.json`, {
+          cache: 'no-store', ...(controller ? { signal: controller.signal } : {}),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }, uiLanguage === 'nl' ? 'vertalingen' : 'translations', 5000, () => controller?.abort());
       UI_EXACT_EN = bundle && bundle.exact && typeof bundle.exact === 'object' ? bundle.exact : {};
       UI_PHRASES_EN = bundle && bundle.phrases && typeof bundle.phrases === 'object' ? bundle.phrases : {};
       UI_STRINGS = bundle && bundle.strings && typeof bundle.strings === 'object' ? bundle.strings : {};
@@ -1994,6 +2014,7 @@ async function onHomeyReady(Homey) {
   function translateUiText(value) {
     if (uiLanguage === 'nl' || value === null || value === undefined) return String(value ?? '');
     const raw = String(value);
+    if (!raw.trim()) return raw; // Leading/trailing whitespace overlaps for blank nodes.
     const lead = raw.match(/^\s*/)?.[0] || '';
     const tail = raw.match(/\s*$/)?.[0] || '';
     const core = raw.slice(lead.length, raw.length - tail.length);
@@ -2004,10 +2025,15 @@ async function onHomeyReady(Homey) {
     }
     return lead + out + tail;
   }
+  // Ignore our own observer mutations, but translate later external text changes.
+  const translatedUiText = new WeakMap();
+  const translatedUiAttributes = new WeakMap();
   function translateUiNode(root) {
     if (uiLanguage === 'nl' || !root) return;
     if (root.nodeType === Node.TEXT_NODE) {
+      if (translatedUiText.get(root) === root.nodeValue) return;
       const next = translateUiText(root.nodeValue);
+      translatedUiText.set(root, next);
       if (next !== root.nodeValue) root.nodeValue = next;
       return;
     }
@@ -2017,7 +2043,11 @@ async function onHomeyReady(Homey) {
       for (const attr of ['title','placeholder','aria-label']) {
         if (root.hasAttribute && root.hasAttribute(attr)) {
           const old = root.getAttribute(attr);
+          const translated = translatedUiAttributes.get(root) || {};
+          if (translated[attr] === old) continue;
           const next = translateUiText(old);
+          translated[attr] = next;
+          translatedUiAttributes.set(root, translated);
           if (next !== old) root.setAttribute(attr,next);
         }
       }
@@ -2144,16 +2174,16 @@ async function onHomeyReady(Homey) {
 
   async function loadSettingsSnapshot() {
     try {
-      const snapshot = await api('GET', '/settings-snapshot');
+      const snapshot = await withStartupTimeout(async () => await api('GET', '/settings-snapshot'), uiLanguage === 'nl' ? 'instellingen' : 'settings');
       if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) throw new Error('Invalid settings snapshot');
       return snapshot;
     } catch (err) {
       console.warn('HomeFlux settings snapshot unavailable; using compatibility fallback.', err);
-      const [values, storedRates, storedTariffs] = await Promise.all([
+      const [values, storedRates, storedTariffs] = await withStartupTimeout(() => Promise.all([
         getMany(ids),
         get('touRates'),
         get('touSchedule'),
-      ]);
+      ]), uiLanguage === 'nl' ? 'instellingen' : 'settings');
       const snapshot = {};
       ids.forEach((id, index) => { snapshot[id] = values[index]; });
       snapshot.touRates = storedRates;
@@ -3552,8 +3582,11 @@ async function onHomeyReady(Homey) {
       renderSectionFlowReferences();
       renderBoilerContractSummary();
       captureSettingsBaseline();
+      q('save').disabled = false;
       refreshStatus();
     } catch (err) {
+      q('save').disabled = true;
+      q('saveState').textContent = err.message || String(err);
       Homey.alert(err.message || String(err));
     }
   }
