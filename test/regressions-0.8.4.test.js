@@ -23,6 +23,13 @@ function configure(app, mode='homey_external_fallback') {
   return settings;
 }
 function formulaTests() {
+  const actual = '{{ (5 + [[price]]) * 1.6600000000000001 }}';
+  close(compilePriceFormula(actual)(.1719),8.585354);
+  for (const price of [-.05,0,.1719]) close(compilePriceFormula('{{ [[price]] }}')(price),price);
+  close(compilePriceFormula('{{ ([[price]] + .12) * 1.21 }}')(.035),.18755);
+  close(compilePriceFormula('{{price}} + {{price}}')(.1),.2);
+  for (const bad of ['{{ [[price]] }','{{ [[price]] }} + 2','{{ {{ [[price]] + 1 }} }}','{{ process.exit() }}']) assert.throws(()=>compilePriceFormula(bad));
+
   for (const name of ['basisprijs','Basisprijs','basis prijs','basePrice','base_price','Base Price','price']) {
     for (const expression of [name, '['+name+']', '[['+name+']]', '{'+name+'}', '{{'+name+'}}']) {
       for (const price of [-.05,0,.035,.18]) close(compilePriceFormula(expression)(price),price);
@@ -124,13 +131,17 @@ async function importTests() {
     if(date===tomorrow)throw Error('NotFoundError');
     return {prices:Array.from({length:24},(_,h)=>({start:`${String(h).padStart(2,'0')}:00`,price:(h-2)*.01}))};
   };
-  for (const formula of ['basisprijs', 'basePrice', '[[base_price]]', '{price}']) {
+  for (const formula of ['basisprijs', 'basePrice', '[[base_price]]', '{price}', '{{ [[price]] }}']) {
     app.homeyApi.energy.getDynamicElectricityPriceUserCosts=async()=>({mathExpression:formula});
     await app.refreshHomeyEnergyPrices(true);
     assert.equal(app.homeyEnergy.available,true);assert.equal(app.homeyEnergy.error,'');
     assert.equal(app.homeyEnergy.slots.length,24);close(app.homeyEnergy.slots[0].price,-.02);close(app.homeyEnergy.slots[2].price,0);
     assert.match(app.homeyEnergy.responseShape,/NotFoundError/);
   }
+  app.homeyApi.energy.getDynamicElectricityPriceUserCosts=async()=>({mathExpression:'{{ (5 + [[price]]) * 1.6600000000000001 }}'});
+  await app.refreshHomeyEnergyPrices(true);
+  assert.equal(app.homeyEnergy.available,true);assert.equal(app.homeyEnergy.error,'');
+  close(app.homeyEnergy.slots[0].price,8.2668);
   app.homeyApi.energy.getDynamicElectricityPriceUserCosts=async()=>({mathExpression:'unknown(p)'});
   await app.refreshHomeyEnergyPrices(true);
   assert.equal(app.homeyEnergy.available,false);

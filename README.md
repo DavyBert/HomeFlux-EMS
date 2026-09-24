@@ -26,9 +26,9 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
-### 0.8.5
+### 0.8.6
 
-Choose Homey Energy, an external price service, or either as primary with the other as fallback. Secondary prices are aligned to the primary price level. Homey price formulas and unmodified base prices are supported; unpublished next-day prices do not block today’s curve. The status widget can show both source prices. Each EV has independent emergency-charging permissions per tariff, allowing all tariffs to be selected separately from standard and PV charging.
+Choose Homey Energy, an external price service, or either as primary with the other as fallback. Secondary prices are aligned to the primary price level. Homey price formulas, including complete {{ … }} expressions with [[price]] tags, and unmodified base prices are supported; unpublished next-day prices do not block today’s curve. The status widget can show both source prices. Each EV has independent emergency-charging permissions per tariff, allowing all tariffs to be selected separately from standard and PV charging.
 
 ### 0.8.3
 
