@@ -862,7 +862,10 @@
     "Noodladen buiten het vaste laadvenster": "Emergency charging outside the fixed charging window",
     "Noodladen op dit tarief · Goedkoop": "Emergency charging on this tariff · Cheap",
     "Noodladen op dit tarief · Normaal": "Emergency charging on this tariff · Normal",
-    "Noodladen op dit tarief · Duur": "Emergency charging on this tariff · Expensive"
+    "Noodladen op dit tarief · Duur": "Emergency charging on this tariff · Expensive",
+    "Netladen tijdens normale prijsuren toestaan": "Allow grid charging during normal price hours",
+    "Maximum-SoC bij netladen tijdens Normaal (%)": "Maximum SoC for grid charging during Normal (%)",
+    "Laadt alleen bij een planningstekort, tot het laagste van het planningsdoel en dit maximum. Goedkoop laden en PV-laden behouden hun eigen grenzen.": "Charges only for a planning shortfall, up to the lower of the planning target and this limit. Cheap and solar charging retain their own limits."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",
@@ -1113,7 +1116,11 @@
     "en de piekreserve van": "and the peak reserve of",
     "Geplande SoC-doelen zijn indicatief en worden opnieuw berekend zodra SoC, forecast of prijzen wijzigen.": "Planned SoC targets are indicative and are recalculated whenever SoC, forecast or prices change.",
     " kWh tekort.": " kWh short.",
-    "gebruik voor een split-batterij de vier split-command Flow-kaarten voor laadmodus, ontlaadmodus, laadvermogen en ontlaadvermogen.": "for a split battery, use the four split-command Flow cards for charge mode, discharge mode, charge power and discharge power."
+    "gebruik voor een split-batterij de vier split-command Flow-kaarten voor laadmodus, ontlaadmodus, laadvermogen en ontlaadvermogen.": "for a split battery, use the four split-command Flow cards for charge mode, discharge mode, charge power and discharge power.",
+    "Netladen volgt het planningsdoel in een geselecteerd goedkoop": "Grid charging follows the planning target in a selected cheap",
+    "Netladen tijdens Normaal is ook toegestaan tot maximaal": "Grid charging during Normal is also allowed up to",
+    "% SoC en nooit boven het planningsdoel.": "% SoC and never above the planning target.",
+    "Geen toegestaan laadvenster gevonden vóór het doelmoment.": "No permitted charging window found before the target time."
   },
   "strings": {
     "planning.forecastDecisionTomorrow": "Night planning is active. Both energy planning and day strategy now use tomorrow’s PV forecast.",
