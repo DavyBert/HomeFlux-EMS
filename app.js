@@ -539,7 +539,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.8.4 initialized');
+    this.log('HomeFlux EMS v0.8.5 initialized');
   }
 
   refreshSettingsCache() {
@@ -5907,7 +5907,8 @@ class HomeFluxEmsApp extends Homey.App {
           allSlots.push(...normalizeDynamicPriceResponse(response, { dateHint: date, timezone, userCosts }));
         } catch (err) {
           shapes.push(`${date}:error(${this.compactApiError(err)})`);
-          this.homeyEnergy.priceImportError = err.message || String(err);
+          // Keep today's failure visible; tomorrow may legitimately be unpublished.
+          if (!this.homeyEnergy.priceImportError) this.homeyEnergy.priceImportError = `${date}: ${err.message || String(err)}`;
         }
       }
 
@@ -6083,6 +6084,7 @@ class HomeFluxEmsApp extends Homey.App {
       ageSeconds: homeyEnergy.lastUpdatedAt ? Math.max(0, Math.round((now.getTime() - Number(homeyEnergy.lastUpdatedAt)) / 1000)) : null,
       error: homeyEnergy.error || '',
       responseShape: homeyEnergy.responseShape || '',
+      formula: String(homeyEnergy.formulaKey || '').slice(0, 250),
       dateKey: lp.dateKey,
     };
   }
@@ -12083,7 +12085,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.8.4',
+      version: '0.8.5',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12160,7 +12162,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.8.4',
+      version: '0.8.5',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12470,7 +12472,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.8.4',
+      version: '0.8.5',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

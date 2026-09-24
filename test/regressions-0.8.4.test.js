@@ -23,6 +23,12 @@ function configure(app, mode='homey_external_fallback') {
   return settings;
 }
 function formulaTests() {
+  for (const name of ['basisprijs','Basisprijs','basis prijs','basePrice','base_price','Base Price','price']) {
+    for (const expression of [name, '['+name+']', '[['+name+']]', '{'+name+'}', '{{'+name+'}}']) {
+      for (const price of [-.05,0,.035,.18]) close(compilePriceFormula(expression)(price),price);
+      close(compilePriceFormula('('+expression+' + .12) * 1.21')(.035),.18755);
+    }
+  }
   close(compilePriceFormula('(p + 0.12) * 1.21')(-.04),.0968);
   close(compilePriceFormula('max(0, price) + 1e-2')(-.04),.01);
   close(compilePriceFormula('2^3^2')(0),512);
@@ -112,6 +118,25 @@ async function importTests() {
   app.homeyApi.energy.getDynamicElectricityPriceUserCosts=async()=>({mathExpression:'invalid(p)'});
   await app.refreshHomeyEnergyPrices(true);
   assert.equal(app.homeyEnergy.available,false);assert.match(app.homeyEnergy.error,/Unsupported/);
+  const today=app.getLocalDateKey(new Date());
+  const tomorrow=app.getNextLocalDateKey(Date.now());
+  app.homeyApi.energy.fetchDynamicElectricityPrices=async({date})=> {
+    if(date===tomorrow)throw Error('NotFoundError');
+    return {prices:Array.from({length:24},(_,h)=>({start:`${String(h).padStart(2,'0')}:00`,price:(h-2)*.01}))};
+  };
+  for (const formula of ['basisprijs', 'basePrice', '[[base_price]]', '{price}']) {
+    app.homeyApi.energy.getDynamicElectricityPriceUserCosts=async()=>({mathExpression:formula});
+    await app.refreshHomeyEnergyPrices(true);
+    assert.equal(app.homeyEnergy.available,true);assert.equal(app.homeyEnergy.error,'');
+    assert.equal(app.homeyEnergy.slots.length,24);close(app.homeyEnergy.slots[0].price,-.02);close(app.homeyEnergy.slots[2].price,0);
+    assert.match(app.homeyEnergy.responseShape,/NotFoundError/);
+  }
+  app.homeyApi.energy.getDynamicElectricityPriceUserCosts=async()=>({mathExpression:'unknown(p)'});
+  await app.refreshHomeyEnergyPrices(true);
+  assert.equal(app.homeyEnergy.available,false);
+  assert(app.homeyEnergy.error.startsWith(today));
+  assert.match(app.homeyEnergy.error,/Unsupported/);assert(!app.homeyEnergy.error.includes('NotFoundError'));
+
 }
 async function evTests() {
   const {app,store}=await boot();

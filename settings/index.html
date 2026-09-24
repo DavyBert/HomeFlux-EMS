@@ -4681,6 +4681,7 @@ async function onHomeyReady(Homey) {
         ? 'onbekend'
         : (typeof homeyRaw.priceType === 'object' ? JSON.stringify(homeyRaw.priceType) : String(homeyRaw.priceType));
       const diagnostic = [];
+      if (homeyRaw.formula) diagnostic.push(`${uiLanguage === 'nl' ? 'Formule' : 'Formula'}: ${homeyRaw.formula}`);
       if (homeyRaw.zone !== null && homeyRaw.zone !== undefined) diagnostic.push(`Zone: ${typeof homeyRaw.zone === 'object' ? JSON.stringify(homeyRaw.zone) : String(homeyRaw.zone)}`);
       if (homeyRaw.preferredInterval !== null && homeyRaw.preferredInterval !== undefined && homeyRaw.preferredInterval !== '') diagnostic.push(`Homey voorkeur: ${String(homeyRaw.preferredInterval)}`);
       if (homeyRaw.responseShape) diagnostic.push(`Prijsresponse: ${homeyRaw.responseShape}`);

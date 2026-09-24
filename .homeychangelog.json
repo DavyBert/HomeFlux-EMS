@@ -1,7 +1,7 @@
 {
-  "0.8.4": {
-    "en": "Choose Homey Energy, an external price service, or either as primary with the other as fallback. Secondary prices are aligned to the primary price level. Homey price formulas are included in price imports. The status widget can show both source prices. Each EV has independent emergency-charging permissions per tariff, allowing all tariffs to be selected separately from standard and PV charging.",
-    "nl": "Kies Homey Energy, een externe prijsdienst of een van beide als primaire bron met de andere als reserve. Reserveprijzen worden afgestemd op het primaire prijsniveau. Homey-prijsformules worden meegenomen bij de import. De statuswidget kan beide bronprijzen tonen. Noodladen is per EV en per tarief afzonderlijk selecteerbaar, onafhankelijk van standaardladen en PV-laden; alle tarieven kunnen worden toegestaan."
+  "0.8.5": {
+    "en": "Choose Homey Energy, an external price service, or either as primary with the other as fallback. Secondary prices are aligned to the primary price level. Homey price formulas and unmodified base prices are supported; unpublished next-day prices do not block today’s curve. The status widget can show both source prices. Each EV has independent emergency-charging permissions per tariff, allowing all tariffs to be selected separately from standard and PV charging.",
+    "nl": "Kies Homey Energy, een externe prijsdienst of een van beide als primaire bron met de andere als reserve. Reserveprijzen worden afgestemd op het primaire prijsniveau. Homey-prijsformules en ongewijzigde basisprijzen worden ondersteund; nog niet gepubliceerde prijzen voor morgen blokkeren de curve van vandaag niet. De statuswidget kan beide bronprijzen tonen. Noodladen is per EV en per tarief afzonderlijk selecteerbaar, onafhankelijk van standaardladen en PV-laden; alle tarieven kunnen worden toegestaan."
   },
   "0.8.3": {
     "en": "Fixed a settings-page translation loop affecting English and other non-Dutch languages. Added startup time-outs with a settings fallback and a visible error when loading fails. Corrected battery power and HVAC defaults for new installations.",
