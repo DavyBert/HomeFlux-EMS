@@ -1,7 +1,11 @@
 {
-  "0.8.7": {
-    "en": "Optional battery grid charging during normal dynamic price hours, with a separate maximum SoC. Planning includes allowed normal-price windows before the target time and excludes unusable windows after the deadline.",
-    "nl": "Optioneel netladen van de batterij tijdens normale dynamische prijsuren, met een afzonderlijk maximum-SoC. De planning neemt toegestane normale prijsuren vóór het doelmoment mee en toont geen onbruikbare vensters na de deadline."
+  "0.9.1": {
+    "en": "Corrected EV grid-import accounting so battery charging cannot sustain itself through an EV allowance when the car stops drawing power. EV-first, battery-first and shared grid charging now coordinate within one site import budget, including usable current and mode steps. Battery charging status distinguishes actual grid energy from solar surplus.",
+    "nl": "De berekening van toegestane EV-netafname gecorrigeerd, zodat batterijladen zichzelf niet via de EV-toelage in stand houdt wanneer de auto geen vermogen afneemt. EV eerst, batterij eerst en verdeeld netladen werken nu met één gezamenlijk netbudget, rekening houdend met bruikbare stroom- en modusstanden. De batterijstatus onderscheidt netenergie van werkelijk PV-overschot."
+  },
+  "0.8.9": {
+    "en": "Optional battery grid charging during normal dynamic price hours, with a separate maximum SoC. Planning includes allowed normal-price windows before the target time and excludes unusable windows after the deadline. Planned battery charging now retains P1-based solar capture when the meter reaches zero, preventing repeated drops to the lower planned power and unnecessary export.",
+    "nl": "Optioneel netladen van de batterij tijdens normale dynamische prijsuren, met een afzonderlijk maximum-SoC. De planning neemt toegestane normale prijsuren vóór het doelmoment mee en toont geen onbruikbare vensters na de deadline. Gepland batterijladen behoudt nu de PV-regeling op basis van P1 zodra de meter nul bereikt, zodat het laadvermogen niet telkens terugvalt naar het lagere geplande vermogen en onnodige injectie voorkomt."
   },
   "0.8.6": {
     "en": "Choose Homey Energy, an external price service, or either as primary with the other as fallback. Secondary prices are aligned to the primary price level. Homey price formulas, including complete {{ … }} expressions with [[price]] tags, and unmodified base prices are supported; unpublished next-day prices do not block today’s curve. The status widget can show both source prices. Each EV has independent emergency-charging permissions per tariff, allowing all tariffs to be selected separately from standard and PV charging.",

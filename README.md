@@ -26,7 +26,13 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
-### 0.8.7
+### 0.9.1
+- Corrected EV grid-import accounting to prevent unwanted continued battery charging.
+- Coordinated EV-first, battery-first and shared grid charging within one site import budget.
+- Battery charging status now distinguishes grid energy from measured solar surplus.
+
+### 0.8.9
+- Planned charging keeps capturing solar surplus using P1 feedback, including when the grid meter reaches zero.
 - Optional grid charging during normal dynamic price hours, capped by a separate maximum SoC and the planning target.
 - Charge planning includes allowed normal-price windows before the deadline.
 
