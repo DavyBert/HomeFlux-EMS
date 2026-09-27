@@ -48,7 +48,7 @@ for (const kind of Object.keys(getters)) {
     }
   }
   assert.equal(manifest.flow[kind].filter(c => !c.deprecated).length,
-    baseline[kind].filter(c => !c.deprecated).length, 'The new-card list must not grow');
+    baseline[kind].filter(c => !c.deprecated).length + (kind === 'actions' ? 1 : 0), 'Only the new sunshine forecast action is added');
 }
 for (const d of CONFIGURED_CARDS) {
   const old = baseline[d.kind].find(c => c.id === d.legacy);

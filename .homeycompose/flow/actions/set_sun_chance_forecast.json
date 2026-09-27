@@ -1,0 +1,38 @@
+{
+  "title": {
+    "en": "Set expected sunshine probability today and tomorrow",
+    "nl": "Stel verwachte zonkans vandaag en morgen in"
+  },
+  "titleFormatted": {
+    "en": "Set sunshine probability today to [[today]]% and tomorrow to [[tomorrow]]%",
+    "nl": "Stel zonkans vandaag in op [[today]]% en morgen op [[tomorrow]]%"
+  },
+  "hint": {
+    "en": "Send local-calendar-day forecasts. Values are date-bound and persist after restart.",
+    "nl": "Geef voorspellingen voor de lokale kalenderdagen door. Waarden zijn datumgebonden en blijven na herstart behouden."
+  },
+  "args": [
+    {
+      "name": "today",
+      "type": "number",
+      "title": {
+        "en": "Today (%)",
+        "nl": "Vandaag (%)"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "name": "tomorrow",
+      "type": "number",
+      "title": {
+        "en": "Tomorrow (%)",
+        "nl": "Morgen (%)"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 1
+    }
+  ]
+}

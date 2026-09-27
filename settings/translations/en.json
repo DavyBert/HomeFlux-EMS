@@ -1692,7 +1692,31 @@
     "Geen netladen nodig in de resterende goedkope laadvensters.": "No grid charging needed in the remaining cheap charging windows.",
     "Emergency charge wacht op geselecteerd laadtarief": "Emergency charge waiting for selected tariff",
     "normaal": "normal",
-    "duur": "expensive"
+    "duur": "expensive",
+    "Batterijreserve op basis van zonkans": "Battery reserve based on sunshine probability",
+    "Zonkansreserve inschakelen": "Enable sunshine reserve",
+    "Begin zonkans (%)": "Sunshine range start (%)",
+    "Einde zonkans (%)": "Sunshine range end (%)",
+    "Minimum-SoC voor dit bereik (%)": "Minimum SoC for this range (%)",
+    "Bereik 1": "Range 1",
+    "Bereik 2": "Range 2",
+    "Bereik 3": "Range 3",
+    "Bereik 4": "Range 4",
+    "De vier bereiken sluiten aan van 0 tot 100%. Een grenswaarde hoort bij het lagere bereik: 10% valt standaard in 0–10%.": "The four ranges cover 0 to 100% without gaps. A boundary belongs to the lower range: by default, 10% belongs to 0–10%.",
+    "Bij eerste gebruik zijn de minima Safety SoC +30, +20, +10 en +0 procentpunten. Je kunt hier absolute minimumpercentages instellen. Een hoger bestaand minimum blijft gelden; Maximum-SoC begrenst de reserve.": "Initially, the minima are Safety SoC +30, +20, +10 and +0 percentage points. You can set absolute minimum percentages here. A higher existing minimum still applies; Maximum SoC caps the reserve.",
+    "Deze reserve begrenst normaal ontladen en start op zichzelf geen netladen. Peak Guard en handmatige modi behouden hun bestaande voorrang. PV-laden en herstel onder Safety SoC blijven mogelijk.": "This reserve limits ordinary discharging and does not itself start grid charging. Peak Guard and manual modes retain their existing priority. Solar charging and recovery below Safety SoC remain available.",
+    "Gebruik de Flow-kaart “Stel verwachte zonkans vandaag en morgen in”. Dagplanning gebruikt vandaag; nachtplanning na PV-einde gebruikt morgen en na middernacht vandaag. Waarden blijven aan hun datum gekoppeld. Ontbrekende of verlopen waarden voegen geen reserve toe.": "Use the Flow card “Set expected sunshine probability today and tomorrow”. Day planning uses today; night planning after PV ends uses tomorrow, then today after midnight. Values remain tied to their dates. Missing or expired values add no reserve.",
+    "Zonkansreserve uit": "Sunshine reserve off",
+    "Ongeldige zonkansbereiken": "Invalid sunshine ranges",
+    "Geen zonkans voor de planningsdag": "No sunshine probability for the planning day",
+    "Zonkansreserve actief": "Sunshine reserve active",
+    "Zonkansbereiken moeten zonder gaten of overlap oplopen van 0 tot 100%.": "Sunshine ranges must increase from 0 to 100% without gaps or overlaps.",
+    "Kies onder Energiecontract op welke tarieven de zonkansreserve geldt. Standaard geldt ze niet tijdens duur/piek. Deze reserve begrenst normaal ontladen en start op zichzelf geen netladen. Peak Guard en handmatige modi behouden hun bestaande voorrang. PV-laden en herstel onder Safety SoC blijven mogelijk.": "Choose under Energy contract which tariffs use the sunshine reserve. By default it does not apply during expensive/peak periods. This reserve limits ordinary discharging and does not itself start grid charging. Peak Guard and manual modes retain their existing priority. Solar charging and recovery below Safety SoC remain available.",
+    "Zonkansreserve toepassen tijdens Vast tarief": "Apply sunshine reserve during Fixed tariff",
+    "Zonkansreserve toepassen per prijscategorie": "Apply sunshine reserve by price category",
+    "De zonkansreserve moet ook bij de planningsinstellingen ingeschakeld zijn. Standaard uit tijdens duur/piek, zodat de zonkansreserve ontladen tot Safety SoC niet blokkeert.": "The sunshine reserve must also be enabled in planning settings. It is off during expensive/peak periods by default, so it does not block discharging to Safety SoC.",
+    "Zonkansreserve uit voor dit tarief": "Sunshine reserve off for this tariff",
+    "Zonkansreserve op dit tarief": "Apply sunshine reserve on this tariff"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",
@@ -2147,6 +2171,7 @@
     "Ontladen gepauzeerd · beschermd planningsdoel {0}% bereikt": "Discharging paused · protected planning target {0}% reached",
     "Ontladen gepauzeerd · minimum ontlaad-SoC {0}% bereikt": "Discharging paused · minimum discharge SoC {0}% reached",
     "Ontladen gepauzeerd · minimum SoC {0}% bereikt": "Discharging paused · minimum SoC {0}% reached",
-    "Minimumdoel bereikt · {0}": "Minimum target reached · {0}"
+    "Minimumdoel bereikt · {0}": "Minimum target reached · {0}",
+    "Ontladen gepauzeerd · zonkansreserve {0}% bereikt": "Discharging paused · sunshine reserve {0}% reached"
   }
 }

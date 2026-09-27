@@ -17,6 +17,8 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 
 Once these inputs and outputs are connected, HomeFlux can perform the core battery control and planning. After reaching the charging target, a 2-percentage-point restart margin avoids small grid top-ups. In automatic mode, charging can restore Safety SoC outside tariff windows, subject to Peak Guard and battery limits.
 
+An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
+
 Optional features include EV charging, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings and dashboard widgets.
 
 For the complete functionality, configuration and all Flow cards, see:  
@@ -25,6 +27,11 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 0.9.5
+- Choose which tariffs use the sunshine reserve; expensive/peak periods are excluded by default.
+- Added an optional sunshine-based discharge reserve with four configurable probability ranges and minimum SoC values.
+- Added a dated today/tomorrow sunshine forecast Flow input, automatic day selection and Dutch/English status text.
 
 ### 0.9.4
 - Corrected English dynamic tariff labels with prices and price classifications.

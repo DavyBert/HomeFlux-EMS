@@ -1,4 +1,5 @@
 'use strict';
+const sunChance = require('./settings/sun-chance');
 const { sourceOrder, fitCalibration, validCalibration, normalizeSecondary } = require('./lib/price-normalization');
 const { extractMathExpression } = require('./lib/price-formula');
 
@@ -34,6 +35,7 @@ class HomeFluxEmsApp extends Homey.App {
       forecastDailyMaxDate: '',
       forecastTomorrowKwh: null,
       forecastTomorrowDate: '',
+      sunChanceForecasts: this.homey.settings.get('_sunChanceForecasts') || {},
       batterySoc: Array(8).fill(null),
       lastTotalCommandW: 0,
       chargeRestartState: this.homey.settings.get('_batteryChargeRestartState') || null,
@@ -401,7 +403,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
+        if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache();
         this.markFlexibleLoadsDirty();
@@ -541,7 +543,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.4 initialized');
+    this.log('HomeFlux EMS v0.9.5 initialized');
   }
 
   refreshSettingsCache() {
@@ -4827,6 +4829,14 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
+    this.homey.flow.getActionCard('set_sun_chance_forecast').registerRunListener(async args => {
+      const today = sunChance.number(args.today);
+      const tomorrow = sunChance.number(args.tomorrow);
+      if (today === null || tomorrow === null || today < 0 || today > 100 || tomorrow < 0 || tomorrow > 100) return false;
+      this.updateSunChanceForecast(today, tomorrow);
+      return true;
+    });
+
     this.homey.flow.getActionCard('set_forecast_remaining').registerRunListener(async args => {
       const value = Number(args.energy);
       if (!Number.isFinite(value)) return false;
@@ -5632,6 +5642,21 @@ class HomeFluxEmsApp extends Homey.App {
     // phase and guarantees that exactly one planning phase is authoritative.
     void at;
     return false;
+  }
+
+  updateSunChanceForecast(today, tomorrow, at = Date.now()) {
+    const date = this.getLocalDateKey(new Date(at));
+    const next = shiftDateKey(date, 1);
+    if (this.state.sunChanceForecasts?.[date] === today && this.state.sunChanceForecasts?.[next] === tomorrow) return;
+    this.state.sunChanceForecasts = { [date]: today, [next]: tomorrow };
+    this.setSetting('_sunChanceForecasts', this.state.sunChanceForecasts);
+    this.invalidatePlanningCache();
+    this.requestContextEvaluate(true, 'sun_chance_forecast');
+  }
+
+  getSunChanceReserveStatus(settings = this.getSettings(), at = Date.now()) {
+    const tariff = settings.sunChanceReserveEnabled ? findCurrentTariff(new Date(at), this.getRuntimeSettings(settings), this.state) : null;
+    return sunChance.reserve({ ...this.state, nightPlanningActive: this.isNightPlanningPhase(at), planningForecastDay: this.getPlanningForecastDay(at) }, settings, this.getLocalDateKey(new Date(at)), tariff);
   }
 
   getPlanningForecastDay(at = Date.now()) {
@@ -7682,7 +7707,7 @@ class HomeFluxEmsApp extends Homey.App {
     return Boolean(settings.evPeakGuardBatteryAssistNormal);
   }
 
-  getEvBatterySupportAvailableW(settings = this.getSettings(), nextBatteryCommandW = 0, dischargeFloorSoc = null) {
+  getEvBatterySupportAvailableW(settings = this.getSettings(), nextBatteryCommandW = 0, dischargeFloorSoc = null, now = Date.now()) {
     const count = this.getBatteryCount(settings);
     if (count === 0) return 0;
     const configuredGroupMaxRaw = Number(settings.maxTotalDischargeW);
@@ -7691,9 +7716,12 @@ class HomeFluxEmsApp extends Homey.App {
 
     const minSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
     const requestedFloor = Number(dischargeFloorSoc);
-    const floorSoc = Number.isFinite(requestedFloor)
+    let floorSoc = Number.isFinite(requestedFloor)
       ? Math.max(minSoc, Math.min(100, requestedFloor))
       : minSoc;
+    if (settings.sunChanceReserveEnabled && String(settings.forcedMode || 'auto') === 'auto') {
+      floorSoc = Math.max(floorSoc, this.getSunChanceReserveStatus(settings, now).floorSoc);
+    }
     let commands = distributeCommand(
       configuredGroupMax,
       { batterySoc: this.state.batterySoc },
@@ -7718,7 +7746,8 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.isHybridExternalControlActive(settings)) return { ...inactive, reason: 'external_ems' };
 
     const avgSoc = Number(result?.avgSoc);
-    const targetSoc = Number(result?.targetSoc);
+    const reserveFloor = settings.sunChanceReserveEnabled && String(settings.forcedMode || 'auto') === 'auto' ? this.getSunChanceReserveStatus(settings, now).floorSoc : 0;
+    const targetSoc = Math.max(Number(result?.targetSoc), reserveFloor);
     const capacityKwh = Math.max(0, Number(result?.effectiveCapacityKwh) || 0);
     if (!Number.isFinite(avgSoc) || !Number.isFinite(targetSoc) || capacityKwh <= 0) {
       return { ...inactive, reason: 'missing_plan' };
@@ -7735,7 +7764,7 @@ class HomeFluxEmsApp extends Homey.App {
       return { ...inactive, targetSoc, avgSoc, energyAboveTargetKwh, remainingHours, targetAt: Number(targetAt) || 0, reason: remainingHours <= 0 ? 'target_time_passed' : 'target_reached' };
     }
 
-    const supportAvailableW = this.getEvBatterySupportAvailableW(settings, nextBatteryCommandW, targetSoc);
+    const supportAvailableW = this.getEvBatterySupportAvailableW(settings, nextBatteryCommandW, targetSoc, now);
     if (supportAvailableW <= 0.5) {
       return { ...inactive, targetSoc, avgSoc, energyAboveTargetKwh, remainingHours, targetAt: Number(targetAt) || 0, supportAvailableW: 0, reason: 'no_discharge_headroom' };
     }
@@ -12156,7 +12185,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.4',
+      version: '0.9.5',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12233,7 +12262,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.9.4',
+      version: '0.9.5',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12543,7 +12572,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '0.9.4',
+      version: '0.9.5',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -12677,6 +12706,7 @@ class HomeFluxEmsApp extends Homey.App {
         fanScale: this.getHvacFanScale(storedSettings),
       } : null,
       ...preview,
+      sunChanceReserve: this.getSunChanceReserveStatus(storedSettings),
       // Status/API values follow the configured external sign convention, just
       // like the Flow tokens. The controller itself always keeps its internal
       // positive=discharge / negative=charge convention.

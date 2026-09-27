@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..');
 const settingsHtml = fs.readFileSync(path.join(root, 'settings', 'index.html'), 'utf8');
 const runtimeFiles = [
   'app.js',
+  'settings/sun-chance.js',
   'api.js',
   'lib/ems-engine.js',
   'lib/flexible-loads.js',
@@ -65,7 +66,7 @@ for (const id of persisted) assert.ok(formIds.has(id), `persisted setting ${id} 
 
 // Top-level settings must have a runtime consumer outside the settings page.
 for (const key of literalArray('ids')) {
-  assert.ok(runtimeText.includes(key), `setting ${key} has no runtime consumer`);
+  assert.ok(runtimeText.includes(key) || (/^sunChanceBand[1-4](Start|End|MinSoc)$/.test(key) && Object.hasOwn(require('../settings/sun-chance').defaults, key)), `setting ${key} has no runtime consumer`);
 }
 
 // Multi-instance settings are normalised to evX/hvacX names by the app. Verify
