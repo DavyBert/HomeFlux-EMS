@@ -26,6 +26,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.9.3
+- Completed English translations in settings, validation messages, live status, widgets and readable Flow values.
+- Added shared translation of dynamic battery, EV, HVAC, boiler and Safety SoC messages.
+
 ### 0.9.2
 - Added a persistent 2-percentage-point restart margin after reaching a battery charging target.
 - Automatic Safety SoC recovery bypasses the restart margin and tariff windows within power limits.

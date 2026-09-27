@@ -5,6 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <script data-origin="settings" src="/homey.js" type="text/javascript"></script>
+<script src="display-language.js" type="text/javascript"></script>
 <script src="ev-headroom.js" type="text/javascript"></script>
 <style>
     :root {
@@ -1906,6 +1907,7 @@ async function onHomeyReady(Homey) {
       .finally(() => clearTimeout(timer));
   }
 
+  let UI_TEMPLATES_EN = {};
   async function loadUiTranslations() {
     const language = uiLanguage === 'nl' ? 'nl' : 'en';
     try {
@@ -1918,6 +1920,7 @@ async function onHomeyReady(Homey) {
         return response.json();
       }, uiLanguage === 'nl' ? 'vertalingen' : 'translations', 5000, () => controller?.abort());
       UI_EXACT_EN = bundle && bundle.exact && typeof bundle.exact === 'object' ? bundle.exact : {};
+      UI_TEMPLATES_EN = bundle && bundle.templates || {};
       UI_PHRASES_EN = bundle && bundle.phrases && typeof bundle.phrases === 'object' ? bundle.phrases : {};
       UI_STRINGS = bundle && bundle.strings && typeof bundle.strings === 'object' ? bundle.strings : {};
     } catch (error) {
@@ -2016,21 +2019,15 @@ async function onHomeyReady(Homey) {
     if (search && !search.dataset.helpBound) { search.addEventListener('input',applyFilter); search.dataset.helpBound='1'; }
     applyFilter();
   }
+  const uiDisplayTranslator = HomeFluxDisplayLanguage.createTranslator({ exact: UI_EXACT_EN, phrases: UI_PHRASES_EN, templates: UI_TEMPLATES_EN });
   const uiPhrasePairs = Object.entries(UI_PHRASES_EN).sort((a,b) => b[0].length - a[0].length);
   function translateUiText(value) {
     if (uiLanguage === 'nl' || value === null || value === undefined) return String(value ?? '');
-    const raw = String(value);
-    if (!raw.trim()) return raw; // Leading/trailing whitespace overlaps for blank nodes.
-    const lead = raw.match(/^\s*/)?.[0] || '';
-    const tail = raw.match(/\s*$/)?.[0] || '';
-    const core = raw.slice(lead.length, raw.length - tail.length);
-    if (Object.prototype.hasOwnProperty.call(UI_EXACT_EN, core)) return lead + UI_EXACT_EN[core] + tail;
-    let out = core;
-    for (const [from,to] of uiPhrasePairs) {
-      if (from && out.includes(from)) out = out.split(from).join(to);
-    }
-    return lead + out + tail;
+    return uiDisplayTranslator(value);
+
   }
+  const originalAlert = Homey.alert.bind(Homey);
+  Homey.alert = (message, ...args) => originalAlert(translateUiText(message), ...args);
   // Ignore our own observer mutations, but translate later external text changes.
   const translatedUiText = new WeakMap();
   const translatedUiAttributes = new WeakMap();

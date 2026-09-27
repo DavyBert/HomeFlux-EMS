@@ -496,7 +496,7 @@
         if (hvac.energySource === 'battery') return tr(Homey, 'widget.status.hvacBatteryBoost', 'Extra energy to HVAC from battery');
         return tr(Homey, 'widget.status.hvacPvBoost', 'Using solar surplus');
       }
-      if (reason.includes('comfortdoel') || reason.includes('activatiemarge')) return tr(Homey, 'widget.status.hvacComfortReached', 'Comfort target reached');
+      if (reason.includes('comfortdoel') || reason.includes('activatiemarge') || reason.includes('comfort target') || reason.includes('activation band')) return tr(Homey, 'widget.status.hvacComfortReached', 'Comfort target reached');
       if (reason.includes('wacht') || reason.includes('geen pv') || reason.includes('overschot')) return tr(Homey, 'widget.status.hvacWaitingSurplus', 'Waiting for surplus');
       const mode = String(hvac.mode || hvac.currentMode || '').toLowerCase();
       if (mode === 'off') return tr(Homey, 'widget.status.off', 'Off');

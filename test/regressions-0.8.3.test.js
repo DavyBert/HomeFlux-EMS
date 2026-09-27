@@ -21,11 +21,11 @@ function translationRegression() {
   const body = { nodeType: 1, tagName: 'BODY', childNodes: [blank, label],
     hasAttribute: key => key in attrs, getAttribute: key => attrs[key],
     setAttribute(key, value) { attrs[key] = value; if (observer) queue.push({ type: 'attributes', target: this }); } };
-  const context = { uiLanguage: 'en', UI_PHRASES_EN: en.phrases, UI_EXACT_EN: en.exact,
+  const context = { HomeFluxDisplayLanguage: require('../settings/display-language'), UI_TEMPLATES_EN: en.templates, Homey: { alert() {} }, uiLanguage: 'en', UI_PHRASES_EN: en.phrases, UI_EXACT_EN: en.exact,
     Node: { TEXT_NODE: 3, ELEMENT_NODE: 1, DOCUMENT_FRAGMENT_NODE: 11 }, document: { body },
     MutationObserver: class { constructor(fn) { this.fn = fn; } observe() { observer = this.fn; } } };
   vm.createContext(context);
-  vm.runInContext(html.slice(html.indexOf('  const uiPhrasePairs ='), html.indexOf('  const ids =')), context);
+  vm.runInContext(html.slice(html.indexOf('  const uiDisplayTranslator ='), html.indexOf('  const ids =')), context);
   const flush = () => {
     let batches = 0;
     while (queue.length) {

@@ -8,6 +8,7 @@ const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
 const { HomeyAPI } = require('homey-api');
 const { DEFAULTS, evaluate, prepareControlContext, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh } = require('./lib/ems-engine');
 const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, normalizeSequentialPriceArray, sequentialPricePeriodInfo, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
+const { translate: translateDisplay, localizeDisplay, localizeTokens } = require('./lib/display-language');
 const { migrateVoltage } = require('./settings/ev-headroom');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelected, getEvPvTariffPolicy } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
@@ -540,7 +541,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.2 initialized');
+    this.log('HomeFlux EMS v0.9.3 initialized');
   }
 
   refreshSettingsCache() {
@@ -567,6 +568,16 @@ class HomeFluxEmsApp extends Homey.App {
       this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
     }
   }
+
+  displayLanguage() { return this.homey?.i18n?.getLanguage?.() || 'nl'; }
+
+  translateDisplay(value) {
+    return this.displayLanguage().toLowerCase().startsWith('nl') ? String(value ?? '') : translateDisplay(value);
+  }
+
+  localizeDisplay(value) { return localizeDisplay(value, this.displayLanguage()); }
+
+  localizeDisplayTokens(value) { return localizeTokens(value, this.displayLanguage()); }
 
   getSettings() {
     if (!this.settingsCache) return { ...this.refreshSettingsCache() };
@@ -3995,7 +4006,7 @@ class HomeFluxEmsApp extends Homey.App {
           const triggers = this.splitCommandTriggers[index] || {};
           const modeTrigger = state.currentMode === 'charge' ? triggers.chargeMode : triggers.dischargeMode;
           if (modeTrigger) {
-            await modeTrigger.trigger({}, {
+            await modeTrigger.trigger(this.localizeDisplayTokens({}), {
               battery: latestConfig.battery,
               mode: state.currentMode,
               safety_resend: true,
@@ -4093,7 +4104,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.clearSplitSafetyModeResend(index);
         const modeTrigger = outputMode === 'charge' ? triggers.chargeMode : triggers.dischargeMode;
         publishJobs.push((async () => {
-          if (modeTrigger) await modeTrigger.trigger({}, { battery: config.battery, mode: outputMode });
+          if (modeTrigger) await modeTrigger.trigger(this.localizeDisplayTokens({}), { battery: config.battery, mode: outputMode });
 
           // Start the anti-chatter timer only after the mode Flow has actually
           // been triggered. The matching power Flow is then delayed by a fixed
@@ -4107,14 +4118,14 @@ class HomeFluxEmsApp extends Homey.App {
 
           await this.waitSplitPowerDelay();
           await this.setSplitOutputTokens(index, outputMode, power);
-          if (powerTrigger) await powerTrigger.trigger({ power }, { battery: config.battery, mode: outputMode });
+          if (powerTrigger) await powerTrigger.trigger(this.localizeDisplayTokens({ power }), { battery: config.battery, mode: outputMode });
           state.lastPower = power;
           this.scheduleSplitSafetyModeResend(index);
         })());
       } else {
         publishJobs.push((async () => {
           await this.setSplitOutputTokens(index, outputMode, power);
-          if (powerTrigger) await powerTrigger.trigger({ power }, { battery: config.battery, mode: outputMode });
+          if (powerTrigger) await powerTrigger.trigger(this.localizeDisplayTokens({ power }), { battery: config.battery, mode: outputMode });
           state.lastPower = power;
           this.scheduleSplitSafetyModeResend(index);
         })());
@@ -4177,7 +4188,7 @@ class HomeFluxEmsApp extends Homey.App {
       };
       for (let i = 1; i <= 8; i += 1) triggerTokens[`battery${i}command`] = commands[i - 1] || 0;
       try {
-        await this.commandTrigger.trigger(triggerTokens, { mode: 'charge_test', override: '' });
+        await this.commandTrigger.trigger(this.localizeDisplayTokens(triggerTokens), { mode: 'charge_test', override: '' });
       } catch (err) {
         firstError = firstError || err;
         this.error('Laadtest Flow-trigger kon niet worden gepubliceerd', err);
@@ -4599,16 +4610,16 @@ class HomeFluxEmsApp extends Homey.App {
     const status = result?.statusText || (readiness.ready ? 'HomeFlux EMS gereed' : `Wachten op data: ${readiness.missing.join(', ')}`);
     return {
       mode: forcedMode,
-      status: String(status),
+      status: this.translateDisplay(status),
       tariff: String(tariff),
-      action: String(action),
-      batteryCommand: this.getBatteryCommandDeviceStatus(),
-      chargePlan: this.getCompactChargePlanDeviceStatus(),
+      action: this.translateDisplay(action),
+      batteryCommand: this.translateDisplay(this.getBatteryCommandDeviceStatus()),
+      chargePlan: this.translateDisplay(this.getCompactChargePlanDeviceStatus()),
       controlOwner: this.getHybridControlOwnerDeviceStatus(settings),
-      evStatus: this.getEvDeviceStatus(settings),
-      evPlan: this.getEvPlanningDeviceStatus(settings),
-      evOverride: this.getEvOverrideDeviceStatus(settings),
-      hvacStatus: this.getHvacDeviceStatus(settings),
+      evStatus: this.translateDisplay(this.getEvDeviceStatus(settings)),
+      evPlan: this.translateDisplay(this.getEvPlanningDeviceStatus(settings)),
+      evOverride: this.translateDisplay(this.getEvOverrideDeviceStatus(settings)),
+      hvacStatus: this.translateDisplay(this.getHvacDeviceStatus(settings)),
       savingsToday: Number(this.savings ? totalSavings(this.savings.today) : 0) || 0,
       savingsTotal: Number(this.savings?.total) || 0,
       overrideActive: forcedMode !== 'auto',
@@ -5272,12 +5283,12 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.homey.flow.getActionCard('get_ems_status').registerRunListener(async () => {
       const result = this.latestResult || await this.runContextEvaluation(true);
-      return {
+      return this.localizeDisplayTokens({
         status: String(result?.statusText || 'Stand-by'),
         tariff: String(result?.tariff?.label || ''),
         action: String(result?.workingModeLabel || result?.actionLabel || result?.modeLabel || 'Rust'),
         next_change: String(result?.nextEventText || ''),
-      };
+      });
     });
 
     this.homey.flow.getActionCard('refresh_homey_energy_prices').registerRunListener(async () => {
@@ -5790,15 +5801,15 @@ class HomeFluxEmsApp extends Homey.App {
     this.lastChargePlanText = text;
     try {
       const token = this.tokens.get('emschargeplan');
-      if (token) await token.setValue(text);
+      if (token) await token.setValue(this.translateDisplay(text));
       if (this.chargePlanTrigger) {
-        await this.chargePlanTrigger.trigger({
+        await this.chargePlanTrigger.trigger(this.localizeDisplayTokens({
           plan: text,
           target_soc: Number(plan.targetSoc) || 0,
           current_soc: Number(plan.currentSoc) || 0,
           charge_window: windows,
           forecast_energy: Number(plan.forecastKwh) || 0,
-        });
+        }));
       }
     } catch (err) {
       // Allow a later retry if the actual publication failed.
@@ -7061,13 +7072,13 @@ class HomeFluxEmsApp extends Homey.App {
         if (!monitor.warningActive) {
           monitor.warningActive = true;
           monitor.lastWarningAt = now;
-          this.balanceWarningTrigger.trigger({
+          this.balanceWarningTrigger.trigger(this.localizeDisplayTokens({
             message,
             spread,
             baseline_spread: baseline,
             lowest_battery: lowIndex + 1,
             highest_battery: highIndex + 1,
-          }).catch(err => this.error('Battery Balance warning trigger failed', err));
+          })).catch(err => this.error('Battery Balance warning trigger failed', err));
         }
         return message;
       }
@@ -7568,13 +7579,13 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.evTargetWarningState[index] === warning) return;
     this.evTargetWarningState[index] = warning;
     if (!this.evTargetWarningTrigger) return;
-    await this.evTargetWarningTrigger.trigger({
+    await this.evTargetWarningTrigger.trigger(this.localizeDisplayTokens({
       ev: index + 1,
       name: this.getEvInstanceName(index),
       message: warning,
       energy_needed: Math.max(0, Number(decision?.energyNeedKwh) || 0),
       deadline: decision?.deadlineAt ? new Date(Number(decision.deadlineAt)).toLocaleString('nl-BE', { timeZone: this.getSettings().timezone || 'Europe/Brussels' }) : '',
-    });
+    }));
   }
 
   calculateAdditionalEvControl(index, result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, adjustedGridPowerW = this.state.gridPowerW, options = {}) {
@@ -9254,13 +9265,13 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevcurrent');
         if (token) await token.setValue(desiredA);
         if (this.evCurrentTrigger) {
-          await this.evCurrentTrigger.trigger({
+          await this.evCurrentTrigger.trigger(this.localizeDisplayTokens({
             charge_current: desiredA,
             charge_power: Math.round(Number(decision.desiredPowerW) || 0),
             source: String(decision.source || 'off'),
             reason: String(decision.reason || ''),
             target_soc: Number(decision.targetSoc) || 0,
-          });
+          }));
         }
         this.lastPublishedEvCurrentA = desiredA;
         this.noteAutoTuneEvCurrentCommand(0, desiredA, Date.now());
@@ -9269,10 +9280,10 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevmode');
         if (token) await token.setValue(chargeMode);
         if (this.evModeTrigger) {
-          await this.evModeTrigger.trigger({
+          await this.evModeTrigger.trigger(this.localizeDisplayTokens({
             charge_mode: chargeMode,
             reason: String(decision.reason || ''),
-          }, { charge_mode: chargeMode });
+          }), { charge_mode: chargeMode });
         }
         this.lastPublishedEvChargeMode = chargeMode;
         this.noteAutoTuneEvModeCommand(0, chargeMode, Date.now());
@@ -9284,11 +9295,11 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevallowed');
         if (token) await token.setValue(allowed ? 'Ja' : 'Nee');
         if (this.evAllowedTrigger) {
-          await this.evAllowedTrigger.trigger({
+          await this.evAllowedTrigger.trigger(this.localizeDisplayTokens({
             allowed: allowed ? 'Ja' : 'Nee',
             allowed_value: allowed ? 1 : 0,
             reason: String(decision.reason || ''),
-          });
+          }));
         }
         this.lastPublishedEvAllowed = allowed;
       }
@@ -9404,18 +9415,18 @@ class HomeFluxEmsApp extends Homey.App {
     runtime.publishing = true;
     try {
       if (currentChanged && triggers.current) {
-        await triggers.current.trigger({
+        await triggers.current.trigger(this.localizeDisplayTokens({
           charge_current: desiredA,
           charge_power: Math.round(Number(decision.desiredPowerW) || 0),
           source: String(decision.source || 'off'),
           reason: String(decision.reason || ''),
           target_soc: Number(decision.targetSoc) || 0,
-        });
+        }));
         runtime.lastPublishedCurrentA = desiredA;
         this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
       }
       if (modeChanged && triggers.mode) {
-        await triggers.mode.trigger({ charge_mode: chargeMode, reason: String(decision.reason || '') }, { charge_mode: chargeMode });
+        await triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
         runtime.lastPublishedChargeMode = chargeMode;
         this.noteAutoTuneEvModeCommand(index, chargeMode, Date.now());
         if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
@@ -9423,11 +9434,11 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
       if (allowedChanged && triggers.allowed) {
-        await triggers.allowed.trigger({
+        await triggers.allowed.trigger(this.localizeDisplayTokens({
           allowed: allowed ? 'Ja' : 'Nee',
           allowed_value: allowed ? 1 : 0,
           reason: String(decision.reason || ''),
-        });
+        }));
         runtime.lastPublishedAllowed = allowed;
       }
       runtime.lastPublishedAt = Date.now();
@@ -9454,20 +9465,20 @@ class HomeFluxEmsApp extends Homey.App {
       if (!Number.isFinite(currentA)) throw new Error('Ongeldige EV-testlaadstroom.');
       const powerW = Math.round(currentA * evPowerPerAmp(settings));
       if (!triggers.current) throw new Error(`EV ${instance}-laadstroom Flow-trigger is niet beschikbaar.`);
-      await triggers.current.trigger({
+      await triggers.current.trigger(this.localizeDisplayTokens({
         charge_current: currentA,
         charge_power: powerW,
         source: 'test',
         reason,
         target_soc: Math.max(0, Math.min(100, Number(settings.evTargetSoc) || 0)),
-      });
+      }));
       return { ok: true, instance, output, value: currentA, detail: `${currentA} A` };
     }
 
     if (output === 'allowed') {
       const allowed = Boolean(body.allowed);
       if (!triggers.allowed) throw new Error(`EV ${instance}-toestemming Flow-trigger is niet beschikbaar.`);
-      await triggers.allowed.trigger({ allowed: allowed ? 'Ja' : 'Nee', allowed_value: allowed ? 1 : 0, reason });
+      await triggers.allowed.trigger(this.localizeDisplayTokens({ allowed: allowed ? 'Ja' : 'Nee', allowed_value: allowed ? 1 : 0, reason }));
       return { ok: true, instance, output, value: allowed, detail: allowed ? 'Ja' : 'Nee' };
     }
 
@@ -9475,7 +9486,7 @@ class HomeFluxEmsApp extends Homey.App {
       const mode = String(body.mode || '').trim().toLowerCase();
       if (!['stop', 'smart', 'standard'].includes(mode)) throw new Error('Ongeldige EV-testmodus.');
       if (!triggers.mode) throw new Error(`EV ${instance}-laadmodus Flow-trigger is niet beschikbaar.`);
-      await triggers.mode.trigger({ charge_mode: mode, reason }, { charge_mode: mode });
+      await triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: mode, reason }), { charge_mode: mode });
       return { ok: true, instance, output, value: mode, detail: mode };
     }
 
@@ -9494,21 +9505,21 @@ class HomeFluxEmsApp extends Homey.App {
     if (output === 'power') {
       const on = Boolean(body.on);
       if (!triggers.power) throw new Error(`HVAC ${instance} aan/uit Flow-trigger is niet beschikbaar.`);
-      await triggers.power.trigger({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason });
+      await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason }));
       return { ok: true, instance, output, value: on, detail: on ? 'Aan' : 'Uit' };
     }
     if (output === 'mode') {
       const mode = String(body.mode || '').trim().toLowerCase();
       if (!['cool', 'heat'].includes(mode)) throw new Error('Ongeldige HVAC-testmodus.');
       if (!triggers.mode) throw new Error(`HVAC ${instance}-modus Flow-trigger is niet beschikbaar.`);
-      await triggers.mode.trigger({ mode, reason });
+      await triggers.mode.trigger(this.localizeDisplayTokens({ mode, reason }));
       return { ok: true, instance, output, value: mode, detail: mode };
     }
     if (output === 'setpoint') {
       const setpoint = Math.round(Number(body.setpoint) * 2) / 2;
       if (!Number.isFinite(setpoint) || setpoint < 5 || setpoint > 40) throw new Error('Ongeldig HVAC-testsetpoint.');
       if (!triggers.setpoint) throw new Error(`HVAC ${instance}-setpoint Flow-trigger is niet beschikbaar.`);
-      await triggers.setpoint.trigger({ setpoint, reason });
+      await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason }));
       return { ok: true, instance, output, value: setpoint, detail: `${setpoint} °C` };
     }
     if (output === 'fan') {
@@ -9517,7 +9528,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (!Number.isFinite(currentSpeed) || !Number.isFinite(targetSpeed)) throw new Error('Ongeldige HVAC-test ventilatorwaarde.');
       const action = targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'same';
       if (!triggers.fan) throw new Error(`HVAC ${instance}-ventilator Flow-trigger is niet beschikbaar.`);
-      await triggers.fan.trigger({ action, current_speed: currentSpeed, target_speed: targetSpeed, reason });
+      await triggers.fan.trigger(this.localizeDisplayTokens({ action, current_speed: currentSpeed, target_speed: targetSpeed, reason }));
       return { ok: true, instance, output, value: targetSpeed, detail: `${currentSpeed} → ${targetSpeed}` };
     }
     throw new Error('Onbekende HVAC-outputtest.');
@@ -10044,19 +10055,19 @@ class HomeFluxEmsApp extends Homey.App {
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
       if (runtime.lastPublishedPower !== on) {
-        if (triggers.power) await triggers.power.trigger({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') });
+        if (triggers.power) await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         runtime.lastPublishedPower = on;
         runtime.managedPowerOn = on;
       }
     }
     if (decision.modeCommand && Boolean(settings.hvacAllowModeControl) && decision.modeCommand !== runtime.lastPublishedMode) {
-      if (triggers.mode) await triggers.mode.trigger({ mode: String(decision.modeCommand), reason: String(decision.reason || '') });
+      if (triggers.mode) await triggers.mode.trigger(this.localizeDisplayTokens({ mode: String(decision.modeCommand), reason: String(decision.reason || '') }));
       runtime.lastPublishedMode = String(decision.modeCommand);
     }
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
       if (runtime.lastPublishedSetpoint === null || !Number.isFinite(Number(runtime.lastPublishedSetpoint)) || Math.abs(setpoint - Number(runtime.lastPublishedSetpoint)) >= 0.1) {
-        if (triggers.setpoint) await triggers.setpoint.trigger({ setpoint, reason: String(decision.reason || '') });
+        if (triggers.setpoint) await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         runtime.lastPublishedSetpoint = setpoint;
         if (runtime.baselineSetpoint !== null && Math.abs(setpoint - Number(runtime.baselineSetpoint)) < 0.1) runtime.lastControlAt = 0;
       }
@@ -10072,12 +10083,12 @@ class HomeFluxEmsApp extends Homey.App {
         const action = String(decision.fanAction || (Number.isFinite(currentSpeed)
           ? targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'hold'
           : 'set'));
-        if (triggers.fan) await triggers.fan.trigger({
+        if (triggers.fan) await triggers.fan.trigger(this.localizeDisplayTokens({
           action,
           current_speed: Number.isFinite(currentSpeed) ? currentSpeed : 0,
           target_speed: targetSpeed,
           reason: String(decision.reason || ''),
-        });
+        }));
         runtime.lastPublishedFanAction = action;
         runtime.lastPublishedFanSpeed = targetSpeed;
       }
@@ -10093,14 +10104,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
       if (this.lastPublishedHvacPower !== on) {
-        if (this.hvacPowerTrigger) await this.hvacPowerTrigger.trigger({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') });
+        if (this.hvacPowerTrigger) await this.hvacPowerTrigger.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         this.lastPublishedHvacPower = on;
         if (on) this.hvacManagedPowerOn = true;
         else this.hvacManagedPowerOn = false;
       }
     }
     if (decision.modeCommand && Boolean(settings.hvacAllowModeControl) && decision.modeCommand !== this.lastPublishedHvacMode) {
-      if (this.hvacModeTrigger) await this.hvacModeTrigger.trigger({ mode: String(decision.modeCommand), reason: String(decision.reason || '') });
+      if (this.hvacModeTrigger) await this.hvacModeTrigger.trigger(this.localizeDisplayTokens({ mode: String(decision.modeCommand), reason: String(decision.reason || '') }));
       this.lastPublishedHvacMode = String(decision.modeCommand);
       const token = this.tokens.get('emshvacmode');
       if (token) await token.setValue(String(decision.modeCommand));
@@ -10108,7 +10119,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
       if (this.lastPublishedHvacSetpoint === null || this.lastPublishedHvacSetpoint === undefined || !Number.isFinite(Number(this.lastPublishedHvacSetpoint)) || Math.abs(setpoint - Number(this.lastPublishedHvacSetpoint)) >= 0.1) {
-        if (this.hvacSetpointTrigger) await this.hvacSetpointTrigger.trigger({ setpoint, reason: String(decision.reason || '') });
+        if (this.hvacSetpointTrigger) await this.hvacSetpointTrigger.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         this.lastPublishedHvacSetpoint = setpoint;
         const token = this.tokens.get('emshvacsetpoint');
         if (token) await token.setValue(setpoint);
@@ -10130,12 +10141,12 @@ class HomeFluxEmsApp extends Homey.App {
         const action = String(decision.fanAction || (Number.isFinite(currentSpeed)
           ? targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'hold'
           : 'set'));
-        if (this.hvacFanTrigger) await this.hvacFanTrigger.trigger({
+        if (this.hvacFanTrigger) await this.hvacFanTrigger.trigger(this.localizeDisplayTokens({
           action,
           current_speed: Number.isFinite(currentSpeed) ? currentSpeed : 0,
           target_speed: targetSpeed,
           reason: String(decision.reason || ''),
-        });
+        }));
         this.lastPublishedHvacFanAction = action;
         this.lastPublishedHvacFanSpeed = targetSpeed;
       }
@@ -10470,7 +10481,7 @@ class HomeFluxEmsApp extends Homey.App {
     // module is disabled. This uses the existing EMS pass and adds no timer.
     const warmed = Boolean(decision.enabled && decision.warm);
     if (this.boilerState.lastPublishedWarmed !== warmed) {
-      if (this.boilerWarmedTrigger) await this.boilerWarmedTrigger.trigger({ warmed });
+      if (this.boilerWarmedTrigger) await this.boilerWarmedTrigger.trigger(this.localizeDisplayTokens({ warmed }));
       this.boilerState.lastPublishedWarmed = warmed;
     }
 
@@ -10478,7 +10489,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (!initialSync && (decision.outputCommand === null || decision.outputCommand === undefined)) return;
     const on = initialSync ? Boolean(decision.on) : Boolean(decision.outputCommand);
     if (this.boilerState.lastPublishedOutput === on) return;
-    if (this.boilerTrigger) await this.boilerTrigger.trigger({ on });
+    if (this.boilerTrigger) await this.boilerTrigger.trigger(this.localizeDisplayTokens({ on }));
     this.boilerState.lastPublishedOutput = on;
   }
 
@@ -10862,13 +10873,13 @@ class HomeFluxEmsApp extends Homey.App {
       const token = this.tokens.get('emspvlimit');
       if (token) await token.setValue(percent);
       if (this.pvLimitTrigger) {
-        await this.pvLimitTrigger.trigger({
+        await this.pvLimitTrigger.trigger(this.localizeDisplayTokens({
           limit_percent: percent,
           target_power: targetPowerW,
           curtailed_power: Math.max(0, Math.round(Number(calculated.curtailmentW) || 0)),
           minimum_export: Math.max(0, Math.round(Number(calculated.minimumExportW) || 0)),
           predicted_grid: calculated.predictedGridAfterPvW === null ? 0 : Math.round(Number(calculated.predictedGridAfterPvW) || 0),
-        });
+        }));
       }
       // Only remember the limit after the Flow publication succeeded. A failed
       // trigger is retried from fresh measurements on a later control pass.
@@ -11189,7 +11200,7 @@ class HomeFluxEmsApp extends Homey.App {
   async requestExternalEmsSelfConsumption(reason = 'delegate', retry = false) {
     if (!this.externalEmsSelfConsumptionTrigger) return false;
     try {
-      await this.externalEmsSelfConsumptionTrigger.trigger({ reason: String(reason), retry: retry ? 1 : 0 }, {});
+      await this.externalEmsSelfConsumptionTrigger.trigger(this.localizeDisplayTokens({ reason: String(reason), retry: retry ? 1 : 0 }), {});
       return true;
     } catch (err) {
       this.error('External EMS self-consumption trigger failed', err);
@@ -11552,7 +11563,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
     for (let i = 1; i <= 8; i += 1) tokens[`battery${i}setpoint`] = calculated[i - 1] || 0;
 
-    await this.calculatedSetpointTrigger.trigger(tokens, {
+    await this.calculatedSetpointTrigger.trigger(this.localizeDisplayTokens(tokens), {
       mode: result.baseMode || '',
       override: result.override || '',
     });
@@ -11638,7 +11649,7 @@ class HomeFluxEmsApp extends Homey.App {
     try {
       const publishSettings = this.getSettings();
       const calculatedInternalTotal = result.calculatedTotalCommandW ?? result.totalCommandW;
-      const values = {
+      const values = this.localizeDisplayTokens({
         emstotalcommand: result.outputTotalCommandW ?? this.toPublishedCommand(result.totalCommandW, publishSettings),
         emscalculatedcommand: this.toPublishedCommand(calculatedInternalTotal, publishSettings),
         emsmode: result.modeLabel,
@@ -11658,7 +11669,7 @@ class HomeFluxEmsApp extends Homey.App {
         emscheapestblock: result.homeyEnergy?.cheapestBlockSummary || '',
         emshomeypricerank: result.homeyEnergy?.currentRank || 0,
         emshomeypriceinterval: result.homeyEnergy?.slotIntervalMinutes || 0,
-      };
+      });
 
       for (const [id, value] of Object.entries(values)) {
         if (Object.is(this.lastStatusTokenValues.get(id), value)) continue;
@@ -11676,12 +11687,12 @@ class HomeFluxEmsApp extends Homey.App {
       } else if (currentStatusText !== this.lastTriggeredStatusText) {
         this.lastTriggeredStatusText = currentStatusText;
         if (this.statusChangedTrigger) {
-          await this.statusChangedTrigger.trigger({
+          await this.statusChangedTrigger.trigger(this.localizeDisplayTokens({
             status: currentStatusText,
             tariff: String(result.tariff?.label || ''),
             action: String(result.workingModeLabel || result.actionLabel || result.modeLabel || 'Rust'),
             next_change: String(result.nextEventText || ''),
-          }).catch(err => this.error('EMS status changed trigger failed', err));
+          })).catch(err => this.error('EMS status changed trigger failed', err));
         }
       }
 
@@ -11868,7 +11879,7 @@ class HomeFluxEmsApp extends Homey.App {
       };
       for (let i = 1; i <= 8; i += 1) triggerTokens[`battery${i}command`] = commands[i - 1] || 0;
 
-      await this.commandTrigger.trigger(triggerTokens, {
+      await this.commandTrigger.trigger(this.localizeDisplayTokens(triggerTokens), {
         mode: result.baseMode,
         override: result.override || '',
       });
@@ -12145,7 +12156,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.2',
+      version: '0.9.3',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12222,7 +12233,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.9.2',
+      version: '0.9.3',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12531,8 +12542,8 @@ class HomeFluxEmsApp extends Homey.App {
       lastStartedId: String(priorityRuntime.lastStartedId || ''),
     };
 
-    return {
-      version: '0.9.2',
+    return this.localizeDisplay({
+      version: '0.9.3',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -12671,7 +12682,7 @@ class HomeFluxEmsApp extends Homey.App {
       // positive=discharge / negative=charge convention.
       calculatedCommands: (preview.calculatedCommands || []).map(value => this.toPublishedCommand(value, storedSettings)),
       calculatedTotalCommandW: this.toPublishedCommand(preview.calculatedTotalCommandW ?? preview.totalCommandW, storedSettings),
-    };
+    });
   }
 
   setInput(body = {}) {

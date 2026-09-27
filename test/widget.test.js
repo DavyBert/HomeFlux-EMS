@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '0.9.2');
-assert.equal(appCompose.version, '0.9.2');
-assert.equal(packageJson.version, '0.9.2');
-assert.equal(packageLock.version, '0.9.2');
-assert.equal(packageLock.packages[''].version, '0.9.2');
+assert.equal(manifest.version, '0.9.3');
+assert.equal(appCompose.version, '0.9.3');
+assert.equal(packageJson.version, '0.9.3');
+assert.equal(packageLock.version, '0.9.3');
+assert.equal(packageLock.packages[''].version, '0.9.3');
 assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
 assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
 const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');
@@ -181,7 +181,7 @@ assert(statusHtml.includes('priceAlignmentWaiting'), 'status widget must identif
 const widgetApi = require('../widgets/savings/api');
 (async () => {
   const calls = [];
-  const homey = { app: { getSavingsStatus: args => { calls.push(args); return { period: args.period }; } } };
+  const homey = { app: { localizeDisplay: value => value, getSavingsStatus: args => { calls.push(args); return { period: args.period }; } } };
   assert.deepEqual(await widgetApi.getSavings({ homey, query: { period: 'month' } }), { period: 'month' });
   assert.deepEqual(await widgetApi.getSavings({ homey, query: { period: 'year' } }), { period: 'year' });
   assert.deepEqual(await widgetApi.getSavings({ homey, query: { period: 'week' } }), { period: 'day' });

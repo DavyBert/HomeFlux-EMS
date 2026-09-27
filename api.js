@@ -77,3 +77,18 @@ module.exports = {
     return homey.app.testHvacOutput(body || {});
   },
 };
+
+// Translate only presentation fields at the API boundary. Stored settings and
+// internal controller decisions retain their original values and identifiers.
+for (const [name, operation] of Object.entries(module.exports)) {
+  if (name === 'getSettingsSnapshot') continue;
+  module.exports[name] = async function localizedOperation(args) {
+    try {
+      const result = await operation(args);
+      return args.homey.app.localizeDisplay(result);
+    } catch (error) {
+      if (error && typeof error.message === 'string') error.message = args.homey.app.translateDisplay(error.message);
+      throw error;
+    }
+  };
+}
