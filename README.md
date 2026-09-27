@@ -15,7 +15,7 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 3. **Send the battery output to your battery integration**  
    Use **Battery commands are updated** for batteries that accept a power setpoint. If your battery requires separate charge/discharge modes and power values, enable Split Command and use the corresponding **Battery: switch to charge/discharge mode** and **Battery: charge/discharge power is updated** cards.
 
-Once these inputs and outputs are connected, HomeFlux can perform the core battery control and planning.
+Once these inputs and outputs are connected, HomeFlux can perform the core battery control and planning. After reaching the charging target, a 2-percentage-point restart margin avoids small grid top-ups. In automatic mode, charging can restore Safety SoC outside tariff windows, subject to Peak Guard and battery limits.
 
 Optional features include EV charging, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings and dashboard widgets.
 
@@ -25,6 +25,11 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 0.9.2
+- Added a persistent 2-percentage-point restart margin after reaching a battery charging target.
+- Automatic Safety SoC recovery bypasses the restart margin and tariff windows within power limits.
+- Solar-surplus capture remains available inside the restart margin.
 
 ### 0.9.1
 - Corrected EV grid-import accounting to prevent unwanted continued battery charging.

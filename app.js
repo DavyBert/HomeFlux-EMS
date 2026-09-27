@@ -35,6 +35,7 @@ class HomeFluxEmsApp extends Homey.App {
       forecastTomorrowDate: '',
       batterySoc: Array(8).fill(null),
       lastTotalCommandW: 0,
+      chargeRestartState: this.homey.settings.get('_batteryChargeRestartState') || null,
       pvDeltaW: 0,
       nightPlanningActive: false,
       nightPlanningStartedDate: '',
@@ -399,7 +400,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_dynamicPriceCalibration' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
+        if (key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache();
         this.markFlexibleLoadsDirty();
@@ -539,7 +540,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.1 initialized');
+    this.log('HomeFlux EMS v0.9.2 initialized');
   }
 
   refreshSettingsCache() {
@@ -11362,6 +11363,15 @@ class HomeFluxEmsApp extends Homey.App {
     }
   }
 
+  rememberBatteryChargeRestartState(result) {
+    const next = result?.chargeRestartState;
+    if (!next || result.avgSoc === null) return;
+    if (JSON.stringify(this.state.chargeRestartState) === JSON.stringify(next)) return;
+    this.state.chargeRestartState = next;
+    // Write only on a band/phase transition, not on every P1 evaluation.
+    this.setSetting('_batteryChargeRestartState', next);
+  }
+
   evaluateFastNow(forceStatus = false) {
     try {
       const now = Date.now();
@@ -11381,6 +11391,7 @@ class HomeFluxEmsApp extends Homey.App {
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
       const settings = this.controlRuntimeSettings;
       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
+      this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
       this.pvAtLastControlW = pvNow;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
@@ -11435,6 +11446,7 @@ class HomeFluxEmsApp extends Homey.App {
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
       const settings = this.refreshControlContext(storedSettings, evaluationState, now);
       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
+      this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
       this.pvAtLastControlW = pvNow;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
@@ -12133,7 +12145,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.1',
+      version: '0.9.2',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12210,7 +12222,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getRuntimeSettings(storedSettings);
     const state = this.getEvaluationState(storedSettings, now, 0);
     const plan = {
-      version: '0.9.1',
+      version: '0.9.2',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12520,7 +12532,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return {
-      version: '0.9.1',
+      version: '0.9.2',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
