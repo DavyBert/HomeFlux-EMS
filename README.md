@@ -28,6 +28,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.9.6
+- Corrected cumulative PV-change detection: intermediate calculations no longer reset the reference before a battery command is published.
+- Significant PV changes use live P1 at the next permitted command moment, including planned charging.
+
 ### 0.9.5
 - Choose which tariffs use the sunshine reserve; expensive/peak periods are excluded by default.
 - Added an optional sunshine-based discharge reserve with four configurable probability ranges and minimum SoC values.

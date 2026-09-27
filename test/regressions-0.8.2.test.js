@@ -32,7 +32,7 @@ function setup(overrides = {}, gridW = 35, commandW = 1000, soc = 50) {
   app.lastControlEvalAt = 100000;
   app.controlTimer = null;
   app.fastEvaluationSkipped = 0;
-  app.pvAtLastControlW = 0;
+  app.pvAtLastBatteryCommandW = 0;
   app.splitModeChangeNeeded = () => false;
   app.isHybridEmsConfigured = () => false;
   app.isHybridExternalControlActive = () => false;
