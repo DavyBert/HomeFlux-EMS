@@ -1,7 +1,7 @@
 {
-  "0.9.3": {
-    "en": "Completed missing English translations in settings, help text, validation pop-ups, live status, widgets and human-readable Flow values. Dynamic battery, EV, HVAC, boiler and Safety SoC messages now share the display translation layer. Repeated translation preserves English text and the settings-page translation loop remains guarded.",
-    "nl": "Ontbrekende Engelse vertalingen aangevuld in instellingen, uitleg, validatiepop-ups, live status, widgets en leesbare Flow-waarden. Dynamische batterij-, EV-, HVAC-, boiler- en Safety SoC-meldingen gebruiken nu dezelfde weergavevertaling. Herhaald vertalen behoudt Engelse tekst en de beveiliging tegen de vertaallus blijft actief."
+  "0.9.4": {
+    "en": "Completed missing English translations in settings, help text, validation pop-ups, live status, widgets and human-readable Flow values. Dynamic battery, EV, HVAC, boiler and Safety SoC messages now share the display translation layer. Repeated translation preserves English text and the settings-page translation loop remains guarded. Corrected dynamic tariff labels with prices and price classifications in English.",
+    "nl": "Ontbrekende Engelse vertalingen aangevuld in instellingen, uitleg, validatiepop-ups, live status, widgets en leesbare Flow-waarden. Dynamische batterij-, EV-, HVAC-, boiler- en Safety SoC-meldingen gebruiken nu dezelfde weergavevertaling. Herhaald vertalen behoudt Engelse tekst en de beveiliging tegen de vertaallus blijft actief. Dynamische tarieflabels met prijzen en prijsclassificaties worden correct in het Engels weergegeven."
   },
   "0.9.2": {
     "en": "After a battery charging target is reached, planned grid charging restarts only when SoC falls at least two percentage points below the target. The reached-target state survives app restarts. Automatic charging restores the Safety SoC reserve when needed, independently of tariff windows, while respecting Peak Guard and battery limits. Solar-surplus capture remains available within the restart band.",

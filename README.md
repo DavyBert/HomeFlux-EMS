@@ -26,7 +26,8 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
-### 0.9.3
+### 0.9.4
+- Corrected English dynamic tariff labels with prices and price classifications.
 - Completed English translations in settings, validation messages, live status, widgets and readable Flow values.
 - Added shared translation of dynamic battery, EV, HVAC, boiler and Safety SoC messages.
 

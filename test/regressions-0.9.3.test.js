@@ -50,6 +50,24 @@ assert(fs.readFileSync(require.resolve('../settings/index.html'), 'utf8').includ
   const status = app.getPublicStatus();
   assert.equal(status.modeLabel, examples[7][1]);
   assert.equal(app.latestResult.modeLabel, examples[7][0], 'Internal decision remains unchanged');
+  // The widget renders this API tariff label directly, without a second translation pass.
+  for (const [nl, en, priceClass, englishClass] of [
+    ['Normaal', 'Normal', 'normaal', 'normal'],
+    ['Goedkoop', 'Cheap', 'goedkoop', 'cheap'],
+    ['Duur', 'Expensive', 'duur', 'expensive'],
+  ]) {
+    for (const price of ['0.150', '-0.025']) {
+      app.latestResult.tariff = { kind: 'dynamic', label: `${nl} €${price}/kWh`,
+        nextLabel: `${nl} €${price}/kWh`, className: englishClass, price: Number(price) };
+      const localized = app.getPublicStatus().tariff;
+      assert.equal(localized.label, `${en} €${price}/kWh`);
+      assert.equal(localized.nextLabel, `${en} €${price}/kWh`);
+      assert.equal(localized.price, Number(price));
+      assert.equal(app.latestResult.tariff.label, `${nl} €${price}/kWh`);
+    }
+    assert.equal(localizeDisplay({ homeyEnergy: { priceClass } }, 'en').homeyEnergy.priceClass, englishClass);
+    assert.equal(localizeDisplay({ homeyEnergy: { priceClass } }, 'nl').homeyEnergy.priceClass, priceClass);
+  }
   const tokens = await cards.get('get_ems_status').listener();
   assert.equal(tokens.status, examples[4][1]);
   assert.equal(tokens.action, examples[6][1]);
