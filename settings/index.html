@@ -1061,7 +1061,7 @@
 <div class="homey-form-group cluster-item full-width" data-setting-id="planningMinIntervalMinutes">
 <label class="homey-form-label" for="planningMinIntervalMinutes">Minimum tijd tussen laadplanberekeningen (min)</label>
 <input class="homey-form-input" id="planningMinIntervalMinutes" max="60" min="1" step="1" type="number"/>
-<div class="muted">Standaard 5 min. Relevante wijzigingen markeren het laadplan als verouderd, maar HomeFlux behoudt het laatst geldige plan en bouwt maximaal één nieuw plan per dit interval. De eerste planning, handmatig vernieuwen en vaste beslismomenten mogen onmiddellijk rekenen.</div>
+<div class="muted">Standaard 5 min. Gewone wijzigingen worden samengevoegd: het laadplan wordt pas tijdens de trage contextregelkring vernieuwd zodra deze minimumtijd verstreken is. Tot dan blijft het laatste plan zichtbaar. De eerste bruikbare planning, gewijzigde instellingen, handmatig vernieuwen en een nieuwe planningsdag of -fase mogen via dezelfde contextregelkring onmiddellijk rekenen.</div>
 </div>
 <div class="setting-cluster full-width" data-setting-id="sunChanceReserveEnabled">
 <h4>Batterijreserve op basis van zonkans</h4>

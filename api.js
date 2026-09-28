@@ -14,7 +14,9 @@ module.exports = {
   },
 
   async getPlanning({ homey, query }) {
-    return homey.app.getPlanningStatus({ force: String(query?.force || '') === 'true' });
+    return String(query?.force || '') === 'true'
+      ? homey.app.refreshChargePlanning()
+      : homey.app.getPlanningStatus();
   },
 
   async getSavings({ homey, query }) {
@@ -46,7 +48,7 @@ module.exports = {
   },
 
   async refreshPlanning({ homey }) {
-    return homey.app.getPlanningStatus({ force: true });
+    return homey.app.refreshChargePlanning();
   },
 
   async simulatePlanning({ homey, body }) {

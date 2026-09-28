@@ -1,4 +1,8 @@
 {
+  "0.9.7": {
+    "en": "Charge planning now runs in the shared slow context loop. Ordinary SoC, forecast and price updates are combined while respecting the minimum planning interval. Status and widget reads reuse the cached plan. Manual refresh and planning day/phase changes use the same context path; pending updates are processed even without further input.",
+    "nl": "Laadplanning loopt nu via de gedeelde trage contextregelkring. Gewone SoC-, forecast- en prijsupdates worden samengevoegd met behoud van de minimumtijd tussen planberekeningen. Status en widgets gebruiken het opgeslagen plan. Handmatig vernieuwen en een nieuwe planningsdag of -fase lopen via hetzelfde contextpad; wachtende wijzigingen worden ook zonder nieuwe input verwerkt."
+  },
   "0.9.6": {
     "en": "PV live control now measures cumulative PV changes since the last successfully published battery command. Intermediate evaluations no longer reset the reference. At the next permitted command moment, significant PV changes use current P1 instead of averaged readings, including planned charging. PV changes during publication remain available for the next correction.",
     "nl": "De live-PV-regeling meet de opgetelde PV-verandering sinds het laatst succesvol gepubliceerde batterijcommando. Tussentijdse berekeningen wissen de referentie niet meer. Bij een voldoende grote PV-verandering gebruikt het volgende toegestane stuurmoment de actuele P1 in plaats van middeling, ook tijdens gepland laden. PV-veranderingen tijdens het publiceren blijven beschikbaar voor de volgende correctie."

@@ -170,7 +170,7 @@ class HomeFluxEmsApp extends Homey.App {
     // the complete settings object through hundreds of homey.settings.get()
     // calls from several nested helpers on every meter update/evaluation.
     this.settingsCache = null;
-    this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0, timer: null, timerAt: 0 };
+    this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
 
     // v0.6.4: Automatic Finetuning piggybacks on measurements HomeFlux already
     // receives. Only tiny rolling aggregates are kept in RAM; there is no new
@@ -407,7 +407,7 @@ class HomeFluxEmsApp extends Homey.App {
         // second context pass or charge-plan invalidation.
         if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
         this.markContextDirty(`setting:${key}`);
-        this.invalidatePlanningCache();
+        this.invalidatePlanningCache(true);
         this.markFlexibleLoadsDirty();
         // A battery-mode override changes which flexible load owns the shared
         // Peak Guard headroom. Never let the fast loop reuse an EV allocation
@@ -533,7 +533,6 @@ class HomeFluxEmsApp extends Homey.App {
           return;
         }
         this.requestContextEvaluate(true, `setting:${key}`);
-        if (this.isNightPlanningPhase()) this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after settings change failed', err));
       } catch (err) {
         this.error('Settings update failed', err);
       }
@@ -545,7 +544,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.6 initialized');
+    this.log('HomeFlux EMS v0.9.7 initialized');
   }
 
   refreshSettingsCache() {
@@ -2230,6 +2229,8 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.contextEvaluationPending || this.contextDirty) {
         this.contextEvaluationPending = false;
         this.requestContextEvaluate(false, reasons.length ? `pending:${reasons.join(',')}` : 'pending');
+      } else if (this.planningCache?.dirty && this.planningCache?.value) {
+        this.requestContextEvaluate(false, 'planning_due', Number(this.planningCache.nextAllowedAt) || 0);
       }
     }
   }
@@ -2371,8 +2372,14 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
+    if (this.planningCache?.value && this.planningCache.phaseKey !== this.getPlanningPhaseKey(now)) {
+      this.invalidatePlanningCache(true);
+      this.requestContextEvaluate(true, 'planning_date_changed');
+      return;
+    }
+
     const nextEventAt = Number(this.latestResult?.nextEventAt) || 0;
-    if (nextEventAt > 0 && now >= nextEventAt) this.markContextDirty('tariff_boundary');
+    if (nextEventAt > 0 && now >= nextEventAt) this.invalidatePlanningCache();
     if ((this.getHvacCount(settings) > 0 || this.getBoilerCount(settings) > 0)
       && this.isFlexiblePriorityEvaluationDue(now, settings)) this.markContextDirty('flexible_priority_due');
     if (this.hasActiveFlexibleOutput(settings)
@@ -2802,48 +2809,15 @@ class HomeFluxEmsApp extends Homey.App {
     this.flexibleLoadsDirty = true;
   }
 
-  clearPlanningTimer() {
-    if (this.planningCache?.timer) clearTimeout(this.planningCache.timer);
-    if (this.planningCache) {
-      this.planningCache.timer = null;
-      this.planningCache.timerAt = 0;
-    }
-  }
-
-  schedulePlanningRecalculation(at) {
-    if (!this.planningCache?.dirty || !this.planningCache?.value || !this.isNightPlanningPhase()) return;
-    const now = Date.now();
-    const targetAt = Math.max(now, Number(at) || now);
-    if (this.planningCache.timer && Number(this.planningCache.timerAt) > 0
-      && Number(this.planningCache.timerAt) <= targetAt + 20) return;
-    this.clearPlanningTimer();
-    this.planningCache.timerAt = targetAt;
-    this.planningCache.timer = this.homey.setTimeout(() => {
-      this.planningCache.timer = null;
-      this.planningCache.timerAt = 0;
-      if (!this.planningCache?.dirty) return;
-      this.publishChargePlanIfChanged().catch(err => this.error('Deferred charge plan update failed', err));
-    }, Math.max(1, targetAt - now));
-  }
-
   invalidatePlanningCache(force = false) {
-    if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0, timer: null, timerAt: 0 };
+    if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
     this.planningCache.generation += 1;
     this.planningCache.dirty = true;
     this.markControlContextDirty();
     this.markContextDirty('planning');
-    if (force) {
-      this.planningCache.nextAllowedAt = 0;
-      this.clearPlanningTimer();
-      return;
-    }
-
-    // Throttle, do not debounce: keep the last valid plan available and rebuild
-    // once at the first permitted moment. Repeated SoC/forecast updates never
-    // push that moment further into the future.
-    const now = Date.now();
-    const dueAt = Number(this.planningCache.nextAllowedAt) || 0;
-    if (this.planningCache.value && dueAt > now) this.schedulePlanningRecalculation(dueAt);
+    // No independent timer or calculation here. Ordinary changes retain the
+    // last valid plan and its deadline; structural changes may bypass the block.
+    if (force) this.planningCache.nextAllowedAt = 0;
   }
 
   async migrateSettings() {
@@ -4827,7 +4801,6 @@ class HomeFluxEmsApp extends Homey.App {
       this.invalidatePlanningCache();
       this.requestEvaluate(true);
       this.requestContextEvaluate(false, `battery${index + 1}_soc`);
-      if (this.isNightPlanningPhase()) this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after SoC failed', err));
       return true;
     });
 
@@ -4845,7 +4818,6 @@ class HomeFluxEmsApp extends Homey.App {
       if (!this.updateForecastInput(value)) return true;
       this.invalidatePlanningCache();
       this.requestContextEvaluate(false, 'forecast_remaining');
-      if (this.isNightPlanningPhase()) this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after current forecast failed', err));
       return true;
     });
 
@@ -4855,7 +4827,6 @@ class HomeFluxEmsApp extends Homey.App {
       if (!this.updateForecastTomorrowInput(value)) return true;
       this.invalidatePlanningCache();
       this.requestContextEvaluate(false, 'forecast_tomorrow');
-      if (this.isNightPlanningPhase()) this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after tomorrow forecast failed', err));
       return true;
     });
 
@@ -5167,8 +5138,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.externalEnergy.error = '';
       this.homeyEnergyAnalysisCache = { key: '', value: null };
       this.cachedRuntimeSettings = null;
-      this.invalidatePlanningCache(true);
-      this.requestContextEvaluate(true, 'external_electricity_price');
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'external_electricity_price');
       return true;
     });
 
@@ -5216,11 +5187,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.externalEnergyResampleCache = { key: '', value: [] };
       this.homeyEnergyAnalysisCache = { key: '', value: null };
       this.cachedRuntimeSettings = null;
-      this.invalidatePlanningCache(true);
-      this.requestContextEvaluate(true, 'external_electricity_price_curve');
-      if (this.isNightPlanningPhase()) {
-        this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after external price curve failed', err));
-      }
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'external_electricity_price_curve');
       return true;
     });
 
@@ -5285,11 +5253,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.externalEnergyResampleCache = { key: '', value: [] };
       this.homeyEnergyAnalysisCache = { key: '', value: null };
       this.cachedRuntimeSettings = null;
-      this.invalidatePlanningCache(true);
-      this.requestContextEvaluate(true, 'pbth_electricity_price_curve');
-      if (this.isNightPlanningPhase()) {
-        this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after PBTH price curve failed', err));
-      }
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'pbth_electricity_price_curve');
       return true;
     });
 
@@ -5486,7 +5451,6 @@ class HomeFluxEmsApp extends Homey.App {
     this.clearEvSocRequestSchedule();
     this.clearOverrideResumeTimer();
     this.clearContextTimer();
-    this.clearPlanningTimer();
     if (this.contextHeartbeatTimer) {
       clearInterval(this.contextHeartbeatTimer);
       this.contextHeartbeatTimer = null;
@@ -5653,7 +5617,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.state.sunChanceForecasts = { [date]: today, [next]: tomorrow };
     this.setSetting('_sunChanceForecasts', this.state.sunChanceForecasts);
     this.invalidatePlanningCache();
-    this.requestContextEvaluate(true, 'sun_chance_forecast');
+    this.requestContextEvaluate(false, 'sun_chance_forecast');
   }
 
   getSunChanceReserveStatus(settings = this.getSettings(), at = Date.now()) {
@@ -5773,10 +5737,10 @@ class HomeFluxEmsApp extends Homey.App {
     this.state.nightPlanningActive = true;
     this.state.nightPlanningStartedDate = String(planningStartedDate || today);
     this.state.nightPlanningDecisionSource = String(source || 'pv_end');
-    this.invalidatePlanningCache();
+    this.invalidatePlanningCache(true);
+    this.forceChargePlanPublication = true;
     this.clearPvStopTimer();
     this.requestContextEvaluate(true, `night_planning:${source}`);
-    this.publishChargePlanIfChanged(true).catch(err => this.error('Charge plan trigger failed', err));
   }
 
   formatPlanningTime(at) {
@@ -5807,7 +5771,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   async publishChargePlanIfChanged(force = false) {
     if (!this.chargePlanTrigger && !this.tokens.get('emschargeplan')) return null;
-    const plan = this.getPlanningStatus({ force });
+    const plan = this.getPlanningStatus();
     if (plan.currentSoc === null || plan.currentSoc === undefined) return { plan, text: '', changed: false };
     const text = this.buildChargePlanText(plan);
     const windows = Array.isArray(plan.rows)
@@ -5982,15 +5946,14 @@ class HomeFluxEmsApp extends Homey.App {
       this.homeyEnergyResampleCache = { key: '', value: [] };
       this.invalidatePlanningCache();
       this.armOverrideResume();
-      this.requestContextEvaluate(true, 'homey_energy_prices');
-      if (this.isNightPlanningPhase()) this.publishChargePlanIfChanged().catch(err => this.error('Charge plan update after Homey Energy refresh failed', err));
+      this.requestContextEvaluate(false, 'homey_energy_prices');
       return this.getHomeyEnergyStatus();
     } catch (err) {
       this.homeyEnergy.available = false;
       this.homeyEnergy.error = err && err.message ? err.message : String(err);
       this.error('Could not read Homey Energy prices', err);
       this.invalidatePlanningCache();
-      this.requestContextEvaluate(true, 'homey_energy_prices_unavailable');
+      this.requestContextEvaluate(false, 'homey_energy_prices_unavailable');
       return this.getHomeyEnergyStatus();
     } finally {
       this.homeyEnergy.refreshing = false;
@@ -11493,13 +11456,28 @@ class HomeFluxEmsApp extends Homey.App {
     try {
       const now = Date.now();
       const storedSettings = this.getSettings();
-      const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
-      if (paused) return paused;
-
+      this.ensureForecastDayCurrent(now);
       const pvAtCalculationW = parseFiniteInputNumber(this.state.pvPowerW);
       const pvDeltaW = this.getPvDeltaSinceBatteryCommand(pvAtCalculationW);
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
       const settings = this.refreshControlContext(storedSettings, evaluationState, now);
+      try {
+        this.refreshPlanningInContext(storedSettings, settings, evaluationState, now);
+        if (this.isNightPlanningPhase(now)) {
+          const forcePlanPublication = Boolean(this.forceChargePlanPublication);
+          this.forceChargePlanPublication = false;
+          this.publishChargePlanIfChanged(forcePlanPublication).catch(err => {
+            if (forcePlanPublication) this.forceChargePlanPublication = true;
+            this.error('Charge plan publication from slow context failed', err);
+          });
+        }
+      } catch (err) {
+        // A display/Flow plan failure must not prevent battery or safety control.
+        this.markContextDirty('planning_retry');
+        this.error('Charge plan calculation from slow context failed', err);
+      }
+      const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
+      if (paused) return paused;
       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
       this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
@@ -12205,7 +12183,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.6',
+      version: '0.9.7',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12261,38 +12239,41 @@ class HomeFluxEmsApp extends Homey.App {
     };
   }
 
-  getPlanningStatus(options = {}) {
-    const force = options === true || Boolean(options?.force);
-    const now = Date.now();
-    this.checkNightPlanningFallback(now);
-    if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0, timer: null, timerAt: 0 };
+  getPlanningPhaseKey(now = Date.now()) {
+    return `${this.getLocalDateKey(new Date(now))}|${this.isNightPlanningPhase(now)}|${this.getPlanningForecastDay(now)}`;
+  }
 
-    const hasValue = Boolean(this.planningCache.value?.plan);
-    const nextAllowedAt = Number(this.planningCache.nextAllowedAt) || 0;
-    if (force) {
-      this.clearPlanningTimer();
-    } else if (hasValue && !this.planningCache.dirty) {
-      return this.planningCache.value.plan;
-    } else if (hasValue && now < nextAllowedAt) {
-      this.schedulePlanningRecalculation(nextAllowedAt);
-      return this.planningCache.value.plan;
-    }
-
-    const storedSettings = this.getSettings();
-    const settings = this.getRuntimeSettings(storedSettings);
-    const state = this.getEvaluationState(storedSettings, now, 0);
+  refreshPlanningInContext(storedSettings, settings, state, now = Date.now()) {
+    if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
+    const cache = this.planningCache;
+    const phaseKey = this.getPlanningPhaseKey(now);
+    const phaseChanged = cache.phaseKey !== phaseKey;
+    const hasValue = Boolean(cache.value?.plan);
+    const firstSoc = hasValue && cache.value.plan.currentSoc == null && computeAverageSoc(state, settings) !== null;
+    if (hasValue && !phaseChanged && !firstSoc && (!cache.dirty || now < Number(cache.nextAllowedAt))) return cache.value.plan;
     const plan = {
-      version: '0.9.6',
+      version: '0.9.7',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
     };
-    this.planningCache.value = { at: now, plan };
-    this.planningCache.dirty = false;
-    this.planningCache.lastCalculatedAt = now;
-    this.planningCache.nextAllowedAt = now + this.getPlanningMinIntervalMs(storedSettings);
-    this.clearPlanningTimer();
+    cache.value = { at: now, plan };
+    cache.dirty = false;
+    cache.phaseKey = phaseKey;
+    cache.lastCalculatedAt = now;
+    cache.nextAllowedAt = now + Math.max(this.getPlanningMinIntervalMs(storedSettings), this.getSlowControlIntervalMs(storedSettings));
     return plan;
+  }
+
+  // Status/device reads never run the planner or schedule work.
+  getPlanningStatus() {
+    return this.planningCache?.value?.plan || { currentSoc: null, rows: [] };
+  }
+
+  async refreshChargePlanning() {
+    this.invalidatePlanningCache(true);
+    await this.runContextEvaluation(true);
+    return this.getPlanningStatus();
   }
 
   getPublicStatus() {
@@ -12592,7 +12573,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '0.9.6',
+      version: '0.9.7',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

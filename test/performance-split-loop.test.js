@@ -119,14 +119,15 @@ Module._load = originalLoad;
   let now = 1_000_000;
   Date.now = () => now;
   try {
-    const first = app.getPlanningStatus();
+    const first = app.refreshPlanningInContext(app.getSettings(), app.getSettings(), app.state, now);
     assert.equal(app.planningCache.lastCalculatedAt, now);
     app.planningCache.dirty = true;
     now += 60_000;
     const blocked = app.getPlanningStatus();
     assert.strictEqual(blocked, first, 'valid plan was rebuilt inside the five-minute block');
     assert.equal(app.planningCache.lastCalculatedAt, 1_000_000);
-    const forced = app.getPlanningStatus({ force: true });
+    app.invalidatePlanningCache(true);
+    const forced = app.refreshPlanningInContext(app.getSettings(), app.getSettings(), app.state, now);
     assert.notStrictEqual(forced, first, 'manual refresh did not bypass planning block');
     assert.equal(app.planningCache.lastCalculatedAt, now);
   } finally {

@@ -28,6 +28,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.9.7
+
+Charge planning now runs in the shared slow context loop. Ordinary SoC, forecast and price updates are combined while respecting the minimum planning interval. Status and widget reads reuse the cached plan. Manual refresh and planning day/phase changes use the same context path; pending updates are processed even without further input.
+
 ### 0.9.6
 - Corrected cumulative PV-change detection: intermediate calculations no longer reset the reference before a battery command is published.
 - Significant PV changes use live P1 at the next permitted command moment, including planned charging.
