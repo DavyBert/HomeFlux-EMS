@@ -253,7 +253,8 @@ class HomeFluxEmsApp extends Homey.App {
       sessions: Array.from({ length: 4 }, () => ({
         state: 'idle', connectedAt: 0, startedAt: 0, endedAt: 0,
         endedReason: '', endedLatched: false, detectionSource: '',
-        lastChargingAt: 0, zeroCurrentSince: 0,
+        lastChargingAt: 0, zeroCurrentSince: 0, loadAbsent: false,
+        resumeSince: 0, resumeSamples: 0, resumeMode: '', lastLoadSampleAt: 0, observedModePowerW: null,
       })),
     };
     this.lastPublishedHvacPower = null;
@@ -575,7 +576,7 @@ class HomeFluxEmsApp extends Homey.App {
     }, 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.9 initialized');
+    this.log('HomeFlux EMS v1.0.0 initialized');
   }
 
   refreshSettingsCache() {
@@ -1490,7 +1491,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '0.9.9',
+      version: '1.0.0',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -3155,9 +3156,8 @@ class HomeFluxEmsApp extends Homey.App {
     const now = Date.now();
 
     // The last Flow target remains authoritative until another target is sent
-    // or the existing clear-override card is used. A kWh target is a minimum
-    // for the current connection session; reaching it does not block additional
-    // charging during PV or otherwise favourable tariff windows.
+    // or the existing clear-override card is used. Reaching the SoC/kWh goal
+    // completes the current session; reconnecting arms the persistent target.
     if (energyPlan?.active) {
       let energyDeadlineAt = Math.max(0, Number(energyPlan.deadlineAt) || 0);
       if (!(energyDeadlineAt > now)) {
@@ -3182,9 +3182,8 @@ class HomeFluxEmsApp extends Homey.App {
       settings.evPlanningTargetSoc = null;
       settings.evPlanningTargetTime = settings.evTargetTime;
     } else if (settings.evSocEnabled !== false && socPlan?.active) {
-      // A persistent Flow SoC target is likewise a minimum target. Once reached,
-      // normal PV/tariff charging may continue; only the deadline guarantee is
-      // released because the minimum has already been satisfied.
+      // A persistent Flow SoC goal completes this session when fresh SoC
+      // reaches the target, regardless of PV or tariff opportunities.
       settings.evEnergyPlanActive = false;
       settings.evEnergyNeedKwh = 0;
       settings.evEnergyDeadlineAt = 0;
@@ -5143,8 +5142,8 @@ class HomeFluxEmsApp extends Homey.App {
     if (session?.state === 'charging' && Number(session.startedAt) > 0) {
       return `${name}: ${isNl ? 'laden gestart' : 'charging started'} ${sessionTime(session.startedAt)}`;
     }
-    if (session?.state === 'paused' && Number(session.startedAt) > 0) {
-      return `${name}: ${isNl ? 'laden onderbroken' : 'charging paused'} · ${isNl ? 'gestart' : 'started'} ${sessionTime(session.startedAt)}`;
+    if (session?.state === 'paused') {
+      return `${name}: ${isNl ? 'laden gepauzeerd' : 'charging paused'} · ${Number(session.startedAt) > 0 ? `${isNl ? 'gestart' : 'started'} ${sessionTime(session.startedAt)}` : (isNl ? 'wacht op hervatten' : 'waiting to resume')}`;
     }
     const runtime = index === 0 ? null : this.getExtraEv(index);
     const desiredA = Math.max(0, Math.round(Number(decision?.desiredCurrentA) || 0));
@@ -5549,6 +5548,7 @@ class HomeFluxEmsApp extends Homey.App {
       const currentChanged = this.hasNumericInputChanged(
         this.state.evChargeCurrentA, normalizedCurrent, Boolean(this.inputSeen.ev?.chargeCurrent), 0.05,
       );
+      this.tickEvEnergyPlan(0, now);
       this.state.evConnected = nextConnected;
       this.state.evChargeCurrentA = normalizedCurrent;
       this.inputSeen.ev.connected = true;
@@ -5709,6 +5709,7 @@ class HomeFluxEmsApp extends Homey.App {
         const currentChanged = this.hasNumericInputChanged(
           runtime.state.chargeCurrentA, normalizedCurrent, Boolean(runtime.seen.chargeCurrent), 0.05,
         );
+        this.tickEvEnergyPlan(index, now);
         runtime.state.connected = nextConnected;
         runtime.state.chargeCurrentA = normalizedCurrent;
         runtime.seen.connected = true;
@@ -7113,6 +7114,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   setEvSessionOverride(mode, source = 'flow') {
+    this.rearmEvCompletedTarget(0);
     const normalized = this.normalizeEvOperatingMode(mode);
     const connectedNow = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
     const alreadyStarted = Boolean(this.evSessionOverride?.mode) && Boolean(this.evSessionOverride?.sessionStarted);
@@ -7181,6 +7183,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (index === 0) return this.setEvSessionOverride(mode, source);
     const runtime = this.getExtraEv(index);
     if (!runtime) return this.normalizeEvOperatingMode(mode);
+    this.rearmEvCompletedTarget(index);
     const normalized = this.normalizeEvOperatingMode(mode);
     const connectedNow = Boolean(runtime.seen.connected) && Boolean(runtime.state.connected);
     const alreadyStarted = Boolean(runtime.sessionOverride?.mode) && Boolean(runtime.sessionOverride?.sessionStarted);
@@ -7300,7 +7303,8 @@ class HomeFluxEmsApp extends Homey.App {
       Object.assign(session, {
         state: 'waiting', connectedAt: now, startedAt: 0, endedAt: 0,
         endedReason: '', endedLatched: false, detectionSource: '',
-        lastChargingAt: 0, zeroCurrentSince: 0,
+        lastChargingAt: 0, zeroCurrentSince: 0, loadAbsent: false,
+        resumeSince: 0, resumeSamples: 0, resumeMode: '', lastLoadSampleAt: 0, observedModePowerW: null,
         baselineW: this.evSessionDetection.portfolioBaselineW !== null
           && this.evSessionDetection.portfolioBaselineW !== undefined
           && Number.isFinite(Number(this.evSessionDetection.portfolioBaselineW))
@@ -7333,6 +7337,8 @@ class HomeFluxEmsApp extends Homey.App {
     const session = this.getEvSessionDetectionRuntime(index);
     if (!session || !connected || session.endedLatched) return false;
     const charging = Math.max(0, Number(currentA) || 0) > 0.5;
+    if (!charging && session.detectionSource === 'house_load'
+      && this.getEvControlType(this.getEvInstanceSettings(index)) === 'mode') return false;
     if (charging) {
       const newlyStarted = !(Number(session.startedAt) > 0);
       if (newlyStarted) session.startedAt = now;
@@ -7340,11 +7346,13 @@ class HomeFluxEmsApp extends Homey.App {
       session.detectionSource = 'current';
       session.lastChargingAt = now;
       session.zeroCurrentSince = 0;
+      session.loadAbsent = false;
       return newlyStarted;
     }
     if (Number(session.startedAt) > 0) {
       if (!Number(session.zeroCurrentSince)) session.zeroCurrentSince = now;
       session.state = 'paused';
+      session.loadAbsent = true;
     }
     return false;
   }
@@ -7352,61 +7360,111 @@ class HomeFluxEmsApp extends Homey.App {
   updateEvPortfolioLoadDetection(gridPowerW = this.state.gridPowerW, now = Date.now(), settings = this.getSettings()) {
     const detection = this.evSessionDetection;
     if (!detection) return false;
+    const sampleAt = Number(this.inputUpdatedAt?.grid) || now;
+    if (sampleAt <= Number(detection.lastSampleAt || 0)) return false;
+    detection.lastSampleAt = sampleAt;
     const siteLoadW = this.getEvPhysicalSiteLoadW(gridPowerW);
-    detection.physicalSiteLoadW = Number.isFinite(Number(siteLoadW)) ? Math.round(siteLoadW) : null;
-    const baselineW = detection.portfolioBaselineW === null || detection.portfolioBaselineW === undefined
-      ? NaN : Number(detection.portfolioBaselineW);
-    const toleranceW = Number.isFinite(baselineW) ? getHouseLoadToleranceW(baselineW) : null;
-    const detectedW = calculateDetectedEvLoadW(siteLoadW, baselineW, toleranceW);
-    detection.detectedEvLoadW = Number.isFinite(Number(detectedW)) ? Math.round(detectedW) : null;
+    detection.physicalSiteLoadW = siteLoadW === null ? null : Math.round(siteLoadW);
+    const baselineW = detection.portfolioBaselineW;
+    const detectedW = calculateDetectedEvLoadW(siteLoadW, baselineW);
+    detection.detectedEvLoadW = siteLoadW === null || detectedW === null ? null : Math.round(detectedW);
+    if (detection.detectedEvLoadW === null) return false;
 
     const connectedIndexes = this.getConnectedEvIndexes(settings);
     const candidates = connectedIndexes.filter(index => {
       const instanceSettings = this.getEvInstanceSettings(index, settings);
-      const session = this.getEvSessionDetectionRuntime(index);
-      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
-      return this.getEvControlType(instanceSettings) === 'mode'
-        && !session?.endedLatched
-        && Boolean(decision?.intentionalGridImport)
-        && Math.max(0, Number(decision?.portfolioGridImportTargetW) || 0) > 0;
+      return instanceSettings.evEnabled && this.getEvControlType(instanceSettings) === 'mode'
+        && !this.getEvSessionDetectionRuntime(index)?.endedLatched;
     });
-    const relevant = candidates.length > 0;
-    const canAttributeSession = candidates.length === 1 && connectedIndexes.length === 1;
-    const nearBaseline = relevant && detectedW === 0;
-    const wasBlocked = Boolean(detection.gridReleaseBlocked);
-    if (nearBaseline && canAttributeSession) {
-      if (!Number(detection.noLoadSince)) detection.noLoadSince = now;
-      if (now - Number(detection.noLoadSince) >= 60 * 1000) {
-        const session = this.getEvSessionDetectionRuntime(candidates[0]);
-        if (session) session.detectionSource = 'house_load';
-        return this.markEvSessionEnded(candidates[0], 'house_load', now);
-      }
-    } else {
+    // A shared P1 meter cannot identify individual cars. Keep the existing
+    // portfolio ceiling for multiple cars; never guess which session paused.
+    if (candidates.length !== 1 || connectedIndexes.length !== 1) {
       detection.noLoadSince = 0;
       detection.gridReleaseBlocked = false;
       detection.gridReleaseBlockedAt = 0;
+      return false;
     }
+    const index = candidates[0];
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!session) return false;
+    const instanceSettings = this.getEvInstanceSettings(index, settings);
+    const publishedMode = index === 0 ? this.lastPublishedEvChargeMode : this.getExtraEv(index)?.lastPublishedChargeMode;
+    const expectedW = this.getEvModeEstimatedCurrentA(publishedMode, instanceSettings) * evPowerPerAmp(instanceSettings);
+    const previousState = session.state;
+    const wasAbsent = Boolean(session.loadAbsent);
+    const wasBlocked = Boolean(detection.gridReleaseBlocked);
+    const toleranceW = Math.max(250, expectedW * this.getEvFeedbackTolerancePercent(instanceSettings) / 100);
+    // Household appliances may add to real EV power. Require at least the
+    // configured mode power minus tolerance, then cap attribution at that mode
+    // power. A 2 kW airfryer cannot satisfy a 4.16/11.09 kW charging profile.
+    const matches = ['smart', 'standard'].includes(String(publishedMode))
+      && expectedW > 0 && detectedW >= expectedW - toleranceW;
+    session.observedModePowerW = matches ? Math.min(detectedW, expectedW) : 0;
+    const freshSample = sampleAt > Number(session.lastLoadSampleAt || 0);
+    if (!freshSample) return false;
+    const sampleGap = sampleAt - Number(session.lastLoadSampleAt || 0);
+    session.lastLoadSampleAt = sampleAt;
 
-    // With exactly one unresolved mode EV, the portfolio rise can be attributed
-    // safely. With multiple EVs it remains portfolio-only: HomeFlux never
-    // guesses which individual charger started or stopped.
-    if (relevant && Number(detectedW) > 0) {
-      if (canAttributeSession) {
-        const session = this.getEvSessionDetectionRuntime(candidates[0]);
-        if (session && !(Number(session.startedAt) > 0)) {
-          session.startedAt = now;
+    if (!matches) {
+      session.loadAbsent = true;
+      session.resumeSince = 0;
+      session.resumeSamples = 0;
+      detection.detectedEvLoadW = 0;
+      // Missing samples are not sixty seconds of evidence. A long input gap
+      // restarts observation instead of finishing a timer against stale P1.
+      if (!Number(detection.noLoadSince) || sampleGap > 60000) detection.noLoadSince = now;
+      if (now - Number(detection.noLoadSince) >= 60000) {
+        session.state = 'paused';
+        session.detectionSource = 'house_load';
+        detection.gridReleaseBlocked = true;
+        if (!detection.gridReleaseBlockedAt) detection.gridReleaseBlockedAt = now;
+      }
+    } else {
+      detection.noLoadSince = 0;
+      if (session.state !== 'charging' || session.loadAbsent) {
+        if (!Number(session.resumeSince) || sampleGap > 60000 || session.resumeMode !== publishedMode) {
+          session.resumeSince = now;
+          session.resumeSamples = 0;
+          session.resumeMode = publishedMode;
+        }
+        session.resumeSamples = Number(session.resumeSamples || 0) + 1;
+        const confirmed = session.resumeSamples >= 2 && now - session.resumeSince >= 5000;
+        session.loadAbsent = !confirmed;
+        if (confirmed) {
           session.state = 'charging';
+          if (!Number(session.startedAt)) session.startedAt = now;
           session.detectionSource = 'house_load';
-          session.lastChargingAt = now;
+          detection.gridReleaseBlocked = false;
+          detection.gridReleaseBlockedAt = 0;
         }
       }
+      detection.detectedEvLoadW = session.loadAbsent ? 0 : Math.round(Math.min(detectedW, expectedW));
+      if (!session.loadAbsent) {
+        session.lastChargingAt = now;
+        detection.gridReleaseBlocked = false;
+        detection.gridReleaseBlockedAt = 0;
+      }
     }
-    return wasBlocked !== Boolean(detection.gridReleaseBlocked);
+    // Pause only changes accounting/status. It never clears a target/override
+    // or sends STOP. Peak Guard and tariff decisions keep their normal authority.
+    return previousState !== session.state || wasAbsent !== Boolean(session.loadAbsent)
+      || wasBlocked !== Boolean(detection.gridReleaseBlocked);
+  }
+
+  rearmEvCompletedTarget(index) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!session || !['soc_target', 'energy_target'].includes(session.endedReason)) return;
+    Object.assign(session, { state: 'waiting', endedAt: 0, endedReason: '', endedLatched: false,
+      loadAbsent: true, resumeSince: 0, resumeSamples: 0, observedModePowerW: null });
   }
 
   applyEvSessionEndLatch(index, decision) {
     const session = this.getEvSessionDetectionRuntime(index);
-    if (!decision || !session?.endedLatched) return decision;
+    if (!decision) return decision;
+    if (session && !session.endedLatched && decision.targetCompleted) {
+      this.markEvSessionEnded(index, decision.targetCompleted);
+    }
+    if (!session?.endedLatched) return decision;
     return {
       ...decision,
       allowed: false,
@@ -7422,23 +7480,29 @@ class HomeFluxEmsApp extends Homey.App {
       portfolioGridImportTargetW: 0,
       intentionalGridImport: false,
       source: 'off',
-      reason: session.endedReason === 'house_load'
-        ? 'Laadsessie automatisch beëindigd · woningverbruik 1 minuut terug op referentie'
-        : 'Laadsessie beëindigd via Flow · wacht op nieuwe aansluiting',
+      effectiveChargeMode: 'stop',
+      requestedChargeMode: 'stop',
+      nightSurplusActive: false,
+      nightSurplusAllocatedW: 0,
+      reason: session.endedReason === 'soc_target'
+        ? 'Laadsessie voltooid · SoC-doel bereikt'
+        : session.endedReason === 'energy_target'
+          ? 'Laadsessie voltooid · gevraagde energie geleverd'
+          : 'Laadsessie beëindigd via Flow · wacht op nieuwe aansluiting',
       sessionEnded: true,
     };
   }
 
   markEvSessionEnded(index, source = 'flow', now = Date.now()) {
     const session = this.getEvSessionDetectionRuntime(index);
-    if (!session) return false;
+    if (!session || session.endedLatched) return false;
     const input = this.getEvInputSnapshot(index);
     Object.assign(session, {
       state: 'ended',
       endedAt: now,
       endedReason: String(source || 'flow'),
       endedLatched: Boolean(input?.connected),
-      detectionSource: source === 'house_load' ? 'house_load' : String(session.detectionSource || 'flow'),
+      detectionSource: String(session.detectionSource || 'flow'),
       zeroCurrentSince: 0,
     });
     this.handleEvEnergyPlanConnectionTransition(index, true, false, now);
@@ -8140,6 +8204,7 @@ class HomeFluxEmsApp extends Homey.App {
       energyPlan.remainingKwh = 0;
       energyPlan.sessionStarted = false;
     }
+    this.rearmEvCompletedTarget(index);
     this.persistEvSocPlanOverrides();
     this.persistEvEnergyPlanOverrides(true);
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
@@ -8162,18 +8227,23 @@ class HomeFluxEmsApp extends Homey.App {
     const plan = this.evEnergyPlans?.[index];
     if (!plan?.active) return plan || null;
     const last = Math.max(0, Number(plan.lastTickAt) || now);
-    const elapsedHours = Math.max(0, now - last) / 3600000;
     const input = this.getEvInputSnapshot(index);
+    const feedbackAt = Number(input?.updatedAt?.chargeCurrent) || 0;
+    // A command is no delivery proof. Integrate only a bounded interval after
+    // actual current feedback, settling it before the next reading replaces it.
+    const elapsedHours = feedbackAt > 0 ? Math.max(0, Math.min(now, feedbackAt + 60000) - Math.max(last, feedbackAt)) / 3600000 : 0;
     const settings = this.getEvInstanceSettings(index, this.getSettings());
     const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
     const actualCurrentA = connected && input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
-    const deliveredKwh = elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000;
+    const session = this.getEvSessionDetectionRuntime(index);
+    const deliveredKwh = session?.loadAbsent || session?.endedLatched ? 0 : elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000;
     const before = Math.max(0, Number(plan.remainingKwh) || 0);
     if (deliveredKwh > 0 && before > 0) plan.remainingKwh = Math.max(0, before - deliveredKwh);
     plan.lastTickAt = now;
     if (deliveredKwh > 0 && before > 0) {
       const reachedMinimumNow = before > 0.001 && plan.remainingKwh <= 0.001;
       this.persistEvEnergyPlanOverrides(reachedMinimumNow, now);
+      if (reachedMinimumNow && session && !session.endedLatched) this.markEvSessionEnded(index, 'energy_target', now);
     }
     return plan;
   }
@@ -8219,6 +8289,7 @@ class HomeFluxEmsApp extends Homey.App {
     const deadline = findNextLocalTime(new Date(now), time, settings.timezone || 'Europe/Brussels');
     const plan = this.evEnergyPlans[index];
     if (!plan) return false;
+    this.rearmEvCompletedTarget(index);
     plan.active = kwh > 0;
     plan.targetKwh = kwh;
     plan.remainingKwh = kwh;
@@ -8255,6 +8326,7 @@ class HomeFluxEmsApp extends Homey.App {
     const plan = this.evSocPlans[index];
     if (!plan) return false;
     plan.active = true;
+    this.rearmEvCompletedTarget(index);
     plan.targetSoc = Math.max(1, Math.min(100, targetSoc));
     plan.targetTime = time;
     plan.deadlineAt = deadline.getTime();
@@ -8738,13 +8810,20 @@ class HomeFluxEmsApp extends Homey.App {
     // but never treat it as a live portfolio reservation after HomeFlux has
     // published charging permission = false.
     if (!this.isEvOutputPermittedFor(index)) return 0;
+    const session = this.getEvSessionDetectionRuntime(index);
     if (this.getEvControlType(settings) === 'mode') {
       if (!this.isEvOutputActiveFor(index, storedSettings)) return 0;
+      // A candidate resume is physical load already present at the meter.
+      // Account for it in headroom immediately; grid release still waits for
+      // the multi-sample confirmation in getEvGridImportControlStatus().
+      if (session?.observedModePowerW != null) return Math.max(0, session.observedModePowerW);
+      if (session?.loadAbsent) return 0;
       const publishedMode = index === 0
         ? String(this.lastPublishedEvChargeMode || 'stop')
         : String(this.getExtraEv(index)?.lastPublishedChargeMode || 'stop');
       return this.getEvModeEstimatedCurrentA(publishedMode, settings) * perAmpW;
     }
+    if (session?.loadAbsent) return 0;
     const currentA = index === 0
       ? Number(this.lastPublishedEvCurrentA || 0)
       : Number(this.getExtraEv(index)?.lastPublishedCurrentA || 0);
@@ -8850,9 +8929,10 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   calculateEvPortfolioDecisions(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, storedSettings = this.getSettings()) {
-    const runtimeSettings = this.getRuntimeSettings(storedSettings);
     const evCount = this.getEvCount(storedSettings);
     if (evCount <= 0) return [];
+    for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
+    const runtimeSettings = this.getRuntimeSettings(storedSettings);
     const tariff = result?.tariff || findCurrentTariff(new Date(), runtimeSettings);
     const rawGridW = Number(this.state.gridPowerW) || 0;
     const currentBatteryW = Number(currentBatteryCommandW) || 0;
@@ -9649,10 +9729,15 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEvControlCurrentA(index, input = this.getEvInputSnapshot(index), storedSettings = this.getSettings()) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    const settings = this.getEvInstanceSettings(index, storedSettings);
+    if (this.getEvControlType(settings) === 'mode' && session?.observedModePowerW != null) {
+      return Math.max(0, session.observedModePowerW) / evPowerPerAmp(settings);
+    }
+    if (session?.loadAbsent) return 0;
     const actualA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
     const feedbackAt = Math.max(0, Number(input?.updatedAt?.chargeCurrent) || 0);
     const published = this.getEvPublishedCurrentState(index);
-    const settings = this.getEvInstanceSettings(index, storedSettings);
     if (this.getEvControlType(settings) === 'mode' && !Boolean(input?.seen?.chargeCurrent) && this.isEvOutputActiveFor(index, storedSettings)) {
       const publishedMode = index === 0
         ? String(this.lastPublishedEvChargeMode || 'stop')
@@ -9798,7 +9883,8 @@ class HomeFluxEmsApp extends Homey.App {
           : (['smart','standard'].includes(publishedMode.toLowerCase())
             ? publishedMode.toLowerCase()
             : (desiredA > this.getEvModeEstimatedCurrentA('smart', settings) ? 'standard' : 'smart'));
-        const modePowerW = this.getEvModeEstimatedCurrentA(activeMode, settings) * perAmpW;
+        const modePowerW = this.getEvSessionDetectionRuntime(index)?.loadAbsent ? 0
+          : this.getEvModeEstimatedCurrentA(activeMode, settings) * perAmpW;
         modeConfiguredPowerCeilingW += modePowerW;
         configuredEvPowerCeilingW += modePowerW;
       } else {
@@ -9858,9 +9944,7 @@ class HomeFluxEmsApp extends Homey.App {
     const rawGridW = Number(this.state?.gridPowerW) || 0;
     const physicalImportBeforeBatteryW = Math.max(0, rawGridW + batteryPowerW);
     let physicalAllowanceW = physicalImportBeforeBatteryW;
-    if (configuredEvPowerCeilingW > 0) {
-      physicalAllowanceW = Math.min(physicalAllowanceW, configuredEvPowerCeilingW);
-    }
+    physicalAllowanceW = Math.min(physicalAllowanceW, configuredEvPowerCeilingW);
     if (confirmationRequired) physicalAllowanceW = Math.min(physicalAllowanceW, Math.max(0, confirmedEvPowerW));
     const detection = this.evSessionDetection || {};
     const baselineW = detection.portfolioBaselineW === null || detection.portfolioBaselineW === undefined
@@ -12904,7 +12988,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.9',
+      version: '1.0.0',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12977,7 +13061,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '0.9.9',
+        version: '1.0.0',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13302,7 +13386,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '0.9.9',
+      version: '1.0.0',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -13517,15 +13601,16 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (body.ev && typeof body.ev === 'object') {
       const now = Date.now();
+      this.tickEvEnergyPlan(0, now);
       const wasConnected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
       if (Number.isFinite(Number(body.ev.soc))) { this.state.evSoc = Math.max(0, Math.min(100, Number(body.ev.soc))); this.inputSeen.ev.soc = true; this.inputUpdatedAt.ev.soc = now; contextInputChanged = true; }
       if (body.ev.connected !== undefined) { this.state.evConnected = Boolean(body.ev.connected); this.inputSeen.ev.connected = true; this.inputUpdatedAt.ev.connected = now; contextInputChanged = true; }
-      if (Number.isFinite(Number(body.ev.chargeCurrentA))) { this.state.evChargeCurrentA = Math.max(0, Number(body.ev.chargeCurrentA)); this.inputSeen.ev.chargeCurrent = true; this.inputUpdatedAt.ev.chargeCurrent = now; this.noteAutoTuneEvFeedback(0, this.state.evChargeCurrentA, now); contextInputChanged = true; }
+      if (parseFiniteInputNumber(body.ev.chargeCurrentA) !== null) { this.state.evChargeCurrentA = Math.max(0, Number(body.ev.chargeCurrentA)); this.inputSeen.ev.chargeCurrent = true; this.inputUpdatedAt.ev.chargeCurrent = now; this.noteAutoTuneEvFeedback(0, this.state.evChargeCurrentA, now); contextInputChanged = true; }
       if (body.ev.connected !== undefined) {
         this.handleEvSessionConnectionTransition(wasConnected, this.state.evConnected);
         this.handleEvDetectionConnectionTransition(0, wasConnected, this.state.evConnected, now);
       }
-      this.updateEvSessionFromCurrent(0, Boolean(this.state.evConnected), this.state.evChargeCurrentA, now);
+      if (parseFiniteInputNumber(body.ev.chargeCurrentA) !== null) this.updateEvSessionFromCurrent(0, Boolean(this.state.evConnected), this.state.evChargeCurrentA, now);
     }
     if (body.hvac && typeof body.hvac === 'object') {
       const now = Date.now();
@@ -13541,15 +13626,16 @@ class HomeFluxEmsApp extends Homey.App {
         const runtime = this.getExtraEv(index);
         if (!runtime) return;
         const now = Date.now();
+        this.tickEvEnergyPlan(index, now);
         const wasConnected = Boolean(runtime.seen.connected) && Boolean(runtime.state.connected);
         if (Number.isFinite(Number(value.soc))) { runtime.state.soc = Math.max(0, Math.min(100, Number(value.soc))); runtime.seen.soc = true; runtime.updatedAt.soc = now; contextInputChanged = true; }
         if (value.connected !== undefined) { runtime.state.connected = Boolean(value.connected); runtime.seen.connected = true; runtime.updatedAt.connected = now; contextInputChanged = true; }
-        if (Number.isFinite(Number(value.chargeCurrentA))) { runtime.state.chargeCurrentA = Math.max(0, Number(value.chargeCurrentA)); runtime.seen.chargeCurrent = true; runtime.updatedAt.chargeCurrent = now; this.noteAutoTuneEvFeedback(index, runtime.state.chargeCurrentA, now); contextInputChanged = true; }
+        if (parseFiniteInputNumber(value.chargeCurrentA) !== null) { runtime.state.chargeCurrentA = Math.max(0, Number(value.chargeCurrentA)); runtime.seen.chargeCurrent = true; runtime.updatedAt.chargeCurrent = now; this.noteAutoTuneEvFeedback(index, runtime.state.chargeCurrentA, now); contextInputChanged = true; }
         if (value.connected !== undefined) {
           this.handleEvSessionConnectionTransitionFor(index, wasConnected, runtime.state.connected);
           this.handleEvDetectionConnectionTransition(index, wasConnected, runtime.state.connected, now);
         }
-        this.updateEvSessionFromCurrent(index, Boolean(runtime.state.connected), runtime.state.chargeCurrentA, now);
+        if (parseFiniteInputNumber(value.chargeCurrentA) !== null) this.updateEvSessionFromCurrent(index, Boolean(runtime.state.connected), runtime.state.chargeCurrentA, now);
       });
     }
     if (Array.isArray(body.hvacs)) {

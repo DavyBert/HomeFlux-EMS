@@ -443,8 +443,9 @@
         const reason = String(session.endedReason || '');
         const source = reason === 'flow'
           ? ` · ${tr(Homey, 'widget.status.viaFlow', 'by Flow')}`
-          : reason === 'house_load'
-            ? ` · ${tr(Homey, 'widget.status.automaticHouseLoad', 'automatically by house measurement')}` : '';
+          : reason === 'soc_target'
+            ? ` · ${tr(Homey, 'widget.status.evSocCompleted', 'SoC target reached')}`
+            : reason === 'energy_target' ? ` · ${tr(Homey, 'widget.status.evEnergyCompleted', 'Requested energy delivered')}` : '';
         return `${tr(Homey, 'widget.status.evSessionEnded', 'Session ended')} ${formatTime(session.endedAt)}${source}`;
       }
       if (state === 'charging' && Number(session.startedAt) > 0) {
@@ -453,8 +454,8 @@
           : tr(Homey, 'widget.status.currentFeedback', 'current feedback');
         return `${tr(Homey, 'widget.status.evSessionStarted', 'Started')} ${formatTime(session.startedAt)} · ${source}`;
       }
-      if (state === 'paused' && Number(session.startedAt) > 0) {
-        return `${tr(Homey, 'widget.status.evChargingPaused', 'Charging paused')} · ${tr(Homey, 'widget.status.evSessionStarted', 'started')} ${formatTime(session.startedAt)}`;
+      if (state === 'paused') {
+        return `${tr(Homey, 'widget.status.evChargingPaused', 'Charging paused')}${Number(session.startedAt) > 0 ? ` · ${tr(Homey, 'widget.status.evSessionStarted', 'started')} ${formatTime(session.startedAt)}` : ''}`;
       }
       if (state === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
       return '';

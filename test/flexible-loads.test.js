@@ -638,9 +638,7 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   assert.equal(d.requestedCurrentA, 20);
 }
 
-// v0.7.2: reaching a Flow/settings minimum target does not turn charging into
-// a hard stop. The minimum guarantee is released, while normal favourable
-// tariff/PV charging may continue.
+// v1.0.0: reaching a fresh SoC target completes the session, even on a cheap tariff.
 {
   const now = new Date('2026-09-09T01:00:00+02:00');
   const settings = baseSettings({
@@ -657,14 +655,12 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   });
   assert.equal(d.minimumTargetReached, true);
   assert.equal(d.guaranteeActive, false);
-  assert.equal(d.allowed, true);
-  assert.equal(d.desiredCurrentA, 16);
-  assert.match(d.reason, /Minimumdoel bereikt/);
+  assert.equal(d.allowed, false);
+  assert.equal(d.desiredCurrentA, 0);
+  assert.equal(d.targetCompleted, 'soc_target');
 }
 
-// v0.7.2: after a persistent kWh minimum is reached, HomeFlux still charges on
-// favourable moments but waits on an unselected tariff instead of deleting the
-// target or forcing further charging.
+// v1.0.0: a delivered kWh target stops charging on every tariff.
 {
   const now = new Date('2026-09-09T12:00:00+02:00');
   const common = baseSettings({
@@ -683,7 +679,7 @@ console.log('HomeFlux EMS flexible-load tests: OK');
   assert.equal(wait.planningType, 'energy');
   assert.equal(wait.minimumTargetReached, true);
   assert.equal(wait.allowed, false);
-  assert.match(wait.reason, /verder laden alleen op PV of geselecteerde tarieven/);
+  assert.equal(wait.targetCompleted, 'energy_target');
 
   const cheap = calculateEvDecision({
     settings: common, connected: true, soc: NaN, actualCurrentA: 0, gridPowerW: 0,
@@ -691,8 +687,8 @@ console.log('HomeFlux EMS flexible-load tests: OK');
     tariff: { kind: 'tou', rateId: 'cheap', className: 'cheap', label: 'Cheap' },
   });
   assert.equal(cheap.minimumTargetReached, true);
-  assert.equal(cheap.allowed, true);
-  assert.equal(cheap.desiredCurrentA, 16);
+  assert.equal(cheap.allowed, false);
+  assert.equal(cheap.desiredCurrentA, 0);
 }
 
 // v0.7.2: a guaranteed minimum may use every tariff when selected tariff time

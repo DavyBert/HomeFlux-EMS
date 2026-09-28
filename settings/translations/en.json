@@ -1738,7 +1738,10 @@
     "Het rapport bevat geen API-tokens, wachtwoorden of andere sleutelvelden. Planning bevat wel de HomeFlux-configuratie die nodig is om een beslissing achteraf te kunnen reproduceren.": "The report contains no API tokens, passwords or other key fields. Planning does include the HomeFlux configuration needed to reproduce a decision afterwards.",
     "Diagnostiek bijwerken…": "Updating diagnostics…",
     "Diagnostiek uit": "Diagnostics off",
-    "Rapport gekopieerd": "Report copied"
+    "Rapport gekopieerd": "Report copied",
+    "Laadsessie voltooid · SoC-doel bereikt": "Charging session completed · SoC target reached",
+    "Laadsessie voltooid · gevraagde energie geleverd": "Charging session completed · requested energy delivered",
+    "laden gepauzeerd": "charging paused"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

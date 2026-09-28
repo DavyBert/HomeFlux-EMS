@@ -19,7 +19,7 @@ Once these inputs and outputs are connected, HomeFlux can perform the core batte
 
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
-Optional features include EV charging, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings, diagnostics and dashboard widgets.
+Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings, diagnostics and dashboard widgets.
 
 For the complete functionality, configuration and all Flow cards, see:  
 https://github.com/DavyBert/HomeFlux-EMS/discussions/3
@@ -27,6 +27,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.0.0
+
+EV sessions now distinguish charging, paused and completed. Missing mode-controlled charging power for 60 seconds pauses tracking without a Stop latch; sustained P1 load matching the configured mode resumes it automatically. Paused EVs release no grid budget, and household load above the configured mode power cannot inflate EV attribution. Sessions complete through the completion Flow card, a fresh SoC reaching its target, or measured current delivering the requested kWh. Pause preserves targets and session overrides. Live status and widgets show the pause and completion reason.
 
 ### 0.9.9
 

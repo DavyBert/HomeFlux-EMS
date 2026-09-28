@@ -1,7 +1,7 @@
 {
   "settings": {
     "title": "HomeFlux EMS",
-    "subtitle": "v0.9.9 — Jouw energie, anders geregeld",
+    "subtitle": "v1.0.0 — Jouw energie, anders geregeld",
     "language": "nl"
   },
   "widget": {
@@ -177,8 +177,8 @@
       "houseMeasurement": "woningmeting",
       "viaFlow": "via Flow",
       "automaticHouseLoad": "automatisch via woningmeting",
-      "evNoLoadGridStopped": "Geen EV-belasting gedurende 1 minuut gedetecteerd · netvrijgave gestopt",
-      "evHouseObservation": "Woningverbruik opnieuw rond de referentie · EV-netvrijgave stopt over {seconds} s als dit zo blijft",
+      "evNoLoadGridStopped": "Laden gepauzeerd · EV-netbudget 0 W · wacht op passend laadvermogen",
+      "evHouseObservation": "Geen passend EV-laadvermogen · EV-netbudget 0 W · pauzestatus over {seconds} s als dit zo blijft",
       "evHouseReference": "woningreferentie",
       "boilerFallbackReadyDetail": "{days}/{target} zonnedag(en) gemist · tarieffallback actief",
       "externalService": "Externe dienst",
@@ -190,7 +190,9 @@
       "secondaryPrice": "Secundaire prijs · origineel → afgestemd",
       "evEmergencyTariffWait": "Noodladen wacht op geselecteerd tarief",
       "secondaryReady": "Reservebron gereed",
-      "secondaryNotReady": "Reservebron niet gereed"
+      "secondaryNotReady": "Reservebron niet gereed",
+      "evSocCompleted": "SoC-doel bereikt",
+      "evEnergyCompleted": "Gevraagde energie geleverd"
     }
   }
 }
