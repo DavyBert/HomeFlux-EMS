@@ -4,6 +4,7 @@ const { sourceOrder, fitCalibration, validCalibration, normalizeSecondary } = re
 const { extractMathExpression } = require('./lib/price-formula');
 
 const Homey = require('homey');
+const { performance } = require('perf_hooks');
 const { SlotFlowCards } = require('./lib/flow-slot-cards');
 const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
 const { HomeyAPI } = require('homey-api');
@@ -14,6 +15,14 @@ const { migrateVoltage } = require('./settings/ev-headroom');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelected, getEvPvTariffPolicy } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
+
+const DIAGNOSTICS_MAX_MS = 48 * 60 * 60 * 1000;
+const DIAGNOSTIC_SETTING_KEYS = {
+  planning: 'diagnosticsPlanningEnabled',
+  cpu: 'diagnosticsCpuEnabled',
+  errors: 'diagnosticsErrorsEnabled',
+  memory: 'diagnosticsMemoryEnabled',
+};
 
 function parseFiniteInputNumber(value) {
   // Number(null), Number('') and Number(false) are all 0 in JavaScript. Flow/API
@@ -116,6 +125,10 @@ class HomeFluxEmsApp extends Homey.App {
     this.cachedRuntimeSettings = null;
     this.fastResultSignature = '';
     this.contextHeartbeatTimer = null;
+    // Low-priority housekeeping shares the configured slow-context cadence.
+    // The 60-second heartbeat remains only as a coarse watchdog for time/safety
+    // boundaries and decides whether this slower housekeeping pass is due.
+    this.lastSlowHeartbeatAt = 0;
     this.flexibleSafetySignature = '';
     this.controlContext = null;
     this.controlRuntimeSettings = null;
@@ -170,15 +183,21 @@ class HomeFluxEmsApp extends Homey.App {
     this.settingsCache = null;
     this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
 
+    // Optional diagnostics are entirely passive while disabled. When enabled,
+    // they keep compact in-memory aggregates and ring buffers only; no extra
+    // P1/PV polling or EMS evaluations are introduced.
+    this.diagnostics = this.createDiagnosticsRuntime();
+    this.diagnosticsExpiryTimer = null;
+
     // v0.6.4: Automatic Finetuning piggybacks on measurements HomeFlux already
     // receives. Only tiny rolling aggregates are kept in RAM; there is no new
     // polling loop and no raw sample history beyond the existing grid buffer.
     this.autoTuneRuntime = this.createAutoTuneRuntime();
 
-    // v0.4.9: savings accounting piggybacks on the existing meter/command
-    // updates and the existing one-minute heartbeat. Raw samples are never
-    // stored; only one compact aggregate per day and a tiny battery-origin
-    // inventory are persisted.
+    // v0.4.9: savings accounting piggybacks on existing meter/command updates.
+    // Periodic persistence and EMS-device refresh are coalesced behind the
+    // configured slow-context cadence instead of running on every heartbeat.
+    // Raw samples are never stored; only compact daily aggregates are persisted.
     this.savings = {
       lastSampleAt: 0,
       today: emptyDay(''),
@@ -356,6 +375,7 @@ class HomeFluxEmsApp extends Homey.App {
     await this.migrateSettings();
     await this.ensureDefaults();
     this.refreshSettingsCache();
+    this.restoreDiagnosticsSession();
     this.restoreEvEnergyPlanOverrides();
     this.restoreEvSocPlanOverrides();
     this.restoreBoilerRuntime();
@@ -400,6 +420,11 @@ class HomeFluxEmsApp extends Homey.App {
         // complete settings scan in every nested helper.
         this.refreshCachedSetting(key);
         this.cachedRuntimeSettings = null;
+        if (Object.values(DIAGNOSTIC_SETTING_KEYS).includes(String(key))) {
+          this.handleDiagnosticsSettingsChanged();
+          return;
+        }
+        if (String(key).startsWith('_diagnostics')) return;
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
@@ -539,10 +564,18 @@ class HomeFluxEmsApp extends Homey.App {
     // A one-minute heartbeat performs timestamp comparisons only. It does not
     // run the EMS engine unless a tariff boundary, planning phase, flexible-load
     // deadline or other slow context really became dirty.
-    this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
+    this.contextHeartbeatTimer = this.homey.setInterval(() => {
+      const diagnosticCpu = this.startDiagnosticCpuSection('heartbeat');
+      try {
+        this.sampleDiagnostics(Date.now());
+        this.runContextHeartbeat();
+      } finally {
+        this.endDiagnosticCpuSection(diagnosticCpu);
+      }
+    }, 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.8 initialized');
+    this.log('HomeFlux EMS v0.9.9 initialized');
   }
 
   refreshSettingsCache() {
@@ -896,6 +929,607 @@ class HomeFluxEmsApp extends Homey.App {
     return this.getSettings();
   }
 
+  createDiagnosticsRuntime({ startedAt = 0, expiresAt = 0, options = null } = {}) {
+    const now = Date.now();
+    const normalizedOptions = {
+      planning: Boolean(options?.planning),
+      cpu: Boolean(options?.cpu),
+      errors: Boolean(options?.errors),
+      memory: Boolean(options?.memory),
+    };
+    return {
+      startedAt: Math.max(0, Number(startedAt) || 0),
+      expiresAt: Math.max(0, Number(expiresAt) || 0),
+      runtimeStartedAt: now,
+      endedAt: 0,
+      endReason: '',
+      sessionActive: Object.values(normalizedOptions).some(Boolean),
+      options: normalizedOptions,
+      counters: {},
+      cpuSections: {},
+      cpuSamples: [],
+      memorySamples: [],
+      planningEvents: [],
+      planningConfigurations: [],
+      planningConfigSequence: 0,
+      lastPlanningConfigJson: '',
+      lastPlanningConfigId: '',
+      errors: [],
+      cpuSampleAt: now,
+      cpuSampleUsage: null,
+      diagnosticStatus: {
+        cpu: { available: null, failures: 0, lastError: '' },
+        memory: { available: null, failures: 0, lastError: '' },
+      },
+    };
+  }
+
+  getDiagnosticsOptions(settings = this.getSettings()) {
+    return {
+      planning: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.planning]),
+      cpu: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.cpu]),
+      errors: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.errors]),
+      memory: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.memory]),
+    };
+  }
+
+  hasDiagnosticsEnabled(options = this.diagnostics?.options) {
+    return Boolean(options && Object.values(options).some(Boolean));
+  }
+
+  isDiagnosticEnabled(kind, now = 0) {
+    const runtime = this.diagnostics;
+    if (!runtime?.sessionActive || !runtime?.options?.[kind]) return false;
+    const at = Number(now) || Date.now();
+    return Number(runtime.expiresAt) > at;
+  }
+
+  restoreDiagnosticsSession() {
+    const now = Date.now();
+    const options = this.getDiagnosticsOptions();
+    const enabled = this.hasDiagnosticsEnabled(options);
+    const storedStartedAt = Math.max(0, Number(this.homey.settings.get('_diagnosticsStartedAt')) || 0);
+    const storedExpiresAt = Math.max(0, Number(this.homey.settings.get('_diagnosticsExpiresAt')) || 0);
+
+    if (!enabled) {
+      this.diagnostics = this.createDiagnosticsRuntime();
+      return;
+    }
+
+    if (storedExpiresAt > now) {
+      this.diagnostics = this.createDiagnosticsRuntime({
+        startedAt: storedStartedAt || now,
+        expiresAt: storedExpiresAt,
+        options,
+      });
+      if (Boolean(options.cpu)) {
+        this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
+        this.diagnostics.cpuSampleAt = now;
+      }
+      this.armDiagnosticsExpiry();
+      return;
+    }
+
+    // A Homey/app restart after the 48-hour boundary must never revive logging.
+    for (const key of Object.values(DIAGNOSTIC_SETTING_KEYS)) this.setSetting(key, false);
+    this.setSetting('_diagnosticsStartedAt', 0);
+    this.setSetting('_diagnosticsExpiresAt', 0);
+    this.diagnostics = this.createDiagnosticsRuntime();
+  }
+
+  startDiagnosticsSession(options = this.getDiagnosticsOptions(), now = Date.now()) {
+    const at = Number(now) || Date.now();
+    const expiresAt = at + DIAGNOSTICS_MAX_MS;
+    this.diagnostics = this.createDiagnosticsRuntime({ startedAt: at, expiresAt, options });
+    if (Boolean(options?.cpu)) {
+      this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
+      this.diagnostics.cpuSampleAt = at;
+    }
+    this.setSetting('_diagnosticsStartedAt', at);
+    this.setSetting('_diagnosticsExpiresAt', expiresAt);
+    this.armDiagnosticsExpiry();
+  }
+
+  handleDiagnosticsSettingsChanged() {
+    const now = Date.now();
+    const options = this.getDiagnosticsOptions();
+    const enabled = this.hasDiagnosticsEnabled(options);
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+
+    if (!enabled) {
+      if (runtime.sessionActive) {
+        runtime.sessionActive = false;
+        runtime.options = options;
+        runtime.endedAt = now;
+        if (!runtime.endReason) runtime.endReason = 'manual';
+      }
+      this.clearDiagnosticsExpiryTimer();
+      this.setSetting('_diagnosticsStartedAt', 0);
+      this.setSetting('_diagnosticsExpiresAt', 0);
+      return;
+    }
+
+    if (!runtime.sessionActive || Number(runtime.expiresAt) <= now) {
+      this.startDiagnosticsSession(options, now);
+      return;
+    }
+
+    const cpuWasEnabled = Boolean(runtime.options?.cpu);
+    runtime.options = options;
+    if (!cpuWasEnabled && Boolean(options.cpu)) {
+      runtime.cpuSampleUsage = this.readDiagnosticCpuUsage();
+      runtime.cpuSampleAt = now;
+    } else if (cpuWasEnabled && !Boolean(options.cpu)) {
+      runtime.cpuSampleUsage = null;
+      runtime.cpuSampleAt = now;
+    }
+    this.armDiagnosticsExpiry();
+  }
+
+  clearDiagnosticsExpiryTimer() {
+    if (this.diagnosticsExpiryTimer) clearTimeout(this.diagnosticsExpiryTimer);
+    this.diagnosticsExpiryTimer = null;
+  }
+
+  armDiagnosticsExpiry() {
+    this.clearDiagnosticsExpiryTimer();
+    const expiresAt = Number(this.diagnostics?.expiresAt) || 0;
+    if (!this.diagnostics?.sessionActive || expiresAt <= 0) return;
+    const wait = Math.max(1, expiresAt - Date.now());
+    this.diagnosticsExpiryTimer = this.homey.setTimeout(() => {
+      this.diagnosticsExpiryTimer = null;
+      this.expireDiagnostics('48h_expired');
+    }, wait);
+  }
+
+  expireDiagnostics(reason = '48h_expired', now = Date.now()) {
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    if (!runtime.sessionActive) return false;
+    const at = Number(now) || Date.now();
+    runtime.sessionActive = false;
+    runtime.endedAt = at;
+    runtime.endReason = String(reason || 'expired');
+    runtime.options = { planning: false, cpu: false, errors: false, memory: false };
+    this.clearDiagnosticsExpiryTimer();
+    for (const key of Object.values(DIAGNOSTIC_SETTING_KEYS)) this.setSetting(key, false);
+    this.setSetting('_diagnosticsStartedAt', 0);
+    this.setSetting('_diagnosticsExpiresAt', 0);
+    return true;
+  }
+
+  checkDiagnosticsExpiry(now = Date.now()) {
+    if (!this.diagnostics?.sessionActive) return false;
+    if (Number(this.diagnostics.expiresAt) > Number(now)) return false;
+    return this.expireDiagnostics('48h_expired', now);
+  }
+
+  resetDiagnosticsReport() {
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    const active = runtime.sessionActive && Number(runtime.expiresAt) > Date.now();
+    const options = active ? { ...runtime.options } : { planning: false, cpu: false, errors: false, memory: false };
+    this.diagnostics = this.createDiagnosticsRuntime({
+      startedAt: active ? runtime.startedAt : 0,
+      expiresAt: active ? runtime.expiresAt : 0,
+      options,
+    });
+    if (active && Boolean(options.cpu)) {
+      this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
+      this.diagnostics.cpuSampleAt = Date.now();
+    }
+    if (active) this.armDiagnosticsExpiry();
+    return this.getDiagnosticsReport();
+  }
+
+  recordDiagnosticCounter(name, amount = 1) {
+    try {
+      if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.cpu) return;
+      if (Number(this.diagnostics.expiresAt) <= Date.now()) return;
+      const key = String(name || 'unknown');
+      this.diagnostics.counters[key] = (Number(this.diagnostics.counters[key]) || 0) + (Number(amount) || 0);
+    } catch (_) {
+      // Diagnostics must never interfere with the EMS control loop.
+    }
+  }
+
+  noteDiagnosticAvailability(kind, available, error = '') {
+    try {
+      const runtime = this.diagnostics;
+      if (!runtime) return;
+      if (!runtime.diagnosticStatus || typeof runtime.diagnosticStatus !== 'object') runtime.diagnosticStatus = {};
+      const key = String(kind || 'unknown');
+      const current = runtime.diagnosticStatus[key] || { available: null, failures: 0, lastError: '' };
+      current.available = Boolean(available);
+      if (!available) {
+        current.failures = (Number(current.failures) || 0) + 1;
+        current.lastError = String(error || 'runtime_unavailable').slice(0, 500);
+      } else {
+        current.lastError = '';
+      }
+      runtime.diagnosticStatus[key] = current;
+    } catch (_) {
+      // Diagnostics status itself must never affect EMS operation.
+    }
+  }
+
+  readDiagnosticCpuUsage() {
+    try {
+      if (typeof process.cpuUsage !== 'function') {
+        this.noteDiagnosticAvailability('cpu', false, 'process.cpuUsage unavailable');
+        return null;
+      }
+      const usage = process.cpuUsage();
+      const user = Number(usage?.user);
+      const system = Number(usage?.system);
+      if (!Number.isFinite(user) || !Number.isFinite(system)) {
+        this.noteDiagnosticAvailability('cpu', false, 'invalid process.cpuUsage result');
+        return null;
+      }
+      this.noteDiagnosticAvailability('cpu', true);
+      return { user, system };
+    } catch (err) {
+      this.noteDiagnosticAvailability('cpu', false, err?.message || String(err));
+      return null;
+    }
+  }
+
+  readDiagnosticMemoryFallback() {
+    const mb = value => {
+      const bytes = Number(value);
+      return Number.isFinite(bytes) && bytes >= 0
+        ? Math.round((bytes / 1024 / 1024) * 100) / 100
+        : null;
+    };
+    const sample = {
+      rssMb: null,
+      heapUsedMb: null,
+      heapTotalMb: null,
+      externalMb: null,
+      arrayBuffersMb: null,
+      source: 'procfs_v8_fallback',
+    };
+    const errors = [];
+    let hasValue = false;
+
+    // Homey runs on Linux. Some Node/Homey builds expose process.memoryUsage()
+    // but throw from libuv while resolving RSS (uv_resident_set_memory). Read
+    // the current resident set directly from procfs so diagnostics can still
+    // report process memory without touching the failing libuv path.
+    try {
+      if (process.platform === 'linux') {
+        const fs = require('node:fs');
+        const status = fs.readFileSync('/proc/self/status', 'utf8');
+        const match = String(status || '').match(/^VmRSS:\s+(\d+)\s+kB$/mi);
+        if (match) {
+          sample.rssMb = mb(Number(match[1]) * 1024);
+          hasValue = sample.rssMb !== null;
+        }
+      }
+    } catch (err) {
+      errors.push(`procfs: ${err?.message || String(err)}`);
+    }
+
+    // Heap statistics come from V8 and do not use the libuv RSS helper. This
+    // keeps heap trend logging available even when process.memoryUsage() fails.
+    try {
+      const v8 = require('node:v8');
+      const stats = v8.getHeapStatistics();
+      if (stats && typeof stats === 'object') {
+        sample.heapUsedMb = mb(stats.used_heap_size);
+        sample.heapTotalMb = mb(stats.total_heap_size);
+        sample.externalMb = mb(stats.external_memory);
+        hasValue = hasValue
+          || sample.heapUsedMb !== null
+          || sample.heapTotalMb !== null
+          || sample.externalMb !== null;
+      }
+    } catch (err) {
+      errors.push(`v8: ${err?.message || String(err)}`);
+    }
+
+    return {
+      sample: hasValue ? sample : null,
+      error: errors.join('; '),
+    };
+  }
+
+  readDiagnosticMemoryUsage() {
+    const mb = value => {
+      const bytes = Number(value);
+      return Number.isFinite(bytes) && bytes >= 0
+        ? Math.round((bytes / 1024 / 1024) * 100) / 100
+        : null;
+    };
+    let primaryError = '';
+
+    try {
+      if (typeof process.memoryUsage !== 'function') {
+        primaryError = 'process.memoryUsage unavailable';
+      } else {
+        const memory = process.memoryUsage();
+        if (memory && typeof memory === 'object') {
+          const sample = {
+            rssMb: mb(memory.rss),
+            heapUsedMb: mb(memory.heapUsed),
+            heapTotalMb: mb(memory.heapTotal),
+            externalMb: mb(memory.external),
+            arrayBuffersMb: mb(memory.arrayBuffers),
+            source: 'process.memoryUsage',
+          };
+          const hasValue = [
+            sample.rssMb,
+            sample.heapUsedMb,
+            sample.heapTotalMb,
+            sample.externalMb,
+            sample.arrayBuffersMb,
+          ].some(value => value !== null);
+          if (hasValue) {
+            this.noteDiagnosticAvailability('memory', true);
+            return sample;
+          }
+          primaryError = 'invalid process.memoryUsage result';
+        } else {
+          primaryError = 'invalid process.memoryUsage result';
+        }
+      }
+    } catch (err) {
+      primaryError = err?.message || String(err);
+    }
+
+    try {
+      const fallback = this.readDiagnosticMemoryFallback();
+      if (fallback?.sample) {
+        this.noteDiagnosticAvailability('memory', true);
+        return fallback.sample;
+      }
+      const fallbackError = String(fallback?.error || '').trim();
+      this.noteDiagnosticAvailability(
+        'memory',
+        false,
+        [primaryError, fallbackError].filter(Boolean).join('; ') || 'memory diagnostics unavailable',
+      );
+      return null;
+    } catch (err) {
+      this.noteDiagnosticAvailability(
+        'memory',
+        false,
+        [primaryError, err?.message || String(err)].filter(Boolean).join('; '),
+      );
+      return null;
+    }
+  }
+
+  startDiagnosticCpuSection(name) {
+    try {
+      if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.cpu) return null;
+      if (Number(this.diagnostics.expiresAt) <= Date.now()) return null;
+      return {
+        name: String(name || 'unknown'),
+        wallAt: performance.now(),
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  endDiagnosticCpuSection(token) {
+    try {
+      if (!token || !this.diagnostics) return;
+      const wallMs = Math.max(0, performance.now() - Number(token.wallAt || 0));
+      const name = String(token.name || 'unknown');
+      const bucket = this.diagnostics.cpuSections[name] || {
+        calls: 0,
+        wallMs: 0,
+        maxWallMs: 0,
+      };
+      bucket.calls += 1;
+      bucket.wallMs += wallMs;
+      bucket.maxWallMs = Math.max(bucket.maxWallMs, wallMs);
+      this.diagnostics.cpuSections[name] = bucket;
+    } catch (_) {
+      // Diagnostics must fail open and may never break battery control.
+    }
+  }
+
+  sampleDiagnostics(now = Date.now()) {
+    const runtime = this.diagnostics;
+    if (!runtime?.sessionActive) return;
+    const at = Number(now) || Date.now();
+    this.checkDiagnosticsExpiry(at);
+    if (!this.diagnostics?.sessionActive) return;
+
+    if (this.isDiagnosticEnabled('cpu', at)) {
+      const currentUsage = this.readDiagnosticCpuUsage();
+      const previousUsage = runtime.cpuSampleUsage;
+      const elapsedMs = Math.max(1, at - Number(runtime.cpuSampleAt || at));
+      if (currentUsage && previousUsage) {
+        const userUs = Math.max(0, currentUsage.user - Number(previousUsage.user || 0));
+        const systemUs = Math.max(0, currentUsage.system - Number(previousUsage.system || 0));
+        const cpuMs = (userUs + systemUs) / 1000;
+        const percent = Math.max(0, (cpuMs / elapsedMs) * 100);
+        runtime.cpuSamples.push({
+          at,
+          percent: Math.round(percent * 1000) / 1000,
+          userMs: Math.round((userUs / 1000) * 1000) / 1000,
+          systemMs: Math.round((systemUs / 1000) * 1000) / 1000,
+          elapsedMs,
+        });
+        if (runtime.cpuSamples.length > 3000) runtime.cpuSamples.splice(0, runtime.cpuSamples.length - 3000);
+      }
+      runtime.cpuSampleUsage = currentUsage;
+      runtime.cpuSampleAt = at;
+    } else {
+      // Do not poll process CPU while CPU diagnostics are disabled. The first
+      // enabled minute establishes a fresh baseline without attributing the
+      // disabled period to diagnostics.
+      runtime.cpuSampleUsage = null;
+      runtime.cpuSampleAt = at;
+    }
+
+    if (this.isDiagnosticEnabled('memory', at)) {
+      try {
+        const memory = this.readDiagnosticMemoryUsage();
+        if (memory) {
+          runtime.memorySamples.push({ at, ...memory });
+          if (runtime.memorySamples.length > 3000) runtime.memorySamples.splice(0, runtime.memorySamples.length - 3000);
+        }
+      } catch (err) {
+        // A diagnostic channel may become unavailable on a specific Homey
+        // runtime, but must never escape into the 60-second heartbeat.
+        this.noteDiagnosticAvailability('memory', false, err?.message || String(err));
+      }
+    }
+  }
+
+  cloneDiagnosticValue(value) {
+    try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+  }
+
+  getDiagnosticConfigurationSnapshot(settings = this.getSettings()) {
+    const snapshot = {};
+    const sensitive = /(token|secret|password|credential|api[_-]?key|authorization|cookie)/i;
+    const excluded = new Set(['dynamicSlots', ...Object.values(DIAGNOSTIC_SETTING_KEYS)]);
+    for (const [key, value] of Object.entries(settings || {})) {
+      if (excluded.has(key)) continue;
+      if (sensitive.test(key)) snapshot[key] = '[redacted]';
+      else snapshot[key] = this.cloneDiagnosticValue(value);
+    }
+    return snapshot;
+  }
+
+  getOrCreateDiagnosticPlanningConfig(settings, now = Date.now()) {
+    const snapshot = this.getDiagnosticConfigurationSnapshot(settings);
+    const json = JSON.stringify(snapshot);
+    if (json === this.diagnostics.lastPlanningConfigJson && this.diagnostics.lastPlanningConfigId) {
+      return this.diagnostics.lastPlanningConfigId;
+    }
+    this.diagnostics.planningConfigSequence = (Number(this.diagnostics.planningConfigSequence) || 0) + 1;
+    const id = `cfg-${this.diagnostics.planningConfigSequence}`;
+    this.diagnostics.planningConfigurations.push({ id, at: Number(now) || Date.now(), settings: snapshot });
+    if (this.diagnostics.planningConfigurations.length > 50) {
+      // Config changes should be rare. Preserve the newest snapshots while
+      // keeping diagnostics bounded even during settings experimentation.
+      this.diagnostics.planningConfigurations.splice(0, this.diagnostics.planningConfigurations.length - 50);
+    }
+    this.diagnostics.lastPlanningConfigJson = json;
+    this.diagnostics.lastPlanningConfigId = id;
+    return id;
+  }
+
+  recordDiagnosticPlanning(plan, now = Date.now(), settings = this.getSettings(), state = this.state) {
+    if (!this.isDiagnosticEnabled('planning', now) || !plan) return;
+    const configId = this.getOrCreateDiagnosticPlanningConfig(settings, now);
+    const event = {
+      at: Number(now) || Date.now(),
+      configId,
+      contextReasons: Array.isArray(this.activeContextDiagnosticReasons) ? [...this.activeContextDiagnosticReasons] : [],
+      inputs: {
+        gridPowerW: parseFiniteInputNumber(state?.gridPowerW),
+        pvPowerW: parseFiniteInputNumber(state?.pvPowerW),
+        forecastRemainingKwh: parseFiniteInputNumber(state?.forecastRemainingKwh),
+        forecastDailyMaxKwh: parseFiniteInputNumber(state?.forecastDailyMaxKwh),
+        forecastTomorrowKwh: parseFiniteInputNumber(state?.forecastTomorrowKwh),
+        batterySoc: Array.isArray(state?.batterySoc) ? state.batterySoc.slice(0, 8) : [],
+        nightPlanningActive: Boolean(state?.nightPlanningActive),
+        planningForecastDay: String(state?.planningForecastDay || ''),
+      },
+      plan: this.cloneDiagnosticValue(plan),
+    };
+    this.diagnostics.planningEvents.push(event);
+    if (this.diagnostics.planningEvents.length > 600) {
+      this.diagnostics.planningEvents.splice(0, this.diagnostics.planningEvents.length - 600);
+    }
+  }
+
+  recordDiagnosticError(args = []) {
+    if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.errors) return;
+    if (Number(this.diagnostics.expiresAt) <= Date.now()) return;
+    const parts = [];
+    let stack = '';
+    for (const value of args) {
+      if (value instanceof Error) {
+        parts.push(value.message || String(value));
+        if (!stack && value.stack) stack = String(value.stack);
+      } else if (typeof value === 'string') parts.push(value);
+      else {
+        try { parts.push(JSON.stringify(value)); } catch (_) { parts.push(String(value)); }
+      }
+    }
+    this.diagnostics.errors.push({
+      at: Date.now(),
+      message: parts.join(' ').slice(0, 4000),
+      stack: stack.slice(0, 8000),
+    });
+    if (this.diagnostics.errors.length > 200) this.diagnostics.errors.splice(0, this.diagnostics.errors.length - 200);
+  }
+
+  error(...args) {
+    try { this.recordDiagnosticError(args); } catch (_) {}
+    const baseError = Homey.App?.prototype?.error;
+    if (typeof baseError === 'function') return baseError.apply(this, args);
+    return undefined;
+  }
+
+  getDiagnosticsReport() {
+    this.checkDiagnosticsExpiry(Date.now());
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    const generatedAt = Date.now();
+    const cpuSections = {};
+    for (const [name, bucket] of Object.entries(runtime.cpuSections || {})) {
+      const calls = Math.max(0, Number(bucket.calls) || 0);
+      cpuSections[name] = {
+        calls,
+        wallMs: Math.round((Number(bucket.wallMs) || 0) * 1000) / 1000,
+        maxWallMs: Math.round((Number(bucket.maxWallMs) || 0) * 1000) / 1000,
+        avgWallMs: calls ? Math.round(((Number(bucket.wallMs) || 0) / calls) * 1000) / 1000 : 0,
+      };
+    }
+    const includePlanningSettings = Boolean(
+      runtime.options?.planning
+      || runtime.planningConfigurations?.length
+      || runtime.planningEvents?.length
+    );
+    const report = {
+      schema: 'homeflux-diagnostics-v1',
+      version: '0.9.9',
+      generatedAt,
+      session: {
+        active: Boolean(runtime.sessionActive),
+        startedAt: Number(runtime.startedAt) || 0,
+        runtimeStartedAt: Number(runtime.runtimeStartedAt) || 0,
+        expiresAt: Number(runtime.expiresAt) || 0,
+        endedAt: Number(runtime.endedAt) || 0,
+        endReason: String(runtime.endReason || ''),
+        autoDisableHours: 48,
+        options: { ...runtime.options },
+      },
+      environment: {
+        timezone: this.homey?.clock?.getTimezone?.() || 'UTC',
+        node: process.version,
+        platform: process.platform,
+        arch: process.arch,
+      },
+      cpu: {
+        measurementMode: 'process_cpu_60s_plus_section_wall_time',
+        perSectionCpuSampling: false,
+        status: this.cloneDiagnosticValue(runtime.diagnosticStatus?.cpu) || { available: null, failures: 0, lastError: '' },
+        counters: { ...runtime.counters },
+        sections: cpuSections,
+        samples: this.cloneDiagnosticValue(runtime.cpuSamples) || [],
+      },
+      memory: {
+        status: this.cloneDiagnosticValue(runtime.diagnosticStatus?.memory) || { available: null, failures: 0, lastError: '' },
+        samples: this.cloneDiagnosticValue(runtime.memorySamples) || [],
+      },
+      errors: this.cloneDiagnosticValue(runtime.errors) || [],
+      planning: {
+        currentSettings: includePlanningSettings ? this.getDiagnosticConfigurationSnapshot() : null,
+        configurations: this.cloneDiagnosticValue(runtime.planningConfigurations) || [],
+        events: this.cloneDiagnosticValue(runtime.planningEvents) || [],
+      },
+    };
+    return report;
+  }
+
   createAutoTuneRuntime() {
     const signal = () => ({
       lastAt: 0,
@@ -1128,7 +1762,11 @@ class HomeFluxEmsApp extends Homey.App {
     day.lastAt = Number(now) || Date.now();
     if (previousAt <= 0) return;
     const gapMs = Math.max(0, day.lastAt - previousAt);
-    if (gapMs < 30000 || gapMs > 180000) return;
+    // Planning learning now follows slow housekeeping. Allow one heartbeat of
+    // scheduling jitter above the configured slow interval so a 300-second
+    // context cadence still contributes complete demand samples.
+    const maxPlanningSampleGapMs = Math.max(180000, this.getSlowControlIntervalMs(settings) + 90000);
+    if (gapMs < 30000 || gapMs > maxPlanningSampleGapMs) return;
     if (!this.inputSeen?.grid || !this.inputSeen?.pv) return;
     const gridUpdatedAt = Number(this.inputUpdatedAt?.grid) || 0;
     const pvUpdatedAt = Number(this.inputUpdatedAt?.pv) || 0;
@@ -2151,13 +2789,28 @@ class HomeFluxEmsApp extends Homey.App {
     return this.getAutoTuneStatus();
   }
 
-  maybeRunAutoTune(now = Date.now()) {
+  isAutoTuneEvaluationDue(now = Date.now()) {
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     const permissions = this.getAutoTunePermissions();
-    if (!Object.values(permissions).some(Boolean)) return;
-    if (now - Number(this.autoTuneRuntime.lastAutoManageCheckAt || 0) < 30 * 60 * 1000) return;
+    if (!Object.values(permissions).some(Boolean)) return false;
+    return now - Number(this.autoTuneRuntime.lastAutoManageCheckAt || 0) >= 30 * 60 * 1000;
+  }
+
+  maybeRunAutoTune(now = Date.now()) {
+    if (!this.isAutoTuneEvaluationDue(now)) return false;
     this.autoTuneRuntime.lastAutoManageCheckAt = now;
     this.applyAutoTuneRecommendations().catch(err => this.error('Automatic Autotune failed', err));
+    return true;
+  }
+
+  scheduleAutoTuneContextIfDue(now = Date.now()) {
+    // Measurements keep feeding the tiny rolling Autotune aggregates live, but
+    // recommendation calculation is coalesced into the existing slow-context
+    // scheduler. The 30-minute lower bound remains in force, so Autotune cannot
+    // create a more frequent decision loop than before.
+    if (!this.isAutoTuneEvaluationDue(now)) return false;
+    this.requestContextEvaluate(false, 'autotune_due');
+    return true;
   }
 
   getSlowControlIntervalMs(settings = this.getSettings()) {
@@ -2232,11 +2885,23 @@ class HomeFluxEmsApp extends Homey.App {
     const reasons = this.contextDirtyReasons ? [...this.contextDirtyReasons] : [];
     this.contextDirty = false;
     if (this.contextDirtyReasons) this.contextDirtyReasons.clear();
+    this.activeContextDiagnosticReasons = reasons;
+    this.recordDiagnosticCounter('contextEvaluations');
+    const diagnosticCpu = this.startDiagnosticCpuSection('context_evaluation');
     try {
       const result = this.evaluateContextNow(forceStatus);
-      this.lastContextEvalAt = Date.now();
+      const completedAt = Date.now();
+      this.lastContextEvalAt = completedAt;
+      // Automatic Autotune decisions run only as part of the slow context path.
+      // Incoming P1/PV/EV values continue to update their lightweight rolling
+      // statistics immediately, but never calculate recommendations themselves.
+      if (!forceStatus || reasons.includes('autotune_due') || reasons.includes('startup')) {
+        this.maybeRunAutoTune(completedAt);
+      }
       return result;
     } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+      this.activeContextDiagnosticReasons = [];
       this.contextEvaluationRunning = false;
       if (this.contextEvaluationPending || this.contextDirty) {
         this.contextEvaluationPending = false;
@@ -2332,15 +2997,35 @@ class HomeFluxEmsApp extends Homey.App {
     }
   }
 
+  isSlowHeartbeatDue(now = Date.now(), settings = this.getSettings()) {
+    const at = Number(now) || Date.now();
+    const last = Number(this.lastSlowHeartbeatAt) || 0;
+    return last <= 0 || (at - last) >= this.getSlowControlIntervalMs(settings);
+  }
+
+  runSlowHeartbeatHousekeeping(now = Date.now(), settings = this.getSettings()) {
+    const at = Number(now) || Date.now();
+    if (!this.isSlowHeartbeatDue(at, settings)) return false;
+    this.lastSlowHeartbeatAt = at;
+
+    // Learning inputs remain live elsewhere. This compact planning/balance
+    // sample, Autotune due-check, savings housekeeping and EMS-device refresh
+    // are deliberately bounded by the same slow cadence as context decisions.
+    this.recordAutoTunePlanningSample(at, settings);
+    this.scheduleAutoTuneContextIfDue(at);
+    this.recordSavingsSample(at);
+    if ((at - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) {
+      this.persistSavingsState(at, true);
+    } else {
+      this.syncEmsDevices().catch(err => this.error('EMS device slow sync failed', err));
+    }
+    return true;
+  }
+
   runContextHeartbeat() {
     const now = Date.now();
     const settings = this.getSettings();
-    // v0.6.4: planning/balance learning piggybacks on the same heartbeat.
-    this.recordAutoTunePlanningSample(now, settings);
-    this.maybeRunAutoTune(now);
-    this.recordSavingsSample(now);
-    if ((now - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) this.persistSavingsState(now, true);
-    else this.syncEmsDevices().catch(err => this.error('EMS device savings sync failed', err));
+    this.runSlowHeartbeatHousekeeping(now, settings);
     const activated = this.checkNightPlanningFallback(now);
     if (activated) return;
 
@@ -4620,14 +5305,20 @@ class HomeFluxEmsApp extends Homey.App {
 
   async syncEmsDevices(result = this.latestResult) {
     if (!this.emsDevices || this.emsDevices.size === 0) return;
-    const snapshot = this.getEmsDeviceSnapshot(result);
-    await Promise.all([...this.emsDevices].map(async device => {
-      try {
-        await device.syncFromApp(snapshot);
-      } catch (err) {
-        this.error('Could not sync HomeFlux EMS device', err);
-      }
-    }));
+    this.recordDiagnosticCounter('emsDeviceSyncs');
+    const diagnosticCpu = this.startDiagnosticCpuSection('ems_device_sync');
+    try {
+      const snapshot = this.getEmsDeviceSnapshot(result);
+      await Promise.all([...this.emsDevices].map(async device => {
+        try {
+          await device.syncFromApp(snapshot);
+        } catch (err) {
+          this.error('Could not sync HomeFlux EMS device', err);
+        }
+      }));
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
   }
 
   getConfiguredFlowSlots(kind) {
@@ -4715,6 +5406,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.homey.flow.getActionCard('set_grid_power').registerRunListener(async args => {
       const value = parseFiniteInputNumber(args.power);
       if (value === null) return false;
+      this.recordDiagnosticCounter('gridInputs');
       const inputSettings = this.getSettings();
       const wasGridReady = this.getInputReadiness(inputSettings).ready;
       const now = Date.now();
@@ -4781,6 +5473,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.homey.flow.getActionCard('set_pv_power').registerRunListener(async args => {
       const value = parseFiniteInputNumber(args.power);
       if (value === null) return false;
+      this.recordDiagnosticCounter('pvInputs');
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.pvPowerW = Math.max(0, value);
@@ -11043,6 +11736,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   requestEvaluate(immediate = false) {
+    this.recordDiagnosticCounter('fastRequests');
     const now = Date.now();
     const controlSettings = this.getSettings();
     const pauseInfo = this.getBatteryCommandPauseInfo(now, controlSettings);
@@ -11059,6 +11753,7 @@ class HomeFluxEmsApp extends Homey.App {
     // values only. Stable meter noise therefore creates no 10-second sawtooth.
     if (!this.shouldRunFastEvaluation(immediate, controlSettings, now)) {
       this.fastEvaluationSkipped += 1;
+      this.recordDiagnosticCounter('fastSkipped');
       return false;
     }
 
@@ -11074,13 +11769,18 @@ class HomeFluxEmsApp extends Homey.App {
         clearTimeout(this.controlTimer);
         this.controlTimer = null;
       }
+      this.recordDiagnosticCounter('fastImmediate');
       this.evaluateFastNow(immediate);
       return true;
     }
 
     // All meter updates inside the hard battery interval collapse into one
     // fresh calculation. No slow subsystem work is attached to this timer.
-    if (this.controlTimer) return true;
+    if (this.controlTimer) {
+      this.recordDiagnosticCounter('fastCoalesced');
+      return true;
+    }
+    this.recordDiagnosticCounter('fastScheduled');
     this.controlTimer = this.homey.setTimeout(() => {
       this.controlTimer = null;
       // Another output may have reserved a later slot while this timer was
@@ -11401,6 +12101,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   evaluateFastNow(forceStatus = false) {
+    this.recordDiagnosticCounter('fastEvaluations');
+    const diagnosticCpu = this.startDiagnosticCpuSection('fast_evaluation');
     try {
       const now = Date.now();
       const storedSettings = this.getSettings();
@@ -11449,6 +12151,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.latestResult = result;
       this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
       const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
+      this.recordDiagnosticCounter(batteryWantsChange ? 'fastCommandChange' : 'fastNoCommandChange');
       if (!hybridDelegated) this.queueCommandEmit(result, batteryWantsChange);
       // queueStatusUpdate has its own compact signature and therefore performs
       // no Homey writes when the visible outcome is unchanged.
@@ -11457,6 +12160,8 @@ class HomeFluxEmsApp extends Homey.App {
     } catch (err) {
       this.error('Fast HomeFlux EMS evaluation failed', err);
       return this.latestResult;
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
     }
   }
 
@@ -11591,10 +12296,16 @@ class HomeFluxEmsApp extends Homey.App {
     };
     for (let i = 1; i <= 8; i += 1) tokens[`battery${i}setpoint`] = calculated[i - 1] || 0;
 
-    await this.calculatedSetpointTrigger.trigger(this.localizeDisplayTokens(tokens), {
-      mode: result.baseMode || '',
-      override: result.override || '',
-    });
+    this.recordDiagnosticCounter('calculatedSetpointTriggers');
+    const diagnosticCpu = this.startDiagnosticCpuSection('calculated_setpoint_trigger');
+    try {
+      await this.calculatedSetpointTrigger.trigger(this.localizeDisplayTokens(tokens), {
+        mode: result.baseMode || '',
+        override: result.override || '',
+      });
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
   }
 
   getStatusResultSignature(result) {
@@ -11673,6 +12384,8 @@ class HomeFluxEmsApp extends Homey.App {
     this.pendingStatusResult = null;
     this.pendingStatusSignature = '';
     this.statusPublishing = true;
+    this.recordDiagnosticCounter('statusPublishes');
+    const diagnosticCpu = this.startDiagnosticCpuSection('status_publish');
 
     try {
       const publishSettings = this.getSettings();
@@ -11724,11 +12437,14 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
 
-      await this.syncEmsDevices(result);
+      // EMS-device capability writes are intentionally not tied to fast status
+      // publication. They are refreshed by slow housekeeping, plus explicit
+      // operator/session actions that already request their own sync.
       this.lastStatusPublishAt = Date.now();
       this.lastPublishedStatusSignature = signature;
       this.lastQueuedStatusSignature = signature;
     } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
       this.statusPublishing = false;
       // The latest pending result is already stored; schedule it directly
       // instead of feeding it through duplicate detection again.
@@ -11874,6 +12590,8 @@ class HomeFluxEmsApp extends Homey.App {
     this.pendingResult = null;
     this.pendingCommandBypassInterval = false;
     this.commandPublishing = true;
+    this.recordDiagnosticCounter('batteryCommandPublishes');
+    const diagnosticCpu = this.startDiagnosticCpuSection('battery_command_publish');
 
 
     // Reserve the complete minimum interval BEFORE the first async token/Flow
@@ -11965,6 +12683,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.requestContextEvaluate(false, 'battery_output_changed');
       }
     } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
       this.commandPublishing = false;
       if (this.pendingResult) {
         this.emitPending().catch(err => this.error('Queued battery command emit failed', err));
@@ -12185,7 +12904,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.8',
+      version: '0.9.9',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12253,17 +12972,25 @@ class HomeFluxEmsApp extends Homey.App {
     const hasValue = Boolean(cache.value?.plan);
     const firstSoc = hasValue && cache.value.plan.currentSoc == null && computeAverageSoc(state, settings) !== null;
     if (hasValue && !phaseChanged && !firstSoc && (!cache.dirty || now < Number(cache.nextAllowedAt))) return cache.value.plan;
-    const plan = {
-      version: '0.9.8',
-      nightPlanningActive: this.isNightPlanningPhase(now),
-      planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
-      ...buildSocPlan(state, settings, new Date(now)),
-    };
+    this.recordDiagnosticCounter('planningCalculations');
+    const diagnosticCpu = this.startDiagnosticCpuSection('planning_calculation');
+    let plan;
+    try {
+      plan = {
+        version: '0.9.9',
+        nightPlanningActive: this.isNightPlanningPhase(now),
+        planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
+        ...buildSocPlan(state, settings, new Date(now)),
+      };
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
     cache.value = { at: now, plan };
     cache.dirty = false;
     cache.phaseKey = phaseKey;
     cache.lastCalculatedAt = now;
     cache.nextAllowedAt = now + Math.max(this.getPlanningMinIntervalMs(storedSettings), this.getSlowControlIntervalMs(storedSettings));
+    this.recordDiagnosticPlanning(plan, now, storedSettings, state);
     return plan;
   }
 
@@ -12575,7 +13302,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '0.9.8',
+      version: '0.9.9',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -12727,6 +13454,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     const apiGridPowerW = parseFiniteInputNumber(body.gridPowerW);
     if (body.gridPowerW !== undefined && apiGridPowerW !== null) {
+      this.recordDiagnosticCounter('gridInputs');
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.gridPowerW = apiGridPowerW;
@@ -12748,6 +13476,7 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
     if (body.pvPowerW !== undefined && parseFiniteInputNumber(body.pvPowerW) !== null) {
+      this.recordDiagnosticCounter('pvInputs');
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.pvPowerW = Math.max(0, Number(body.pvPowerW));

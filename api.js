@@ -13,6 +13,14 @@ module.exports = {
     return homey.app.getSettingsSnapshot();
   },
 
+  async getDiagnostics({ homey }) {
+    return homey.app.getDiagnosticsReport();
+  },
+
+  async resetDiagnostics({ homey }) {
+    return homey.app.resetDiagnosticsReport();
+  },
+
   async getPlanning({ homey, query }) {
     return String(query?.force || '') === 'true'
       ? homey.app.refreshChargePlanning()
@@ -83,7 +91,7 @@ module.exports = {
 // Translate only presentation fields at the API boundary. Stored settings and
 // internal controller decisions retain their original values and identifiers.
 for (const [name, operation] of Object.entries(module.exports)) {
-  if (name === 'getSettingsSnapshot') continue;
+  if (name === 'getSettingsSnapshot' || name === 'getDiagnostics' || name === 'resetDiagnostics') continue;
   module.exports[name] = async function localizedOperation(args) {
     try {
       const result = await operation(args);

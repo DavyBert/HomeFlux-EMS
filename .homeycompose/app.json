@@ -1,6 +1,6 @@
 {
   "id": "com.homeflux.ems",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -51,6 +51,14 @@
     "getSettingsSnapshot": {
       "method": "GET",
       "path": "/settings-snapshot"
+    },
+    "getDiagnostics": {
+      "method": "GET",
+      "path": "/diagnostics"
+    },
+    "resetDiagnostics": {
+      "method": "POST",
+      "path": "/diagnostics/reset"
     },
     "getPlanning": {
       "method": "GET",

@@ -22,7 +22,26 @@
     "Standaard +300 W. Boven deze waarde start de Hybrid-watchdog wanneer de externe EMS niet meer aantoonbaar bijregelt.": "Standaard +300 W. Boven deze waarde start de Hybrid-watchdog wanneer de externe EMS niet meer aantoonbaar bijregelt.",
     "Stand-by en andere expliciete EMS-modi die geen gewone zelfconsumptie/netimportregeling zijn.": "Stand-by en andere expliciete EMS-modi die geen gewone zelfconsumptie/netimportregeling zijn.",
     "Gewone zelfconsumptie en netimport vermijden": "Gewone zelfconsumptie en netimport vermijden",
-    "mogen door de externe EMS worden geregeld. Zodra HomeFlux extra strategie, planning of veiligheid moet toepassen, blijft de batterij onder HomeFlux-regie.": "mogen door de externe EMS worden geregeld. Zodra HomeFlux extra strategie, planning of veiligheid moet toepassen, blijft de batterij onder HomeFlux-regie."
+    "mogen door de externe EMS worden geregeld. Zodra HomeFlux extra strategie, planning of veiligheid moet toepassen, blijft de batterij onder HomeFlux-regie.": "mogen door de externe EMS worden geregeld. Zodra HomeFlux extra strategie, planning of veiligheid moet toepassen, blijft de batterij onder HomeFlux-regie.",
+    "Diagnostiek": "Diagnostiek",
+    "Schakel alleen de logging in die je nodig hebt. De eerste ingeschakelde optie start een diagnosesessie; alle logging schakelt automatisch uit na maximaal 48 uur. De EMS-sturing, P1-cadans en planning worden hierdoor niet versneld of vertraagd.": "Schakel alleen de logging in die je nodig hebt. De eerste ingeschakelde optie start een diagnosesessie; alle logging schakelt automatisch uit na maximaal 48 uur. De EMS-sturing, P1-cadans en planning worden hierdoor niet versneld of vertraagd.",
+    "Planning": "Planning",
+    "Logt elke echte herberekening van de energieplanning, de relevante ingangen en de bijbehorende HomeFlux-instellingen. Instellingen worden alleen opnieuw opgenomen wanneer de configuratie wijzigt.": "Logt elke echte herberekening van de energieplanning, de relevante ingangen en de bijbehorende HomeFlux-instellingen. Instellingen worden alleen opnieuw opgenomen wanneer de configuratie wijzigt.",
+    "CPU": "CPU",
+    "Meet proces-CPU per minuut en telt/timet de grote codepaden: snelle regeling, trage context, planning, batterijpublicatie, statuspublicatie en EMS-device-sync.": "Meet proces-CPU per minuut en telt/timet de grote codepaden: snelle regeling, trage context, planning, batterijpublicatie, statuspublicatie en EMS-device-sync.",
+    "Fouten": "Fouten",
+    "Bewaart HomeFlux-fouten en stackinformatie in een begrensde buffer voor het rapport.": "Bewaart HomeFlux-fouten en stackinformatie in een begrensde buffer voor het rapport.",
+    "Geheugen": "Geheugen",
+    "Meet RSS, heap, external memory en array buffers eenmaal per minuut.": "Meet RSS, heap, external memory en array buffers eenmaal per minuut.",
+    "Diagnostiek laden…": "Diagnostiek laden…",
+    "Rapport vernieuwen": "Rapport vernieuwen",
+    "Rapport kopiëren": "Rapport kopiëren",
+    "Rapport downloaden": "Rapport downloaden",
+    "Rapport wissen": "Rapport wissen",
+    "Het rapport bevat geen API-tokens, wachtwoorden of andere sleutelvelden. Planning bevat wel de HomeFlux-configuratie die nodig is om een beslissing achteraf te kunnen reproduceren.": "Het rapport bevat geen API-tokens, wachtwoorden of andere sleutelvelden. Planning bevat wel de HomeFlux-configuratie die nodig is om een beslissing achteraf te kunnen reproduceren.",
+    "Diagnostiek bijwerken…": "Diagnostiek bijwerken…",
+    "Diagnostiek uit": "Diagnostiek uit",
+    "Rapport gekopieerd": "Rapport gekopieerd"
   },
   "phrases": {},
   "strings": {
@@ -36,5 +55,6 @@
     "planning.nightTargetDetail": "De nachtplanning gebruikt alleen toegestane laadvensters vóór dit ingestelde ochtenddoel.",
     "planning.dayTargetDetail": "De dagplanning gebruikt alleen toegestane laadvensters vóór dit ingestelde doelmoment overdag.",
     "planning.targetTimeDetail": "De laadberekening loopt tot dit ingestelde doelmoment."
-  }
+  },
+  "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden."
 }

@@ -137,7 +137,9 @@ const slowSource = appSource.slice(slowStart, triggerStart);
 assert(!fastSource.includes('publishFlexibleLoads('), 'fast loop must not publish flexible loads');
 assert(!fastSource.includes('refreshControlContext('), 'fast loop must not rebuild slow context');
 assert(slowSource.includes('publishFlexibleLoads('), 'slow loop must own flexible-load output');
-assert(appSource.includes("this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000)"));
+assert(appSource.includes("this.contextHeartbeatTimer = this.homey.setInterval(() => {"));
+assert(appSource.includes('this.runContextHeartbeat();'));
+assert(appSource.includes('}, 60000);'));
 assert(appSource.includes('this.evaluateFastNow(immediate)'));
 assert(appSource.includes('this.evaluateContextNow(forceStatus)'));
 

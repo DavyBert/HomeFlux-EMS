@@ -761,6 +761,7 @@
 <button class="tab" data-tab="planning-simulation" type="button">Planning simulatie</button>
 <button class="tab" data-tab="status" type="button">Live status</button>
 <button class="tab" data-tab="help" type="button">Help</button>
+<button class="tab" data-tab="diagnostics" type="button">Diagnostiek</button>
 <button class="tab" data-tab="support" type="button">Support</button>
 </div>
 <section class="panel active" id="panel-ems">
@@ -1737,7 +1738,7 @@
 <div class="card hidden" id="autoTuneManagedCard"><div class="statusline">Automatisch beheerd</div><div class="muted">Deze parameters heb je expliciet aan HomeFlux toevertrouwd. Je kunt de toestemming hier opnieuw uitschakelen.</div><div id="autoTuneManaged"></div></div>
 <div class="card hidden" id="autoTuneHistoryCard"><div class="statusline">Recente Autotune-aanpassingen</div><div id="autoTuneHistory"></div></div>
 <div class="card hidden" id="autoTuneIgnoredCard"><div class="statusline">Niet meer controleren</div><div class="muted">Deze parameters worden niet meer geëvalueerd of aanbevolen. Je kunt controle hier opnieuw inschakelen.</div><div id="autoTuneIgnored"></div></div>
-<p class="muted">Automatische controle van goedgekeurde parameters gebruikt alleen de bestaande één-minuut-heartbeat en wordt maximaal één keer per 30 minuten geëvalueerd. Technische regelparameters worden normaal maximaal één keer per 6 uur aangepast; wanneer je Autotune toestemming geeft om het stuurtempo te beheren, zal de minimumtijd tussen batterijcommando’s nooit lager dan 3 seconden worden gezet om oscillatie te vermijden; geleerde planningsparameters zoals lage-PV-drempel, energiebehoefte en Battery Save-ontlaadgrens maximaal één keer per 24 uur.</p>
+<p class="muted">Automatische controle van goedgekeurde parameters wordt samengevoegd met de trage contextregelkring en maximaal één keer per 30 minuten geëvalueerd. P1-, PV- en EV-metingen blijven direct in de lichte leerstatistiek opgenomen, maar starten zelf geen Autotune-beslissing. Technische regelparameters worden normaal maximaal één keer per 6 uur aangepast; wanneer je Autotune toestemming geeft om het stuurtempo te beheren, zal de minimumtijd tussen batterijcommando’s nooit lager dan 3 seconden worden gezet om oscillatie te vermijden; geleerde planningsparameters zoals lage-PV-drempel, energiebehoefte en Battery Save-ontlaadgrens maximaal één keer per 24 uur.</p>
 </section>
 <section class="panel" id="panel-planning">
 <div class="card">
@@ -1902,6 +1903,27 @@
 </div>
 <div id="helpCatalog"></div>
 <div class="card help-empty" id="helpEmpty">No matching Help items.</div>
+</section>
+<section class="panel" id="panel-diagnostics">
+<div class="card">
+<h3>Diagnostiek</h3>
+<p class="muted">Schakel alleen de logging in die je nodig hebt. De eerste ingeschakelde optie start een diagnosesessie; alle logging schakelt automatisch uit na maximaal 48 uur. De EMS-sturing, P1-cadans en planning worden hierdoor niet versneld of vertraagd.</p>
+<div class="grid">
+<div class="homey-form-group full-width"><label class="homey-form-checkbox"><input id="diagnosticsPlanningEnabled" type="checkbox"/> <span>Planning</span></label><div class="muted">Logt elke echte herberekening van de energieplanning, de relevante ingangen en de bijbehorende HomeFlux-instellingen. Instellingen worden alleen opnieuw opgenomen wanneer de configuratie wijzigt.</div></div>
+<div class="homey-form-group full-width"><label class="homey-form-checkbox"><input id="diagnosticsCpuEnabled" type="checkbox"/> <span>CPU</span></label><div class="muted">Meet proces-CPU eenmaal per minuut en telt/timet de grote codepaden met lichte wall-time meting: snelle regeling, trage context, planning, batterijpublicatie, statuspublicatie en EMS-device-sync.</div></div>
+<div class="homey-form-group full-width"><label class="homey-form-checkbox"><input id="diagnosticsErrorsEnabled" type="checkbox"/> <span>Fouten</span></label><div class="muted">Bewaart HomeFlux-fouten en stackinformatie in een begrensde buffer voor het rapport.</div></div>
+<div class="homey-form-group full-width"><label class="homey-form-checkbox"><input id="diagnosticsMemoryEnabled" type="checkbox"/> <span>Geheugen</span></label><div class="muted">Meet RSS, heap, external memory en array buffers eenmaal per minuut.</div></div>
+</div>
+<div class="statusline" id="diagnosticsState">Diagnostiek laden…</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+<button class="homey-button-secondary" id="refreshDiagnosticsReport" type="button">Rapport vernieuwen</button>
+<button class="homey-button-secondary" id="selectDiagnosticsReport" type="button">Rapport selecteren</button>
+<button class="homey-button-secondary" id="resetDiagnosticsReport" type="button">Rapport wissen</button>
+</div>
+<textarea class="homey-form-input" id="diagnosticsReport" readonly style="min-height:320px;font-family:monospace;font-size:11px;white-space:pre;overflow:auto"></textarea>
+<p class="muted">Het rapport bevat geen API-tokens, wachtwoorden of andere sleutelvelden. Planning bevat wel de HomeFlux-configuratie die nodig is om een beslissing achteraf te kunnen reproduceren. Kopiëren of downloaden wordt niet rechtstreeks door HomeFlux uitgevoerd; selecteer het rapport en gebruik de normale browser- of toestelactie.</p>
+<p class="muted">Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.</p>
+</div>
 </section>
 <section class="panel" id="panel-support">
 <div class="card">
@@ -2236,6 +2258,102 @@ async function onHomeyReady(Homey) {
   }
 
   function q(id) { return document.getElementById(id); }
+
+  const diagnosticSettingIds = [
+    'diagnosticsPlanningEnabled', 'diagnosticsCpuEnabled',
+    'diagnosticsErrorsEnabled', 'diagnosticsMemoryEnabled',
+  ];
+  let lastDiagnosticsReport = null;
+
+  function formatDiagnosticsDate(value) {
+    const at = Number(value) || 0;
+    if (!at) return '—';
+    try { return new Date(at).toLocaleString(); } catch (_) { return String(at); }
+  }
+
+  function renderDiagnosticsReport(report = {}) {
+    lastDiagnosticsReport = report && typeof report === 'object' ? report : {};
+    const session = lastDiagnosticsReport.session || {};
+    const state = q('diagnosticsState');
+    const active = Boolean(session.active);
+    if (state) {
+      if (active) {
+        state.textContent = uiLanguage === 'nl'
+          ? `Diagnostiek actief · gestart ${formatDiagnosticsDate(session.startedAt)} · automatisch uit ${formatDiagnosticsDate(session.expiresAt)}`
+          : `Diagnostics active · started ${formatDiagnosticsDate(session.startedAt)} · automatically off ${formatDiagnosticsDate(session.expiresAt)}`;
+      } else if (Number(session.endedAt) > 0) {
+        const reason = String(session.endReason || '');
+        state.textContent = uiLanguage === 'nl'
+          ? `Diagnostiek uit · laatste sessie beëindigd ${formatDiagnosticsDate(session.endedAt)}${reason === '48h_expired' ? ' · 48 uur bereikt' : ''}`
+          : `Diagnostics off · last session ended ${formatDiagnosticsDate(session.endedAt)}${reason === '48h_expired' ? ' · 48-hour limit reached' : ''}`;
+      } else {
+        state.textContent = uiLanguage === 'nl' ? 'Diagnostiek uit' : 'Diagnostics off';
+      }
+    }
+    const text = q('diagnosticsReport');
+    if (text) text.value = JSON.stringify(lastDiagnosticsReport, null, 2);
+  }
+
+  async function refreshDiagnosticsReport() {
+    const button = q('refreshDiagnosticsReport');
+    if (button) button.disabled = true;
+    try {
+      const report = await api('GET', '/diagnostics', {});
+      renderDiagnosticsReport(report || {});
+      return report;
+    } catch (err) {
+      if (q('diagnosticsState')) q('diagnosticsState').textContent = err.message || String(err);
+      throw err;
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function persistDiagnosticSetting(id) {
+    const field = q(id);
+    if (!field) return;
+    const enabled = Boolean(field.checked);
+    field.disabled = true;
+    try {
+      await set(id, enabled);
+      if (q('diagnosticsState')) q('diagnosticsState').textContent = uiLanguage === 'nl' ? 'Diagnostiek bijwerken…' : 'Updating diagnostics…';
+      await new Promise(resolve => setTimeout(resolve, 120));
+      await refreshDiagnosticsReport();
+    } catch (err) {
+      try { field.checked = Boolean(await get(id)); } catch (_) {}
+      Homey.alert(err.message || String(err));
+    } finally {
+      field.disabled = false;
+    }
+  }
+
+  async function resetDiagnosticsReport() {
+    try {
+      const report = await api('POST', '/diagnostics/reset', {});
+      renderDiagnosticsReport(report || {});
+    } catch (err) {
+      Homey.alert(err.message || String(err));
+    }
+  }
+
+  async function selectDiagnosticsReport() {
+    if (!lastDiagnosticsReport) await refreshDiagnosticsReport();
+    const area = q('diagnosticsReport');
+    if (!area) return;
+    area.focus();
+    area.select();
+    try { area.setSelectionRange(0, area.value.length); } catch (_) {}
+    if (q('diagnosticsState')) {
+      q('diagnosticsState').textContent = uiLanguage === 'nl'
+        ? 'Rapport geselecteerd · kopieer via de normale browser- of toestelactie'
+        : 'Report selected · copy it using the normal browser or device action';
+    }
+  }
+
+  diagnosticSettingIds.forEach(id => q(id)?.addEventListener('change', () => persistDiagnosticSetting(id)));
+  q('refreshDiagnosticsReport')?.addEventListener('click', () => refreshDiagnosticsReport().catch(err => Homey.alert(err.message || String(err))));
+  q('resetDiagnosticsReport')?.addEventListener('click', resetDiagnosticsReport);
+  q('selectDiagnosticsReport')?.addEventListener('click', () => selectDiagnosticsReport().catch(err => Homey.alert(err.message || String(err))));
 
   function organizeEmsSettingsPanels() {
     const batteryMount=q('configBatteryMount');
@@ -3567,6 +3685,7 @@ async function onHomeyReady(Homey) {
       // One local API round-trip returns the complete cached settings snapshot.
       // No EMS evaluation, planning rebuild or extra polling is triggered here.
       const snapshot = await loadSettingsSnapshot();
+      diagnosticSettingIds.forEach(id => { if (q(id)) q(id).checked = Boolean(snapshot[id]); });
       for (let instance = 1; instance <= MAX_FLEX_INSTANCES; instance += 1) {
         const stem = instanceStem('ev', instance);
         const phases = Number(snapshot[`${stem}Phases`]) === 1 ? 1 : 3;
@@ -3647,6 +3766,7 @@ async function onHomeyReady(Homey) {
       captureSettingsBaseline();
       q('save').disabled = false;
       refreshStatus();
+      refreshDiagnosticsReport().catch(err => { if (q('diagnosticsState')) q('diagnosticsState').textContent = err.message || String(err); });
     } catch (err) {
       q('save').disabled = true;
       q('saveState').textContent = err.message || String(err);
