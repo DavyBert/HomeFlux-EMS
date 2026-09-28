@@ -28,6 +28,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 0.9.8
+
+PV live control now follows changes between consecutive PV readings. Large changes select current P1; a subsequent change below the threshold restores the configured averaging. Live PV selection also expires when fresh PV input stops, using the observed input cadence without an extra timer. Repeated P1 readings no longer trigger calculations solely because of the same PV change. The next permitted battery command uses the latest input state.
+
 ### 0.9.7
 
 Charge planning now runs in the shared slow context loop. Ordinary SoC, forecast and price updates are combined while respecting the minimum planning interval. Status and widget reads reuse the cached plan. Manual refresh and planning day/phase changes use the same context path; pending updates are processed even without further input.

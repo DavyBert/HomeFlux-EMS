@@ -1,4 +1,8 @@
 {
+  "0.9.8": {
+    "en": "PV live control now follows changes between consecutive PV readings. Large changes select current P1; a subsequent change below the threshold restores the configured averaging. Live PV selection also expires when fresh PV input stops, using the observed input cadence without an extra timer. Repeated P1 readings no longer trigger calculations solely because of the same PV change. The next permitted battery command uses the latest input state.",
+    "nl": "De live-PV-regeling volgt nu veranderingen tussen opeenvolgende PV-metingen. Grote veranderingen kiezen actuele P1; een volgende verandering onder de drempel herstelt de ingestelde middeling. De live-PV-keuze vervalt ook wanneer nieuwe PV-invoer uitblijft, op basis van de gemeten invoerfrequentie en zonder extra timer. Herhaalde P1-metingen starten niet langer berekeningen enkel door dezelfde PV-afwijking. Het volgende toegestane batterijcommando gebruikt de nieuwste meettoestand."
+  },
   "0.9.7": {
     "en": "Charge planning now runs in the shared slow context loop. Ordinary SoC, forecast and price updates are combined while respecting the minimum planning interval. Status and widget reads reuse the cached plan. Manual refresh and planning day/phase changes use the same context path; pending updates are processed even without further input.",
     "nl": "Laadplanning loopt nu via de gedeelde trage contextregelkring. Gewone SoC-, forecast- en prijsupdates worden samengevoegd met behoud van de minimumtijd tussen planberekeningen. Status en widgets gebruiken het opgeslagen plan. Handmatig vernieuwen en een nieuwe planningsdag of -fase lopen via hetzelfde contextpad; wachtende wijzigingen worden ook zonder nieuwe input verwerkt."

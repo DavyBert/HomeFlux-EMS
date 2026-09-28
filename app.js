@@ -140,9 +140,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.lastContextPvInputW = null;
     this.batteryCommandPauseTimer = null;
     this.lastControlEvalAt = 0;
-    this.pvAtLastBatteryCommandW = null;
-    this.pvAtFirstObservationW = null;
-    this.pvAtLastEvaluationW = null;
+    this.pvLiveObservation = null;
     this.gridInputHistory = [];
     this.lastAdaptiveGridW = null;
     this.lastLargeSetpointChangeAt = 0;
@@ -544,7 +542,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextHeartbeatTimer = this.homey.setInterval(() => this.runContextHeartbeat(), 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v0.9.7 initialized');
+    this.log('HomeFlux EMS v0.9.8 initialized');
   }
 
   refreshSettingsCache() {
@@ -967,8 +965,22 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   noteAutoTunePvSample(value, at = Date.now()) {
+    const pvW = parseFiniteInputNumber(value);
+    if (pvW === null || pvW < 0) return;
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
-    this.updateAutoTuneSignal(this.autoTuneRuntime.pv, value, at, 2500);
+    const bucket = this.autoTuneRuntime.pv;
+    const previousW = parseFiniteInputNumber(bucket.lastValue);
+    const previousAt = Number(bucket.lastAt) || 0;
+    const gapMs = previousAt > 0 ? Math.max(0, at - previousAt) : 0;
+    this.updateAutoTuneSignal(bucket, pvW, at, 2500);
+    // Reuse Autotune's input cadence. Slow (>60 s) inputs are outside its
+    // learning window, so use their observed gap instead. No extra timer/history.
+    const expectedGapMs = gapMs > 60000 ? gapMs : (Number(bucket.ewmaGapMs) || gapMs || 15000);
+    this.pvLiveObservation = {
+      deltaW: previousW !== null && previousAt > 0 && at >= previousAt ? pvW - previousW : 0,
+      expiresAt: at + 2 * Math.max(500, Math.min(300000, expectedGapMs)),
+      revision: (Number(this.pvLiveObservation?.revision) || 0) + 1,
+    };
   }
 
 
@@ -4767,8 +4779,8 @@ class HomeFluxEmsApp extends Homey.App {
     });
 
     this.homey.flow.getActionCard('set_pv_power').registerRunListener(async args => {
-      const value = Number(args.power);
-      if (!Number.isFinite(value)) return false;
+      const value = parseFiniteInputNumber(args.power);
+      if (value === null) return false;
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.pvPowerW = Math.max(0, value);
@@ -6825,17 +6837,12 @@ class HomeFluxEmsApp extends Homey.App {
     return false;
   }
 
-  getPvDeltaSinceBatteryCommand(pvValue = this.state.pvPowerW) {
-    const pvW = parseFiniteInputNumber(pvValue);
-    if (pvW === null) return 0;
-    // Establish a startup reference once; evaluations never consume the delta.
-    // A real 0 W observation is valid, while absent PV is not a zero reading.
-    if (parseFiniteInputNumber(this.pvAtFirstObservationW) === null) this.pvAtFirstObservationW = pvW;
-    const baseline = parseFiniteInputNumber(this.pvAtLastBatteryCommandW) ?? this.pvAtFirstObservationW;
-    return pvW - baseline;
+  getRecentPvDelta(now = Date.now()) {
+    return this.pvLiveObservation && now < this.pvLiveObservation.expiresAt
+      ? this.pvLiveObservation.deltaW : 0;
   }
 
-  getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getPvDeltaSinceBatteryCommand()) {
+  getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now)) {
     const count = this.getBatteryCount(settings);
     // SoC is value-based, not freshness-based. Once a battery has supplied a
     // valid SoC value, keep using the last known value until a newer one arrives.
@@ -10956,7 +10963,7 @@ class HomeFluxEmsApp extends Homey.App {
       const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
       const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW)
         ? Math.max(0, configuredPvDeltaThresholdW) : 100;
-      const pvDeltaW = this.getPvDeltaSinceBatteryCommand(evaluationState ? evaluationState.pvPowerW : this.state.pvPowerW);
+      const pvDeltaW = this.getRecentPvDelta(now);
       const useLiveGrid = controlSampleCount === 0
         || (pvDeltaThresholdW > 0 && Math.abs(pvDeltaW) >= pvDeltaThresholdW)
         || this.isAdaptiveLiveControlActive(settings, now);
@@ -10973,7 +10980,11 @@ class HomeFluxEmsApp extends Homey.App {
     const softPeakW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500)
       - Math.max(0, Number(settings.peakSoftMarginW) || 0);
     const peak = Boolean(settings.peakShaveEnabled) && rawGridW >= softPeakW;
-    return { at: now, rawGridW, controlGridW, pvW, pvDeltaW: this.getPvDeltaSinceBatteryCommand(evaluationState ? evaluationState.pvPowerW : this.state.pvPowerW), zone, peak };
+    const pvDeltaW = this.getRecentPvDelta(now);
+    const threshold = Math.max(0, Number(settings.pvDeltaThresholdW ?? 100) || 0);
+    return { at: now, rawGridW, controlGridW, pvW, pvDeltaW,
+      pvLive: threshold > 0 && Math.abs(pvDeltaW) >= threshold,
+      pvRevision: Number(this.pvLiveObservation?.revision) || 0, zone, peak };
   }
 
   shouldRunFastEvaluation(force = false, settings = this.getSettings(), now = Date.now()) {
@@ -10987,11 +10998,11 @@ class HomeFluxEmsApp extends Homey.App {
 
     const baseMode = String(this.latestResult.baseMode || '');
     const feedbackMode = ['self_consumption', 'avoid_import', 'solar_capture'].includes(baseMode);
-    const pvThreshold = Math.max(0, Number(settings.pvDeltaThresholdW) || 0);
-    const significantPvChange = pvThreshold > 0 && Math.abs(current.pvDeltaW) >= pvThreshold;
-    // Planned charging must also use current P1 when cumulative PV movement
-    // reaches the threshold. Publication still goes through the normal cooldown.
-    if (significantPvChange && (feedbackMode || baseMode === 'charge')) return true;
+    // A new variable-PV sample or a live/average transition is handled once.
+    // Repeated P1 inputs cannot retrigger solely on an already-consumed PV delta.
+    const pvSelectionChanged = Boolean(current.pvLive) !== Boolean(previous.pvLive);
+    const newLiveSample = current.pvLive && current.pvRevision !== previous.pvRevision;
+    if ((pvSelectionChanged || newLiveSample) && (feedbackMode || baseMode === 'charge')) return true;
     if (!feedbackMode && !current.peak && String(this.latestResult.override || '') !== 'peak_shave') return false;
 
     // A remaining error needs another feedback step even when P1 barely moves.
@@ -11403,19 +11414,16 @@ class HomeFluxEmsApp extends Homey.App {
         return this.latestResult;
       }
 
-      const pvAtCalculationW = parseFiniteInputNumber(this.state.pvPowerW);
-      const pvDeltaW = this.getPvDeltaSinceBatteryCommand(pvAtCalculationW);
+      const pvDeltaW = this.getRecentPvDelta(now);
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
       const settings = this.controlRuntimeSettings;
       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
       this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
-      this.pvAtLastEvaluationW = pvAtCalculationW;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
 
       const readiness = this.getInputReadiness(storedSettings);
       const result = this.createSafetyResult(calculated, settings, readiness);
-      result._pvAtCalculationW = pvAtCalculationW;
       this.applyCachedEvBatteryCoordination(result, storedSettings, now);
 
       const previous = this.latestResult || {};
@@ -11457,8 +11465,7 @@ class HomeFluxEmsApp extends Homey.App {
       const now = Date.now();
       const storedSettings = this.getSettings();
       this.ensureForecastDayCurrent(now);
-      const pvAtCalculationW = parseFiniteInputNumber(this.state.pvPowerW);
-      const pvDeltaW = this.getPvDeltaSinceBatteryCommand(pvAtCalculationW);
+      const pvDeltaW = this.getRecentPvDelta(now);
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
       const settings = this.refreshControlContext(storedSettings, evaluationState, now);
       try {
@@ -11481,12 +11488,10 @@ class HomeFluxEmsApp extends Homey.App {
       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
       this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
-      this.pvAtLastEvaluationW = pvAtCalculationW;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
 
       const readiness = this.getInputReadiness(storedSettings);
       const result = this.createSafetyResult(calculated, settings, readiness);
-      result._pvAtCalculationW = pvAtCalculationW;
       const rawCandidateTotalW = Number(result.candidateTotalCommandW) || 0;
       this.coordinateEvBatteryPriority(result, storedSettings);
       this.cacheEvBatteryCoordination(rawCandidateTotalW, result, now);
@@ -11869,9 +11874,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.pendingResult = null;
     this.pendingCommandBypassInterval = false;
     this.commandPublishing = true;
-    const pvAtCommandCalculationW = parseFiniteInputNumber(
-      Object.prototype.hasOwnProperty.call(result, '_pvAtCalculationW') ? result._pvAtCalculationW : this.state.pvPowerW,
-    );
+
 
     // Reserve the complete minimum interval BEFORE the first async token/Flow
     // write. This closes the small race where another evaluation could otherwise
@@ -11917,7 +11920,6 @@ class HomeFluxEmsApp extends Homey.App {
       // fresh EMS calculation is scheduled for the first allowed switch moment.
       const effectiveInternalCommands = await this.publishSplitBatteryCommands(internalCommands, settings);
       const effectiveInternalTotal = effectiveInternalCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
-      if (pvAtCommandCalculationW !== null) this.pvAtLastBatteryCommandW = pvAtCommandCalculationW;
 
       const previousInternalTotal = Number(this.state.lastTotalCommandW) || 0;
       // Flexible loads and PV limiting belong to the slow/output pass. A pure
@@ -12183,7 +12185,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '0.9.7',
+      version: '0.9.8',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -12252,7 +12254,7 @@ class HomeFluxEmsApp extends Homey.App {
     const firstSoc = hasValue && cache.value.plan.currentSoc == null && computeAverageSoc(state, settings) !== null;
     if (hasValue && !phaseChanged && !firstSoc && (!cache.dirty || now < Number(cache.nextAllowedAt))) return cache.value.plan;
     const plan = {
-      version: '0.9.7',
+      version: '0.9.8',
       nightPlanningActive: this.isNightPlanningPhase(now),
       planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
       ...buildSocPlan(state, settings, new Date(now)),
@@ -12573,7 +12575,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '0.9.7',
+      version: '0.9.8',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -12745,7 +12747,7 @@ class HomeFluxEmsApp extends Homey.App {
         contextInputChanged = true;
       }
     }
-    if (body.pvPowerW !== undefined && Number.isFinite(Number(body.pvPowerW))) {
+    if (body.pvPowerW !== undefined && parseFiniteInputNumber(body.pvPowerW) !== null) {
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.pvPowerW = Math.max(0, Number(body.pvPowerW));
