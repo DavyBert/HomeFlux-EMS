@@ -28,6 +28,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.0.1
+
+EV charging now has an independent one-minute heartbeat for evaluation and changed-command publication, without waiting for a battery command. Per-EV minimum command intervals and stop holds remain active; urgent safety reductions retain their immediate path. Independent decisions use current tariff and meter data, reserve pending battery charging including Split Command minimum power, and do not count future battery discharge as available headroom.
+
+Battery feedback now skips full evaluations when a lightweight check confirms exactly the same published battery commands. The check reuses battery limits, SoC protection, balancing and power rounding; Peak Guard, EV target changes, live-PV changes, zone transitions and safety events retain their existing control paths. Fast detection now uses the same EV-adjusted grid target as battery control. CPU diagnostics include feedback preflight time, skipped evaluations and evaluation reasons.
+
 ### 1.0.0
 
 EV sessions now distinguish charging, paused and completed. Missing mode-controlled charging power for 60 seconds pauses tracking without a Stop latch; sustained P1 load matching the configured mode resumes it automatically. Paused EVs release no grid budget, and household load above the configured mode power cannot inflate EV attribution. Sessions complete through the completion Flow card, a fresh SoC reaching its target, or measured current delivering the requested kWh. Pause preserves targets and session overrides. Live status and widgets show the pause and completion reason.
