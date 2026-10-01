@@ -28,7 +28,15 @@ module.exports = {
   },
 
   async getSavings({ homey, query }) {
-    return homey.app.getSavingsStatus({ period: String(query?.period || 'day') });
+    return homey.app.getSavingsStatus({ period: String(query?.period || 'day'), days: query?.days, selected: String(query?.selected || '') });
+  },
+
+  async getSavingsHistory({ homey }) {
+    return homey.app.getSavingsHistoryInfo();
+  },
+
+  async getSavingsExport({ homey }) {
+    return { csv: homey.app.getSavingsCsv() };
   },
 
   async getAutoTune({ homey }) {

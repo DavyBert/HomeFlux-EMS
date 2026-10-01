@@ -80,6 +80,28 @@
       backdrop-filter: blur(12px);
       box-shadow: 0 10px 24px rgba(0,0,0,.18);
     }
+    .tab-toggle {
+      width: 100%;
+      min-height: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      background: #17202a;
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      text-align: left;
+    }
+    .tab-toggle:hover { border-color: var(--hf-border-strong); }
+    .tab-toggle:focus-visible { outline: 2px solid #7fc13b; outline-offset: 2px; }
+    .tab-toggle-icon { font-size: 23px; font-weight: 400; line-height: 1; }
+    .tab-list { display: none; flex-wrap: wrap; gap: 8px; width: 100%; }
+    .tabs.expanded .tab-list { display: flex; }
     .tab {
       min-height: 40px;
       padding: 10px 14px;
@@ -746,7 +768,9 @@
 <h1 class="homey-title" data-i18n="settings.title">HomeFlux EMS</h1>
 <p class="homey-subtitle" data-i18n="settings.subtitle">v0.7.12 — Jouw energie, anders geregeld</p>
 </header>
-<div class="tabs">
+<div class="tabs" id="mainTabs">
+<button class="tab-toggle" id="tabToggle" type="button" aria-expanded="false" aria-controls="mainTabList" aria-label="Tabbladen openen: EMS"><span id="activeTabLabel">EMS</span><span class="tab-toggle-icon" id="tabToggleIcon" aria-hidden="true">+</span></button>
+<div class="tab-list" id="mainTabList">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
 <button class="tab" data-tab="config" type="button">Configuratie</button>
 <button class="tab" data-tab="hybrid-ems" type="button">Hybrid EMS</button>
@@ -763,6 +787,7 @@
 <button class="tab" data-tab="help" type="button">Help</button>
 <button class="tab" data-tab="diagnostics" type="button">Diagnostiek</button>
 <button class="tab" data-tab="support" type="button">Support</button>
+</div>
 </div>
 <section class="panel active" id="panel-ems">
 <fieldset class="homey-form-fieldset">
@@ -1306,6 +1331,20 @@
 <button class="homey-button-secondary savings-period-button" type="button" data-savings-period="week">Week</button>
 <button class="homey-button-secondary savings-period-button" type="button" data-savings-period="month">Maand</button>
 <button class="homey-button-secondary savings-period-button" type="button" data-savings-period="year">Jaar</button>
+<button class="homey-button-secondary savings-period-button" type="button" data-savings-period="rolling">Rolling</button>
+<button class="homey-button-secondary savings-period-button" type="button" data-savings-period="calendar_month">Kalendermaand</button>
+<button class="homey-button-secondary savings-period-button" type="button" data-savings-period="calendar_year">Kalenderjaar</button>
+</div>
+<div id="savingsHistoryControls" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+<label id="savingsRollingWrap" style="display:none">Aantal dagen <input id="savingsRollingDays" type="number" min="1" max="1827" value="30" style="width:90px"></label>
+<label id="savingsMonthWrap" style="display:none">Maand <select id="savingsMonthSelect"></select></label>
+<label id="savingsYearWrap" style="display:none">Jaar <select id="savingsYearSelect"></select></label>
+</div>
+<div class="muted" id="savingsHistoryInfo" style="margin-bottom:12px"></div>
+<button class="homey-button-secondary" type="button" id="savingsExportButton">Export</button>
+<div id="savingsExportPanel" style="display:none;margin:12px 0">
+<textarea id="savingsExportCsv" readonly aria-label="CSV" style="width:100%;min-height:160px"></textarea>
+<button class="homey-button-secondary" type="button" id="savingsCopyButton">Kopiëren naar klembord</button>
 </div>
 <div class="savings-summary">
   <div class="savings-card">
@@ -2776,6 +2815,30 @@ async function onHomeyReady(Homey) {
   let helpCatalogRendered = false;
   let activeMainTab = 'ems';
   let activeSavingsPeriod = 'day';
+  let savingsHistoryLoaded = false;
+  let savingsHistoryOptions = { months: [], years: [] };
+  const savingsWord = (nl, en) => uiLanguage === 'nl' ? nl : en;
+  function updateSavingsControls() {
+    q('savingsRollingWrap').style.display = activeSavingsPeriod === 'rolling' ? '' : 'none';
+    q('savingsMonthWrap').style.display = activeSavingsPeriod === 'calendar_month' ? '' : 'none';
+    q('savingsYearWrap').style.display = activeSavingsPeriod === 'calendar_year' ? '' : 'none';
+  }
+  async function refreshSavingsHistoryInfo() {
+    try {
+      const info = await api('GET', '/savings/history');
+      savingsHistoryOptions = info.options || { months: [], years: [] };
+      const month = q('savingsMonthSelect'), year = q('savingsYearSelect');
+      const previousMonth = month.value, previousYear = year.value;
+      month.replaceChildren(); year.replaceChildren();
+      for (const key of savingsHistoryOptions.months) { const item = document.createElement('option'); item.value = key; item.textContent = new Intl.DateTimeFormat(uiLanguage === 'nl' ? 'nl-BE' : 'en-GB', {month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${key}-01T12:00:00Z`)); month.appendChild(item); }
+      for (const key of savingsHistoryOptions.years) { const item = document.createElement('option'); item.value = key; item.textContent = key; year.appendChild(item); }
+      if (savingsHistoryOptions.months.includes(previousMonth)) month.value = previousMonth;
+      if (savingsHistoryOptions.years.includes(previousYear)) year.value = previousYear;
+      const size = info.bytes >= 1024 * 1024 ? `${(info.bytes / (1024 * 1024)).toFixed(2)} MB` : `${(info.bytes / 1024).toFixed(1)} kB`;
+      q('savingsHistoryInfo').textContent = `${savingsWord('Historiekopslag','History storage')}: ${size} · ${savingsWord('Bewaarde periode','Stored period')}: ${info.oldest || '—'} – ${info.newest || '—'} · ${savingsWord('Aantal dagrecords','Day records')}: ${info.count}`;
+      savingsHistoryLoaded = true;
+    } catch (err) { console.error('Savings history info failed', err); }
+  }
 
   function formatSavingsCurrency(value) {
     return new Intl.NumberFormat(uiLanguage === 'nl' ? 'nl-BE' : 'en-BE', { style:'currency', currency:'EUR', minimumFractionDigits:2, maximumFractionDigits:2 }).format(Number(value) || 0);
@@ -2837,7 +2900,9 @@ async function onHomeyReady(Homey) {
 
   async function refreshSavings() {
     try {
-      const data = await api('GET', `/savings?period=${encodeURIComponent(activeSavingsPeriod)}`);
+      const days = Math.max(1, Math.min(1827, Math.trunc(Number(q('savingsRollingDays').value) || 30)));
+      const selected = activeSavingsPeriod === 'calendar_month' ? q('savingsMonthSelect').value : activeSavingsPeriod === 'calendar_year' ? q('savingsYearSelect').value : '';
+      const data = await api('GET', `/savings?period=${encodeURIComponent(activeSavingsPeriod)}&days=${days}&selected=${encodeURIComponent(selected)}`);
       q('savingsTodayValue').textContent = formatSavingsCurrency(data.todaySavings);
       q('savingsTotalValue').textContent = formatSavingsCurrency(data.totalSavings);
       q('savingsDirectPvValue').textContent = `${formatSavingsCurrency(data.directPv?.value)} · ${formatSavingsKwh(data.directPv?.kwh)}`;
@@ -2877,8 +2942,19 @@ async function onHomeyReady(Homey) {
   document.querySelectorAll('[data-savings-period]').forEach(button => button.addEventListener('click', () => {
     activeSavingsPeriod = String(button.dataset.savingsPeriod || 'day');
     document.querySelectorAll('[data-savings-period]').forEach(item => item.classList.toggle('active', item === button));
-    refreshSavings();
+    updateSavingsControls();
+    if (!savingsHistoryLoaded) refreshSavingsHistoryInfo().then(refreshSavings);
+    else refreshSavings();
   }));
+  for (const id of ['savingsRollingDays','savingsMonthSelect','savingsYearSelect']) q(id).addEventListener('change', refreshSavings);
+  q('savingsExportButton').addEventListener('click', async () => {
+    try { const result = await api('GET','/savings/export'); q('savingsExportCsv').value = result.csv || ''; q('savingsExportPanel').style.display = ''; } catch (err) { console.error('Savings export failed', err); }
+  });
+  q('savingsCopyButton').addEventListener('click', () => {
+    q('savingsExportCsv').focus();
+    q('savingsExportCsv').select();
+    document.execCommand('copy');
+  });
 
   function ensureHelpCatalogRendered() {
     if (helpCatalogRendered) return;
@@ -3106,15 +3182,32 @@ async function onHomeyReady(Homey) {
 
   q('refreshAutoTune')?.addEventListener('click',()=>refreshAutoTune(true));
 
+  function setMainTabsExpanded(expanded) {
+    q('mainTabs').classList.toggle('expanded', expanded);
+    q('tabToggle').setAttribute('aria-expanded', String(expanded));
+    q('tabToggleIcon').textContent = expanded ? '−' : '+';
+    const current = q('activeTabLabel').textContent;
+    q('tabToggle').setAttribute('aria-label', `${uiLanguage === 'nl' ? (expanded ? 'Tabbladen sluiten' : 'Tabbladen openen') : (expanded ? 'Close tabs' : 'Open tabs')}: ${current}`);
+  }
+
+  q('tabToggle').addEventListener('click', () => {
+    setMainTabsExpanded(!q('mainTabs').classList.contains('expanded'));
+  });
+  setMainTabsExpanded(false);
+
   function switchTab(name) {
     if (activeMainTab === 'planning-simulation' && name !== 'planning-simulation') clearPlanningSimulationResult();
     activeMainTab = name;
     document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
+    const selectedTab = document.querySelector(`.tab[data-tab="${name}"]`);
+    if (selectedTab) q('activeTabLabel').textContent = selectedTab.textContent.trim();
+    setMainTabsExpanded(false);
+    q('tabToggle').focus({ preventScroll: true });
     document.querySelectorAll('.panel').forEach(el => el.classList.toggle('active', el.id === `panel-${name}`));
     if (name === 'help') ensureHelpCatalogRendered();
     if (name === 'hybrid-ems') refreshHybridStatus();
     if (name === 'status' || name === 'ev' || name === 'hvac' || name === 'boiler' || name === 'priority' || (name === 'contract' && q('contractType').value.startsWith('dynamic'))) refreshStatus();
-    if (name === 'savings') refreshSavings();
+    if (name === 'savings') { refreshSavingsHistoryInfo(); refreshSavings(); }
     if (name === 'finetuning') refreshAutoTune();
     if (name === 'planning') refreshPlanning();
   }

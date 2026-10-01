@@ -2199,5 +2199,14 @@
     "Minimumdoel bereikt · {0}": "Minimum target reached · {0}",
     "Ontladen gepauzeerd · zonkansreserve {0}% bereikt": "Discharging paused · sunshine reserve {0}% reached"
   },
-  "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "After an app restart, the measurement buffer starts again; the original 48-hour end time remains unchanged."
+  "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "After an app restart, the measurement buffer starts again; the original 48-hour end time remains unchanged.",
+  "Aantal dagen": "Number of days",
+  "Kalendermaand": "Calendar month",
+  "Kalenderjaar": "Calendar year",
+  "Maand": "Month",
+  "Jaar": "Year",
+  "Historiekopslag": "History storage",
+  "Bewaarde periode": "Stored period",
+  "Aantal dagrecords": "Day records",
+  "Kopiëren naar klembord": "Copy to clipboard"
 }

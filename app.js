@@ -14,6 +14,7 @@ const { translate: translateDisplay, localizeDisplay, localizeTokens } = require
 const { migrateVoltage } = require('./settings/ev-headroom');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelected, getEvPvTariffPolicy } = require('./lib/flexible-loads');
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
+const savingsHistory = require('./lib/savings-history');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
 const DIAGNOSTICS_MAX_MS = 48 * 60 * 60 * 1000;
@@ -576,7 +577,7 @@ class HomeFluxEmsApp extends Homey.App {
     }, 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v1.0.1 initialized');
+    this.log('HomeFlux EMS v1.0.2 initialized');
   }
 
   refreshSettingsCache() {
@@ -712,21 +713,25 @@ class HomeFluxEmsApp extends Homey.App {
     const history = storedHistory && typeof storedHistory === 'object' && !Array.isArray(storedHistory)
       ? storedHistory : {};
     const normalizedHistory = {};
-    for (const [date, day] of Object.entries(history)) normalizedHistory[date] = normalizeDay(day, date);
+    for (const [date, day] of Object.entries(history)) normalizedHistory[date] = savingsHistory.compactDay(day, date);
 
     const todayKey = this.getSavingsDateKey();
     const storedToday = normalizeDay(this.homey.settings.get('_savingsToday'), todayKey);
     let rolloverSavingsAdjustment = 0;
     if (storedToday.date && storedToday.date !== todayKey) {
       const calibratedStoredToday = calibrateEnergy(storedToday);
-      normalizedHistory[storedToday.date] = calibratedStoredToday;
-      rolloverSavingsAdjustment = totalSavings(calibratedStoredToday) - totalSavings(storedToday);
+      if (!normalizedHistory[storedToday.date]) {
+        normalizedHistory[storedToday.date] = savingsHistory.compactDay(calibratedStoredToday, storedToday.date);
+        rolloverSavingsAdjustment = totalSavings(calibratedStoredToday) - totalSavings(storedToday);
+      }
       this.savings.today = emptyDay(todayKey);
     } else {
       storedToday.date = todayKey;
       this.savings.today = storedToday;
     }
+    savingsHistory.pruneHistory(normalizedHistory, todayKey);
     this.savings.history = normalizedHistory;
+    this.savingsHistoryCache = savingsHistory.createHistoryCache();
     this.savings.inventory = normalizeInventory(this.homey.settings.get('_savingsInventory'));
     this.savings.total = (Number(this.homey.settings.get('_savingsTotal')) || 0) + rolloverSavingsAdjustment;
     this.savings.lastSampleAt = Date.now();
@@ -736,11 +741,13 @@ class HomeFluxEmsApp extends Homey.App {
     const current = this.savings.today;
     if (current?.date) {
       const calibrated = calibrateEnergy(current);
-      this.savings.total += totalSavings(calibrated) - totalSavings(current);
-      this.savings.history[current.date] = calibrated;
+      if (!this.savings.history[current.date]) {
+        this.savings.total += totalSavings(calibrated) - totalSavings(current);
+        this.savings.history[current.date] = savingsHistory.compactDay(calibrated, current.date);
+      }
+      this.savingsHistoryCache?.clear();
     }
-    const dates = Object.keys(this.savings.history).sort();
-    while (dates.length > 4000) delete this.savings.history[dates.shift()];
+    savingsHistory.pruneHistory(this.savings.history, nextDateKey);
     this.savings.today = emptyDay(nextDateKey);
   }
 
@@ -812,7 +819,9 @@ class HomeFluxEmsApp extends Homey.App {
       start = new Date(Date.UTC(parts.year, parts.month - 1, 1));
       end = new Date(Date.UTC(parts.year, parts.month, 1));
     } else if (period === 'week') {
-      const weekday = parts.weekday || 1;
+      // localParts provides a local calendar date, not a weekday. Derive the
+      // ISO weekday from that date (Monday = 1, Sunday = 7).
+      const weekday = date.getUTCDay() || 7;
       start = new Date(date.getTime() - ((weekday - 1) * 86400000));
       end = new Date(start.getTime() + (7 * 86400000));
     } else {
@@ -822,18 +831,28 @@ class HomeFluxEmsApp extends Homey.App {
     return { startKey: start.toISOString().slice(0, 10), endKey: end.toISOString().slice(0, 10) };
   }
 
-  getSavingsStatus({ period = 'day' } = {}) {
+  getSavingsHistoryInfo() {
+    const today = savingsHistory.compactDay(calibrateEnergy(this.savings.today), this.savings.today.date);
+    const dates = [...Object.keys(this.savings.history || {}), today.date].filter(Boolean).sort();
+    const bytes = Buffer.byteLength(JSON.stringify({ ...(this.savings.history || {}), [today.date]: today }), 'utf8');
+    return { bytes, count: dates.length, oldest: dates[0] || null, newest: dates[dates.length - 1] || null, options: savingsHistory.historicalOptions(this.savings.history || {}, this.savings.today?.date) };
+  }
+
+  getSavingsCsv() {
     this.recordSavingsSample(Date.now());
-    const normalizedPeriod = ['day', 'week', 'month', 'year'].includes(String(period)) ? String(period) : 'day';
-    const range = this.getSavingsPeriodRange(normalizedPeriod);
-    const aggregate = emptyDay('');
-    for (const [date, day] of Object.entries(this.savings.history || {})) {
-      if (date >= range.startKey && date < range.endKey) addDays(aggregate, day);
-    }
+    return savingsHistory.toCsv({ ...(this.savings.history || {}), [this.savings.today.date]: savingsHistory.compactDay(calibrateEnergy(this.savings.today), this.savings.today.date) });
+  }
+
+  getSavingsStatus({ period = 'day', days = 30, selected = '' } = {}) {
+    this.recordSavingsSample(Date.now());
+    const normalizedPeriod = ['day', 'week', 'month', 'year', 'rolling', 'previous_month', 'calendar_month', 'calendar_year'].includes(String(period)) ? String(period) : 'day';
+    const todayKey = this.getSavingsDateKey();
+    const range = savingsHistory.rangeFor(normalizedPeriod, todayKey, days, selected)
+      || this.getSavingsPeriodRange(normalizedPeriod);
+    this.savingsHistoryCache ||= savingsHistory.createHistoryCache();
+    const aggregate = this.savingsHistoryCache.sum(this.savings.history || {}, range, todayKey);
     const calibratedToday = calibrateEnergy(this.savings.today);
-    if (calibratedToday?.date >= range.startKey && calibratedToday?.date < range.endKey) {
-      addDays(aggregate, calibratedToday);
-    }
+    if (calibratedToday?.date >= range.startKey && calibratedToday?.date < range.endKey) addDays(aggregate, calibratedToday);
 
     // Purchase prices are signed. During negative-price intervals importing
     // energy is a credit, so the real import bill may legitimately be negative.
@@ -1494,7 +1513,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.1',
+      version: '1.0.2',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -13140,7 +13159,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.1',
+      version: '1.0.2',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13213,7 +13232,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.1',
+        version: '1.0.2',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13538,7 +13557,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.1',
+      version: '1.0.2',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

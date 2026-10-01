@@ -354,12 +354,16 @@
       const shouldShowProgress = key => showProgress && (!combined || key === combinedProgressTarget);
       const widgetHeight = chartKeys.reduce((sum, key) => sum + getSectionHeight(key, shouldShowProgress(key)), 0);
       await Homey.ready({ height: widgetHeight });
-      const period = ['day', 'month', 'year'].includes(settings.period) ? settings.period : 'day';
+      const period = ['day', 'month', 'year', 'this_month', 'previous_month', 'rolling'].includes(settings.period) ? settings.period : 'day';
+      const rollingDays = Math.max(1, Math.min(1827, Math.trunc(Number(settings.rollingDays) || 30)));
       const refreshMinutes = [1, 3, 5, 10, 15].includes(Number(settings.refresh)) ? Number(settings.refresh) : 5;
       const periodLabels = {
         day: tr(Homey, 'widget.savings.day', 'Day'),
         month: tr(Homey, 'widget.savings.month', 'Month'),
         year: tr(Homey, 'widget.savings.year', 'Year'),
+        this_month: tr(Homey, 'widget.savings.thisMonth', 'This month'),
+        previous_month: tr(Homey, 'widget.savings.previousMonth', 'Previous month'),
+        rolling: `${tr(Homey, 'widget.savings.rolling', 'Rolling')} – ${rollingDays} ${tr(Homey, 'widget.savings.days', 'days')}`,
       };
       let refreshBusy = false;
       let hasRendered = false;
@@ -368,7 +372,7 @@
         if (refreshBusy) return;
         refreshBusy = true;
         try {
-          const data = await Homey.api('GET', `/savings?period=${encodeURIComponent(period)}`, {});
+          const data = await Homey.api('GET', `/savings?period=${encodeURIComponent(period)}&days=${rollingDays}`, {});
           const models = chartOrder(chart).map(key => buildChart(data || {}, key, Homey, combineGridCharging));
           const content = document.getElementById('content');
           const modeClass = models.length > 1 ? 'multi' : 'single';

@@ -73,8 +73,40 @@
             "en": "Year",
             "nl": "Jaar"
           }
+        },
+        {
+          "id": "this_month",
+          "title": {
+            "en": "This month",
+            "nl": "Deze maand"
+          }
+        },
+        {
+          "id": "previous_month",
+          "title": {
+            "en": "Previous month",
+            "nl": "Vorige maand"
+          }
+        },
+        {
+          "id": "rolling",
+          "title": {
+            "en": "Rolling",
+            "nl": "Rolling"
+          }
         }
       ]
+    },
+    {
+      "id": "rollingDays",
+      "type": "number",
+      "title": {
+        "en": "Rolling days (1–1827)",
+        "nl": "Rolling dagen (1–1827)"
+      },
+      "value": 30,
+      "min": 1,
+      "max": 1827
     },
     {
       "id": "showProgress",

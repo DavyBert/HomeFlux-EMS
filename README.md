@@ -19,7 +19,7 @@ Once these inputs and outputs are connected, HomeFlux can perform the core batte
 
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
-Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings, diagnostics and dashboard widgets.
+Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings with historical views and CSV export, diagnostics and dashboard widgets.
 
 For the complete functionality, configuration and all Flow cards, see:  
 https://github.com/DavyBert/HomeFlux-EMS/discussions/3
@@ -27,6 +27,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.0.2
+
+Savings now retains compact daily history for up to five years. The Savings tab adds rolling periods, selectable historical calendar months and years, storage details and CSV export with clipboard copy. The Savings widget adds This month, Previous month and configurable Rolling days, with shared cached historical totals. The settings tab bar now folds into a compact active-tab selector and closes automatically after a tab is chosen.
 
 ### 1.0.1
 

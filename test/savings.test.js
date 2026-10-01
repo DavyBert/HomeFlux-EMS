@@ -17,6 +17,45 @@ const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual 
 const fiveMinutes = 300;
 const oneKwhAtFiveMinutesW = 12000;
 
+// Day, week and month must use distinct local calendar boundaries, including
+// a week that crosses a month or year and a daylight-saving change.
+{
+  const Module = require('node:module');
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (request === 'homey') return { App: class App {} };
+    if (request === 'homey-api') return { HomeyAPI: {} };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  let HomeFluxEmsApp;
+  try { HomeFluxEmsApp = require('../app'); } finally { Module._load = originalLoad; }
+  const app = Object.create(HomeFluxEmsApp.prototype);
+  app.homey = { clock: { getTimezone: () => 'Europe/Brussels' } };
+  const oct1 = Date.UTC(2026, 9, 1, 12);
+  assert.deepStrictEqual(app.getSavingsPeriodRange('day', oct1), { startKey: '2026-10-01', endKey: '2026-10-02' });
+  assert.deepStrictEqual(app.getSavingsPeriodRange('week', oct1), { startKey: '2026-09-28', endKey: '2026-10-05' });
+  assert.deepStrictEqual(app.getSavingsPeriodRange('month', oct1), { startKey: '2026-10-01', endKey: '2026-11-01' });
+  assert.deepStrictEqual(app.getSavingsPeriodRange('week', Date.UTC(2027, 0, 3, 12)), { startKey: '2026-12-28', endKey: '2027-01-04' });
+  assert.deepStrictEqual(app.getSavingsPeriodRange('week', Date.UTC(2026, 2, 29, 12)), { startKey: '2026-03-23', endKey: '2026-03-30' });
+
+  app.recordSavingsSample = () => {};
+  app.getSavingsDateKey = () => '2026-10-01';
+  app.getSavingsPeriodRange = period => HomeFluxEmsApp.prototype.getSavingsPeriodRange.call(app, period, oct1);
+  app.getSavingsTariffSnapshot = () => ({ feedInPrice: 0, feedInSource: 'none' });
+  app.savings = {
+    history: {
+      '2026-09-28': { date: '2026-09-28', directPvValue: 2 },
+      '2026-09-30': { date: '2026-09-30', directPvValue: 3 },
+    },
+    today: { ...emptyDay('2026-10-01'), directPvValue: 1 },
+    total: 6,
+    inventory: emptyInventory(),
+  };
+  close(app.getSavingsStatus({ period: 'day' }).periodSavings, 1);
+  close(app.getSavingsStatus({ period: 'week' }).periodSavings, 6);
+  close(app.getSavingsStatus({ period: 'month' }).periodSavings, 1);
+}
+
 {
   const day = emptyDay('2026-09-02');
   const inventory = emptyInventory();
@@ -172,3 +211,26 @@ const oneKwhAtFiveMinutesW = 12000;
 
 
 console.log('savings tests passed');
+
+// Closed days share a cached aggregate; the current local day is added separately.
+{
+  const history = require('../lib/savings-history');
+  const stored = {
+    '2026-09-30': history.compactDay({ date: '2026-09-30', directPvValue: 2, directPvKwh: 3 }, '2026-09-30'),
+    '2026-10-01': history.compactDay({ date: '2026-10-01', directPvValue: 4 }, '2026-10-01'),
+  };
+  const cache = history.createHistoryCache();
+  const range = history.rangeFor('rolling', '2026-10-02', 3);
+  assert.deepStrictEqual(range, { startKey: '2026-09-30', endKey: '2026-10-03' });
+  close(totalSavings(cache.sum(stored, range, '2026-10-02')), 6);
+  stored['2026-09-30'].directPvValue = 200;
+  close(totalSavings(cache.sum(stored, range, '2026-10-02')), 6);
+  cache.clear();
+  close(totalSavings(cache.sum(stored, range, '2026-10-02')), 204);
+  assert.deepStrictEqual(history.rangeFor('previous_month', '2027-01-01'), { startKey: '2026-12-01', endKey: '2027-01-01' });
+  assert.deepStrictEqual(history.rangeFor('rolling', '2026-03-29', 2), { startKey: '2026-03-28', endKey: '2026-03-30' });
+  assert.deepStrictEqual(history.rangeFor('calendar_month', '2026-10-02', 1, '2026-09'), { startKey: '2026-09-01', endKey: '2026-10-01' });
+  assert.deepStrictEqual(history.rangeFor('calendar_year', '2026-10-02', 1, '2025'), { startKey: '2025-01-01', endKey: '2026-01-01' });
+  assert.equal(history.pruneHistory({ '2021-09-30': {}, '2021-10-01': {}, '2026-10-01': {} }, '2026-10-01'), true);
+  assert.match(history.toCsv(stored, '2026-10-02'), /2026-10-01,4,/);
+}
