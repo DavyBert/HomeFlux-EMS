@@ -114,13 +114,35 @@ assert.equal(transitionDiagnostics.transitionPending, true);
 assert.equal(transitionDiagnostics.transitionStepW, 200);
 assert.deepEqual(transitionDiagnostics.idealTargetsW, [0, 800]);
 
-// At the 1-to-2 threshold, a small demand fluctuation keeps the current selection.
-assert.equal(active(distributeCommand(1520, state([50, 50], [1400, 0]), settings({ batteryCount: 2 }))), 1);
-assert.equal(active(distributeCommand(1480, state([50, 50], [750, 750]), settings({ batteryCount: 2 }))), 2);
-assert.equal(active(distributeCommand(1700, state([50, 50], [1400, 0]), settings({ batteryCount: 2 }))), 2);
-const reducingActiveCount = distributeCommand(1300, state([50, 50], [750, 750]), settings({ batteryCount: 2 }));
+// Active-battery-count hysteresis: with equal 1000 W targets the neutral
+// 1-to-2 midpoint is 1500 W, but the current count is held through a +/-200 W
+// band. This prevents the battery change itself from making P1 reverse the
+// decision around loads such as 1450 W. Boundary values are inclusive.
+assert.equal(active(distributeCommand(1450, state([50, 50], [1450, 0]), settings({ batteryCount: 2 }))), 1);
+assert.equal(active(distributeCommand(1450, state([50, 50], [725, 725]), settings({ batteryCount: 2 }))), 2);
+assert.equal(active(distributeCommand(1700, state([50, 50], [1400, 0]), settings({ batteryCount: 2 }))), 1);
+assert.equal(active(distributeCommand(1701, state([50, 50], [1400, 0]), settings({ batteryCount: 2 }))), 2);
+assert.equal(active(distributeCommand(1300, state([50, 50], [750, 750]), settings({ batteryCount: 2 }))), 2);
+const reducingActiveCount = distributeCommand(1299, state([50, 50], [750, 750]), settings({ batteryCount: 2 }));
 assert.equal(active(reducingActiveCount), 2);
-assert.equal(active(distributeCommand(1300, state([50, 50], reducingActiveCount), settings({ batteryCount: 2 }))), 1);
+assert.equal(active(distributeCommand(1299, {
+  ...state([50, 50], reducingActiveCount),
+  efficiencyActiveCountSticky: 1,
+}, settings({ batteryCount: 2 }))), 1);
+
+// The desired count stays sticky during a gradual handover. A temporary P1
+// rebound into the hysteresis band must not reverse a 2 -> 1 transition merely
+// because both physical battery outputs are still non-zero.
+assert.deepEqual(distributeCommand(1450, {
+  ...state([50, 50], [1100, 350]),
+  efficiencyActiveCountSticky: 1,
+}, settings({ batteryCount: 2 })), [1450, 0]);
+const keepTwoDuringHandover = distributeCommand(1450, {
+  ...state([50, 50], [1300, 150]),
+  efficiencyActiveCountSticky: 2,
+}, settings({ batteryCount: 2 }));
+assert.equal(active(keepTwoDuringHandover), 2);
+assert.ok(keepTwoDuringHandover[1] > 150);
 
 // SoC exclusion, missing feedback, individual maxima and full feasible power.
 assert.deepEqual(distributeCommand(800, state([10, 50], [0, 0]), settings({ batteryCount: 2 })), [0, 800]);

@@ -118,6 +118,10 @@ class HomeFluxEmsApp extends Homey.App {
     // the incumbent until its SoC is more than the balance deadband below the
     // highest available battery, preventing 1-2% SoC chatter during handovers.
     this.efficiencyDischargeStickyIndex = null;
+    // Sticky desired active-battery count for efficiency optimization. Keep it
+    // separate from the physically active outputs because a gradual handover
+    // temporarily has both the outgoing and incoming battery above 0 W.
+    this.efficiencyActiveCountSticky = null;
     // v0.3.57: the fast battery regulator is separated from slower context work.
     // P1/PV changes only run the battery path. EV, HVAC, boiler, tariffs, status
     // and other derived context are consolidated behind one slow scheduler.
@@ -435,7 +439,10 @@ class HomeFluxEmsApp extends Homey.App {
           const current = this.getSettings();
           if (current.optimizeMultiBatteryEfficiency && this.getBatteryCount(current) >= 2
             && Number(current.balanceDeadbandPct) < 2) this.setSetting('balanceDeadbandPct', 2);
-          if (['optimizeMultiBatteryEfficiency', 'batteryCount'].includes(String(key))) this.efficiencyDischargeStickyIndex = null;
+          if (['optimizeMultiBatteryEfficiency', 'batteryCount'].includes(String(key))) {
+            this.efficiencyDischargeStickyIndex = null;
+            this.efficiencyActiveCountSticky = null;
+          }
         }
         if (Object.values(DIAGNOSTIC_SETTING_KEYS).includes(String(key))) {
           this.handleDiagnosticsSettingsChanged();
@@ -592,7 +599,7 @@ class HomeFluxEmsApp extends Homey.App {
     }, 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v1.0.4 initialized');
+    this.log('HomeFlux EMS v1.0.5 initialized');
   }
 
   refreshSettingsCache() {
@@ -1566,7 +1573,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.4',
+      version: '1.0.5',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -7723,6 +7730,8 @@ class HomeFluxEmsApp extends Homey.App {
       lastBatteryCommands: Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
       efficiencyDischargeStickyIndex: Number.isInteger(this.efficiencyDischargeStickyIndex)
         ? this.efficiencyDischargeStickyIndex : null,
+      efficiencyActiveCountSticky: Number.isInteger(this.efficiencyActiveCountSticky)
+        ? this.efficiencyActiveCountSticky : null,
       forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
       forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
       gridPowerW: liveGridPowerW,
@@ -13114,6 +13123,12 @@ class HomeFluxEmsApp extends Homey.App {
       // it changes only after that battery actually reaches 0 W. This gives the
       // engine an unambiguous battery to hold inside the 2%-plus SoC deadband.
       if (Boolean(settings.optimizeMultiBatteryEfficiency) && count >= 2) {
+        const desiredActiveCount = Number(result?.efficiencyOptimization?.desiredActiveCount);
+        if (Number.isInteger(desiredActiveCount) && desiredActiveCount >= 1 && desiredActiveCount <= count) {
+          this.efficiencyActiveCountSticky = desiredActiveCount;
+        } else if (!effectiveInternalCommands.some(value => Number(value) !== 0)) {
+          this.efficiencyActiveCountSticky = null;
+        }
         const incumbent = Number.isInteger(this.efficiencyDischargeStickyIndex)
           ? this.efficiencyDischargeStickyIndex : null;
         const incumbentStillDischarging = incumbent !== null
@@ -13392,7 +13407,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.4',
+      version: '1.0.5',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13465,7 +13480,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.4',
+        version: '1.0.5',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13790,7 +13805,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.4',
+      version: '1.0.5',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

@@ -19,7 +19,7 @@ Once these inputs and outputs are connected, HomeFlux can perform the core batte
 
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
-Optional multi-battery efficiency optimization can concentrate charging and discharging around a separate configurable power target for each battery while selecting batteries by SoC. Enable it under Batteries when at least two batteries are configured, then enter each battery’s optimal power in W (one target for charging and discharging). Existing installations inherit their previous shared target. Battery rotations transfer power gradually between batteries while keeping the requested total battery power available for normal P1 and Peak Guard control; the final battery-output layer also enforces the gradual handover. During discharge, the current battery is kept as the preferred battery until it is more than 2 percentage points below the highest available battery, preventing unnecessary SoC-driven switching around nearly equal levels.
+Optional multi-battery efficiency optimization can concentrate charging and discharging around a separate configurable power target for each battery while selecting batteries by SoC. Enable it under Batteries when at least two batteries are configured, then enter each battery’s optimal power in W (one target for charging and discharging). Existing installations inherit their previous shared target. Battery rotations transfer power gradually between batteries while keeping the requested total battery power available for normal P1 and Peak Guard control; the final battery-output layer also enforces the gradual handover. During discharge, the current battery is kept as the preferred battery until it is more than 2 percentage points below the highest available battery, preventing unnecessary SoC-driven switching around nearly equal levels. The number of active batteries also uses power hysteresis around each efficiency threshold, so small P1 reactions do not repeatedly switch between one and two (or more) batteries.
 
 Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings with historical views and CSV export, diagnostics and dashboard widgets.
 
@@ -30,9 +30,13 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.0.5
+
+Discharge selection now keeps the current battery preferred until it is more than 2 percentage points below the highest available battery, including during a gradual handover, so near-equal SoCs no longer cause repeated battery swapping. Active-battery-count selection now has a wider sticky power hysteresis around efficiency thresholds and preserves the desired count while a gradual handover is in progress. With equal 1000 W targets, one battery remains selected through 1700 W and two batteries remain selected down through 1300 W, preventing P1 feedback around roughly 1450-1500 W from repeatedly switching between one and two batteries.
+
 ### 1.0.4
 
-Multi-battery efficiency rotations now transfer power gradually between the outgoing and incoming batteries instead of switching the full setpoint at once. The gradual handover is enforced again at the final battery-output boundary and is independent of the normal total-command deadband, so a large deadband can no longer collapse the rotation into one jump. A complete handover normally uses about four battery-command steps, while the requested total battery power can still change immediately for P1 regulation and Peak Guard. Safety limits such as per-battery SoC availability remain immediate. Discharge selection now also keeps the current battery active through the inclusive 2-percentage-point SoC deadband, including during a gradual handover, so near-equal SoCs no longer cause repeated battery swapping.
+Multi-battery efficiency rotations now transfer power gradually between the outgoing and incoming batteries instead of switching the full setpoint at once. The gradual handover is enforced at the final battery-output boundary and is independent of the normal total-command deadband, so a large deadband can no longer collapse the rotation into one jump. A complete handover normally uses about four battery-command steps, while the requested total battery power can still change immediately for P1 regulation and Peak Guard. Safety limits such as per-battery SoC availability remain immediate.
 
 ### 1.0.3
 
