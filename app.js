@@ -113,6 +113,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.chargeTestSignatureAtRun = '';
     this.hybridEmsRuntime = { delegated: false, takeover: false, externalSetpointW: null, externalSetpointAt: 0, externalSetpointChangedAt: 0, staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: 0, peakGuardWasActive: false, peakGuardCooldownUntil: 0, status: 'inactive' };
     this.controlTimer = null;
+    this.batteryEfficiencyTransitionTimer = null;
     // v0.3.57: the fast battery regulator is separated from slower context work.
     // P1/PV changes only run the battery path. EV, HVAC, boiler, tariffs, status
     // and other derived context are consolidated behind one slow scheduler.
@@ -586,7 +587,7 @@ class HomeFluxEmsApp extends Homey.App {
     }, 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v1.0.3 initialized');
+    this.log('HomeFlux EMS v1.0.4 initialized');
   }
 
   refreshSettingsCache() {
@@ -1496,6 +1497,9 @@ class HomeFluxEmsApp extends Homey.App {
       activeCount: active.length,
       availableSoc: details.availableSoc,
       targetsW: details.targetsW,
+      idealTargetsW: Array.isArray(details.idealTargetsW) ? details.idealTargetsW.slice() : details.targetsW,
+      transitionPending: Boolean(details.transitionPending),
+      transitionStepW: Math.max(0, Number(details.transitionStepW) || 0),
       actualCommandsW: actualCommands.slice(),
       reason: details.reason,
     };
@@ -1557,7 +1561,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.3',
+      version: '1.0.4',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -6235,6 +6239,10 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.controlTimer) {
       clearTimeout(this.controlTimer);
       this.controlTimer = null;
+    }
+    if (this.batteryEfficiencyTransitionTimer) {
+      clearTimeout(this.batteryEfficiencyTransitionTimer);
+      this.batteryEfficiencyTransitionTimer = null;
     }
     if (this.statusTimer) {
       clearTimeout(this.statusTimer);
@@ -12770,11 +12778,16 @@ class HomeFluxEmsApp extends Homey.App {
     if (splitModeChangeNow) return true;
     if (settings.optimizeMultiBatteryEfficiency && this.getBatteryCount(settings) >= 2) {
       // A SoC rotation changes individual setpoints without changing their sum.
-      // Publication still passes through the ordinary battery interval/locks.
+      // Publication still passes through the ordinary battery interval/locks,
+      // but the TOTAL command deadband must not suppress or enlarge the small
+      // per-battery handover steps.
       const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
-      if (commands.some((value, index) => (Number(value) || 0) !== (Number(this.lastEmittedCommands[index]) || 0)
+      const efficiencyCandidateTotal = commands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+      const efficiencyEmittedTotal = this.lastEmittedCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+      const sameTotalRedistribution = Math.abs(efficiencyCandidateTotal - efficiencyEmittedTotal) < step;
+      if (sameTotalRedistribution && commands.some((value, index) => (Number(value) || 0) !== (Number(this.lastEmittedCommands[index]) || 0)
         && ((Number(value) || 0) === 0 || (Number(this.lastEmittedCommands[index]) || 0) === 0
-          || Math.abs((Number(value) || 0) - (Number(this.lastEmittedCommands[index]) || 0)) >= Math.max(step, deadband)))) return true;
+          || Math.abs((Number(value) || 0) - (Number(this.lastEmittedCommands[index]) || 0)) >= step))) return true;
     }
 
     // commandDeadbandW applies to the TOTAL EMS setpoint, not to every battery.
@@ -12799,6 +12812,124 @@ class HomeFluxEmsApp extends Homey.App {
     // deadband prevents needless writes caused by rounding/planning noise.
     if (outsideZeroBand && totalDelta >= 1) return true;
     return totalDelta >= deadband;
+  }
+
+  limitEfficiencyHandoverAtOutput(result, requestedCommands, settings = this.getSettings()) {
+    const count = this.getBatteryCount(settings);
+    const direct = requestedCommands.slice(0, count).map(value => Math.round(Number(value) || 0));
+    const details = result?.efficiencyOptimization;
+    if (!Boolean(settings.optimizeMultiBatteryEfficiency) || count < 2 || !details?.enabled) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const previous = Array.from({ length: count }, (_, index) => Math.round(Number(this.lastEmittedCommands[index]) || 0));
+    const requestedTotal = direct.reduce((sum, value) => sum + value, 0);
+    const previousTotal = previous.reduce((sum, value) => sum + value, 0);
+    if (!requestedTotal || !previousTotal || Math.sign(requestedTotal) !== Math.sign(previousTotal)) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const direction = Math.sign(requestedTotal);
+    // Mixed charge/discharge allocations or a direction reversal are control
+    // events, not an efficiency rotation. Never delay them.
+    if (direct.some(value => value * direction < 0) || previous.some(value => value * direction < 0)) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    // If an old active battery has become unavailable according to the engine's
+    // own SoC/strategy eligibility, safety wins and its stop is immediate.
+    const available = new Set((Array.isArray(details.availableSoc) ? details.availableSoc : [])
+      .map(item => Number(item?.battery) - 1)
+      .filter(index => Number.isInteger(index) && index >= 0 && index < count));
+    const previousActive = previous
+      .map((value, index) => value * direction > 0 ? index : -1)
+      .filter(index => index >= 0);
+    if (available.size && previousActive.some(index => !available.has(index))) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const requestedMagnitude = Math.abs(requestedTotal);
+    const previousMagnitudeTotal = Math.abs(previousTotal);
+    const target = direct.map(value => Math.max(0, Math.round(value * direction)));
+    const old = previous.map(value => Math.max(0, Math.round(value * direction)));
+    const powerLimit = index => {
+      const battery = index + 1;
+      const charging = direction < 0;
+      const shared = Math.max(0, Number(charging ? settings.maxChargePerBatteryW : settings.maxDischargePerBatteryW)
+        || (charging ? 2300 : 2400));
+      if (!Boolean(settings.individualBatteryPowerLimitsEnabled)) return shared;
+      const key = charging ? `battery${battery}MaxChargeW` : `battery${battery}MaxDischargeW`;
+      const configured = Number(settings[key]);
+      return Math.max(0, Number.isFinite(configured) ? configured : shared);
+    };
+    const limits = Array.from({ length: count }, (_, index) => (available.size && !available.has(index)) ? 0 : powerLimit(index));
+
+    // Reshape the LAST PHYSICALLY EMITTED mix to the new total first. P1 and
+    // Peak Guard can therefore change total battery power immediately, while
+    // only the transfer between batteries is ramped.
+    const baseline = Array(count).fill(0);
+    const scale = requestedMagnitude / previousMagnitudeTotal;
+    for (let index = 0; index < count; index += 1) {
+      if (old[index] <= 0 || limits[index] <= 0) continue;
+      baseline[index] = Math.min(limits[index], Math.floor(old[index] * scale));
+    }
+    let residual = requestedMagnitude - baseline.reduce((sum, value) => sum + value, 0);
+    const fill = indexes => {
+      for (const index of indexes) {
+        if (residual <= 0) break;
+        const room = Math.max(0, limits[index] - baseline[index]);
+        if (!room) continue;
+        const add = Math.min(room, residual);
+        baseline[index] += add;
+        residual -= add;
+      }
+    };
+    fill(old.map((value, index) => ({ value, index })).filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value || a.index - b.index).map(item => item.index));
+    fill(target.map((value, index) => ({ value, index })).filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value || a.index - b.index).map(item => item.index));
+    fill(Array.from({ length: count }, (_, index) => index));
+    if (residual > 0) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const donors = baseline.map((value, index) => ({ index, watts: Math.max(0, value - target[index]) }))
+      .filter(item => item.watts > 0)
+      .sort((a, b) => b.watts - a.watts || a.index - b.index);
+    const receivers = baseline.map((value, index) => ({ index, watts: Math.max(0, target[index] - value) }))
+      .filter(item => item.watts > 0)
+      .sort((a, b) => b.watts - a.watts || a.index - b.index);
+    const transferNeeded = Math.min(
+      donors.reduce((sum, item) => sum + item.watts, 0),
+      receivers.reduce((sum, item) => sum + item.watts, 0),
+    );
+    if (transferNeeded <= 0) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const configuredStep = Math.max(1, Math.round(Number(settings.batteryCommandStepW) || 1));
+    const commandStepW = [1, 10, 100].includes(configuredStep) ? configuredStep : 1;
+    const transitionStepW = Math.max(commandStepW, Math.ceil((requestedMagnitude / 4) / commandStepW) * commandStepW);
+    let transferRemaining = Math.min(transferNeeded, transitionStepW);
+    const smoothed = baseline.slice();
+    let donorPos = 0;
+    let receiverPos = 0;
+    while (transferRemaining > 0 && donorPos < donors.length && receiverPos < receivers.length) {
+      const donor = donors[donorPos];
+      const receiver = receivers[receiverPos];
+      const move = Math.min(donor.watts, receiver.watts, transferRemaining);
+      smoothed[donor.index] -= move;
+      smoothed[receiver.index] += move;
+      donor.watts -= move;
+      receiver.watts -= move;
+      transferRemaining -= move;
+      if (donor.watts <= 0) donorPos += 1;
+      if (receiver.watts <= 0) receiverPos += 1;
+    }
+
+    const commands = smoothed.map(value => value > 0 ? value * direction : 0);
+    const pending = commands.some((value, index) => value !== direct[index]);
+    return { commands, pending, applied: true, transitionStepW };
   }
 
   queueCommandEmit(result, precomputedChange = null) {
@@ -12913,11 +13044,11 @@ class HomeFluxEmsApp extends Homey.App {
 
     try {
       const count = this.getBatteryCount(settings);
-      const internalCommands = (result.candidateCommands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
+      const requestedInternalCommands = (result.candidateCommands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
+      const efficiencyOutputTransition = this.limitEfficiencyHandoverAtOutput(result, requestedInternalCommands, settings);
+      const internalCommands = efficiencyOutputTransition.commands;
       this.inFlightBatteryCommands = internalCommands;
-      const internalTotal = Number.isFinite(Number(result.candidateTotalCommandW))
-        ? Math.round(Number(result.candidateTotalCommandW))
-        : internalCommands.reduce((sum, value) => sum + value, 0);
+      const internalTotal = internalCommands.reduce((sum, value) => sum + value, 0);
       const commands = internalCommands.map(value => this.toPublishedCommand(value, settings));
       const publishedTotal = this.toPublishedCommand(internalTotal, settings);
 
@@ -12976,6 +13107,23 @@ class HomeFluxEmsApp extends Homey.App {
       this.lastEmittedOverride = result.override || '';
       this.recordSavingsSample(Date.now());
       this.state.lastTotalCommandW = effectiveInternalTotal;
+
+      // Efficiency rotations intentionally move only part of the power from one
+      // battery to another per publication. Continue the handover at the next
+      // permitted battery command boundary even if P1 stays perfectly stable;
+      // otherwise a quiet meter could leave the transition halfway completed.
+      if (this.batteryEfficiencyTransitionTimer) {
+        clearTimeout(this.batteryEfficiencyTransitionTimer);
+        this.batteryEfficiencyTransitionTimer = null;
+      }
+      if (Boolean(result?.efficiencyOptimization?.transitionPending) || efficiencyOutputTransition.pending) {
+        const transitionDelayMs = Math.max(1, (this.nextCommandAllowedAt || Date.now()) - Date.now() + 5);
+        this.batteryEfficiencyTransitionTimer = this.homey.setTimeout(() => {
+          this.batteryEfficiencyTransitionTimer = null;
+          this.requestEvaluate(true);
+        }, transitionDelayMs);
+      }
+
       if (this.latestResult) {
         const effectiveCommands = effectiveInternalCommands.map(value => this.toPublishedCommand(value, settings));
         this.latestResult.outputCommands = effectiveCommands;
@@ -13219,7 +13367,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.3',
+      version: '1.0.4',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13292,7 +13440,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.3',
+        version: '1.0.4',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13617,7 +13765,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.3',
+      version: '1.0.4',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

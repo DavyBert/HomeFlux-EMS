@@ -19,7 +19,7 @@ Once these inputs and outputs are connected, HomeFlux can perform the core batte
 
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
-Optional multi-battery efficiency optimization can concentrate charging and discharging around a separate configurable power target for each battery while selecting batteries by SoC. Enable it under Batteries when at least two batteries are configured, then enter each battery’s optimal power in W (one target for charging and discharging). Existing installations inherit their previous shared target.
+Optional multi-battery efficiency optimization can concentrate charging and discharging around a separate configurable power target for each battery while selecting batteries by SoC. Enable it under Batteries when at least two batteries are configured, then enter each battery’s optimal power in W (one target for charging and discharging). Existing installations inherit their previous shared target. Battery rotations transfer power gradually between batteries while keeping the requested total battery power available for normal P1 and Peak Guard control; the final battery-output layer also enforces the gradual handover.
 
 Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings with historical views and CSV export, diagnostics and dashboard widgets.
 
@@ -29,6 +29,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.0.4
+
+Multi-battery efficiency rotations now transfer power gradually between the outgoing and incoming batteries instead of switching the full setpoint at once. The gradual handover is enforced again at the final battery-output boundary and is independent of the normal total-command deadband, so a large deadband can no longer collapse the rotation into one jump. A complete handover normally uses about four battery-command steps, while the requested total battery power can still change immediately for P1 regulation and Peak Guard. Safety limits such as per-battery SoC availability remain immediate.
 
 ### 1.0.3
 
