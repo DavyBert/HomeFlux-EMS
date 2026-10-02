@@ -154,15 +154,16 @@
       }
     }
 
+    let activeCurrencySymbol = '€';
+
+    function currencySymbol(value) {
+      const symbol = String(value ?? '€').trim();
+      return symbol || '€';
+    }
+
     function money(value) {
-      const amount = Number(value) || 0;
-      try {
-        return new Intl.NumberFormat(undefined, {
-          style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2,
-        }).format(amount);
-      } catch (_) {
-        return `€${amount.toFixed(2)}`;
-      }
+      const amount = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
+      return `${activeCurrencySymbol} ${amount}`;
     }
 
     function buildChart(data, chart, Homey, combineGridCharging = false) {
@@ -373,6 +374,7 @@
         refreshBusy = true;
         try {
           const data = await Homey.api('GET', `/savings?period=${encodeURIComponent(period)}&days=${rollingDays}`, {});
+          activeCurrencySymbol = currencySymbol(data?.currencySymbol);
           const models = chartOrder(chart).map(key => buildChart(data || {}, key, Homey, combineGridCharging));
           const content = document.getElementById('content');
           const modeClass = models.length > 1 ? 'multi' : 'single';

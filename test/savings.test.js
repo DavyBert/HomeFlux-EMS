@@ -233,4 +233,6 @@ console.log('savings tests passed');
   assert.deepStrictEqual(history.rangeFor('calendar_year', '2026-10-02', 1, '2025'), { startKey: '2025-01-01', endKey: '2026-01-01' });
   assert.equal(history.pruneHistory({ '2021-09-30': {}, '2021-10-01': {}, '2026-10-01': {} }, '2026-10-01'), true);
   assert.match(history.toCsv(stored, '2026-10-02'), /2026-10-01,4,/);
+  assert.match(history.toCsv(stored, '2026-10-02', '$'), /^date,savings_\$/);
+  assert.match(history.toCsv(stored, '2026-10-02', 'USD'), /^date,savings_USD/);
 }

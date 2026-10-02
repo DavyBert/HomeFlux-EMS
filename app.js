@@ -377,6 +377,10 @@ class HomeFluxEmsApp extends Homey.App {
     await this.migrateSettings();
     await this.ensureDefaults();
     this.refreshSettingsCache();
+    const initialEfficiencySettings = this.getSettings();
+    if (initialEfficiencySettings.optimizeMultiBatteryEfficiency
+      && this.getBatteryCount(initialEfficiencySettings) >= 2
+      && Number(initialEfficiencySettings.balanceDeadbandPct) < 2) this.setSetting('balanceDeadbandPct', 2);
     this.restoreDiagnosticsSession();
     this.restoreEvEnergyPlanOverrides();
     this.restoreEvSocPlanOverrides();
@@ -422,6 +426,11 @@ class HomeFluxEmsApp extends Homey.App {
         // complete settings scan in every nested helper.
         this.refreshCachedSetting(key);
         this.cachedRuntimeSettings = null;
+        if (['optimizeMultiBatteryEfficiency', 'batteryCount', 'balanceDeadbandPct'].includes(String(key))) {
+          const current = this.getSettings();
+          if (current.optimizeMultiBatteryEfficiency && this.getBatteryCount(current) >= 2
+            && Number(current.balanceDeadbandPct) < 2) this.setSetting('balanceDeadbandPct', 2);
+        }
         if (Object.values(DIAGNOSTIC_SETTING_KEYS).includes(String(key))) {
           this.handleDiagnosticsSettingsChanged();
           return;
@@ -577,7 +586,7 @@ class HomeFluxEmsApp extends Homey.App {
     }, 60000);
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
-    this.log('HomeFlux EMS v1.0.2 initialized');
+    this.log('HomeFlux EMS v1.0.3 initialized');
   }
 
   refreshSettingsCache() {
@@ -601,6 +610,13 @@ class HomeFluxEmsApp extends Homey.App {
 
   setSetting(key, value) {
     this.batteryFeedbackMemo = null;
+    if (key === 'optimalBatteryPowerW' || /^battery[1-8]OptimalPowerW$/.test(key)) {
+      const watts = Number(value);
+      value = Number.isFinite(watts) && watts >= 50 && watts <= 10000 ? Math.round(watts)
+        : key === 'optimalBatteryPowerW' ? 1000 : null;
+    }
+    if (key === 'balanceDeadbandPct' && this.getSettings().optimizeMultiBatteryEfficiency
+      && this.getBatteryCount() >= 2) value = Math.max(2, Number(value) || 0);
     this.homey.settings.set(key, value);
     if (this.settingsCache && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
       this.settingsCache[key] = value;
@@ -840,7 +856,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   getSavingsCsv() {
     this.recordSavingsSample(Date.now());
-    return savingsHistory.toCsv({ ...(this.savings.history || {}), [this.savings.today.date]: savingsHistory.compactDay(calibrateEnergy(this.savings.today), this.savings.today.date) });
+    return savingsHistory.toCsv({ ...(this.savings.history || {}), [this.savings.today.date]: savingsHistory.compactDay(calibrateEnergy(this.savings.today), this.savings.today.date) }, this.savings.today.date, this.settingsCache?.currencySymbol);
   }
 
   getSavingsStatus({ period = 'day', days = 30, selected = '' } = {}) {
@@ -883,6 +899,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     return {
       period: normalizedPeriod,
+      currencySymbol: String(this.settingsCache?.currencySymbol || '€').trim() || '€',
       startDate: range.startKey,
       endDate: range.endKey,
       todaySavings: totalSavings(calibratedToday),
@@ -973,6 +990,8 @@ class HomeFluxEmsApp extends Homey.App {
       cpuSamples: [],
       memorySamples: [],
       planningEvents: [],
+      batteryEfficiencyEvents: [],
+      batteryEfficiencyLatest: null,
       planningConfigurations: [],
       planningConfigSequence: 0,
       lastPlanningConfigJson: '',
@@ -1463,6 +1482,31 @@ class HomeFluxEmsApp extends Homey.App {
     }
   }
 
+  recordDiagnosticBatteryEfficiency(result, actualCommands, previousCommands, now = Date.now()) {
+    if (!this.isDiagnosticEnabled('planning', now) || !result?.efficiencyOptimization?.enabled) return;
+    const details = result.efficiencyOptimization;
+    const previousActive = previousCommands.map((value, index) => Number(value) !== 0 ? index + 1 : null).filter(Boolean);
+    const active = actualCommands.map((value, index) => Number(value) !== 0 ? index + 1 : null).filter(Boolean);
+    const event = {
+      at: now,
+      optimalW: details.optimalW,
+      optimalPerBatteryW: details.optimalPerBatteryW,
+      requestedTotalW: details.requestedTotalW,
+      availableCount: details.availableCount,
+      activeCount: active.length,
+      availableSoc: details.availableSoc,
+      targetsW: details.targetsW,
+      actualCommandsW: actualCommands.slice(),
+      reason: details.reason,
+    };
+    this.diagnostics.batteryEfficiencyLatest = event;
+    if (active.length !== previousActive.length || active.some(index => !previousActive.includes(index))) {
+      event.rotation = { from: previousActive, to: active };
+      this.diagnostics.batteryEfficiencyEvents.push(event);
+      if (this.diagnostics.batteryEfficiencyEvents.length > 100) this.diagnostics.batteryEfficiencyEvents.shift();
+    }
+  }
+
   recordDiagnosticError(args = []) {
     if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.errors) return;
     if (Number(this.diagnostics.expiresAt) <= Date.now()) return;
@@ -1513,7 +1557,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.2',
+      version: '1.0.3',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -1548,6 +1592,8 @@ class HomeFluxEmsApp extends Homey.App {
         currentSettings: includePlanningSettings ? this.getDiagnosticConfigurationSnapshot() : null,
         configurations: this.cloneDiagnosticValue(runtime.planningConfigurations) || [],
         events: this.cloneDiagnosticValue(runtime.planningEvents) || [],
+        batteryEfficiencyLatest: this.cloneDiagnosticValue(runtime.batteryEfficiencyLatest),
+        batteryEfficiencyEvents: this.cloneDiagnosticValue(runtime.batteryEfficiencyEvents) || [],
       },
     };
     return report;
@@ -2088,7 +2134,9 @@ class HomeFluxEmsApp extends Homey.App {
       batterySaveDischargeAboveSoc: { defaultMin: hardSocFloor, defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
       lowForecastAutoSunnySoc: { defaultMin: Math.min(maxSoc, Math.max(hardSocFloor, 70)), defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
       lowForecastAutoSunnyMinutes: { defaultMin: 5, defaultMax: 15, hardMin: 1, hardMax: 1440 },
-      balanceDeadbandPct: { defaultMin: 0.5, defaultMax: 1.5, hardMin: 0, hardMax: 10 },
+      balanceDeadbandPct: settings.optimizeMultiBatteryEfficiency && this.getBatteryCount(settings) >= 2
+        ? { defaultMin: 2, defaultMax: 3, hardMin: 2, hardMax: 10 }
+        : { defaultMin: 0.5, defaultMax: 1.5, hardMin: 0, hardMax: 10 },
       balanceStrength: { defaultMin: 0.1, defaultMax: 0.35, hardMin: 0, hardMax: 0.5 },
     };
 
@@ -2336,7 +2384,8 @@ class HomeFluxEmsApp extends Homey.App {
 
     // Multi-battery balancing quality.
     const balance = this.autoTuneRuntime.balance || {};
-    if (Boolean(settings.balanceEnabled) && this.getBatteryCount(settings) >= 2 && Number(balance.samples) >= 30) {
+    if (Boolean(settings.balanceEnabled) && !Boolean(settings.optimizeMultiBatteryEfficiency)
+      && this.getBatteryCount(settings) >= 2 && Number(balance.samples) >= 30) {
       const spread = Math.max(0, Number(balance.ewmaSpreadPct) || 0);
       const currentDeadband = Math.max(0, Math.min(10, Number(settings.balanceDeadbandPct) || 0));
       const desiredDeadband = spread >= 4 ? 0.5 : spread >= 2 ? 1 : spread < 0.7 ? 1.5 : 1;
@@ -7658,6 +7707,7 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       ...this.state,
       batterySoc,
+      lastBatteryCommands: Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
       forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
       forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
       gridPowerW: liveGridPowerW,
@@ -12718,6 +12768,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.lastEmittedCommands.length !== commands.length) return true;
     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride !== (result.override || '')) return true;
     if (splitModeChangeNow) return true;
+    if (settings.optimizeMultiBatteryEfficiency && this.getBatteryCount(settings) >= 2) {
+      // A SoC rotation changes individual setpoints without changing their sum.
+      // Publication still passes through the ordinary battery interval/locks.
+      const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+      if (commands.some((value, index) => (Number(value) || 0) !== (Number(this.lastEmittedCommands[index]) || 0)
+        && ((Number(value) || 0) === 0 || (Number(this.lastEmittedCommands[index]) || 0) === 0
+          || Math.abs((Number(value) || 0) - (Number(this.lastEmittedCommands[index]) || 0)) >= Math.max(step, deadband)))) return true;
+    }
 
     // commandDeadbandW applies to the TOTAL EMS setpoint, not to every battery.
     // Battery Balance may split a meaningful 50 W correction into only 12-13 W
@@ -12911,7 +12969,9 @@ class HomeFluxEmsApp extends Homey.App {
 
       // Keep controller feedback in HomeFlux' internal sign convention
       // (positive discharge, negative charge). Only published values are inverted.
+      const previousBatteryCommands = this.lastEmittedCommands.slice();
       this.lastEmittedCommands = effectiveInternalCommands;
+      this.recordDiagnosticBatteryEfficiency(result, effectiveInternalCommands, previousBatteryCommands, Date.now());
       this.lastEmittedMode = result.baseMode;
       this.lastEmittedOverride = result.override || '';
       this.recordSavingsSample(Date.now());
@@ -13159,7 +13219,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.2',
+      version: '1.0.3',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13232,7 +13292,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.2',
+        version: '1.0.3',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13557,7 +13617,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.2',
+      version: '1.0.3',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -13569,6 +13629,7 @@ class HomeFluxEmsApp extends Homey.App {
         boilerEnabled: this.getBoilerCount(storedSettings) > 0 && Boolean(storedSettings.boilerEnabled),
         priorityEvaluationMinutes: Math.max(1, Math.min(30, Number(storedSettings.priorityEvaluationMinutes) || 5)),
         contractType: storedSettings.contractType,
+        currencySymbol: String(storedSettings.currencySymbol || '€').trim() || '€',
         dynamicPriceSource: String(storedSettings.dynamicPriceSource || 'homey'),
         peakShaveEnabled: storedSettings.peakShaveEnabled,
         peakLimitW: storedSettings.peakLimitW,

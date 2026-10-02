@@ -383,6 +383,12 @@ function appWithSettings(overrides = {}) {
   const zeroMin = recs.find(item => item.settingKey === 'gridZeroMinW');
   const zeroMax = recs.find(item => item.settingKey === 'gridZeroMaxW');
   assert.equal((zeroMin.recommended + zeroMax.recommended) / 2, 10, 'zero-band midpoint must preserve the configured grid bias');
+
+  app.setSetting('optimizeMultiBatteryEfficiency', true);
+  const optimizedKeys = new Set(app.getAutoTuneRecommendations().map(item => item.settingKey));
+  assert.equal(optimizedKeys.has('balanceDeadbandPct'), false);
+  assert.equal(optimizedKeys.has('balanceStrength'), false);
+  assert.equal(app.getAutoTuneRangeProfile('balanceDeadbandPct').hardMin, 2);
 }
 
 // Permission is opt-in, but v0.7.3 only applies automatically when the

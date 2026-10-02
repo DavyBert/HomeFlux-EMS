@@ -138,11 +138,16 @@
       return parts.join(' · ');
     }
 
+    function currencySymbol(status) {
+      const symbol = String(status?.settings?.currencySymbol ?? '€').trim();
+      return symbol || '€';
+    }
+
     function sourcePriceText(status, Homey, secondary = false) {
       const info = status.priceData || {};
       const data = secondary ? info.secondary : info.primary;
       if (!data) return secondary ? tr(Homey, 'widget.status.noSecondaryPrice', 'No secondary source') : '—';
-      const price = value => value == null || !Number.isFinite(Number(value)) ? '—' : `€ ${Number(value).toFixed(4)}/kWh`;
+      const price = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${currencySymbol(status)} ${Number(value).toFixed(4)}/kWh`;
       const parts = [priceSourceName(data.source, Homey), price(secondary ? data.sourcePrice : data.price)];
       if (secondary && data.normalized) parts.push('→ ' + price(data.price));
       if (secondary && !data.normalized) parts.push(tr(Homey, 'widget.status.priceAlignmentWaiting', 'Waiting for price alignment'));

@@ -19,6 +19,8 @@ Once these inputs and outputs are connected, HomeFlux can perform the core batte
 
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
+Optional multi-battery efficiency optimization can concentrate charging and discharging around a separate configurable power target for each battery while selecting batteries by SoC. Enable it under Batteries when at least two batteries are configured, then enter each battery’s optimal power in W (one target for charging and discharging). Existing installations inherit their previous shared target.
+
 Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings with historical views and CSV export, diagnostics and dashboard widgets.
 
 For the complete functionality, configuration and all Flow cards, see:  
@@ -27,6 +29,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.0.3
+
+Optional multi-battery efficiency optimization concentrates charging and discharging around an individually configurable power target for each battery (default 1000 W), selecting batteries by SoC. The power distribution follows each active battery’s target and respects its power limits. Existing installations retain their previous shared target as the default. It is available from two batteries and uses a minimum 2% balance deadband. Planning diagnostics show individual targets and battery rotations.
 
 ### 1.0.2
 
