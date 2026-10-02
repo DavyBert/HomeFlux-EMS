@@ -114,6 +114,10 @@ class HomeFluxEmsApp extends Homey.App {
     this.hybridEmsRuntime = { delegated: false, takeover: false, externalSetpointW: null, externalSetpointAt: 0, externalSetpointChangedAt: 0, staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: 0, peakGuardWasActive: false, peakGuardCooldownUntil: 0, status: 'inactive' };
     this.controlTimer = null;
     this.batteryEfficiencyTransitionTimer = null;
+    // Sticky primary battery for multi-battery efficiency discharge. It remains
+    // the incumbent until its SoC is more than the balance deadband below the
+    // highest available battery, preventing 1-2% SoC chatter during handovers.
+    this.efficiencyDischargeStickyIndex = null;
     // v0.3.57: the fast battery regulator is separated from slower context work.
     // P1/PV changes only run the battery path. EV, HVAC, boiler, tariffs, status
     // and other derived context are consolidated behind one slow scheduler.
@@ -431,6 +435,7 @@ class HomeFluxEmsApp extends Homey.App {
           const current = this.getSettings();
           if (current.optimizeMultiBatteryEfficiency && this.getBatteryCount(current) >= 2
             && Number(current.balanceDeadbandPct) < 2) this.setSetting('balanceDeadbandPct', 2);
+          if (['optimizeMultiBatteryEfficiency', 'batteryCount'].includes(String(key))) this.efficiencyDischargeStickyIndex = null;
         }
         if (Object.values(DIAGNOSTIC_SETTING_KEYS).includes(String(key))) {
           this.handleDiagnosticsSettingsChanged();
@@ -7716,6 +7721,8 @@ class HomeFluxEmsApp extends Homey.App {
       ...this.state,
       batterySoc,
       lastBatteryCommands: Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
+      efficiencyDischargeStickyIndex: Number.isInteger(this.efficiencyDischargeStickyIndex)
+        ? this.efficiencyDischargeStickyIndex : null,
       forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
       forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
       gridPowerW: liveGridPowerW,
@@ -13102,6 +13109,24 @@ class HomeFluxEmsApp extends Homey.App {
       // (positive discharge, negative charge). Only published values are inverted.
       const previousBatteryCommands = this.lastEmittedCommands.slice();
       this.lastEmittedCommands = effectiveInternalCommands;
+      // Preserve the discharge incumbent across gradual efficiency handovers.
+      // During a 50/50 transition the previous incumbent is deliberately kept;
+      // it changes only after that battery actually reaches 0 W. This gives the
+      // engine an unambiguous battery to hold inside the 2%-plus SoC deadband.
+      if (Boolean(settings.optimizeMultiBatteryEfficiency) && count >= 2) {
+        const incumbent = Number.isInteger(this.efficiencyDischargeStickyIndex)
+          ? this.efficiencyDischargeStickyIndex : null;
+        const incumbentStillDischarging = incumbent !== null
+          && incumbent >= 0 && incumbent < effectiveInternalCommands.length
+          && Number(effectiveInternalCommands[incumbent]) > 0;
+        if (!incumbentStillDischarging) {
+          const candidates = effectiveInternalCommands
+            .map((value, index) => ({ index, watts: Math.max(0, Number(value) || 0) }))
+            .filter(item => item.watts > 0)
+            .sort((a, b) => b.watts - a.watts || a.index - b.index);
+          if (candidates.length) this.efficiencyDischargeStickyIndex = candidates[0].index;
+        }
+      }
       this.recordDiagnosticBatteryEfficiency(result, effectiveInternalCommands, previousBatteryCommands, Date.now());
       this.lastEmittedMode = result.baseMode;
       this.lastEmittedOverride = result.override || '';

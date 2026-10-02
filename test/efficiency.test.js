@@ -50,6 +50,38 @@ for (const expected of [[600, 200], [400, 400], [200, 600], [0, 800]]) {
   assert.equal(total(rotation), 800);
 }
 
+
+// Discharge incumbent hysteresis: the battery already carrying the discharge
+// remains preferred until it is MORE than 2 percentage points below the
+// highest available battery. This includes the exact 2.0% boundary.
+assert.deepEqual(distributeCommand(800, {
+  ...state([64, 63, 63, 63], [0, 800, 0, 0]),
+  efficiencyDischargeStickyIndex: 1,
+}, settings()), [0, 800, 0, 0]);
+assert.deepEqual(distributeCommand(800, {
+  ...state([64, 62, 62, 62], [0, 800, 0, 0]),
+  efficiencyDischargeStickyIndex: 1,
+}, settings()), [0, 800, 0, 0]);
+
+// During a gradual handover there can be two active batteries. The sticky
+// incumbent prevents a 50/50 or partially transferred command from choosing a
+// different battery merely because SoC moves between 63% and 64%.
+assert.deepEqual(distributeCommand(800, {
+  ...state([64, 63], [400, 400]),
+  efficiencyDischargeStickyIndex: 1,
+}, settings({ batteryCount: 2 })), [200, 600]);
+assert.deepEqual(distributeCommand(800, {
+  ...state([64, 63], [200, 600]),
+  efficiencyDischargeStickyIndex: 1,
+}, settings({ batteryCount: 2 })), [0, 800]);
+
+// Once the incumbent falls more than 2 percentage points below the highest
+// battery, normal SoC rotation is allowed and still uses the gradual handover.
+assert.deepEqual(distributeCommand(800, {
+  ...state([65, 62], [0, 800]),
+  efficiencyDischargeStickyIndex: 1,
+}, settings({ batteryCount: 2 })), [200, 600]);
+
 // The normal TOTAL command deadband must never enlarge an efficiency handover
 // step. Even an intentionally huge deadband still produces the same quarter
 // transfer because the total setpoint itself is unchanged.
