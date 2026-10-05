@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -5572,6 +5572,155 @@
       },
       {
         "title": {
+          "en": "Read external prices JSON",
+          "nl": "Lees externe prijzen JSON"
+        },
+        "titleFormatted": {
+          "en": "Read [[source]] prices JSON [[curve]] for [[period]]",
+          "nl": "Lees [[source]] prijzen JSON [[curve]] voor [[period]]"
+        },
+        "hint": {
+          "en": "Send a timestamped JSON curve or a numeric price array, up to 120 hours ahead. For numeric arrays select the same period as the provider; resolution follows the dynamic contract. Timestamped data ignores Period.",
+          "nl": "Stuur een JSON-prijscurve met tijdstempels of een getallenarray, tot 120 uur vooruit. Kies bij getallenarrays dezelfde periode als de provider; de resolutie volgt het dynamische contract. Bij tijdstempels wordt Periode genegeerd."
+        },
+        "args": [
+          {
+            "name": "source",
+            "type": "dropdown",
+            "title": {
+              "en": "Price source",
+              "nl": "Prijsbron"
+            },
+            "values": [
+              {
+                "id": "external",
+                "label": {
+                  "en": "External Price 1",
+                  "nl": "External Price 1"
+                }
+              },
+              {
+                "id": "external2",
+                "label": {
+                  "en": "External Price 2",
+                  "nl": "External Price 2"
+                }
+              }
+            ]
+          },
+          {
+            "name": "curve",
+            "type": "text",
+            "title": {
+              "en": "Prices JSON",
+              "nl": "Prijzen JSON"
+            }
+          },
+          {
+            "name": "period",
+            "type": "dropdown",
+            "title": {
+              "en": "Period",
+              "nl": "Periode"
+            },
+            "values": [
+              {
+                "id": "next_hours",
+                "label": {
+                  "en": "Next hours",
+                  "nl": "Komende uren"
+                }
+              },
+              {
+                "id": "this_day",
+                "label": {
+                  "en": "This day",
+                  "nl": "Deze dag"
+                }
+              },
+              {
+                "id": "tomorrow",
+                "label": {
+                  "en": "Tomorrow",
+                  "nl": "Morgen"
+                }
+              }
+            ]
+          }
+        ],
+        "deprecated": true,
+        "id": "read_external_prices_json"
+      },
+      {
+        "title": {
+          "en": "Read external prices JSON",
+          "nl": "Lees externe prijzen JSON"
+        },
+        "titleFormatted": {
+          "en": "Read [[source]] prices JSON [[curve]] for [[period]]",
+          "nl": "Lees [[source]] prijzen JSON [[curve]] voor [[period]]"
+        },
+        "hint": {
+          "en": "Send a timestamped JSON curve or a numeric price array, up to 120 hours ahead. For numeric arrays select the same period as the provider; resolution follows the dynamic contract. Timestamped data ignores Period. Source labels use your configured names. Renaming a source does not change its identity.",
+          "nl": "Stuur een JSON-prijscurve met tijdstempels of een getallenarray, tot 120 uur vooruit. Kies bij getallenarrays dezelfde periode als de provider; de resolutie volgt het dynamische contract. Bij tijdstempels wordt Periode genegeerd. Bronnamen volgen je ingestelde namen. Hernoemen verandert de identiteit van de bron niet."
+        },
+        "args": [
+          {
+            "name": "source",
+            "type": "autocomplete",
+            "title": {
+              "en": "Price source",
+              "nl": "Prijsbron"
+            },
+            "placeholder": {
+              "en": "Select an external price source",
+              "nl": "Kies een externe prijsbron"
+            }
+          },
+          {
+            "name": "curve",
+            "type": "text",
+            "title": {
+              "en": "Prices JSON",
+              "nl": "Prijzen JSON"
+            }
+          },
+          {
+            "name": "period",
+            "type": "dropdown",
+            "title": {
+              "en": "Period",
+              "nl": "Periode"
+            },
+            "values": [
+              {
+                "id": "next_hours",
+                "label": {
+                  "en": "Next hours",
+                  "nl": "Komende uren"
+                }
+              },
+              {
+                "id": "this_day",
+                "label": {
+                  "en": "This day",
+                  "nl": "Deze dag"
+                }
+              },
+              {
+                "id": "tomorrow",
+                "label": {
+                  "en": "Tomorrow",
+                  "nl": "Morgen"
+                }
+              }
+            ]
+          }
+        ],
+        "id": "read_external_prices_json_named"
+      },
+      {
+        "title": {
           "en": "Recalculate EMS now",
           "nl": "Bereken EMS nu opnieuw"
         },
@@ -7548,6 +7697,7 @@
           "en": "Set external electricity price to [[price]] EUR/kWh",
           "nl": "Stel externe elektriciteitsprijs in op [[price]] EUR/kWh"
         },
+        "deprecated": true,
         "id": "set_external_electricity_price"
       },
       {
@@ -7573,6 +7723,7 @@
           "en": "Set external electricity price curve to [[curve]]",
           "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]"
         },
+        "deprecated": true,
         "id": "set_external_electricity_price_curve"
       },
       {
@@ -9175,6 +9326,7 @@
           "en": "Set PBTH [[period]] electricity prices to [[curve]]",
           "nl": "Stel PBTH-elektriciteitsprijzen voor [[period]] in op [[curve]]"
         },
+        "deprecated": true,
         "id": "set_pbth_electricity_price_curve"
       },
       {
@@ -9591,8 +9743,8 @@
           "id": "showPrimaryPrice",
           "type": "checkbox",
           "title": {
-            "en": "Show primary price",
-            "nl": "Primaire prijs tonen"
+            "en": "Show Price 1",
+            "nl": "Prijs 1 tonen"
           },
           "value": true
         },
@@ -9600,8 +9752,26 @@
           "id": "showSecondaryPrice",
           "type": "checkbox",
           "title": {
-            "en": "Show secondary price (including no secondary source)",
-            "nl": "Secundaire prijs tonen (ook zonder secundaire bron)"
+            "en": "Show Price 2 when available",
+            "nl": "Prijs 2 tonen indien beschikbaar"
+          },
+          "value": true
+        },
+        {
+          "id": "showTertiaryPrice",
+          "type": "checkbox",
+          "title": {
+            "en": "Show Price 3 when available",
+            "nl": "Prijs 3 tonen indien beschikbaar"
+          },
+          "value": true
+        },
+        {
+          "id": "showPriceCurves",
+          "type": "checkbox",
+          "title": {
+            "en": "Show available price curves",
+            "nl": "Beschikbare prijscurves tonen"
           },
           "value": true
         },

@@ -11,6 +11,7 @@ const baseline = require('./fixtures/flow-0.7.12-dropdown.json');
 const getters = { actions: 'getActionCard', triggers: 'getTriggerCard', conditions: 'getConditionCard' };
 const selected = (kind, slot, name = `${kind.toUpperCase()} ${slot}`) => ({ id: String(slot), kind, name });
 const replaced = new Set(CONFIGURED_CARDS.map(d => d.legacy));
+const priceDeprecatedIds = new Set(['set_external_electricity_price','set_external_electricity_price_curve','set_pbth_electricity_price_curve']);
 const displayMetadataChangeIds = new Set(['set_external_ems_setpoint']);
 const withoutDisplayMetadata = card => {
   if (!card) return card;
@@ -32,7 +33,7 @@ for (const kind of Object.keys(getters)) {
   const current = new Map(manifest.flow[kind].map(c => [c.id, c]));
   for (const old of baseline[kind]) {
     const card = current.get(old.id);
-    const expected = replaced.has(old.id) ? { ...old, deprecated: true } : old;
+    const expected = (replaced.has(old.id) || priceDeprecatedIds.has(old.id)) ? { ...old, deprecated: true } : old;
     if (displayMetadataChangeIds.has(old.id)) {
       assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
         `Original 0.7.12 functional schema changed: ${old.id}`);
@@ -48,7 +49,7 @@ for (const kind of Object.keys(getters)) {
     }
   }
   assert.equal(manifest.flow[kind].filter(c => !c.deprecated).length,
-    baseline[kind].filter(c => !c.deprecated).length + (kind === 'actions' ? 1 : 0), 'Only the new sunshine forecast action is added');
+    baseline[kind].filter(c => !c.deprecated).length + (kind === 'actions' ? -1 : 0), 'Sunshine and generic price actions added; three old price actions deprecated');
 }
 for (const d of CONFIGURED_CARDS) {
   const old = baseline[d.kind].find(c => c.id === d.legacy);

@@ -115,8 +115,25 @@
       return [label, time, until].filter(Boolean).join(' · ');
     }
 
-    function priceSourceName(source, Homey) {
-      return source === 'homey' ? 'Homey Energy' : tr(Homey, 'widget.status.externalService', 'External service');
+    function priceSourceName(source, Homey, status = {}) {
+      const info = status.priceData || {};
+      const entry = (info.sources || [info.primary, info.secondary, info.tertiary].filter(Boolean)).find(data => data.source === source);
+      const custom = entry?.name || (source === 'external2' ? status.settings?.externalPrice2Name : source === 'external' ? status.settings?.externalPrice1Name : '');
+      return String(custom || '').trim() || (source === 'homey' ? 'Homey Energy' : source === 'external2' ? 'External Price 2' : 'External Price 1');
+    }
+
+    function alignmentText(data, Homey) {
+      const reasons = {
+        insufficient_overlap: ['priceInsufficientOverlap', 'Insufficient overlap'],
+        insufficient_variation: ['priceInsufficientVariation', 'Insufficient price variation'],
+        incompatible_curves: ['priceIncompatibleCurves', 'Price curves do not reliably match'],
+        expired: ['priceAlignmentExpired', 'Price alignment expired'],
+        alignment_current_outlier: ['priceCurrentOutlier', 'Current price deviates from reference'],
+      };
+      if (data.reason === 'alignment_current_outlier') return tr(Homey, 'widget.status.priceCurrentOutlier', reasons.alignment_current_outlier[1]);
+      if (data.normalized && data.ready) return tr(Homey, 'widget.status.priceAlignmentReady', 'Price alignment ready');
+      const reason = reasons[data.calibrationState];
+      return reason ? tr(Homey, 'widget.status.' + reason[0], reason[1]) : tr(Homey, 'widget.status.priceAlignmentWaiting', 'Waiting for price alignment');
     }
 
     function priceDataText(status, Homey) {
@@ -126,7 +143,7 @@
       const role = info.fallbackActive
         ? tr(Homey, 'widget.status.secondaryActive', 'Secondary source active')
         : tr(Homey, 'widget.status.primaryActive', 'Primary source active');
-      const parts = [priceSourceName(info.source, Homey), role];
+      const parts = [priceSourceName(info.source, Homey, status), role];
       if (info.fallbackEnabled) parts.push(info.fallbackReady
         ? tr(Homey, 'widget.status.secondaryReady', 'Secondary source ready')
         : tr(Homey, 'widget.status.secondaryNotReady', 'Secondary source not ready'));
@@ -148,11 +165,73 @@
       const data = secondary ? info.secondary : info.primary;
       if (!data) return secondary ? tr(Homey, 'widget.status.noSecondaryPrice', 'No secondary source') : '—';
       const price = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${currencySymbol(status)} ${Number(value).toFixed(4)}/kWh`;
-      const parts = [priceSourceName(data.source, Homey), price(secondary ? data.sourcePrice : data.price)];
+      const parts = [priceSourceName(data.source, Homey, status), price(secondary ? data.sourcePrice : data.price)];
       if (secondary && data.normalized) parts.push('→ ' + price(data.price));
       if (secondary && !data.normalized) parts.push(tr(Homey, 'widget.status.priceAlignmentWaiting', 'Waiting for price alignment'));
       else if (!data.ready) parts.push(tr(Homey, 'widget.status.priceUnavailable', 'Unavailable'));
       return parts.join(' · ');
+    }
+
+    function renderSourcePrices(grid, status, settings, Homey) {
+      const info = status.priceData || {};
+      if (!info.required) return;
+      const sources = info.sources || [info.primary, info.secondary, info.tertiary].filter(Boolean);
+      sources.forEach((data, index) => {
+        const toggle = index === 0 ? 'showPrimaryPrice' : index === 1 ? 'showSecondaryPrice' : 'showTertiaryPrice';
+        if (!enabled(settings, toggle)) return;
+        const price = value => value == null || !Number.isFinite(Number(value)) ? '—'
+          : `${currencySymbol(status)} ${Number(value).toFixed(4)}/kWh`;
+        const parts = [priceSourceName(data.source, Homey, status), price(data.sourcePrice)];
+        if (!data.available) {
+          parts.push(data.reason === 'stale' ? tr(Homey, 'widget.status.priceStale', 'Stale price data') : data.reason === 'no_price_slots'
+            ? tr(Homey, 'widget.status.priceNoData', 'No price data received')
+            : data.reason === 'no_current_price_slot'
+              ? tr(Homey, 'widget.status.priceNoCurrentSlot', 'No price for the current time')
+              : tr(Homey, 'widget.status.priceUnavailable', 'Unavailable'));
+        } else if (index > 0) {
+          if (data.normalized) parts.push('→ ' + price(data.price));
+          parts.push(alignmentText(data, Homey));
+        }
+        if (data.ready && data.source === info.source) parts.push('✓');
+        addMetric(grid, `${tr(Homey, 'widget.status.price', 'Price')} ${index + 1}`, parts.join(' · '));
+      });
+    }
+
+    function renderPriceCurves(grid, status, Homey) {
+      const curves = status.priceCurves || [];
+      if (!curves.length) return;
+      const colors = {homey:'#467fbd',external:'#4f8a10',external2:'#bd7d26'};
+      const points = curves.flatMap(curve=>curve.points);
+      const xMin=Math.min(...points.map(point=>point[0])), xMax=Math.max(...points.map(point=>point[0]));
+      let yMin=Math.min(...points.map(point=>point[1])), yMax=Math.max(...points.map(point=>point[1]));
+      if(yMax===yMin){yMin-=.01;yMax+=.01;}
+      const x=value=>45+(value-xMin)/Math.max(1,xMax-xMin)*420;
+      const y=value=>100-(value-yMin)/(yMax-yMin)*85;
+      const card=document.createElement('div');card.className='metric';card.style.gridColumn='1 / -1';
+      const title=document.createElement('div');title.className='metric-label';
+      title.textContent=tr(Homey,'widget.status.priceCurves','Price curves · original prices');card.appendChild(title);
+      const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 480 130');svg.style.width='100%';svg.setAttribute('role','img');svg.setAttribute('aria-label',title.textContent);
+      function label(px,py,text) {const el=document.createElementNS(ns,'text');el.setAttribute('x',px);el.setAttribute('y',py);el.setAttribute('fill','currentColor');el.setAttribute('font-size','10');el.textContent=text;svg.appendChild(el);}
+      curves.forEach(curve=> {
+        const interval=(curve.intervalMinutes || status.homeyEnergy?.decisionIntervalMinutes || 15)*60000;
+        let path='',last=null;
+        curve.points.forEach(point=> {
+          if(last !== null && point[0]-last>interval*1.5) path+=' ';
+          path+=`${last===null || point[0]-last>interval*1.5?'M':'L'}${x(point[0]).toFixed(1)},${y(point[1]).toFixed(1)} `;
+          last=point[0];
+        });
+        const el=document.createElementNS(ns,'path');el.setAttribute('d',path);el.setAttribute('fill','none');el.setAttribute('stroke',colors[curve.source]);el.setAttribute('stroke-width','2');svg.appendChild(el);
+      });
+      label(0,18,yMax.toFixed(3));label(0,103,yMin.toFixed(3));
+      const date=value=>new Date(value).toLocaleString([], {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      label(45,122,date(xMin));label(340,122,date(xMax));card.appendChild(svg);
+      curves.forEach((curve,index)=> {
+        const priority = (status.priceData?.sources || []).findIndex(data => data.source === curve.source);
+        const legend=document.createElement('div');legend.style.fontSize='10px';legend.style.color=colors[curve.source];
+        legend.textContent=`${tr(Homey,'widget.status.price','Price')} ${(priority < 0 ? index : priority)+1} · ${priceSourceName(curve.source,Homey,status)} · ${currencySymbol(status)}/kWh`;
+        card.appendChild(legend);
+      });
+      grid.appendChild(card);
     }
 
     function nextChargeText(status, Homey) {
@@ -618,8 +697,10 @@
       if (enabled(settings, 'showTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.currentTariff', 'Current tariff'), String(status.tariff?.label || '—'));
       if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status, Homey));
       if (enabled(settings, 'showPriceStatus')) addMetric(generalGrid, tr(Homey, 'widget.status.priceData', 'Price data'), priceDataText(status, Homey));
-      if (status.priceData?.required && enabled(settings, 'showPrimaryPrice')) addMetric(generalGrid, tr(Homey, 'widget.status.primaryPrice', 'Primary price'), sourcePriceText(status, Homey));
-      if (status.priceData?.required && enabled(settings, 'showSecondaryPrice')) addMetric(generalGrid, tr(Homey, 'widget.status.secondaryPrice', 'Secondary price · original → aligned'), sourcePriceText(status, Homey, true));
+      if (status.priceData?.required) {
+        renderSourcePrices(generalGrid, status, settings, Homey);
+        if(enabled(settings,'showPriceCurves')) renderPriceCurves(generalGrid,status,Homey);
+      }
       if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
       if (enabled(settings, 'showControlOwner')) addMetric(generalGrid, tr(Homey, 'widget.status.controlOwner', 'Battery control'), hybridControlOwnerText(status, Homey));
       if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));

@@ -92,7 +92,7 @@
       "nextTariff": "Volgend tarief",
       "priceData": "Prijsgegevens",
       "priceCurrent": "Actueel",
-      "priceStale": "Verouderd",
+      "priceStale": "Verouderde prijsdata",
       "priceUnavailable": "Niet beschikbaar",
       "priceConfigured": "Ingesteld tarief",
       "updatedNow": "zojuist bijgewerkt",
@@ -196,7 +196,17 @@
       "secondaryReady": "Reservebron gereed",
       "secondaryNotReady": "Reservebron niet gereed",
       "evSocCompleted": "SoC-doel bereikt",
-      "evEnergyCompleted": "Gevraagde energie geleverd"
+      "evEnergyCompleted": "Gevraagde energie geleverd",
+      "price": "Prijs",
+      "priceCurves": "Prijscurves · originele prijzen",
+      "priceNoData": "Geen prijsdata ontvangen",
+      "priceNoCurrentSlot": "Geen prijs voor het huidige tijdstip",
+      "priceInsufficientOverlap": "Onvoldoende overlap",
+      "priceInsufficientVariation": "Onvoldoende prijsvariatie",
+      "priceIncompatibleCurves": "Prijscurves komen onvoldoende overeen",
+      "priceAlignmentExpired": "Prijsafstemming verlopen",
+      "priceCurrentOutlier": "Actuele prijs wijkt af van referentie",
+      "priceAlignmentReady": "Prijsafstemming gereed"
     }
   }
 }

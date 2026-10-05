@@ -92,7 +92,7 @@
       "nextTariff": "Next tariff",
       "priceData": "Price data",
       "priceCurrent": "Current",
-      "priceStale": "Outdated",
+      "priceStale": "Stale price data",
       "priceUnavailable": "Unavailable",
       "priceConfigured": "Configured tariff",
       "updatedNow": "updated just now",
@@ -196,7 +196,17 @@
       "secondaryReady": "Secondary source ready",
       "secondaryNotReady": "Secondary source not ready",
       "evSocCompleted": "SoC target reached",
-      "evEnergyCompleted": "Requested energy delivered"
+      "evEnergyCompleted": "Requested energy delivered",
+      "price": "Price",
+      "priceCurves": "Price curves · original prices",
+      "priceNoData": "No price data received",
+      "priceNoCurrentSlot": "No price for the current time",
+      "priceInsufficientOverlap": "Insufficient overlap",
+      "priceInsufficientVariation": "Insufficient price variation",
+      "priceIncompatibleCurves": "Price curves do not reliably match",
+      "priceAlignmentExpired": "Price alignment expired",
+      "priceCurrentOutlier": "Current price deviates from reference",
+      "priceAlignmentReady": "Price alignment ready"
     }
   }
 }

@@ -19,7 +19,7 @@ function configure(app, mode='homey_external_fallback') {
   app.homeyEnergy={available:true,slots:rows(start,p=>(p+.12)*1.21),lastUpdatedAt:now.getTime(),formulaKnown:true,formulaKey:'(p+.12)*1.21'};
   app.externalEnergy={slots:rows(),curveUpdatedAt:now.getTime(),currentPrice:9,currentUpdatedAt:now.getTime()};
   app.homeyEnergyResampleCache=null;app.externalEnergyResampleCache=null;
-  app.dynamicPriceCalibration=null;app.priceCalibrationAttemptKey='';
+  app.dynamicPriceCalibration=null;app.priceCalibrationAttemptKey='';app.dynamicPriceCalibrations={};app.priceCalibrationAttempts={};
   return settings;
 }
 function formulaTests() {

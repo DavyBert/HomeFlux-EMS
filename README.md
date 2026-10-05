@@ -7,10 +7,10 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 ## Quick start
 
 1. **Configure HomeFlux**  
-   Add your battery count, capacity, battery limits, tariff periods and Peak Guard limit in Settings, then save the configuration. For a dynamic contract, choose Homey Energy, an external service, or a primary source with the other as fallback; Homey price formulas are included. For batteries with different power limits and/or capacities, enable the individual settings and enter each battery’s capacity in kWh and power limits in W.
+   Add your battery count, capacity, battery limits, tariff periods and Peak Guard limit in Settings, then save the configuration. For a dynamic contract, select Homey, External Price 1 and/or External Price 2, then set their priority order and optional external-source names; fallback prices are aligned to the primary source including surcharges. For batteries with different power limits and/or capacities, enable the individual settings and enter each battery’s capacity in kWh and power limits in W.
 
 2. **Feed the basic inputs through Flow**  
-   Use **Set grid power**, **Set PV power** and **Set battery SoC**. For battery planning, also provide **Set remaining PV forecast** and **Set tomorrow PV forecast**. Grid power uses positive = import and negative = export. If you select an external price source, supply a full curve with **External electricity price curve** or **Set PBTH electricity price curve**.
+   Use **Set grid power**, **Set PV power** and **Set battery SoC**. For battery planning, also provide **Set remaining PV forecast** and **Set tomorrow PV forecast**. Grid power uses positive = import and negative = export. If you select an external price source, use **Read external prices JSON**, select the external source by its configured name (default **External Price 1** or **External Price 2**) and connect your provider’s JSON token. For arrays without timestamps, select the matching period; resolution follows your dynamic contract. Curves support up to 120 hours. Existing PBTH/external price Flows keep working as External Price 1; earlier generic source selections remain intact.
 
 3. **Send the battery output to your battery integration**  
    Use **Battery commands are updated** for batteries that accept a power setpoint. If your battery requires separate charge/discharge modes and power values, enable Split Command and use the corresponding **Battery: switch to charge/discharge mode** and **Battery: charge/discharge power is updated** cards.
@@ -19,7 +19,7 @@ Once these inputs and outputs are connected, HomeFlux can perform the core batte
 
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
-Optional multi-battery efficiency optimization can concentrate charging and discharging around a separate configurable power target for each battery while selecting batteries by SoC. Enable it under Batteries when at least two batteries are configured, then enter each battery’s optimal power in W (one target for charging and discharging). Existing installations inherit their previous shared target. Battery rotations transfer power gradually between batteries while keeping the requested total battery power available for normal P1 and Peak Guard control; the final battery-output layer also enforces the gradual handover. During discharge, the current battery is kept as the preferred battery until it is more than 2 percentage points below the highest available battery, preventing unnecessary SoC-driven switching around nearly equal levels. The number of active batteries also uses power hysteresis around each efficiency threshold, so small P1 reactions do not repeatedly switch between one and two (or more) batteries.
+Optional multi-battery efficiency optimization uses an individual optimal power target per battery and gradual SoC-based rotations. Enable it under Batteries when at least two batteries are configured.
 
 Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings with historical views and CSV export, diagnostics and dashboard widgets.
 
@@ -29,6 +29,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.0.6
+
+Select and prioritize Homey, External Price 1 and External Price 2 independently. External JSON curves support up to 120 hours of hourly or quarter-hour prices, with one generic source-selectable Flow input. Fallback sources share existing price alignment and validation. Status and planning diagnostics identify the active source and skipped-source reasons. The EMS widget shows up to three available prices and curves. External curves are retained across app restarts. Price-source selection uses checkboxes followed by priority dropdowns. Selected widget sources stay visible when data is missing; available future curves retain their priority numbers. Price alignment compares current-day overlap at a shared resolution and tolerates isolated outliers while rejecting unreliable matches. External sources can have custom names in settings, the widget and the new Flow source picker. The chart preserves received price blocks, including quarter-hour values with an hourly planning contract. Hourly prices repeated across four quarter-hour slots are recognized and aligned against complete hourly averages. Price-curve legend labels use the matching curve colors. Planned charging now continues live P1 feedback within the same import/export zone. Forced recalculations retain their force flag while waiting for the command interval. Diagnostics identify fast-control skip reasons and distinguish app startup from diagnostics startup. Battery efficiency optimization now also retains the charging battery until its SoC is more than the configured balance margin above the lowest available battery (minimum 2 percentage points), including during gradual handovers.
 
 ### 1.0.5
 

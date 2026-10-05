@@ -1758,7 +1758,17 @@
     "Batterij 7: optimaal vermogen (W)": "Battery 7: optimal power (W)",
     "Batterij 8: optimaal vermogen (W)": "Battery 8: optimal power (W)",
     "Valutasymbool / tekst": "Currency symbol / text",
-    "Alleen voor weergave in HomeFlux. Voorbeelden: €, $, £, USD of CHF. HomeFlux rekent geen valuta om; de prijsbron blijft verantwoordelijk voor de juiste waarden.": "Display only in HomeFlux. Examples: €, $, £, USD or CHF. HomeFlux does not convert currencies; the price source remains responsible for supplying the correct values."
+    "Alleen voor weergave in HomeFlux. Voorbeelden: €, $, £, USD of CHF. HomeFlux rekent geen valuta om; de prijsbron blijft verantwoordelijk voor de juiste waarden.": "Display only in HomeFlux. Examples: €, $, £, USD or CHF. HomeFlux does not convert currencies; the price source remains responsible for supplying the correct values.",
+    "1. Selecteer prijsbronnen": "1. Select price sources",
+    "2. Stel de prioriteitsvolgorde in": "2. Set the priority order",
+    "De eerste bron is leidend. Reservebronnen worden afgestemd op overlappende prijzen van de eerste bron, inclusief toeslagen en btw. Niet-geselecteerde bronnen worden niet gebruikt. Externe JSON-prijscurves mogen tot 120 uur vooruit bevatten.": "The first source takes priority. Fallback sources are aligned using overlapping primary prices, including surcharges and VAT. Unselected sources are never used. External JSON curves may contain up to 120 hours ahead.",
+    "Gebruik": "Use",
+    "Lees externe prijzen JSON": "Read external prices JSON",
+    "of": "or",
+    "en koppel de JSON-prijstag van je provider. Voor arrays zonder tijdstempels kies je dezelfde periode als in de bronkaart; de resolutie volgt je dynamische contract. JSON met tijdstempels bepaalt zelf de momenten. Bestaande prijs-Flows blijven External Price 1 bijwerken.": "and connect your provider’s JSON price token. For arrays without timestamps, select the same period as the provider; resolution follows your dynamic contract. Timestamped JSON defines its own times. Existing price Flows continue updating External Price 1.",
+    "Naam externe bron 1": "External Price 1 name",
+    "Naam externe bron 2": "External Price 2 name",
+    "Deze namen verschijnen in de instellingen, widget en nieuwe Flow-bronkeuze. Leeg laten gebruikt de standaardnaam. Sla op om de namen overal toe te passen.": "These names appear in settings, the widget and the new Flow source selector. Leave blank to use the default name. Save to apply the names everywhere."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

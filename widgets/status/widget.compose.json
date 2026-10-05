@@ -54,8 +54,8 @@
       "id": "showPrimaryPrice",
       "type": "checkbox",
       "title": {
-        "en": "Show primary price",
-        "nl": "Primaire prijs tonen"
+        "en": "Show Price 1",
+        "nl": "Prijs 1 tonen"
       },
       "value": true
     },
@@ -63,8 +63,26 @@
       "id": "showSecondaryPrice",
       "type": "checkbox",
       "title": {
-        "en": "Show secondary price (including no secondary source)",
-        "nl": "Secundaire prijs tonen (ook zonder secundaire bron)"
+        "en": "Show Price 2 when available",
+        "nl": "Prijs 2 tonen indien beschikbaar"
+      },
+      "value": true
+    },
+    {
+      "id": "showTertiaryPrice",
+      "type": "checkbox",
+      "title": {
+        "en": "Show Price 3 when available",
+        "nl": "Prijs 3 tonen indien beschikbaar"
+      },
+      "value": true
+    },
+    {
+      "id": "showPriceCurves",
+      "type": "checkbox",
+      "title": {
+        "en": "Show available price curves",
+        "nl": "Beschikbare prijscurves tonen"
       },
       "value": true
     },

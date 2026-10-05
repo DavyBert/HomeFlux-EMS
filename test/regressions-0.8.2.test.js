@@ -132,13 +132,20 @@ try {
     assert.equal(evaluations.length, 1);
     assert.equal(outputs.length, 0);
   }
-  // Planned grid charging and standby do not mistake intentional stable import
-  // for a self-consumption error. Peak Guard can still request a reassessment.
-  for (const mode of ['charge', 'manual_charge', 'standby']) {
+  // Fixed manual charge and standby retain their non-feedback gate. Planned
+  // charge must reach the engine, which preserves its intentional grid floor.
+  // The full planned-floor/no-output case is covered by the 1.0.6 audit suite.
+  for (const mode of ['manual_charge', 'standby']) {
     now = 107000;
     const { app } = setup({}, 500);
     app.latestResult = { baseMode: mode, override: '' };
     assert.equal(app.shouldRunFastEvaluation(), false);
+  }
+  {
+    now = 107000;
+    const { app } = setup({}, 500);
+    app.latestResult = { baseMode: 'charge', override: '' };
+    assert.equal(app.shouldRunFastEvaluation(), true);
   }
   {
     now = 107000;

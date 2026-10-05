@@ -20,5 +20,6 @@
   "titleFormatted": {
     "en": "Set external electricity price curve to [[curve]]",
     "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]"
-  }
+  },
+  "deprecated": true
 }

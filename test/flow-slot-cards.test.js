@@ -17,6 +17,7 @@ const legacyIds = new Set(Object.values(definitions).flatMap(items => items.flat
 // conditions, token names/types and translated titles from accidental changes.
 assert.equal(legacyIds.size, 120);
 const dropdownIds = new Set(CONFIGURED_CARDS.map(d => d.legacy));
+const priceDeprecatedIds = new Set(['set_external_electricity_price','set_external_electricity_price_curve','set_pbth_electricity_price_curve']);
 const displayMetadataChangeIds = new Set(['set_external_ems_setpoint']);
 const withoutDisplayMetadata = card => {
   if (!card) return card;
@@ -35,7 +36,7 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
   for (const previous of baseline[kind]) {
     const card = current.get(previous.id);
     assert.ok(card, `Old card removed: ${previous.id}`);
-    const expected = (legacyIds.has(card.id) || dropdownIds.has(card.id)) ? { ...previous, deprecated: true } : previous;
+    const expected = (legacyIds.has(card.id) || dropdownIds.has(card.id) || priceDeprecatedIds.has(card.id)) ? { ...previous, deprecated: true } : previous;
     if (displayMetadataChangeIds.has(previous.id)) {
       assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
         `Old functional schema changed: ${previous.id}`);
@@ -48,7 +49,7 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
     assert.deepEqual(card, { id: card.id, ...composed }, `Manifest/Compose mismatch: ${card.id}`);
   }
 }
-assert.equal(manifest.flow.actions.filter(c => !c.deprecated).length, 30);
+assert.equal(manifest.flow.actions.filter(c => !c.deprecated).length, 28);
 assert.equal(manifest.flow.triggers.filter(c => !c.deprecated).length, 26);
 assert.equal(manifest.flow.conditions.filter(c => !c.deprecated).length, 20);
 for (const [kind, items] of Object.entries(definitions)) {

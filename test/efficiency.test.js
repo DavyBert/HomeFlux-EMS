@@ -95,6 +95,28 @@ for (const expected of [[-600, -200], [-400, -400], [-200, -600], [0, -800]]) {
   assert.deepEqual(chargeRotation, expected);
   assert.equal(total(chargeRotation), -800);
 }
+// Charging mirrors discharge: keep the incumbent through the inclusive SoC
+// boundary and preserve its identity when both batteries carry a handover.
+const stickyChargeState = (soc, previous, index = 1) => ({
+  ...state(soc, previous), efficiencyChargeStickyIndex: index,
+});
+const twoBatteries = settings({ batteryCount: 2 });
+assert.deepEqual(distributeCommand(-800, stickyChargeState([62, 63], [0, -800]), twoBatteries), [0, -800]);
+assert.deepEqual(distributeCommand(-800, stickyChargeState([62, 64], [0, -800]), twoBatteries), [0, -800]);
+assert.deepEqual(distributeCommand(-800, stickyChargeState([62, 64.1], [0, -800]), twoBatteries), [-200, -600]);
+assert.deepEqual(distributeCommand(-800, stickyChargeState([62, 63], [-400, -400]), twoBatteries), [-200, -600]);
+assert.deepEqual(distributeCommand(-800, stickyChargeState([62, 63], [-200, -600]), twoBatteries), [0, -800]);
+assert.deepEqual(distributeCommand(-800, stickyChargeState([60, 63], [0, -800]), settings({ batteryCount: 2, balanceDeadbandPct: 3 })), [0, -800]);
+// Even a stale incumbent cannot keep a full/unknown/disabled battery charging.
+for (const unavailable of [90, null]) {
+  assert.deepEqual(distributeCommand(-800, stickyChargeState([50, unavailable], [0, -800]), twoBatteries), [-800, 0]);
+}
+assert.deepEqual(distributeCommand(-1200, stickyChargeState([50, 51], [0, -800]), settings({
+  batteryCount: 2, individualBatteryPowerLimitsEnabled: true,
+  battery1MaxChargeW: 900, battery2MaxChargeW: 500,
+})), [-700, -500]);
+assert.equal(total(distributeCommand(-1200, stickyChargeState([62, 63], [-400, -400]), twoBatteries)), -1200);
+assert.equal(total(distributeCommand(-500, stickyChargeState([62, 63], [-400, -400]), twoBatteries)), -500);
 assert.deepEqual(distributeCommand(2000, state([60, 55, 50, 45]), settings()), [1000, 1000, 0, 0]);
 assert.deepEqual(distributeCommand(-2000, state([60, 55, 50, 45]), settings()), [0, 0, -1000, -1000]);
 
@@ -245,4 +267,38 @@ const safetyResult = {
 };
 assert.deepEqual(app.limitEfficiencyHandoverAtOutput(safetyResult, [0, 800], app.getSettings()).commands, [0, 800]);
 
-console.log('Multi-battery efficiency tests passed.');
+async function verifyChargePublicationHold() {
+  const { boot, DEFAULTS } = require('./startup-harness');
+  const { app: output, errors } = await boot();
+  const configured = { ...DEFAULTS, ...settings({ batteryCount: 2 }),
+    batteryCommandPauseEnabled: false, commandIntervalSeconds: 5 };
+  output.getSettings = () => configured;
+  output.requestContextEvaluate = () => {};
+  output.queueStatusUpdate = () => {};
+  output.state.batterySoc = [60, 63];
+  output.lastEmittedCommands = [0, -800];
+  const publish = async (candidate, availableSoc = [{ battery: 1, soc: 60 }, { battery: 2, soc: 63 }]) => {
+    output.lastEmitAt = 0; output.nextCommandAllowedAt = 0;
+    output.pendingResult = { candidateCommands: candidate, baseMode: 'solar_capture',
+      modeLabel: 'Charge', statusText: '', nextEventText: '',
+      efficiencyOptimization: { enabled: true, availableSoc, desiredActiveCount: 1 } };
+    await output.emitPending();
+    assert.equal(output.state.lastTotalCommandW, -800);
+    return output.lastEmittedCommands;
+  };
+  await publish([0, -800]);
+  assert.equal(output.efficiencyChargeStickyIndex, 1);
+  assert.equal(output.getEvaluationState(configured).efficiencyChargeStickyIndex, 1);
+  for (const expected of [[-200, -600], [-400, -400], [-600, -200], [-800, 0]]) {
+    assert.deepEqual(await publish([-800, 0]), expected);
+    assert.equal(output.efficiencyChargeStickyIndex, expected[1] < 0 ? 1 : 0,
+      'published incumbent changes only when its actual charge output reaches zero');
+  }
+  // A full or otherwise unavailable incumbent stops immediately at output.
+  assert.deepEqual(await publish([0, -800], [{ battery: 2, soc: 63 }]), [0, -800]);
+  assert.equal(output.efficiencyChargeStickyIndex, 1);
+  assert.equal(errors.length, 0);
+}
+verifyChargePublicationHold().then(() => {
+  console.log('Multi-battery efficiency tests passed, including sticky charging and real output handovers.');
+}).catch(error => { console.error(error); process.exitCode = 1; });

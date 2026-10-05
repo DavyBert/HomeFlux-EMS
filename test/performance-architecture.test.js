@@ -140,7 +140,7 @@ assert(slowSource.includes('publishFlexibleLoads('), 'slow loop must own flexibl
 assert(appSource.includes("this.contextHeartbeatTimer = this.homey.setInterval(() => {"));
 assert(appSource.includes('this.runContextHeartbeat();'));
 assert(appSource.includes('}, 60000);'));
-assert(appSource.includes('this.evaluateFastNow(immediate)'));
+assert(appSource.includes('this.evaluateFastNow(forceEvaluation)'));
 assert(appSource.includes('this.evaluateContextNow(forceStatus)'));
 
 console.log('performance architecture tests passed');

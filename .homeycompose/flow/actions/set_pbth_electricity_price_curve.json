@@ -51,5 +51,6 @@
   "titleFormatted": {
     "en": "Set PBTH [[period]] electricity prices to [[curve]]",
     "nl": "Stel PBTH-elektriciteitsprijzen voor [[period]] in op [[curve]]"
-  }
+  },
+  "deprecated": true
 }

@@ -23,5 +23,6 @@
   "titleFormatted": {
     "en": "Set external electricity price to [[price]] EUR/kWh",
     "nl": "Stel externe elektriciteitsprijs in op [[price]] EUR/kWh"
-  }
+  },
+  "deprecated": true
 }
