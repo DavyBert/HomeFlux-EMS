@@ -125,7 +125,18 @@ async function run() {
    app.setSetting('dynamicPriceSources',order);app.setSetting('contractType','dynamic_quarter');
    app.setSetting('externalPrice1Name',cfg.externalPrice1Name);app.setSetting('externalPrice2Name',cfg.externalPrice2Name);
    store.set('_externalPriceCurves',{external:{slots:[],curveUpdatedAt:now.getTime()},external2:structuredClone(app.externalEnergy2)});
-   const restarted=await boot(store);restarted.app.homey.clock.getTimezone=()=> 'UTC';
+   // Startup prunes expired curves using the real clock. Keep this fixture's
+   // restart at its simulated timestamp, regardless of the test execution date.
+   const RealDate=Date;
+   let restarted;
+   try {
+    global.Date=class extends RealDate {
+     constructor(...args){super(...(args.length?args:[now.getTime()]));}
+     static now(){return now.getTime();}
+    };
+    restarted=await boot(store);
+   } finally { global.Date=RealDate; }
+   restarted.app.homey.clock.getTimezone=()=> 'UTC';
    const resumed=restarted.app.getDynamicPriceSelection({...restarted.app.getSettings(),timezone:'UTC'},now);
    assert.equal(resumed.source,'external2');close(resumed.analysis.currentPrice,selection.analysis.currentPrice);
    assert.equal(resumed.sources[1].name,'Power by the Hour');

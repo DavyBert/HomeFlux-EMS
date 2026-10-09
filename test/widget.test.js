@@ -19,11 +19,11 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 
 assert.equal(appCompose.compatibility, '>=12.3.0');
 assert.equal(manifest.compatibility, appCompose.compatibility);
-assert.equal(manifest.version, '1.0.6');
-assert.equal(appCompose.version, '1.0.6');
-assert.equal(packageJson.version, '1.0.6');
-assert.equal(packageLock.version, '1.0.6');
-assert.equal(packageLock.packages[''].version, '1.0.6');
+assert.equal(manifest.version, '1.0.7');
+assert.equal(appCompose.version, '1.0.7');
+assert.equal(packageJson.version, '1.0.7');
+assert.equal(packageLock.version, '1.0.7');
+assert.equal(packageLock.packages[''].version, '1.0.7');
 assert(manifest.capabilities.ems_control_owner, 'EMS device battery-control-owner capability missing');
 assert(manifest.capabilities.ems_ev_plan, 'EMS device EV-planning capability missing');
 const emsDriver = manifest.drivers.find(driver => driver.id === 'ems');
@@ -48,7 +48,7 @@ assert(statusHtml.includes("enabled(settings, 'showPlanningGrid')"), 'status wid
 assert(statusHtml.includes("enabled(settings, 'showPlanningSolar')"), 'status widget must allow expected PV energy to be selected');
 assert(statusHtml.includes("enabled(settings, 'showReasons')"), 'status widget must allow decision reasons to be selected');
 assert(statusHtml.includes('emsDecisionReason(status, Homey)'), 'status widget must render a reason for every EMS decision');
-assert(statusHtml.includes('reasonText(ev.reason, Homey)'), 'status widget must render the existing EV reason');
+assert(statusHtml.includes('reasonText(evReasonForWidget(ev.reason, ev), Homey)'), 'status widget must render the existing EV reason');
 assert(statusHtml.includes('reasonText(hvac.reason, Homey)'), 'status widget must render the existing HVAC reason');
 assert(statusHtml.includes('reasonText(status.boiler.reason, Homey)'), 'status widget must render the existing boiler reason');
 assert(statusHtml.includes('nextTariffText(status, Homey)'), 'status widget must render the next tariff with remaining time');

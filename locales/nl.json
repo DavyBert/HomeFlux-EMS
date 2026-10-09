@@ -206,7 +206,16 @@
       "priceIncompatibleCurves": "Prijscurves komen onvoldoende overeen",
       "priceAlignmentExpired": "Prijsafstemming verlopen",
       "priceCurrentOutlier": "Actuele prijs wijkt af van referentie",
-      "priceAlignmentReady": "Prijsafstemming gereed"
+      "priceAlignmentReady": "Prijsafstemming gereed",
+      "planningTarget": "Planningsdoel",
+      "activeSocBounds": "Actieve SoC-grenzen",
+      "dayPlanningMaximum": "Maximum dagplanning",
+      "nightPlanningMaximum": "Maximum nachtplanning",
+      "sunChanceFloor": "Ondergrens zonkansreserve",
+      "peakGuardFloor": "Ondergrens Peak Guard",
+      "dischargeFloor": "Ondergrens ontladen",
+      "batteryFloorIn": "Tot ontlaadondergrens",
+      "batteryAtFloor": "Ontlaadondergrens bereikt"
     }
   }
 }

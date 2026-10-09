@@ -378,6 +378,31 @@
       return tr(Homey, 'widget.status.reasonBalanced', 'Grid balance is around the configured target');
     }
 
+    function batteryTargetText(status) {
+      return formatSoc(status.planningChargeTargetSoc ?? status.targetSoc);
+    }
+
+    function batteryBoundaryText(status, Homey) {
+      const parts = [];
+      const automatic = String(status.forcedMode || 'auto') === 'auto';
+      if (automatic && status.planningSocLimitActive && !status.safetySocRecoveryActive) {
+        const label = status.planningPhase === 'night'
+          ? tr(Homey, 'widget.status.nightPlanningMaximum', 'Night planning maximum')
+          : tr(Homey, 'widget.status.dayPlanningMaximum', 'Day planning maximum');
+        parts.push(`${label} ${formatSoc(status.planningMaxSoc)}`);
+      }
+      const floor = status.override === 'peak_shave' ? status.settings?.minSoc : status.ordinaryDischargeFloorSoc;
+      if (automatic && floor !== null && floor !== undefined && Number.isFinite(Number(floor))) {
+        const label = status.override === 'peak_shave'
+          ? tr(Homey, 'widget.status.peakGuardFloor', 'Peak Guard minimum')
+          : status.sunChanceReserve?.active && Number(status.sunChanceReserve.floorSoc) >= Number(floor)
+            ? tr(Homey, 'widget.status.sunChanceFloor', 'Sunshine reserve minimum')
+            : tr(Homey, 'widget.status.dischargeFloor', 'Discharge minimum');
+        parts.push(`${label} ${formatSoc(floor)}`);
+      }
+      return parts.join(' · ');
+    }
+
     function batteryTimingText(status, Homey) {
       const timing = status.batteryTiming || {};
       const direction = String(timing.direction || 'idle');
@@ -394,8 +419,8 @@
         };
       }
       return {
-        label: tr(Homey, 'widget.status.batterySafetyIn', 'To Safety SoC'),
-        value: hours <= 0 ? tr(Homey, 'widget.status.batteryAtSafety', 'Safety SoC reached') : `${duration} · Safety SoC ${formatSoc(targetSoc)}`,
+        label: tr(Homey, 'widget.status.batteryFloorIn', 'To discharge minimum'),
+        value: hours <= 0 ? tr(Homey, 'widget.status.batteryAtFloor', 'Discharge minimum reached') : `${duration} · ${tr(Homey, 'widget.status.dischargeFloor', 'Discharge minimum')} ${formatSoc(targetSoc)}`,
       };
     }
 
@@ -410,6 +435,16 @@
       const watts = Math.max(0, Math.round(Number(value) || 0));
       if (watts >= 1000) return `${(watts / 1000).toFixed(watts % 1000 === 0 ? 0 : 1)} kW`;
       return `${watts} W`;
+    }
+
+    function evReasonForWidget(reason, ev) {
+      const text = String(reason || '').trim();
+      // The existing allocator already distinguishes PV, grid and battery
+      // energy. Show its split only while PV really contributes to this EV.
+      const hasSolarSurplus = Number(ev?.pvPoolBudgetW ?? ev?.pvAvailableW) > 0.5
+        && Number(ev?.pvAllocatedW) > 0.5;
+      if (hasSolarSurplus) return text;
+      return text.replace(/\s*·\s*(?:PV-verdeling EV|PV allocation EV|PV distribution EV)\s+\d+(?:\.\d+)?%\s*\/\s*(?:batterij|battery)\s+\d+(?:\.\d+)?%/gi, '').trim();
     }
 
     function evBatteryCoordinationText(ev, Homey) {
@@ -515,7 +550,7 @@
             : tr(Homey, 'widget.status.evTargetFeasible', 'feasible');
         parts.push(`${need.toFixed(1)} kWh · ${deadlineText} · ${feasible}`);
       }
-      const reason = String(ev.nextOutputReason || '').trim();
+      const reason = evReasonForWidget(ev.nextOutputReason, ev);
       if (reason) parts.push(`${tr(Homey, 'widget.status.reason', 'Reason')}: ${reason}`);
       return parts.join(' · ');
     }
@@ -705,7 +740,11 @@
       if (enabled(settings, 'showControlOwner')) addMetric(generalGrid, tr(Homey, 'widget.status.controlOwner', 'Battery control'), hybridControlOwnerText(status, Homey));
       if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));
       if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc));
-      if (enabled(settings, 'showBatteryTarget')) addMetric(generalGrid, tr(Homey, 'widget.status.batteryTarget', 'Battery target'), formatSoc(status.targetSoc));
+      if (enabled(settings, 'showBatteryTarget')) {
+        addMetric(generalGrid, tr(Homey, 'widget.status.planningTarget', 'Planning target'), batteryTargetText(status));
+        const boundary = batteryBoundaryText(status, Homey);
+        if (boundary) addMetric(generalGrid, tr(Homey, 'widget.status.activeSocBounds', 'Active SoC bounds'), boundary);
+      }
       const timing = batteryTimingText(status, Homey);
       if (timing) addMetric(generalGrid, timing.label, timing.value);
       if (enabled(settings, 'showNextCharge')) addMetric(generalGrid, tr(Homey, 'widget.status.nextCharge', 'Next charging window'), nextChargeText(status, Homey));
@@ -741,7 +780,7 @@
             }
             const reasons = [];
             if (enabled(settings, 'showReasons')) {
-              const normalReason = reasonText(ev.reason, Homey);
+              const normalReason = reasonText(evReasonForWidget(ev.reason, ev), Homey);
               if (normalReason) reasons.push(normalReason);
             }
             const coordinationReason = evBatteryCoordinationText(ev, Homey);

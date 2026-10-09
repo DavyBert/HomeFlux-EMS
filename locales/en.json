@@ -206,7 +206,16 @@
       "priceIncompatibleCurves": "Price curves do not reliably match",
       "priceAlignmentExpired": "Price alignment expired",
       "priceCurrentOutlier": "Current price deviates from reference",
-      "priceAlignmentReady": "Price alignment ready"
+      "priceAlignmentReady": "Price alignment ready",
+      "planningTarget": "Planning target",
+      "activeSocBounds": "Active SoC bounds",
+      "dayPlanningMaximum": "Day planning maximum",
+      "nightPlanningMaximum": "Night planning maximum",
+      "sunChanceFloor": "Sunshine reserve minimum",
+      "peakGuardFloor": "Peak Guard minimum",
+      "dischargeFloor": "Discharge minimum",
+      "batteryFloorIn": "To discharge minimum",
+      "batteryAtFloor": "Discharge minimum reached"
     }
   }
 }

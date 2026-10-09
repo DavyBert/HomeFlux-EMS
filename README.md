@@ -17,6 +17,8 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 
 Once these inputs and outputs are connected, HomeFlux can perform the core battery control and planning. After reaching the charging target, a 2-percentage-point restart margin avoids small grid top-ups. In automatic mode, charging can restore Safety SoC outside tariff windows, subject to Peak Guard and battery limits.
 
+Optional day and night planning maxima (default 100%) limit planned grid charging. Solar surplus can still charge above these planning limits within the battery safety limits.
+
 An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
 
 Optional multi-battery efficiency optimization uses an individual optimal power target per battery and gradual SoC-based rotations. Enable it under Batteries when at least two batteries are configured.
@@ -29,6 +31,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.0.7
+
+Added independent maximum SoC settings for day and night planned charging (default 100%). Solar surplus can continue charging beyond the planning limit. Planning energy need and the PV threshold are grouped at the top of energy planning. The status widget identifies active planning limits and discharge floors; EV PV-allocation details appear only when solar surplus actually contributes.
 
 ### 1.0.6
 

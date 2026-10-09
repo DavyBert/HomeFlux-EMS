@@ -613,7 +613,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.0.6 initialized');
+    this.log('HomeFlux EMS v1.0.7 initialized');
   }
 
   refreshSettingsCache() {
@@ -1595,7 +1595,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.6',
+      version: '1.0.7',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -13454,7 +13454,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.6',
+      version: '1.0.7',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13527,7 +13527,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.6',
+        version: '1.0.7',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13666,8 +13666,16 @@ class HomeFluxEmsApp extends Homey.App {
     // follows what HomeFlux is really asking the batteries to do right now.
     const actualInternalTotalW = actualInternalCommands.reduce((sum, value) => sum + value, 0);
     const timingSoc = Number(preview.avgSoc);
-    const timingTargetSoc = Number(preview.targetSoc);
-    const timingSafetySoc = Number(preview.safetySoc ?? storedSettings.safetySoc);
+    const timingPlanningTargetSoc = Number(preview.planningChargeTargetSoc ?? preview.targetSoc);
+    const timingGridTargetSoc = preview.baseMode === 'charge' && isDynamicContract(storedSettings)
+      && preview.tariff?.className === 'normal'
+      ? Math.min(timingPlanningTargetSoc, Number(storedSettings.dynamicNormalChargeMaxSoc))
+      : timingPlanningTargetSoc;
+    const timingTargetSoc = Number(preview.safetySocRecoveryActive ? preview.safetySoc
+      : preview.baseMode === 'manual_charge' || preview.action === 'pv_charge' ? storedSettings.maxSoc
+        : timingGridTargetSoc);
+    const timingSafetySoc = Number(preview.override === 'peak_shave' ? storedSettings.minSoc
+      : preview.ordinaryDischargeFloorSoc ?? preview.safetySoc ?? storedSettings.safetySoc);
     const timingCapacityKwh = Number(preview.effectiveCapacityKwh);
     const timingPowerW = Math.abs(actualInternalTotalW);
     let batteryTiming = { direction: 'idle', powerW: timingPowerW, hours: null, targetSoc: null };
@@ -13858,7 +13866,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.6',
+      version: '1.0.7',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
