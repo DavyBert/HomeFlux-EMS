@@ -1,0 +1,2310 @@
+{
+  "engineCases": 5120,
+  "identicalEngineResults": true,
+  "identicalTimedBatteryTraces": true,
+  "modes": {
+    "stableCharge": {
+      "before": {
+        "p1Updates": 1500,
+        "counters": {
+          "fastRequests": 1501,
+          "fastImmediate": 1351,
+          "fastEvaluations": 1351,
+          "calculatedSetpointTriggers": 26,
+          "fastCommandChange": 26,
+          "batteryCommandPublishes": 26,
+          "gridInputs": 1500,
+          "fastReasonFeedback": 1500,
+          "fastScheduled": 25,
+          "fastCoalesced": 125,
+          "fastNoCommandChange": 1325
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 1351,
+            "wallMs": 511.7673970000051,
+            "maxWallMs": 5.694486000000325
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 26,
+            "wallMs": 12.471045000000231,
+            "maxWallMs": 1.6812780000000203
+          },
+          "battery_command_publish": {
+            "calls": 26,
+            "wallMs": 6.4124399999982415,
+            "maxWallMs": 1.3222459999997227
+          },
+          "fast_feedback_preflight": {
+            "calls": 1500,
+            "wallMs": 0.5396809999956531,
+            "maxWallMs": 0.05897899999945366
+          }
+        },
+        "processCpuMs": 713.469,
+        "wallMs": 594.090411,
+        "traces": [
+          {
+            "at": 1791115200000,
+            "total": -360,
+            "batteries": [
+              -360,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115260000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115320000,
+            "total": -364,
+            "batteries": [
+              -364,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115380000,
+            "total": -366,
+            "batteries": [
+              -366,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115440000,
+            "total": -368,
+            "batteries": [
+              -368,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115500000,
+            "total": -370,
+            "batteries": [
+              -370,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115560000,
+            "total": -372,
+            "batteries": [
+              -372,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115620000,
+            "total": -375,
+            "batteries": [
+              -375,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115680000,
+            "total": -377,
+            "batteries": [
+              -377,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115740000,
+            "total": -379,
+            "batteries": [
+              -379,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115800000,
+            "total": -381,
+            "batteries": [
+              -381,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115860000,
+            "total": -383,
+            "batteries": [
+              -383,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115920000,
+            "total": -386,
+            "batteries": [
+              -386,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115980000,
+            "total": -388,
+            "batteries": [
+              -388,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116040000,
+            "total": -390,
+            "batteries": [
+              -390,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116100000,
+            "total": -393,
+            "batteries": [
+              -393,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116160000,
+            "total": -395,
+            "batteries": [
+              -395,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116220000,
+            "total": -398,
+            "batteries": [
+              -398,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116280000,
+            "total": -400,
+            "batteries": [
+              -400,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116340000,
+            "total": -402,
+            "batteries": [
+              -402,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116400000,
+            "total": -405,
+            "batteries": [
+              -405,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116460000,
+            "total": -408,
+            "batteries": [
+              -408,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116520000,
+            "total": -410,
+            "batteries": [
+              -410,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116580000,
+            "total": -413,
+            "batteries": [
+              -413,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116640000,
+            "total": -415,
+            "batteries": [
+              -415,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116700000,
+            "total": -418,
+            "batteries": [
+              -418,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 1500,
+        "counters": {
+          "fastRequests": 1501,
+          "fastImmediate": 51,
+          "fastEvaluations": 51,
+          "calculatedSetpointTriggers": 26,
+          "fastCommandChange": 26,
+          "batteryCommandPublishes": 26,
+          "gridInputs": 1500,
+          "fastReasonFeedback": 200,
+          "fastScheduled": 25,
+          "fastCoalesced": 125,
+          "fastNoCommandChange": 25,
+          "fastFeedbackUnchangedSkipped": 1300,
+          "fastChargeUnchangedSkipped": 1300,
+          "fastSkipped": 1300
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 51,
+            "wallMs": 34.44251399999666,
+            "maxWallMs": 2.5083569999997053
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 26,
+            "wallMs": 12.679910000003474,
+            "maxWallMs": 1.5516019999995478
+          },
+          "battery_command_publish": {
+            "calls": 26,
+            "wallMs": 5.791544999999132,
+            "maxWallMs": 1.1202510000002803
+          },
+          "fast_feedback_preflight": {
+            "calls": 1500,
+            "wallMs": 69.56361599997854,
+            "maxWallMs": 0.8147900000003574
+          }
+        },
+        "processCpuMs": 233.877,
+        "wallMs": 168.370857,
+        "traces": [
+          {
+            "at": 1791115200000,
+            "total": -360,
+            "batteries": [
+              -360,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115260000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115320000,
+            "total": -364,
+            "batteries": [
+              -364,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115380000,
+            "total": -366,
+            "batteries": [
+              -366,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115440000,
+            "total": -368,
+            "batteries": [
+              -368,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115500000,
+            "total": -370,
+            "batteries": [
+              -370,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115560000,
+            "total": -372,
+            "batteries": [
+              -372,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115620000,
+            "total": -375,
+            "batteries": [
+              -375,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115680000,
+            "total": -377,
+            "batteries": [
+              -377,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115740000,
+            "total": -379,
+            "batteries": [
+              -379,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115800000,
+            "total": -381,
+            "batteries": [
+              -381,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115860000,
+            "total": -383,
+            "batteries": [
+              -383,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115920000,
+            "total": -386,
+            "batteries": [
+              -386,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115980000,
+            "total": -388,
+            "batteries": [
+              -388,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116040000,
+            "total": -390,
+            "batteries": [
+              -390,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116100000,
+            "total": -393,
+            "batteries": [
+              -393,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116160000,
+            "total": -395,
+            "batteries": [
+              -395,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116220000,
+            "total": -398,
+            "batteries": [
+              -398,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116280000,
+            "total": -400,
+            "batteries": [
+              -400,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116340000,
+            "total": -402,
+            "batteries": [
+              -402,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116400000,
+            "total": -405,
+            "batteries": [
+              -405,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116460000,
+            "total": -408,
+            "batteries": [
+              -408,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116520000,
+            "total": -410,
+            "batteries": [
+              -410,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116580000,
+            "total": -413,
+            "batteries": [
+              -413,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116640000,
+            "total": -415,
+            "batteries": [
+              -415,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791116700000,
+            "total": -418,
+            "batteries": [
+              -418,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    },
+    "changingLoad": {
+      "before": {
+        "p1Updates": 1500,
+        "counters": {
+          "fastRequests": 1535,
+          "fastImmediate": 322,
+          "fastEvaluations": 322,
+          "calculatedSetpointTriggers": 44,
+          "fastCommandChange": 62,
+          "batteryCommandPublishes": 62,
+          "gridInputs": 1500,
+          "fastReasonFeedback": 205,
+          "fastScheduled": 47,
+          "fastCoalesced": 239,
+          "fastNoCommandChange": 260,
+          "pvInputs": 17,
+          "fastReasonZone": 210,
+          "fastSkipStableSignal": 927,
+          "fastSkipped": 927,
+          "fastReasonPeakTransition": 89,
+          "fastReasonPvLive": 15,
+          "fastReasonPeakActive": 21
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 322,
+            "wallMs": 127.99487800000043,
+            "maxWallMs": 1.446023000000423
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 44,
+            "wallMs": 11.586135999998987,
+            "maxWallMs": 0.5193939999999202
+          },
+          "battery_command_publish": {
+            "calls": 62,
+            "wallMs": 5.709773000002315,
+            "maxWallMs": 0.30346800000006624
+          },
+          "fast_feedback_preflight": {
+            "calls": 205,
+            "wallMs": 0.1200989999997546,
+            "maxWallMs": 0.02770200000031764
+          }
+        },
+        "processCpuMs": 227.848,
+        "wallMs": 189.999506,
+        "traces": [
+          {
+            "at": 1791115200000,
+            "total": -360,
+            "batteries": [
+              -360,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115260000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115275000,
+            "total": -1600,
+            "batteries": [
+              -1200,
+              -400,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115282000,
+            "total": -1600,
+            "batteries": [
+              -800,
+              -800,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115310000,
+            "total": -362,
+            "batteries": [
+              -272,
+              -90,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115317000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115350000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791115365000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115380000,
+            "total": -364,
+            "batteries": [
+              -364,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115425000,
+            "total": -3000,
+            "batteries": [
+              -1650,
+              -600,
+              -750,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115432000,
+            "total": -3000,
+            "batteries": [
+              -1000,
+              -1000,
+              -1000,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115475000,
+            "total": -3900,
+            "batteries": [
+              -975,
+              -975,
+              -975,
+              -975
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115500000,
+            "total": -400,
+            "batteries": [
+              -200,
+              0,
+              -100,
+              -100
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115507000,
+            "total": -400,
+            "batteries": [
+              -300,
+              0,
+              0,
+              -100
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115515000,
+            "total": -400,
+            "batteries": [
+              -400,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115530000,
+            "total": -367,
+            "batteries": [
+              -367,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115585000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791115600000,
+            "total": 3600,
+            "batteries": [
+              1500,
+              1200,
+              900,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115607000,
+            "total": 3600,
+            "batteries": [
+              900,
+              900,
+              900,
+              900
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115640000,
+            "total": 150,
+            "batteries": [
+              1,
+              75,
+              37,
+              37
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115647000,
+            "total": 150,
+            "batteries": [
+              1,
+              113,
+              0,
+              36
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115655000,
+            "total": 150,
+            "batteries": [
+              0,
+              150,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115695000,
+            "total": 1500,
+            "batteries": [
+              375,
+              1125,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115702000,
+            "total": 1500,
+            "batteries": [
+              750,
+              750,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115725000,
+            "total": -1000,
+            "batteries": [
+              -1000,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115750000,
+            "total": -1900,
+            "batteries": [
+              -1425,
+              0,
+              -475,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115757000,
+            "total": -1900,
+            "batteries": [
+              -950,
+              0,
+              -950,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115800000,
+            "total": -1900,
+            "batteries": [
+              -950,
+              0,
+              0,
+              -950
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115807000,
+            "total": 900,
+            "batteries": [
+              0,
+              900,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115860000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1500,
+              0,
+              900
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115867000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1200,
+              0,
+              1200
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115875000,
+            "total": -900,
+            "batteries": [
+              -900,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115915000,
+            "total": -4350,
+            "batteries": [
+              -2175,
+              0,
+              0,
+              -2175
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115950000,
+            "total": -850,
+            "batteries": [
+              -638,
+              0,
+              0,
+              -212
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115957000,
+            "total": -850,
+            "batteries": [
+              -850,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115970000,
+            "total": 500,
+            "batteries": [
+              0,
+              500,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116025000,
+            "total": 600,
+            "batteries": [
+              0,
+              600,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116080000,
+            "total": 900,
+            "batteries": [
+              0,
+              900,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116135000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1500,
+              900,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116142000,
+            "total": 3600,
+            "batteries": [
+              900,
+              900,
+              900,
+              900
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116175000,
+            "total": 1100,
+            "batteries": [
+              0,
+              550,
+              275,
+              275
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116182000,
+            "total": 1100,
+            "batteries": [
+              0,
+              825,
+              0,
+              275
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116190000,
+            "total": -2350,
+            "batteries": [
+              -1175,
+              0,
+              -1175,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116245000,
+            "total": -1000,
+            "batteries": [
+              -750,
+              0,
+              -250,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116252000,
+            "total": 1500,
+            "batteries": [
+              750,
+              750,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116300000,
+            "total": 600,
+            "batteries": [
+              150,
+              450,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116307000,
+            "total": 600,
+            "batteries": [
+              0,
+              600,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116325000,
+            "total": -3900,
+            "batteries": [
+              -1300,
+              0,
+              -1300,
+              -1300
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116355000,
+            "total": -3600,
+            "batteries": [
+              -1200,
+              0,
+              -1200,
+              -1200
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116400000,
+            "total": -100,
+            "batteries": [
+              -59,
+              0,
+              -8,
+              -33
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116407000,
+            "total": -100,
+            "batteries": [
+              -84,
+              0,
+              -8,
+              -8
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116414000,
+            "total": 2600,
+            "batteries": [
+              867,
+              867,
+              866,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116465000,
+            "total": -850,
+            "batteries": [
+              -850,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116475000,
+            "total": 150,
+            "batteries": [
+              0,
+              150,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116520000,
+            "total": 1500,
+            "batteries": [
+              375,
+              1125,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116527000,
+            "total": 1500,
+            "batteries": [
+              750,
+              750,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116575000,
+            "total": 600,
+            "batteries": [
+              150,
+              450,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116582000,
+            "total": 600,
+            "batteries": [
+              0,
+              600,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116625000,
+            "total": -1900,
+            "batteries": [
+              -950,
+              0,
+              -950,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116632000,
+            "total": -1600,
+            "batteries": [
+              -800,
+              0,
+              -800,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116685000,
+            "total": 1100,
+            "batteries": [
+              0,
+              1100,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116700000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1500,
+              900,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 1500,
+        "counters": {
+          "fastRequests": 1535,
+          "fastImmediate": 148,
+          "fastEvaluations": 148,
+          "calculatedSetpointTriggers": 44,
+          "fastCommandChange": 62,
+          "batteryCommandPublishes": 62,
+          "gridInputs": 1500,
+          "fastReasonFeedback": 31,
+          "fastScheduled": 47,
+          "fastCoalesced": 239,
+          "fastNoCommandChange": 86,
+          "fastFeedbackUnchangedSkipped": 174,
+          "fastChargeUnchangedSkipped": 174,
+          "fastSkipped": 1101,
+          "pvInputs": 17,
+          "fastReasonZone": 210,
+          "fastSkipStableSignal": 927,
+          "fastReasonPeakTransition": 89,
+          "fastReasonPvLive": 15,
+          "fastReasonPeakActive": 21
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 148,
+            "wallMs": 76.53215799999907,
+            "maxWallMs": 3.4831679999997505
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 44,
+            "wallMs": 13.326765000004343,
+            "maxWallMs": 0.896972999999889
+          },
+          "battery_command_publish": {
+            "calls": 62,
+            "wallMs": 6.565002000004824,
+            "maxWallMs": 0.6712330000000293
+          },
+          "fast_feedback_preflight": {
+            "calls": 205,
+            "wallMs": 9.02593799999886,
+            "maxWallMs": 0.3314799999998286
+          }
+        },
+        "processCpuMs": 193.806,
+        "wallMs": 146.14676,
+        "traces": [
+          {
+            "at": 1791115200000,
+            "total": -360,
+            "batteries": [
+              -360,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115260000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115275000,
+            "total": -1600,
+            "batteries": [
+              -1200,
+              -400,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115282000,
+            "total": -1600,
+            "batteries": [
+              -800,
+              -800,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115310000,
+            "total": -362,
+            "batteries": [
+              -272,
+              -90,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115317000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115350000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791115365000,
+            "total": -362,
+            "batteries": [
+              -362,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115380000,
+            "total": -364,
+            "batteries": [
+              -364,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115425000,
+            "total": -3000,
+            "batteries": [
+              -1650,
+              -600,
+              -750,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115432000,
+            "total": -3000,
+            "batteries": [
+              -1000,
+              -1000,
+              -1000,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115475000,
+            "total": -3900,
+            "batteries": [
+              -975,
+              -975,
+              -975,
+              -975
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115500000,
+            "total": -400,
+            "batteries": [
+              -200,
+              0,
+              -100,
+              -100
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115507000,
+            "total": -400,
+            "batteries": [
+              -300,
+              0,
+              0,
+              -100
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115515000,
+            "total": -400,
+            "batteries": [
+              -400,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115530000,
+            "total": -367,
+            "batteries": [
+              -367,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791115585000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791115600000,
+            "total": 3600,
+            "batteries": [
+              1500,
+              1200,
+              900,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115607000,
+            "total": 3600,
+            "batteries": [
+              900,
+              900,
+              900,
+              900
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115640000,
+            "total": 150,
+            "batteries": [
+              1,
+              75,
+              37,
+              37
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115647000,
+            "total": 150,
+            "batteries": [
+              1,
+              113,
+              0,
+              36
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115655000,
+            "total": 150,
+            "batteries": [
+              0,
+              150,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115695000,
+            "total": 1500,
+            "batteries": [
+              375,
+              1125,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115702000,
+            "total": 1500,
+            "batteries": [
+              750,
+              750,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115725000,
+            "total": -1000,
+            "batteries": [
+              -1000,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115750000,
+            "total": -1900,
+            "batteries": [
+              -1425,
+              0,
+              -475,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115757000,
+            "total": -1900,
+            "batteries": [
+              -950,
+              0,
+              -950,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115800000,
+            "total": -1900,
+            "batteries": [
+              -950,
+              0,
+              0,
+              -950
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115807000,
+            "total": 900,
+            "batteries": [
+              0,
+              900,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115860000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1500,
+              0,
+              900
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115867000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1200,
+              0,
+              1200
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115875000,
+            "total": -900,
+            "batteries": [
+              -900,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115915000,
+            "total": -4350,
+            "batteries": [
+              -2175,
+              0,
+              0,
+              -2175
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115950000,
+            "total": -850,
+            "batteries": [
+              -638,
+              0,
+              0,
+              -212
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115957000,
+            "total": -850,
+            "batteries": [
+              -850,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791115970000,
+            "total": 500,
+            "batteries": [
+              0,
+              500,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116025000,
+            "total": 600,
+            "batteries": [
+              0,
+              600,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116080000,
+            "total": 900,
+            "batteries": [
+              0,
+              900,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116135000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1500,
+              900,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116142000,
+            "total": 3600,
+            "batteries": [
+              900,
+              900,
+              900,
+              900
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116175000,
+            "total": 1100,
+            "batteries": [
+              0,
+              550,
+              275,
+              275
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116182000,
+            "total": 1100,
+            "batteries": [
+              0,
+              825,
+              0,
+              275
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116190000,
+            "total": -2350,
+            "batteries": [
+              -1175,
+              0,
+              -1175,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116245000,
+            "total": -1000,
+            "batteries": [
+              -750,
+              0,
+              -250,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116252000,
+            "total": 1500,
+            "batteries": [
+              750,
+              750,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116300000,
+            "total": 600,
+            "batteries": [
+              150,
+              450,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116307000,
+            "total": 600,
+            "batteries": [
+              0,
+              600,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116325000,
+            "total": -3900,
+            "batteries": [
+              -1300,
+              0,
+              -1300,
+              -1300
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116355000,
+            "total": -3600,
+            "batteries": [
+              -1200,
+              0,
+              -1200,
+              -1200
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116400000,
+            "total": -100,
+            "batteries": [
+              -59,
+              0,
+              -8,
+              -33
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116407000,
+            "total": -100,
+            "batteries": [
+              -84,
+              0,
+              -8,
+              -8
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116414000,
+            "total": 2600,
+            "batteries": [
+              867,
+              867,
+              866,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116465000,
+            "total": -850,
+            "batteries": [
+              -850,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116475000,
+            "total": 150,
+            "batteries": [
+              0,
+              150,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116520000,
+            "total": 1500,
+            "batteries": [
+              375,
+              1125,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116527000,
+            "total": 1500,
+            "batteries": [
+              750,
+              750,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116575000,
+            "total": 600,
+            "batteries": [
+              150,
+              450,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116582000,
+            "total": 600,
+            "batteries": [
+              0,
+              600,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116625000,
+            "total": -1900,
+            "batteries": [
+              -950,
+              0,
+              -950,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116632000,
+            "total": -1600,
+            "batteries": [
+              -800,
+              0,
+              -800,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116685000,
+            "total": 1100,
+            "batteries": [
+              0,
+              1100,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791116700000,
+            "total": 3600,
+            "batteries": [
+              1200,
+              1500,
+              900,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          }
+        ]
+      }
+    }
+  }
+}

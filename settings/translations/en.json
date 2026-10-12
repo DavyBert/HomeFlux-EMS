@@ -832,7 +832,7 @@
     "EV-budget zonder PV/batterijreserve": "EV budget without PV/battery reserve",
     "Batterij sparen / geen batterijreserve": "Battery Save / no battery reserve",
     "Peak Guard laadcheck": "Peak Guard charging check",
-    "v0.7.12 — Jouw energie, anders geregeld": "v0.7.12 — Your energy, managed differently",
+    "Jouw energie, anders geregeld": "Your energy, managed differently",
     "EV laden met energie boven nachtelijk doel-SoC": "Charge EV with energy above the night target SoC",
     "Alleen tijdens de nachtplanning. HomeFlux start deze laadbron pas wanneer vóór het nacht-doelmoment meer dan 1,0 kWh naar deze EV kan worden overgedragen. Na de start mag de EV verder laden tot de thuisbatterij het berekende doel-SoC bereikt. Deze bron geeft geen netvrijgave; Peak Guard en batterijlimieten blijven actief.": "Only during night planning. HomeFlux starts this charging source only when more than 1.0 kWh can be transferred to this EV before the night target time. Once started, the EV may continue charging until the home battery reaches the calculated target SoC. This source grants no grid-import allowance; Peak Guard and battery limits remain active.",
     "Vanaf 0.7.12 kies je het batterij-, EV- of HVAC-nummer in de Flow-kaart. Oude genummerde kaarten blijven werken in bestaande Flows, maar worden niet meer aangeboden voor nieuwe Flows. Vervang bij migratie de oude kaart; laat niet beide uitvoer-Flows hetzelfde toestel aansturen.": "From 0.7.12, select the Battery, EV or HVAC number inside the Flow card. Old numbered cards keep working in existing Flows but are no longer offered for new Flows. When migrating, replace the old card; do not leave both output Flows controlling the same device.",

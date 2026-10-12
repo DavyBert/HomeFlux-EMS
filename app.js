@@ -96,6 +96,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.tokens = new Map();
     this.emsDevices = new Set();
     this.lastEmittedCommands = [];
+    this.batteryIdleKnownOutput = null;
     this.splitCommandTriggers = Array.from({ length: 8 }, () => ({ chargeMode: null, dischargeMode: null, chargePower: null, dischargePower: null }));
     this.splitCommandState = Array.from({ length: 8 }, () => ({ currentMode: null, chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: null, lastSafetyModeResendAt: 0 }));
     this.lastEmittedMode = '';
@@ -613,7 +614,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.0.7 initialized');
+    this.log('HomeFlux EMS v1.0.8 initialized');
   }
 
   refreshSettingsCache() {
@@ -628,15 +629,17 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   refreshCachedSetting(key) {
-    this.batteryFeedbackMemo = null;
     if (!this.settingsCache || !Object.prototype.hasOwnProperty.call(DEFAULTS, key)) return;
+    this.batteryFeedbackMemo = null;
     const value = this.homey.settings.get(key);
     this.settingsCache[key] = value !== null && value !== undefined ? value : DEFAULTS[key];
     this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
   }
 
   setSetting(key, value) {
-    this.batteryFeedbackMemo = null;
+    // Internal bookkeeping does not change the control settings. Actual engine
+    // inputs still invalidate the memo through dependencies/context boundaries.
+    if (Object.prototype.hasOwnProperty.call(DEFAULTS, key)) this.batteryFeedbackMemo = null;
     const namedSource = Object.keys(NAME_SETTINGS).find(source => NAME_SETTINGS[source] === key);
     if (namedSource) value = sourceName(namedSource, { [key]: value });
     if (key === 'optimalBatteryPowerW' || /^battery[1-8]OptimalPowerW$/.test(key)) {
@@ -1595,7 +1598,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.7',
+      version: '1.0.8',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -11954,7 +11957,7 @@ class HomeFluxEmsApp extends Homey.App {
       adaptiveLive: this.isAdaptiveLiveControlActive(settings, now), zone, peak };
   }
 
-  getBatteryFeedbackDependencies(state) {
+  getBatteryFeedbackDependencies(state, plannedCharge = false) {
     // Meter/PV values are handled by the preflight and the live-signal gate.
     // These are the remaining engine inputs that can alter mode or SoC limits.
     return JSON.stringify([
@@ -11965,13 +11968,16 @@ class HomeFluxEmsApp extends Homey.App {
       state.plannedBatteryGridLimitW, state.peakGuardExtraLoadW,
       state.evGridImportTargetW, state.evGridImportRequestedTargetW, state.evGridImportControlState,
       state.controlGridSource,
+      ...(plannedCharge ? [state.lastBatteryCommands, state.efficiencyDischargeStickyIndex,
+        state.efficiencyChargeStickyIndex, state.efficiencyActiveCountSticky] : []),
     ]);
   }
 
   rememberBatteryFeedbackMemo(result, evaluationState, settings, now) {
     this.batteryFeedbackMemo = null;
     if (!result?.canPublishCommands || result.override
-      || !['self_consumption', 'avoid_import', 'solar_capture'].includes(result.baseMode)
+      || !['self_consumption', 'avoid_import', 'solar_capture', 'charge'].includes(result.baseMode)
+      || (result.baseMode === 'charge' && result.safetySocRecoveryActive)
       || !Number.isFinite(result.ordinaryDischargeFloorSoc)) return;
     this.batteryFeedbackMemo = {
       result, context: this.controlContext, runtime: this.controlRuntimeSettings,
@@ -11981,8 +11987,103 @@ class HomeFluxEmsApp extends Homey.App {
       validUntil: Math.min((Math.floor(now / 60000) + 1) * 60000,
         Number(result.nextEventAt) > now ? Number(result.nextEventAt) : Infinity,
         Number(this.controlContext?.tariffValidUntil) > 0 ? Number(this.controlContext.tariffValidUntil) : Infinity),
-      dependencies: this.getBatteryFeedbackDependencies(evaluationState),
+      dependencies: this.getBatteryFeedbackDependencies(evaluationState, result.baseMode === 'charge'),
     };
+    const count = this.getBatteryCount(settings);
+    const allZero = values => Array.isArray(values) && values.length === count
+      && values.every(value => Number.isFinite(value) && value === 0);
+    const floor = result.ordinaryDischargeFloorSoc;
+    // The full engine has already proved the mode, SoC floor and zero output.
+    // Keep only a cheap eligibility proof in its existing minute-bound memo.
+    if (count > 0 && ['self_consumption', 'avoid_import', 'solar_capture'].includes(result.baseMode)
+      && !result.safetySocRecoveryActive && result.plannedChargeW === 0
+      && !result.efficiencyOptimization?.transitionPending
+      && allZero(result.candidateCommands) && allZero(result.calculatedCommands)
+      && evaluationState.peakGuardExtraLoadW === 0
+      && (evaluationState.evGridImportTargetW || 0) === 0
+      && Array.from({ length: count }, (_, index) => evaluationState.batterySoc[index])
+        .every(value => value !== null && Number.isFinite(value) && value <= floor)) {
+      this.batteryFeedbackMemo.idleDependencies = this.getBatteryIdleDependencies();
+      // This narrower proof needs no charging-duration recalculation. Keep the
+      // existing one-minute periodic cadence, but do not duplicate it at both
+      // the wall-clock minute and the context heartbeat. Tariff/day boundaries
+      // and every input/context change still invalidate it immediately.
+      this.batteryFeedbackMemo.idleValidUntil = Math.min(now + 60000,
+        Number(result.nextEventAt) > now ? Number(result.nextEventAt) : Infinity,
+        Number(this.controlContext?.tariffValidUntil) > 0 ? Number(this.controlContext.tariffValidUntil) : Infinity,
+        this.getLocalMinuteOfDay(now) === 1439 ? (Math.floor(now / 60000) + 1) * 60000 : Infinity);
+    }
+  }
+
+  getBatteryIdleDependencies() {
+    // Raw control inputs only: no tariff/forecast-date rebuilding or allocator.
+    const state = this.state;
+    try { return JSON.stringify([
+      state.batterySoc, this.inputSeen?.batterySoc, state.forecastRemainingKwh,
+      state.forecastDailyMaxKwh, state.forecastTomorrowKwh, state.sunChanceForecasts,
+      state.targetSocOverride, state.chargeRestartState, state.nightPlanningActive,
+      state.nightPlanningStartedDate, state.nightPlanningDecisionSource,
+      state.pvProducingDate, state.pvSeenProducingToday, this.lowForecastSunnyOverrideDate,
+      state.peakGuardExtraLoadW, this.latestBoilerDecision, this.boilerState,
+      state.hvacRoomTemperatureC, state.hvacOutdoorTemperatureC, state.hvacMode,
+      state.hvacSetpointC, state.hvacFanSpeed, this.latestHvacDecision,
+      this.extraHvacInstances?.map(item => [item.state, item.latestDecision, item.managedPowerOn,
+        item.lastPublishedPower, item.boostMode]),
+    ]); } catch (_) { return null; }
+  }
+
+  bypassBatteryIdle(reason) {
+    this.recordDiagnosticCounter(`fastIdleGuardBypass${reason}`);
+    return false;
+  }
+
+  canSkipBatteryIdle(settings, now) {
+    if (this.commandPublishing || this.pendingResult || this.pendingCommandBypassInterval
+      || this.inFlightBatteryCommands || this.batteryEfficiencyTransitionTimer
+      || this.controlTimer || this.controlTimerForce
+      || this.evPublishing || this.evPortfolioPass
+      || this.hvacPublishSlots?.some(slot => slot.publishing || slot.pending)) return this.bypassBatteryIdle('PendingCommand');
+    const count = this.getBatteryCount(settings);
+    if (!count || !Array.isArray(this.lastEmittedCommands) || this.lastEmittedCommands.length !== count
+      || this.lastEmittedCommands.some(value => !Number.isFinite(value))) return this.bypassBatteryIdle('StateChange');
+    // A net zero total can hide simultaneous charging/discharging. Inspect each
+    // committed internal command, before consulting any cached idle proof.
+    if (this.lastEmittedCommands.some(value => value !== 0)
+      || Number(this.state.lastTotalCommandW) !== 0) return this.bypassBatteryIdle('ActiveSetpoint');
+    const grid = this.getGridFreshness(settings, now);
+    const softPeak = Math.max(0, Number(settings.peakLimitW) - Math.max(0, Number(settings.peakSoftMarginW)));
+    if (settings.peakShaveEnabled && (!Number.isFinite(softPeak) || grid.value >= softPeak)) return this.bypassBatteryIdle('PeakGuard');
+    const memo = this.batteryFeedbackMemo;
+    if (!memo?.idleDependencies || memo.result !== this.latestResult || memo.context !== this.controlContext
+      || memo.runtime !== this.controlRuntimeSettings || this.controlContextDirty
+      || memo.timezone !== settings.timezone || now >= memo.idleValidUntil
+      || this.batteryIdleKnownOutput !== this.lastEmittedCommands || !(this.lastEmitAt > 0)
+      || this.lastEmittedMode !== memo.result.baseMode || this.lastEmittedOverride
+      || !settings.controlEnabled || !this.isChargeTestValid(settings)
+      || settings.forcedMode !== 'auto' || this.isHybridEmsConfigured(settings)
+      || this.getEvCount(settings) > 0 || !grid.fresh
+      || !this.inputSeen?.pv || parseFiniteInputNumber(this.state.pvPowerW) !== 0
+      || !(this.inputUpdatedAt?.pv > 0) || now - this.inputUpdatedAt.pv > 5 * 60000) return this.bypassBatteryIdle('StateChange');
+    for (let index = 0; index < count; index += 1) {
+      // This age limit qualifies only this optimization. The ordinary controller
+      // keeps its existing last-known-SoC policy when the guard is bypassed.
+      const at = this.inputUpdatedAt?.batterySoc?.[index];
+      const soc = parseFiniteInputNumber(this.state.batterySoc[index]);
+      if (!this.inputSeen.batterySoc[index] || soc === null
+        || soc > memo.result.ordinaryDischargeFloorSoc || !(at > 0) || now - at > 10 * 60000
+        || settings[`splitCommandBattery${index + 1}Enabled`]) return this.bypassBatteryIdle('StateChange');
+    }
+    if (memo.idleDependencies !== this.getBatteryIdleDependencies()) return this.bypassBatteryIdle('StateChange');
+    // Old averaged export must still be corrected after a new import sample.
+    // EV targets are conservatively excluded above; raw P1 stays authoritative
+    // for Peak Guard and for newly available solar export.
+    const bandMin = Math.min(Number(settings.gridZeroMinW), Number(settings.gridZeroMaxW));
+    const samples = this.getGridControlSampleCount(settings);
+    const average = samples > 0 ? this.getGridAverage(samples, now) : grid.value;
+    if (!Number.isFinite(bandMin) || !Number.isFinite(average)
+      || grid.value < Math.max(0, bandMin) || average < bandMin) return this.bypassBatteryIdle('StateChange');
+    this.recordDiagnosticCounter('fastIdleGuardSkipped');
+    return true;
   }
 
   canSkipBatteryFeedback(settings, now) {
@@ -11996,11 +12097,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (!settings.controlEnabled || !this.getInputReadiness(settings).ready
       || !this.isChargeTestValid(settings)) return false;
     const state = this.getEvaluationState(settings, now, this.getRecentPvDelta(now));
-    if (memo.dependencies !== this.getBatteryFeedbackDependencies(state)) return false;
+    if (memo.dependencies !== this.getBatteryFeedbackDependencies(state, memo.result.baseMode === 'charge')) return false;
     const result = memo.result;
     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
       || !Array.isArray(this.lastEmittedCommands)) return false;
-    const preview = previewBatteryFeedback(state, memo.runtime, result.ordinaryDischargeFloorSoc);
+    const charging = result.baseMode === 'charge';
+    const preview = previewBatteryFeedback(state, memo.runtime, result.ordinaryDischargeFloorSoc, charging ? result : null);
+    if (charging && (preview.plannedChargeW !== result.plannedChargeW
+      || preview.gridChargeAssistW !== result.gridChargeAssistW || preview.pvChargeW !== result.pvChargeW)) return false;
     // Predicted peak pressure includes withdrawing an existing battery output
     // and reserved flexible load, even when raw P1 is below the threshold.
     if (preview.peakActive) return false;
@@ -12011,6 +12115,7 @@ class HomeFluxEmsApp extends Homey.App {
     // Split direction timers are independent of watts and must remain armed.
     if (this.splitModeChangeNeeded(result, settings, now)) return false;
     this.recordDiagnosticCounter('fastFeedbackUnchangedSkipped');
+    if (charging) this.recordDiagnosticCounter('fastChargeUnchangedSkipped');
     return true;
   }
 
@@ -12019,6 +12124,12 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.controlContext || !this.controlRuntimeSettings || !this.latestResult) {
       this.recordDiagnosticCounter('fastSkipContextUnavailable');
       return false;
+    }
+    const idleCpu = this.startDiagnosticCpuSection('fast_idle_guard');
+    try {
+      if (this.canSkipBatteryIdle(settings, now)) return false;
+    } finally {
+      this.endDiagnosticCpuSection(idleCpu);
     }
     const current = this.getFastControlSnapshot(settings, now);
     if (!current) {
@@ -13094,6 +13205,9 @@ class HomeFluxEmsApp extends Homey.App {
     this.pendingResult = null;
     this.pendingCommandBypassInterval = false;
     this.commandPublishing = true;
+    // Reference only the output that completed all token/Flow writes. Clear it
+    // before attempting a command: failed/partial writes are never idle proof.
+    this.batteryIdleKnownOutput = null;
     this.recordDiagnosticCounter('batteryCommandPublishes');
     const diagnosticCpu = this.startDiagnosticCpuSection('battery_command_publish');
 
@@ -13164,6 +13278,7 @@ class HomeFluxEmsApp extends Homey.App {
       // (positive discharge, negative charge). Only published values are inverted.
       const previousBatteryCommands = this.lastEmittedCommands.slice();
       this.lastEmittedCommands = effectiveInternalCommands;
+      this.batteryIdleKnownOutput = this.lastEmittedCommands;
       // Preserve each direction's incumbent across gradual efficiency handovers.
       // During a 50/50 transition the previous incumbent is deliberately kept;
       // it changes only after that battery actually reaches 0 W. This gives the
@@ -13454,7 +13569,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.7',
+      version: '1.0.8',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13527,7 +13642,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.7',
+        version: '1.0.8',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13866,7 +13981,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.7',
+      version: '1.0.8',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

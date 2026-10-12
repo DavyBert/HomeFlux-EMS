@@ -32,6 +32,11 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.0.8
+
+Reduced redundant fast battery evaluations during stable planned grid charging and combined grid/solar charging. Diagnostics separately count skipped planned-charge evaluations when the battery commands and charging source remain unchanged. An idle guard reduces battery-control work when normal discharging is blocked and all battery commands are confirmed at zero. Diagnostics report idle skips and bypass reasons.
+
+
 ### 1.0.7
 
 Added independent maximum SoC settings for day and night planned charging (default 100%). Solar surplus can continue charging beyond the planning limit. Planning energy need and the PV threshold are grouped at the top of energy planning. The status widget identifies active planning limits and discharge floors; EV PV-allocation details appear only when solar surplus actually contributes.
