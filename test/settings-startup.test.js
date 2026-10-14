@@ -16,7 +16,7 @@ const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'trans
 const flowActionIds = new Set(appJson.flow.actions.map(card => card.id));
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '1.0.10');
+  assert.equal(manifest.version, '1.0.11');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -129,7 +129,6 @@ for (const id of ['evSmartPvPriority','ev2SmartPvPriority','ev3SmartPvPriority',
 for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW']) assert(html.includes(`id="${id}"`), `${id} v0.4.18 setting missing`);
 assert(html.includes('<option value="3">Gemiddelde laatste 3 netmetingen</option>'), '3-input grid smoothing option missing');
 assert(appJs.includes("allowedValues: [0, 3, 5, 7, 10]"), 'P1 Autotune dropdown values must be declared in the runtime descriptor');
-assert(appJs.includes("allowedValues: [5, 10, 15, 20]"), 'EV feedback Autotune dropdown values must be declared in the runtime descriptor');
 assert(html.includes('Elke input telt één keer, ongeacht de tijd ertussen.'), 'grid smoothing must be described as input-count based');
 for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
 assert(html.includes('data-ev-grid-rate') && html.includes('evMaxGridImportW'), 'TOU total EV grid import limit missing from EV tab');
@@ -299,9 +298,8 @@ assert(html.includes("uiLanguage==='nl'?'Laatste HomeFlux-uitgang':'Last HomeFlu
 
 console.log('settings startup tests passed');
 
-assert(html.includes('id="evFeedbackTolerancePercent"'), 'EV feedback tolerance setting missing');
-for (const pct of [5, 10, 15, 20]) assert(html.includes(`<option value="${pct}">${pct}%</option>`), `EV feedback tolerance option ${pct}% missing`);
+assert(!html.includes('FeedbackTolerancePercent'), 'Obsolete EV feedback tolerance must not appear in Settings');
 for (const stem of ['ev','ev2','ev3','ev4']) {
-  assert(html.includes(`id="${stem}SkipFeedbackValidation"`), `${stem} skip-feedback setting missing`);
+  assert(!html.includes(`id="${stem}SkipFeedbackValidation"`), `${stem} obsolete feedback bypass must be removed`);
   assert(html.includes(`id="${stem}CommandIntervalSeconds" max="3600"`), `${stem} EV command interval must allow up to 3600 s`);
 }

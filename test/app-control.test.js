@@ -2396,7 +2396,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '1.0.10');
+  assert.equal(simulation.version, '1.0.11');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2604,44 +2604,25 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(result.candidateTotalCommandW, 9040);
   assert.deepStrictEqual(result.candidateCommands, [9040]);
 
-  // The lower 10 A command has not yet been published: battery regulation may
-  // temporarily keep zero-grid so the charger does not create an import spike.
+  // Measured current, not command confirmation, releases the tariff budget.
   app.latestEvDecision = ev;
   let coordination = app.getEvGridImportControlStatus(settings, now);
-  assert.equal(coordination.state, 'waiting_command');
+  assert.equal(coordination.state, 'active');
   assert.equal(coordination.requestedTargetW, 4900);
-  assert.equal(coordination.activeTargetW, 0);
-
-  // After publishing 10 A, stale EV feedback may not release intentional grid
-  // import. The battery controller keeps its ordinary zero-grid target until a
-  // feedback sample newer than the command confirms that the charger followed.
+  assert.equal(coordination.activeTargetW, 5000);
   app.lastPublishedEvCurrentA = 10;
   app.lastEvPublishedAt = now;
   app.inputUpdatedAt.ev.chargeCurrent = now - 1000;
   coordination = app.getEvGridImportControlStatus(settings, now + 3000);
+  assert.equal(coordination.activeTargetW, 5000, 'new commands do not expire fresh measurements');
+  coordination = app.getEvGridImportControlStatus(settings, now + 60001);
   assert.equal(coordination.state, 'waiting_response');
-  assert.equal(coordination.activeTargetW, 0);
-  assert.equal(coordination.remainingSeconds, 0);
-
-  // Even many minutes later the stale 16 A sample must not create an EV grid
-  // allowance. This is important for cloud APIs that poll only every 15 min.
-  coordination = app.getEvGridImportControlStatus(settings, now + (15 * 60 * 1000));
-  assert.equal(coordination.state, 'waiting_response');
-  assert.equal(coordination.activeTargetW, 0);
-
-  // A fresh sample that still reports too much current also keeps zero-grid.
-  app.inputUpdatedAt.ev.chargeCurrent = now + (15 * 60 * 1000);
-  coordination = app.getEvGridImportControlStatus(settings, now + (15 * 60 * 1000) + 1);
-  assert.equal(coordination.state, 'waiting_response');
-  assert.equal(coordination.activeTargetW, 0);
-
-  // As soon as fresh feedback confirms 10 A, the explicitly configured 4.9 kW
-  // tariff allowance may become active.
-  app.state.evChargeCurrentA = 10;
-  app.inputUpdatedAt.ev.chargeCurrent = now + (15 * 60 * 1000) + 2000;
-  coordination = app.getEvGridImportControlStatus(settings, now + (15 * 60 * 1000) + 2001);
+  assert.equal(coordination.activeTargetW, 0, 'expired feedback cannot release grid import');
+  app.state.evChargeCurrentA = 8;
+  app.inputUpdatedAt.ev.chargeCurrent = now;
+  coordination = app.getEvGridImportControlStatus(settings, now + 3000);
   assert.equal(coordination.state, 'active');
-  assert.equal(coordination.activeTargetW, 4900);
+  assert.equal(coordination.activeTargetW, 5000);
 
   app.getPlanningForecastDay = () => 'today';
   app.isNightPlanningPhase = () => false;
@@ -2650,85 +2631,26 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.gridInputHistory = [];
   const evaluationState = app.getEvaluationState({ ...settings, gridControlWindowSeconds: 0, pvDeltaThresholdW: 0 }, now + 3000, 0);
   assert.equal(evaluationState.gridPowerW, 0, 'raw P1 must remain untouched');
-  assert.equal(evaluationState.evGridImportTargetW, 4900);
-  assert.equal(evaluationState.controlGridPowerW, -4900, 'only the battery meter target is shifted by the permitted EV grid share');
+  assert.equal(evaluationState.evGridImportTargetW, 5000);
+  assert.equal(evaluationState.controlGridPowerW, -5000, 'only the battery meter target is shifted by the permitted EV grid share');
 }
 
-// v0.5.3 EV cloud-feedback regression: a measurement older than the last
-// published EV current must not override the setpoint used by EV control.
+// Ampere feedback is actual consumption, independent of the published limit.
 {
   const app = bareApp();
   const now = Date.now();
   app.extraEvInstances = [];
-  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
-  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now - 60000 };
-  app.state.evChargeCurrentA = 7.5;
-  app.lastPublishedEvCurrentA = 11;
+  app.state.evConnected = true;
+  app.inputSeen.ev = { connected: true, chargeCurrent: true };
+  app.inputUpdatedAt.ev = { connected: now, chargeCurrent: now - 1000 };
+  app.lastPublishedEvCurrentA = 16;
   app.lastEvPublishedAt = now;
-  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0)), 11);
-  app.inputUpdatedAt.ev.chargeCurrent = now + 1000;
-  app.state.evChargeCurrentA = 10.8;
-  // Default 15% tolerance: 10.8 A is accepted as the already published 11 A.
-  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 15 }), 11);
-  // At a 7 A command, a fresh 8 A report differs by 14.3% and is therefore
-  // accepted at 15%, but not at 10%.
-  app.lastPublishedEvCurrentA = 7;
-  app.state.evChargeCurrentA = 8;
-  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 15 }), 7);
-  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 10 }), 8);
-  // A clearly different fresh measurement remains authoritative.
-  app.state.evChargeCurrentA = 9;
-  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), { evFeedbackTolerancePercent: 15 }), 9);
-}
-
-
-// v0.5.3 optional EV feedback validation bypass: when enabled HomeFlux trusts
-// its own published setpoint even when fresh charger telemetry differs. This is
-// intended for slow/coarse cloud APIs. P1/Peak Guard remain independent.
-{
-  const app = bareApp();
-  const now = Date.now();
-  app.extraEvInstances = [];
-  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
-  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now + 1000 };
-  app.state.evChargeCurrentA = 7;
-  app.lastPublishedEvCurrentA = 11;
-  app.lastEvPublishedAt = now;
-  const settings = { evSkipFeedbackValidation: true, evFeedbackTolerancePercent: 5 };
-  assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0), settings), 11);
+  for (const actual of [16, 14, 8, 6, 20, 0]) {
+    app.state.evChargeCurrentA = actual;
+    assert.equal(app.getEvControlCurrentA(0, app.getEvInputSnapshot(0)), actual);
+  }
   assert.equal(app.getEvCommandIntervalMs({ evCommandIntervalSeconds: 3600 }), 3600_000);
   assert.equal(app.getEvCommandIntervalMs({ evCommandIntervalSeconds: 9999 }), 3600_000);
-}
-
-// Disabling EV feedback validation also means an already-published lower
-// setpoint does not hold the tariff grid-import allowance waiting for charger
-// feedback. Waiting for the output interval itself still applies.
-{
-  const app = bareApp();
-  const now = Date.now();
-  app.extraEvInstances = [];
-  app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
-  app.inputUpdatedAt.ev = { soc: 0, connected: now, chargeCurrent: now - 1000 };
-  app.state.evChargeCurrentA = 16;
-  app.lastPublishedEvCurrentA = 10;
-  app.lastEvPublishedAt = now;
-  app.latestEvDecision = {
-    connected: true, selectedTariff: true, portfolioGridImportTargetW: 4900,
-    desiredCurrentA: 10,
-  };
-  const settings = {
-    evCount: 1, evEnabled: true, evControlType: 'current', evCommandIntervalSeconds: 3600,
-    evSkipFeedbackValidation: true, evFeedbackTolerancePercent: 5,
-  };
-  // No physical import is visible yet, so ignoring slow charger telemetry may
-  // trust the command but may not create a synthetic EV grid allowance.
-  let coordination = app.getEvGridImportControlStatus(settings, now + 1000);
-  assert.equal(coordination.state, 'waiting_load');
-  assert.equal(coordination.activeTargetW, 0);
-  app.state.gridPowerW = 4900;
-  coordination = app.getEvGridImportControlStatus(settings, now + 1001);
-  assert.equal(coordination.state, 'active');
-  assert.equal(coordination.activeTargetW, 4900);
 }
 
 // A current-controlled EV STOP (0 A) must bypass even a one-hour EV output
@@ -3314,9 +3236,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(ev.desiredCurrentA, 2); // 460 W within the 500 W EV preference.
 }
 
-// EV grid-import allowance is physical, never synthetic. Skipping slow charger
-// feedback may trust the published command, but with no P1/import or battery
-// compensation visible HomeFlux must still not create an artificial target.
+// EV grid-import allowance is bounded by physical consumption, even with
+// fresh current feedback and a larger requested grid budget.
 {
   const app = bareApp();
   const now = Date.now();
@@ -3346,7 +3267,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(coordination.activeTargetW, 2300);
 }
 
-// With feedback validation enabled, never having received charger-current
+// Never having received charger-current
 // telemetry is a real waiting state rather than implicit permission to import.
 {
   const app = bareApp();

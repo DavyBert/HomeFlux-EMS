@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.0.11
+
+EV current and hybrid control now use the actual measured charging current for permitted grid import, independently of the commanded ampere limit. Lower charging current no longer leaves the home battery compensating that allowed EV load. Missing or expired feedback withdraws the measured allowance; tariff permissions, grid budgets and Peak Guard remain active. Settings immediately highlight that actual charging current must be reported at least every 50 seconds, even when unchanged.
+
 ### 1.0.10
 
 Reduced redundant fast battery evaluations while slow PV or flexible-load updates are pending. Meter and periodic module refreshes can reuse valid battery feedback when individual setpoints and safety checks remain unchanged.

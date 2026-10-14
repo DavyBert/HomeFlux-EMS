@@ -1,4 +1,8 @@
 {
+  "1.0.11": {
+    "en": "EV current and hybrid control now use the actual measured charging current for permitted grid import, independently of the commanded ampere limit. Lower charging current no longer leaves the home battery compensating that allowed EV load. Missing or expired feedback withdraws the measured allowance; tariff permissions, grid budgets and Peak Guard remain active. Settings immediately highlight that actual charging current must be reported at least every 50 seconds, even when unchanged.",
+    "nl": "EV-ampèresturing en hybride EV-sturing gebruiken de werkelijk gemeten laadstroom voor toegestane netafname, onafhankelijk van de uitgestuurde ampèrelimiet. Een lagere laadstroom laat de thuisbatterij dat toegestane EV-verbruik niet langer compenseren. Ontbrekende of verouderde feedback trekt de gemeten vrijgave in; tariefrechten, netbudgetten en Peak Guard blijven actief. De instellingen benadrukken meteen dat de werkelijke laadstroom minstens elke 50 seconden moet worden doorgegeven, ook als deze gelijk blijft."
+  },
   "1.0.10": {
     "en": "Reduced redundant fast battery evaluations while slow PV or flexible-load updates are pending. Meter and periodic module refreshes can reuse valid battery feedback when individual setpoints and safety checks remain unchanged.",
     "nl": "Minder overbodige snelle batterijberekeningen terwijl een trage PV- of moduleverversing wacht. Meetupdates en periodieke moduleverversingen kunnen geldige batterijfeedback hergebruiken wanneer individuele setpoints en veiligheidscontroles gelijk blijven."

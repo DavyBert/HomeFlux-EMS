@@ -526,40 +526,13 @@ function appWithSettings(overrides = {}) {
   // Settings UI can actually represent. The rule is generic through the
   // descriptor so future discrete Autotune parameters can reuse it.
   assert.deepEqual(app.getAutoTuneSettingDescriptor('gridControlWindowSeconds').allowedValues, [0, 3, 5, 7, 10]);
-  assert.deepEqual(app.getAutoTuneSettingDescriptor('evFeedbackTolerancePercent').allowedValues, [5, 10, 15, 20]);
-  assert.deepEqual(app.getAutoTuneSettingDescriptor('ev4FeedbackTolerancePercent').allowedValues, [5, 10, 15, 20]);
-
-  const evDiscrete = appWithSettings({ evFeedbackTolerancePercent: 10 });
-  evDiscrete.app.autoTuneRuntime.ev[0].errorSamples = 220;
-  evDiscrete.app.autoTuneRuntime.ev[0].errorEwmaPercent = 8; // raw recommendation = 17%
-  const evDiscreteRec = evDiscrete.app.getAutoTuneRecommendations().find(item => item.settingKey === 'evFeedbackTolerancePercent');
-  assert.ok(evDiscreteRec);
-  assert.equal(evDiscreteRec.recommended, 15, 'EV feedback recommendation must snap to a valid dropdown value');
-  await evDiscrete.app.setAutoTunePermission({ settingKey: 'evFeedbackTolerancePercent', allowed: true });
-  assert.equal(evDiscrete.store.evFeedbackTolerancePercent, 15, 'automatic apply must write a valid EV feedback dropdown value');
-
-  const evOneOff = appWithSettings({ evFeedbackTolerancePercent: 10 });
-  evOneOff.app.autoTuneRuntime.ev[0].errorSamples = 30;
-  evOneOff.app.autoTuneRuntime.ev[0].errorEwmaPercent = 8;
-  await evOneOff.app.applyAutoTuneRecommendationOnce({ settingKey: 'evFeedbackTolerancePercent' });
-  assert.equal(evOneOff.store.evFeedbackTolerancePercent, 15, 'one-off apply must also write a valid dropdown value');
-
-  await assert.rejects(
-    () => evDiscrete.app.setAutoTuneLimits({ settingKey: 'evFeedbackTolerancePercent', min: 16, max: 19, minConfidencePercent: 95 }),
-    /geen geldige keuzewaarde/i,
-    'an allowed range with no selectable value must be rejected instead of creating a silent no-op',
-  );
-
-  const constrainedDiscrete = appWithSettings({ evFeedbackTolerancePercent: 10 });
-  constrainedDiscrete.app.autoTuneRuntime.ev[0].errorSamples = 220;
-  constrainedDiscrete.app.autoTuneRuntime.ev[0].errorEwmaPercent = 12; // raw recommendation > 20%
-  await constrainedDiscrete.app.setAutoTunePermission({ settingKey: 'evFeedbackTolerancePercent', allowed: true });
-  await constrainedDiscrete.app.setAutoTuneLimits({ settingKey: 'evFeedbackTolerancePercent', min: 11, max: 19, minConfidencePercent: 95 });
-  constrainedDiscrete.store.evFeedbackTolerancePercent = 10;
-  constrainedDiscrete.app.settingsCache.evFeedbackTolerancePercent = 10;
-  const constrainedApplied = await constrainedDiscrete.app.applyAutoTuneRecommendations({ onlyKey: 'evFeedbackTolerancePercent', force: true });
-  assert.equal(constrainedApplied, 1);
-  assert.equal(constrainedDiscrete.store.evFeedbackTolerancePercent, 15, 'automatic apply must choose the nearest valid dropdown value inside the user fence');
+  // Removed ampere matching settings must never be offered/applied by Autotune.
+  assert.equal(app.getAutoTuneSettingDescriptor('evFeedbackTolerancePercent'), null);
+  assert.equal(app.getAutoTuneSettingDescriptor('ev4FeedbackTolerancePercent'), null);
+  const evFeedback = appWithSettings({ evFeedbackTolerancePercent: 10 });
+  evFeedback.app.autoTuneRuntime.ev[0].errorSamples = 220;
+  evFeedback.app.autoTuneRuntime.ev[0].errorEwmaPercent = 8;
+  assert(!evFeedback.app.getAutoTuneRecommendations().some(item => /FeedbackTolerancePercent/.test(item.settingKey)));
 
   console.log('automatic Autotune tests passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });
