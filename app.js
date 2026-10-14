@@ -614,7 +614,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.0.9 initialized');
+    this.log('HomeFlux EMS v1.0.10 initialized');
   }
 
   refreshSettingsCache() {
@@ -1598,7 +1598,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.9',
+      version: '1.0.10',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -2938,9 +2938,12 @@ class HomeFluxEmsApp extends Homey.App {
     return Math.round(minutes * 60000);
   }
 
-  markContextDirty(reason = 'input') {
+  markContextDirty(reason = 'input', invalidatesBatteryContext = true) {
     this.contextDirty = true;
-    this.controlContextDirty = true;
+    // A meter/module refresh still needs the slow pass, but does not itself
+    // disprove an unchanged battery output. Never clear an earlier structural
+    // invalidation; the normal dependency/preview checks remain authoritative.
+    if (invalidatesBatteryContext) this.controlContextDirty = true;
     this.flexibleLoadsDirty = true;
     if (!this.contextDirtyReasons) this.contextDirtyReasons = new Set();
     if (reason) this.contextDirtyReasons.add(String(reason));
@@ -2952,8 +2955,8 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextTimerAt = 0;
   }
 
-  requestContextEvaluate(immediate = false, reason = 'context', requestedAt = 0, bypassInterval = false) {
-    this.markContextDirty(reason);
+  requestContextEvaluate(immediate = false, reason = 'context', requestedAt = 0, bypassInterval = false, invalidatesBatteryContext = true) {
+    this.markContextDirty(reason, invalidatesBatteryContext);
     if (this.contextEvaluationRunning) {
       this.contextEvaluationPending = true;
       return;
@@ -3020,7 +3023,9 @@ class HomeFluxEmsApp extends Homey.App {
       this.contextEvaluationRunning = false;
       if (this.contextEvaluationPending || this.contextDirty) {
         this.contextEvaluationPending = false;
-        this.requestContextEvaluate(false, reasons.length ? `pending:${reasons.join(',')}` : 'pending');
+        // Requests received during the pass already marked any real battery
+        // invalidation. Rescheduling must not promote a meter-only refresh.
+        this.requestContextEvaluate(false, reasons.length ? `pending:${reasons.join(',')}` : 'pending', 0, false, false);
       } else if (this.planningCache?.dirty && this.planningCache?.value) {
         this.requestContextEvaluate(false, 'planning_due', Number(this.planningCache.nextAllowedAt) || 0);
       }
@@ -3195,10 +3200,10 @@ class HomeFluxEmsApp extends Homey.App {
     const nextEventAt = Number(this.latestResult?.nextEventAt) || 0;
     if (nextEventAt > 0 && now >= nextEventAt) this.invalidatePlanningCache();
     if ((this.getHvacCount(settings) > 0 || this.getBoilerCount(settings) > 0)
-      && this.isFlexiblePriorityEvaluationDue(now, settings)) this.markContextDirty('flexible_priority_due');
+      && this.isFlexiblePriorityEvaluationDue(now, settings)) this.markContextDirty('flexible_priority_due', false);
     if (this.hasActiveFlexibleOutput(settings)
       && (now - Number(this.lastContextEvalAt || 0)) >= this.getSlowControlIntervalMs(settings)) {
-      this.markContextDirty('active_flexible_load');
+      this.markContextDirty('active_flexible_load', false);
     }
 
     const warmNow = this.isBoilerCompletedToday(now, settings);
@@ -3207,7 +3212,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     this.updateEvPvImportSafety(now, settings);
-    if (this.contextDirty && !this.contextTimer) this.requestContextEvaluate(false, 'heartbeat');
+    if (this.contextDirty && !this.contextTimer) this.requestContextEvaluate(false, 'heartbeat', 0, false, false);
   }
 
   getEvCount(settings = this.getSettings()) {
@@ -5548,7 +5553,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.needsSlowMeterContext(inputSettings)
         && (contextGridDelta >= 100 || this.hasActiveFlexibleOutput(inputSettings))) {
         this.lastContextGridInputW = value;
-        this.requestContextEvaluate(false, 'grid_context');
+        this.requestContextEvaluate(false, 'grid_context', 0, false, false);
       }
       if (!wasGridReady && Boolean(inputSettings.controlEnabled)) {
         this.requestContextEvaluate(true, 'grid_recovered');
@@ -5605,7 +5610,7 @@ class HomeFluxEmsApp extends Homey.App {
       const pvSettings = this.getSettings();
       if (this.needsSlowMeterContext(pvSettings) && contextPvDelta >= 100) {
         this.lastContextPvInputW = this.state.pvPowerW;
-        this.requestContextEvaluate(false, 'pv_context');
+        this.requestContextEvaluate(false, 'pv_context', 0, false, false);
       }
       return true;
     });
@@ -13383,7 +13388,10 @@ class HomeFluxEmsApp extends Homey.App {
         // EV/HVAC/boiler and PV limiting may react to the new real battery
         // output on the shared slow cadence. Repeated battery writes collapse
         // into the same pending context pass.
-        this.requestContextEvaluate(false, 'battery_output_changed');
+        // The changed published commands already invalidate the memo through
+        // its live dependencies. Waiting for the module refresh must not also
+        // invalidate a fresh proof established from that new output.
+        this.requestContextEvaluate(false, 'battery_output_changed', 0, false, false);
       }
     } finally {
       this.inFlightBatteryCommands = null;
@@ -13608,7 +13616,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.9',
+      version: '1.0.10',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13681,7 +13689,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.9',
+        version: '1.0.10',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14020,7 +14028,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.9',
+      version: '1.0.10',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -14171,6 +14179,7 @@ class HomeFluxEmsApp extends Homey.App {
     const wasGridReady = this.getInputReadiness().ready;
     let fastInputChanged = false;
     let contextInputChanged = false;
+    let meterContextInputChanged = false;
     let planningInputChanged = false;
     let gridInputChanged = false;
 
@@ -14194,7 +14203,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.needsSlowMeterContext(inputSettings)
         && (contextGridDelta >= 100 || this.hasActiveFlexibleOutput(inputSettings))) {
         this.lastContextGridInputW = this.state.gridPowerW;
-        contextInputChanged = true;
+        meterContextInputChanged = true;
       }
     }
     if (body.pvPowerW !== undefined && parseFiniteInputNumber(body.pvPowerW) !== null) {
@@ -14213,7 +14222,7 @@ class HomeFluxEmsApp extends Homey.App {
         : Math.abs(this.state.pvPowerW - this.lastContextPvInputW);
       if (this.needsSlowMeterContext(inputSettings) && contextPvDelta >= 100) {
         this.lastContextPvInputW = this.state.pvPowerW;
-        contextInputChanged = true;
+        meterContextInputChanged = true;
       }
     }
     if (body.forecastRemainingKwh !== undefined && Number.isFinite(Number(body.forecastRemainingKwh))) {
@@ -14308,7 +14317,9 @@ class HomeFluxEmsApp extends Homey.App {
       this.requestContextEvaluate(true, 'api_force');
     } else {
       if (fastInputChanged) this.requestEvaluate();
-      if (contextInputChanged) this.requestContextEvaluate(false, 'api_context_input');
+      if (contextInputChanged || meterContextInputChanged) {
+        this.requestContextEvaluate(false, 'api_context_input', 0, false, contextInputChanged);
+      }
     }
     return this.latestResult || null;
   }

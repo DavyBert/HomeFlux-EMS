@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.0.10
+
+Reduced redundant fast battery evaluations while slow PV or flexible-load updates are pending. Meter and periodic module refreshes can reuse valid battery feedback when individual setpoints and safety checks remain unchanged.
+
 ### 1.0.9
 
 When individual battery commands remain unchanged during planned charging, changes in the grid/solar share no longer trigger a full fast evaluation. Source values and status text refresh on the existing slow cycle. Diagnostics separately count source-only skips and source-presentation updates.

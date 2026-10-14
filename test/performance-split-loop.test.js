@@ -147,8 +147,8 @@ Module._load = originalLoad;
     assert(!fastSource.includes(forbidden), `fast battery loop contains slow call ${forbidden}`);
   }
   assert(fastSource.includes('evaluate(evaluationState, settings, new Date(now), this.controlContext)'));
-  assert(appSource.includes("this.requestContextEvaluate(false, 'grid_context')"));
-  assert(appSource.includes("this.requestContextEvaluate(false, 'pv_context')"));
+  assert(appSource.includes("this.requestContextEvaluate(false, 'grid_context', 0, false, false)"));
+  assert(appSource.includes("this.requestContextEvaluate(false, 'pv_context', 0, false, false)"));
   assert(appSource.includes('this.controlRuntimeSettings || this.cachedRuntimeSettings'));
 }
 

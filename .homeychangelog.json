@@ -1,4 +1,8 @@
 {
+  "1.0.10": {
+    "en": "Reduced redundant fast battery evaluations while slow PV or flexible-load updates are pending. Meter and periodic module refreshes can reuse valid battery feedback when individual setpoints and safety checks remain unchanged.",
+    "nl": "Minder overbodige snelle batterijberekeningen terwijl een trage PV- of moduleverversing wacht. Meetupdates en periodieke moduleverversingen kunnen geldige batterijfeedback hergebruiken wanneer individuele setpoints en veiligheidscontroles gelijk blijven."
+  },
   "1.0.9": {
     "en": "When individual battery commands remain unchanged during planned charging, changes in the grid/solar share no longer trigger a full fast evaluation. Source values and status text refresh on the existing slow cycle. Diagnostics separately count source-only skips and source-presentation updates.",
     "nl": "Als de individuele batterijcommando’s tijdens gepland laden gelijk blijven, veroorzaakt een gewijzigde net/zon-verdeling geen volledige snelle evaluatie meer. Bronwaarden en statustekst verversen via de bestaande trage cyclus. Diagnostics tellen skips bij uitsluitend een gewijzigde bronverdeling en updates van de bronweergave afzonderlijk."
