@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.0.9
+
+When individual battery commands remain unchanged during planned charging, changes in the grid/solar share no longer trigger a full fast evaluation. Source values and status text refresh on the existing slow cycle. Diagnostics separately count source-only skips and source-presentation updates.
+
 ### 1.0.8
 
 Reduced redundant fast battery evaluations during stable planned grid charging and combined grid/solar charging. Diagnostics separately count skipped planned-charge evaluations when the battery commands and charging source remain unchanged. An idle guard reduces battery-control work when normal discharging is blocked and all battery commands are confirmed at zero. Diagnostics report idle skips and bypass reasons.

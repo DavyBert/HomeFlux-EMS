@@ -1,4 +1,8 @@
 {
+  "1.0.9": {
+    "en": "When individual battery commands remain unchanged during planned charging, changes in the grid/solar share no longer trigger a full fast evaluation. Source values and status text refresh on the existing slow cycle. Diagnostics separately count source-only skips and source-presentation updates.",
+    "nl": "Als de individuele batterijcommando’s tijdens gepland laden gelijk blijven, veroorzaakt een gewijzigde net/zon-verdeling geen volledige snelle evaluatie meer. Bronwaarden en statustekst verversen via de bestaande trage cyclus. Diagnostics tellen skips bij uitsluitend een gewijzigde bronverdeling en updates van de bronweergave afzonderlijk."
+  },
   "1.0.8": {
     "en": "Reduced redundant fast battery evaluations during stable planned grid charging and combined grid/solar charging. Diagnostics separately count skipped planned-charge evaluations when the battery commands and charging source remain unchanged. An idle guard reduces battery-control work when normal discharging is blocked and all battery commands are confirmed at zero. Diagnostics report idle skips and bypass reasons.",
     "nl": "Minder overbodige snelle batterijberekeningen tijdens stabiel gepland netladen en gecombineerd laden uit net en zon. Diagnostics tellen overgeslagen evaluaties van gepland laden afzonderlijk wanneer batterijcommando’s en laadbron ongewijzigd blijven. Een Idle Guard vermindert batterijregelwerk wanneer normale ontlading geblokkeerd is en alle batterijcommando’s bevestigd op nul staan. Diagnostics tonen idle-skips en redenen om de controle te passeren."

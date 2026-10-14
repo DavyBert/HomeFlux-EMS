@@ -1,5 +1,7 @@
 # Verificatie HomeFlux EMS 1.0.8
 
+Aanvulling op deze oorspronkelijke verificatie: wijzigingen die uitsluitend de net/zon-verdeling betreffen worden nu via de bestaande trage weergavecyclus verwerkt. De eerdere eis dat ook de fysieke bronverdeling exact gelijk moet zijn is daarvoor vervallen; de individuele batterijcommando’s worden nog steeds exact gecontroleerd. Zie `CHARGE-SOURCE-1.0.8.md` voor de nieuwe regressie- en replayresultaten.
+
 Basis: laatst aangeleverde HomeFlux-EMS-v1.0.7.zip, versie 3 van 9 oktober 2026.
 Bron-SHA256: `e5a23d8f975450e5fc3b5ea19ae46d4d0b272bf59cefda90ed46c0f626da3a30`.
 

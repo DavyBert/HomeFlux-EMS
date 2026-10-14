@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{createRequire}=require('node:module');
-if(!process.argv[2]){console.error('Usage: node test/idle-cpu-comparison.js /path/to/previous-1.0.8 [path/to/updated-1.0.8]');process.exit(1);}
+if(!process.argv[2]){console.error('Usage: node test/idle-cpu-comparison.js /path/to/previous-1.0.8 [path/to/updated-app]');process.exit(1);}
 const roots=[path.resolve(process.argv[2]),path.resolve(process.argv[3]||path.join(__dirname,'..'))];
 const originalClear=global.clearTimeout;
 global.clearTimeout=t=>{if(t&&typeof t==='object'&&'due'in t)t.done=true;else originalClear(t);};
@@ -44,5 +44,5 @@ async function replay(root,kind){
   assert.deepEqual(after.trace,before.trace,`${kind}: commands, distribution, mode and timestamps must match`);
   cases[kind]={before,after};
  }
- console.log(JSON.stringify({version:'1.0.8',identicalTimedBatteryTraces:true,cases},null,2));
+ console.log(JSON.stringify({version:require('../package.json').version,identicalTimedBatteryTraces:true,cases},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;});

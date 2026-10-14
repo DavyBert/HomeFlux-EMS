@@ -614,7 +614,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.0.8 initialized');
+    this.log('HomeFlux EMS v1.0.9 initialized');
   }
 
   refreshSettingsCache() {
@@ -1598,7 +1598,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.8',
+      version: '1.0.9',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -3122,6 +3122,8 @@ class HomeFluxEmsApp extends Homey.App {
     const at = Number(now) || Date.now();
     if (!this.isSlowHeartbeatDue(at, settings)) return false;
     this.lastSlowHeartbeatAt = at;
+
+    this.refreshBatteryChargeSourcePresentation(settings, at);
 
     // Learning inputs remain live elsewhere. This compact planning/balance
     // sample, Autotune due-check, savings housekeeping and EMS-device refresh
@@ -8928,6 +8930,42 @@ class HomeFluxEmsApp extends Homey.App {
     return result;
   }
 
+  refreshBatteryChargeSourcePresentation(settings = this.getSettings(), now = Date.now()) {
+    const result = this.latestResult;
+    // Source-only meter changes do not need the full battery evaluator. Refresh
+    // their presentation on the existing slow housekeeping cadence instead.
+    // Use only the confirmed ordinary charging output, never a pending command
+    // or a Hybrid/Peak Guard result. The existing helper owns source labels.
+    if (!result?.canPublishCommands || result.baseMode !== 'charge' || result.override
+      || this.lastEmittedMode !== 'charge' || this.lastEmittedOverride
+      || this.commandPublishing || this.pendingResult || this.pendingCommandBypassInterval
+      || this.isHybridEmsConfigured(settings) || !settings.controlEnabled
+      || !this.isChargeTestValid(settings) || !this.getGridFreshness(settings, now).fresh) return false;
+    const commands = this.lastEmittedCommands;
+    const count = this.getBatteryCount(settings);
+    if (this.batteryIdleKnownOutput !== commands || !(this.lastEmitAt > 0)
+      || !Array.isArray(commands) || commands.length !== count || count === 0
+      || commands.some(value => !Number.isFinite(value))
+      || ![result.candidateCommands, result.calculatedCommands].every(values =>
+        Array.isArray(values) && values.length === count
+        && commands.every((value, index) => value === values[index]))) return false;
+    const total = commands.reduce((sum, value) => sum + value, 0);
+    if (total >= 0 || total !== this.state.lastTotalCommandW) return false;
+    // Match the full engine's minimum action threshold, including contracts
+    // with a smaller command deadband. Power-source rounding stays unchanged.
+    const presentationSettings = { ...settings, commandDeadbandW: Math.max(25, Number(settings.commandDeadbandW) || 0) };
+    const presentation = this.refreshBatteryPresentationAfterCoordination({ ...result }, presentationSettings, total);
+    if (presentation.gridChargeAssistW === result.gridChargeAssistW
+      && presentation.pvChargeW === result.pvChargeW && presentation.action === result.action
+      && presentation.actionLabel === result.actionLabel) return false;
+    for (const key of ['gridChargeAssistW', 'pvChargeW', 'action', 'actionLabel', 'workingModeLabel', 'statusText']) {
+      result[key] = presentation[key];
+    }
+    this.recordDiagnosticCounter('chargeSourcePresentationUpdates');
+    this.queueStatusUpdate(result, false);
+    return true;
+  }
+
   getEvCommandedPowerW(index, storedSettings = this.getSettings()) {
     const settings = this.getEvInstanceSettings(index, storedSettings);
     const perAmpW = evPowerPerAmp(settings);
@@ -12103,8 +12141,7 @@ class HomeFluxEmsApp extends Homey.App {
       || !Array.isArray(this.lastEmittedCommands)) return false;
     const charging = result.baseMode === 'charge';
     const preview = previewBatteryFeedback(state, memo.runtime, result.ordinaryDischargeFloorSoc, charging ? result : null);
-    if (charging && (preview.plannedChargeW !== result.plannedChargeW
-      || preview.gridChargeAssistW !== result.gridChargeAssistW || preview.pvChargeW !== result.pvChargeW)) return false;
+    if (charging && preview.plannedChargeW !== result.plannedChargeW) return false;
     // Predicted peak pressure includes withdrawing an existing battery output
     // and reserved flexible load, even when raw P1 is below the threshold.
     if (preview.peakActive) return false;
@@ -12116,6 +12153,8 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.splitModeChangeNeeded(result, settings, now)) return false;
     this.recordDiagnosticCounter('fastFeedbackUnchangedSkipped');
     if (charging) this.recordDiagnosticCounter('fastChargeUnchangedSkipped');
+    if (charging && (preview.gridChargeAssistW !== result.gridChargeAssistW
+      || preview.pvChargeW !== result.pvChargeW)) this.recordDiagnosticCounter('fastChargeSourceOnlySkipped');
     return true;
   }
 
@@ -13569,7 +13608,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.8',
+      version: '1.0.9',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13642,7 +13681,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.8',
+        version: '1.0.9',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13981,7 +14020,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.8',
+      version: '1.0.9',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

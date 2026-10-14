@@ -76,13 +76,74 @@ async function runChargeRegression() {
    if(grid===3200)assert.equal(h.app.latestResult.override,'peak_shave');
    assert.equal(h.errors.length,0);
   }
-  // A change from entirely grid to partly solar charging must update the
-  // physical source/status even when final battery commands stay identical.
+  // Source-only changes retain the exact per-battery commands. The existing
+  // slow housekeeping updates physical sources, labels and status without a
+  // fast/context evaluation, command publication or extra context request.
   {
    const h=await stable();now+=10000;
+   const previous=h.app.latestResult,commands=h.app.lastEmittedCommands.slice();
+   const evaluations=h.app.diagnostics.counters.fastEvaluations,publishes=h.publishes.length,slow=h.slow;
+   let statusUpdates=0;h.app.queueStatusUpdate=()=>{statusUpdates++;};
    refreshGrid(h,Math.abs(h.app.state.lastTotalCommandW)-100);
-   assert.equal(h.app.canSkipBatteryFeedback(h.settings,now),false);
-   h.app.requestEvaluate();await drain();assert.equal(h.app.latestResult.pvChargeW,100);
+   assert.equal(h.app.canSkipBatteryFeedback(h.settings,now),true);
+   h.app.requestEvaluate();await drain();
+   assert.equal(h.app.latestResult,previous);assert.equal(h.app.latestResult.pvChargeW,0);
+   assert.equal(h.app.diagnostics.counters.fastEvaluations,evaluations);
+   assert.equal(statusUpdates,0);assert.equal(h.publishes.length,publishes);
+   assert(h.app.diagnostics.counters.fastChargeSourceOnlySkipped>=1);
+   h.app.lastSlowHeartbeatAt=now-60000;
+   h.app.recordAutoTunePlanningSample=()=>{};h.app.scheduleAutoTuneContextIfDue=()=>{};
+   h.app.recordSavingsSample=()=>{};h.app.persistSavingsState=()=>{};h.app.syncEmsDevices=async()=>{};
+   assert.equal(h.app.runSlowHeartbeatHousekeeping(now,h.settings),true);
+   assert.equal(h.app.latestResult.pvChargeW,100);
+   assert.equal(h.app.latestResult.gridChargeAssistW,Math.abs(h.app.state.lastTotalCommandW)-100);
+   assert.equal(h.app.latestResult.action,'grid_and_pv_charge');
+   assert(h.app.latestResult.statusText.includes('Laden uit zon 100 W'));
+   assert.equal(statusUpdates,1);assert.deepEqual(h.app.lastEmittedCommands,commands);
+   assert.equal(h.app.diagnostics.counters.fastEvaluations,evaluations);
+   assert.equal(h.publishes.length,publishes);assert.equal(h.slow,slow);
+   assert.equal(h.app.refreshBatteryChargeSourcePresentation(h.settings,now),false);
+   assert.equal(statusUpdates,1,'identical sources must not publish twice');
+   refreshGrid(h,Math.abs(h.app.state.lastTotalCommandW));
+   assert.equal(h.app.runSlowHeartbeatHousekeeping(now+1000,h.settings),false);
+   assert.equal(h.app.latestResult.pvChargeW,100,'presentation must wait for the next slow cadence');
+   assert.equal(h.app.runSlowHeartbeatHousekeeping(now+60000,h.settings),true);
+   assert.equal(h.app.latestResult.pvChargeW,0);assert.equal(h.app.latestResult.action,'grid_charge');
+   assert.equal(statusUpdates,2);assert.equal(h.errors.length,0,h.errors.join('\n'));
+  }
+  // Slow presentation must not describe an unconfirmed, stopped, stale or
+  // externally owned output. It must use the engine's action threshold even
+  // when the command deadband is configured below 25 W.
+  for(const change of [
+   h=>{h.app.commandPublishing=true;},
+   h=>{h.app.pendingResult=h.app.latestResult;},
+   h=>{h.app.pendingCommandBypassInterval=true;},
+   h=>{h.settings.hybridEmsEnabled=true;},
+   h=>{h.settings.controlEnabled=false;},
+   h=>{h.app.inputUpdatedAt.grid=now-600000;},
+   h=>{h.app.lastEmittedCommands[0]-=1;},
+   h=>{h.app.state.lastTotalCommandW-=1;},
+   h=>{h.app.lastEmittedOverride='peak_shave';},
+   h=>{h.app.lastEmittedMode='self_consumption';},
+   h=>{h.app.batteryIdleKnownOutput=null;},
+  ]) {
+   const h=await stable();refreshGrid(h,Math.abs(h.app.state.lastTotalCommandW)-100);
+   const before=JSON.stringify(h.app.latestResult);change(h);
+   assert.equal(h.app.refreshBatteryChargeSourcePresentation(h.settings,now),false,`presentation invalidation: ${change}`);
+   assert.equal(JSON.stringify(h.app.latestResult),before);
+  }
+  {
+   const h=await stable({commandDeadbandW:0});
+   for(const pv of [10,24.9,25.1,100]) {
+    refreshGrid(h,Math.abs(h.app.state.lastTotalCommandW)-pv);
+    const state=h.app.getEvaluationState(h.settings,now);
+    const expected=evaluate(state,h.settings,new Date(now),h.app.controlContext);
+    h.app.refreshBatteryChargeSourcePresentation(h.settings,now);
+    assert.equal(h.app.latestResult.gridChargeAssistW,expected.gridChargeAssistW);
+    assert.equal(h.app.latestResult.pvChargeW,expected.pvChargeW);
+    assert.equal(h.app.latestResult.action,expected.action);
+    assert.equal(h.app.latestResult.actionLabel,expected.actionLabel);
+   }
   }
   // Structural dependencies, input freshness, output ownership and pending
   // asynchronous work must never reuse an otherwise identical charge result.
