@@ -615,20 +615,24 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.0.11 initialized');
+    this.log('HomeFlux EMS v1.1.1 initialized');
   }
 
   refreshSettingsCache() {
     this.batteryFeedbackMemo = null;
-    const result = { ...DEFAULTS, timezone: this.homey.clock.getTimezone() || 'UTC' };
+    // Declare private mode-only fields up front: adding them later can make
+    // this large cache expensive to copy on every getSettings() call.
+    const result = {
+      ...DEFAULTS,
+      timezone: this.homey.clock.getTimezone() || 'UTC',
+      _ev1ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(0, 'FeedbackTolerancePercent')),
+      _ev2ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(1, 'FeedbackTolerancePercent')),
+      _ev3ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(2, 'FeedbackTolerancePercent')),
+      _ev4ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(3, 'FeedbackTolerancePercent')),
+    };
     for (const key of Object.keys(DEFAULTS)) {
       const value = this.homey.settings.get(key);
       if (value !== null && value !== undefined) result[key] = value;
-    }
-    // Retain existing mode-only P1 detection tolerances privately. These are
-    // no longer ampere feedback settings and are never offered by Autotune/UI.
-    for (let index = 0; index < 4; index += 1) {
-      result[`_ev${index + 1}ModeLoadTolerancePercent`] = this.homey.settings.get(this.getEvSettingKey(index, 'FeedbackTolerancePercent'));
     }
     this.settingsCache = result;
     return result;
@@ -1604,7 +1608,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.0.11',
+      version: '1.1.1',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -1729,7 +1733,6 @@ class HomeFluxEmsApp extends Homey.App {
     this.pvLiveObservation = {
       deltaW: previousW !== null && previousAt > 0 && at >= previousAt ? pvW - previousW : 0,
       expiresAt: at + 2 * Math.max(500, Math.min(300000, expectedGapMs)),
-      revision: (Number(this.pvLiveObservation?.revision) || 0) + 1,
     };
   }
 
@@ -7710,6 +7713,21 @@ class HomeFluxEmsApp extends Homey.App {
       ? this.pvLiveObservation.deltaW : 0;
   }
 
+  getGridControlSelection(settings, now, pvDeltaW = this.getRecentPvDelta(now)) {
+    const liveGridW = Number.isFinite(Number(this.state.gridPowerW)) ? Number(this.state.gridPowerW) : 0;
+    const count = this.getGridControlSampleCount(settings);
+    const configuredThreshold = Number(settings.pvDeltaThresholdW);
+    const threshold = Number.isFinite(configuredThreshold) ? Math.max(0, configuredThreshold) : 100;
+    const pvLive = threshold > 0 && Math.abs(Number(pvDeltaW) || 0) >= threshold;
+    const adaptiveLive = this.isAdaptiveLiveControlActive(settings, now);
+    const useLive = count === 0 || pvLive || adaptiveLive;
+    return {
+      value: useLive ? liveGridW : this.getGridAverage(count, now),
+      source: pvLive ? 'live_pv_delta' : adaptiveLive ? 'live_adaptive_setpoint'
+        : count === 0 ? 'direct' : `average_${count}_inputs`,
+    };
+  }
+
   getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now)) {
     const count = this.getBatteryCount(settings);
     // SoC is value-based, not freshness-based. Once a battery has supplied a
@@ -7723,15 +7741,9 @@ class HomeFluxEmsApp extends Homey.App {
     });
 
     const liveGridPowerW = Number.isFinite(Number(this.state.gridPowerW)) ? Number(this.state.gridPowerW) : 0;
-    const controlSampleCount = this.getGridControlSampleCount(settings);
     const gridAverage5sW = this.getGridAverage(5, now);
-    const smoothedGridW = controlSampleCount > 0 ? this.getGridAverage(controlSampleCount, now) : liveGridPowerW;
-    const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
-    const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW) ? Math.max(0, configuredPvDeltaThresholdW) : 100;
-    const usePvLiveGrid = pvDeltaThresholdW > 0 && Math.abs(Number(pvDeltaW) || 0) >= pvDeltaThresholdW;
-    const useAdaptiveLiveGrid = this.isAdaptiveLiveControlActive(settings, now);
-    const useLiveGrid = controlSampleCount === 0 || usePvLiveGrid || useAdaptiveLiveGrid;
-    const selectedGridW = useLiveGrid ? liveGridPowerW : smoothedGridW;
+    const gridSelection = this.getGridControlSelection(settings, now, pvDeltaW);
+    const selectedGridW = gridSelection.value;
     const evGridControl = this.getEvGridImportControlStatus(settings, now);
     const activeEvGridImportTargetW = Math.max(0, Number(evGridControl.activeTargetW) || 0);
     // The battery controller itself is unchanged. When Smart EV charging is
@@ -7739,9 +7751,7 @@ class HomeFluxEmsApp extends Homey.App {
     // that EV allowance. Raw P1 remains untouched and Peak Guard still uses the
     // real meter, so this cannot hide an installation peak.
     const selectedControlGridW = selectedGridW - activeEvGridImportTargetW;
-    let controlGridSource = controlSampleCount === 0 ? 'direct' : `average_${controlSampleCount}_inputs`;
-    if (usePvLiveGrid) controlGridSource = 'live_pv_delta';
-    else if (useAdaptiveLiveGrid) controlGridSource = 'live_adaptive_setpoint';
+    let controlGridSource = gridSelection.source;
     if (activeEvGridImportTargetW > 0) controlGridSource += '_ev_grid_target';
 
     return {
@@ -11918,17 +11928,11 @@ class HomeFluxEmsApp extends Homey.App {
     if (evaluationState && Number.isFinite(Number(evaluationState.controlGridPowerW))) {
       controlGridW = Number(evaluationState.controlGridPowerW);
     } else {
-      const controlSampleCount = this.getGridControlSampleCount(settings);
-      const averageGridW = controlSampleCount > 0 ? this.getGridAverage(controlSampleCount, now) : rawGridW;
-      const configuredPvDeltaThresholdW = Number(settings.pvDeltaThresholdW);
-      const pvDeltaThresholdW = Number.isFinite(configuredPvDeltaThresholdW)
-        ? Math.max(0, configuredPvDeltaThresholdW) : 100;
-      const pvDeltaW = this.getRecentPvDelta(now);
-      const useLiveGrid = controlSampleCount === 0
-        || (pvDeltaThresholdW > 0 && Math.abs(pvDeltaW) >= pvDeltaThresholdW)
-        || this.isAdaptiveLiveControlActive(settings, now);
+      // Select the meter before testing zones/deltas: averaged in-band P1
+      // must never hide a live correction. PV-live is not a scheduling reason.
+      const gridSelection = this.getGridControlSelection(settings, now);
       evTargetW = Math.max(0, Number(this.getEvGridImportControlStatus(settings, now).activeTargetW) || 0);
-      controlGridW = (useLiveGrid ? rawGridW : averageGridW) - evTargetW;
+      controlGridW = gridSelection.value - evTargetW;
     }
 
     let zeroMin = Number(settings.gridZeroMinW);
@@ -11942,15 +11946,14 @@ class HomeFluxEmsApp extends Homey.App {
       - Math.max(0, Number(settings.peakSoftMarginW) || 0);
     const peak = Boolean(settings.peakShaveEnabled) && rawGridW >= softPeakW;
     const pvDeltaW = this.getRecentPvDelta(now);
-    const threshold = Math.max(0, Number(settings.pvDeltaThresholdW ?? 100) || 0);
     return { at: now, rawGridW, controlGridW, pvW, pvDeltaW, evTargetW,
-      pvLive: threshold > 0 && Math.abs(pvDeltaW) >= threshold,
-      pvRevision: Number(this.pvLiveObservation?.revision) || 0,
       adaptiveLive: this.isAdaptiveLiveControlActive(settings, now), zone, peak };
   }
 
   getBatteryFeedbackDependencies(state, plannedCharge = false) {
     // Meter/PV values are handled by the preflight and the live-signal gate.
+    // The source label is presentation only: preflight checks the selected
+    // numeric meter value, so a label change cannot invalidate equal feedback.
     // These are the remaining engine inputs that can alter mode or SoC limits.
     return JSON.stringify([
       state.batterySoc, state.lastTotalCommandW, state.forecastRemainingKwh,
@@ -11959,7 +11962,6 @@ class HomeFluxEmsApp extends Homey.App {
       state.targetSocOverride, state.lowForecastSunnyOverrideActive, state.chargeRestartState,
       state.plannedBatteryGridLimitW, state.peakGuardExtraLoadW,
       state.evGridImportTargetW, state.evGridImportRequestedTargetW, state.evGridImportControlState,
-      state.controlGridSource,
       ...(plannedCharge ? [state.lastBatteryCommands, state.efficiencyDischargeStickyIndex,
         state.efficiencyChargeStickyIndex, state.efficiencyActiveCountSticky] : []),
     ]);
@@ -12143,13 +12145,8 @@ class HomeFluxEmsApp extends Homey.App {
     // while measured export may require more charging and excess import may
     // require less PV capture. Staying in the same zone must not strand it.
     const feedbackMode = ['self_consumption', 'avoid_import', 'solar_capture', 'charge'].includes(baseMode);
-    // A new variable-PV sample or a live/average transition is handled once.
-    // Repeated P1 inputs cannot retrigger solely on an already-consumed PV delta.
-    const pvSelectionChanged = Boolean(current.pvLive) !== Boolean(previous.pvLive);
-    const newLiveSample = current.pvLive && current.pvRevision !== previous.pvRevision;
-    if ((pvSelectionChanged || newLiveSample) && (feedbackMode || baseMode === 'charge')) {
-      this.recordDiagnosticCounter('fastReasonPvLive'); return true;
-    }
+    // PV observations only select the meter used above. The ordinary zone,
+    // feedback and delta gates decide whether battery work is necessary.
     if (!feedbackMode && !current.peak && String(this.latestResult.override || '') !== 'peak_shave') {
       this.recordDiagnosticCounter('fastSkipNonFeedbackMode');
       return false;
@@ -13565,7 +13562,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.0.11',
+      version: '1.1.1',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13638,7 +13635,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.0.11',
+        version: '1.1.1',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13977,7 +13974,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.0.11',
+      version: '1.1.1',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

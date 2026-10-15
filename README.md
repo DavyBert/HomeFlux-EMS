@@ -32,6 +32,14 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.1
+
+PV-live now only selects the grid measurement, avoiding redundant battery evaluations.
+
+### 1.0.12
+
+Reduced CPU usage through more efficient settings processing.
+
 ### 1.0.11
 
 EV current and hybrid control now use the actual measured charging current for permitted grid import, independently of the commanded ampere limit. Lower charging current no longer leaves the home battery compensating that allowed EV load. Missing or expired feedback withdraws the measured allowance; tariff permissions, grid budgets and Peak Guard remain active. Settings immediately highlight that actual charging current must be reported at least every 50 seconds, even when unchanged.

@@ -31,23 +31,24 @@ async function setup() {
  }
  const h=await setup(),a=h.app;
  let calls=0;const evaluate=a.evaluateFastNow.bind(a);a.evaluateFastNow=(...args)=>{calls++;return evaluate(...args);};
- h.sample(3500);a.requestEvaluate();assert.equal(calls,1);
+ h.sample(3500);a.requestEvaluate();assert.equal(calls,0);
  for(let i=0;i<20;i++){now+=100;a.requestEvaluate();}
- assert.equal(calls,1,'Unchanged P1 cannot retrigger the same PV sample when P1 is in band');
- h.sample(3500);a.requestEvaluate();assert.equal(calls,2,'Stable PV switches back to averaging once');
+ assert.equal(calls,0,'Unchanged P1 cannot retrigger the same PV sample when P1 is in band');
+ h.sample(3500);a.requestEvaluate();assert.equal(calls,0,'Source changes alone require no evaluation');
  assert.equal(a.latestResult.controlGridSource,'average_5_inputs');
  h.sample(4000);a.requestEvaluate();const before=calls;
  now=a.pvLiveObservation.expiresAt;a.requestEvaluate();
- assert.equal(calls,before+1,'Missing PV expires and changes the selected source once');
+ assert.equal(calls,before,'Expiry alone requires no evaluation');
+ assert.equal(a.getEvaluationState().controlGridSource,'average_5_inputs');
  assert.equal(a.latestResult.controlGridSource,'average_5_inputs');
  for(let i=0;i<20;i++){now+=1000;a.requestEvaluate();}
- assert.equal(calls,before+1,'Expired PV cannot sustain a loop');
+ assert.equal(calls,before,'Expired PV cannot sustain a loop');
  // Even after sunset with no new command, 0 W becomes a valid stable reference.
  h.sample(0);a.requestEvaluate();h.sample(0);a.requestEvaluate();const nightCalls=calls;
  for(let i=0;i<6;i++){now+=1000;a.requestEvaluate();}assert.equal(calls,nightCalls);
- // Same-source new large PV input still gets one evaluation (planned charge included).
+ // New large PV observations alone do not schedule battery work (planned charge included).
  a.latestResult.baseMode='charge';h.sample(500);a.requestEvaluate();a.latestResult.baseMode='charge';
- const beforeLarge=calls;h.sample(1000);a.requestEvaluate();assert.equal(calls,beforeLarge+1);
+ const beforeLarge=calls;h.sample(1000);a.requestEvaluate();assert.equal(calls,beforeLarge);
  // Genuine P1 error is still corrected without waiting for another PV sample.
  a.latestResult.baseMode='self_consumption';a.state.gridPowerW=-800;a.getGridAverage=()=>-800;
  const beforeP1=calls;a.requestEvaluate();assert.equal(calls,beforeP1+1);
@@ -88,9 +89,9 @@ async function setup() {
  const f=await setup();f.app.requestEvaluate=()=>{};
  now+=15000;await f.cards.get('set_pv_power').listener({power:3400});assert.equal(f.app.getRecentPvDelta(),400);
  now+=15000;await f.app.setInput({pvPowerW:3400});assert.equal(f.app.getRecentPvDelta(),0);
- const rev=f.app.pvLiveObservation.revision;
+ const observationBeforeInvalid=f.app.pvLiveObservation;
  await f.cards.get('set_pv_power').listener({power:null});await f.app.setInput({pvPowerW:null});
- assert.equal(f.app.pvLiveObservation.revision,rev);
+ assert.equal(f.app.pvLiveObservation,observationBeforeInvalid);
  assert.deepEqual(h.errors,[]);assert.deepEqual(t.errors,[]);assert.deepEqual(f.errors,[]);
  console.log('0.9.8: consecutive PV samples, all averages, expiry/cadence, no repeated stable evaluations, night zero, live P1 corrections, cooldown, newest input, async/failed publication and Flow/API paths passed');
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{Date.now=realNow;});
