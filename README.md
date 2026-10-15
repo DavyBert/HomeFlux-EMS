@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.2
+
+Reduced redundant battery evaluations during planned charging while a slow context update is pending.
+
 ### 1.1.1
 
 PV-live now only selects the grid measurement, avoiding redundant battery evaluations.

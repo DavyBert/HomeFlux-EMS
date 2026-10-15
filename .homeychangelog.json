@@ -1,4 +1,8 @@
 {
+  "1.1.2": {
+    "en": "Reduced redundant battery evaluations during planned charging while a slow context update is pending.",
+    "nl": "Minder overbodige batterijberekeningen tijdens gepland laden terwijl een trage contextupdate wacht."
+  },
   "1.1.1": {
     "en": "PV-live now only selects the grid measurement, avoiding redundant battery evaluations.",
     "nl": "PV-live kiest nu uitsluitend de P1-meetwaarde en vermijdt overbodige batterijberekeningen."
