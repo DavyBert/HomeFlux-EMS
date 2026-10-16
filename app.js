@@ -616,7 +616,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.2 initialized');
+    this.log('HomeFlux EMS v1.1.3 initialized');
   }
 
   refreshSettingsCache() {
@@ -1609,7 +1609,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.1.2',
+      version: '1.1.3',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -12074,6 +12074,8 @@ class HomeFluxEmsApp extends Homey.App {
         Number(result.nextEventAt) > now ? Number(result.nextEventAt) : Infinity,
         Number(this.controlContext?.tariffValidUntil) > 0 ? Number(this.controlContext.tariffValidUntil) : Infinity),
       dependencies: this.getBatteryFeedbackDependencies(evaluationState, result.baseMode === 'charge'),
+      outputDependencies: result.baseMode === 'charge'
+        ? this.getBatteryFeedbackOutputDependencies(evaluationState) : null,
     };
     if (result.baseMode === 'charge') {
       this.rememberUnchangedChargingInput(this.batteryFeedbackMemo, evaluationState, settings, now);
@@ -12175,19 +12177,51 @@ class HomeFluxEmsApp extends Homey.App {
     return true;
   }
 
-  canSkipBatteryFeedback(settings, now) {
+  getBatteryFeedbackOutputDependencies(state = null, settings = null) {
+    // Publication changes these inputs after a memo was calculated. Reject an
+    // old output before reconstructing forecast dates, EV budgets and meters.
+    return JSON.stringify(state ? [state.lastTotalCommandW, state.lastBatteryCommands,
+      state.efficiencyDischargeStickyIndex, state.efficiencyChargeStickyIndex,
+      state.efficiencyActiveCountSticky] : [this.state.lastTotalCommandW,
+      Array.from({ length: this.getBatteryCount(settings) }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
+      Number.isInteger(this.efficiencyDischargeStickyIndex) ? this.efficiencyDischargeStickyIndex : null,
+      Number.isInteger(this.efficiencyChargeStickyIndex) ? this.efficiencyChargeStickyIndex : null,
+      Number.isInteger(this.efficiencyActiveCountSticky) ? this.efficiencyActiveCountSticky : null]);
+  }
+
+  canSkipBatteryFeedback(settings, now, preflight = null) {
     const memo = this.batteryFeedbackMemo;
     if (!memo || memo.result !== this.latestResult || memo.context !== this.controlContext
       || memo.runtime !== this.controlRuntimeSettings || !this.isBatteryFeedbackContextCurrent(memo)
       || memo.timezone !== settings.timezone || now >= memo.validUntil
       || this.commandPublishing || this.pendingResult || this.pendingCommandBypassInterval
       || this.isHybridEmsConfigured(settings)) return false;
+    const result = memo.result;
+    // Returning false still schedules the original interval boundary. It never
+    // proves a safe skip, so pending safety work cannot be dismissed here.
+    if (result.baseMode === 'charge' && preflight?.deferFeedback) {
+      this.recordDiagnosticCounter('fastChargePreflightDeferred');
+      return false;
+    }
     // A stopped/stale meter or disabled output must still reach the safety stop.
     if (!settings.controlEnabled || !this.getInputReadiness(settings).ready
       || !this.isChargeTestValid(settings)) return false;
+    if (result.baseMode === 'charge') {
+      if (memo.outputDependencies !== this.getBatteryFeedbackOutputDependencies(null, settings)) {
+        this.recordDiagnosticCounter('fastChargeOutputMemoRejected');
+        return false;
+      }
+      // A preview can only skip if both calculated arrays equal the committed
+      // output. Efficiency handovers and partial output cannot satisfy that.
+      const committed = this.lastEmittedCommands;
+      if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
+        || !Array.isArray(committed) || [result.candidateCommands, result.calculatedCommands]
+          .some(values => !Array.isArray(values) || values.length !== committed.length
+            || values.some((value, index) => value !== committed[index]))) return false;
+    }
     const state = this.getEvaluationState(settings, now, this.getRecentPvDelta(now));
+    if (preflight) preflight.state = state;
     if (memo.dependencies !== this.getBatteryFeedbackDependencies(state, memo.result.baseMode === 'charge')) return false;
-    const result = memo.result;
     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
       || !Array.isArray(this.lastEmittedCommands)) return false;
     const charging = result.baseMode === 'charge';
@@ -12213,7 +12247,7 @@ class HomeFluxEmsApp extends Homey.App {
     return true;
   }
 
-  shouldRunFastEvaluation(force = false, settings = this.getSettings(), now = Date.now()) {
+  shouldRunFastEvaluation(force = false, settings = this.getSettings(), now = Date.now(), preflight = null) {
     if (force) return true;
     if (!this.controlContext || !this.controlRuntimeSettings || !this.latestResult) {
       this.recordDiagnosticCounter('fastSkipContextUnavailable');
@@ -12239,7 +12273,25 @@ class HomeFluxEmsApp extends Homey.App {
     const previous = this.lastFastControlSnapshot;
     if (!previous) return true;
     if (current.peak !== previous.peak) { this.recordDiagnosticCounter('fastReasonPeakTransition'); return true; }
-    if (current.zone !== previous.zone) { this.recordDiagnosticCounter('fastReasonZone'); return true; }
+    if (current.zone !== previous.zone) {
+      // In planned charging a zone crossing can merely change the solar/grid
+      // share at a fixed charge cap. Prove identical individual commands using
+      // the existing numeric preview; safety and target transitions stay full.
+      if (this.latestResult.baseMode === 'charge' && !current.peak && !previous.peak
+        && current.evTargetW === previous.evTargetW
+        && current.adaptiveLive === previous.adaptiveLive) {
+        const diagnosticCpu = this.startDiagnosticCpuSection('fast_feedback_preflight');
+        try {
+          if (this.canSkipBatteryFeedback(settings, now, preflight)) {
+            this.recordDiagnosticCounter('fastChargeZoneUnchangedSkipped');
+            return false;
+          }
+        } finally {
+          this.endDiagnosticCpuSection(diagnosticCpu);
+        }
+      }
+      this.recordDiagnosticCounter('fastReasonZone'); return true;
+    }
     if ((Number(current.evTargetW) || 0) !== (Number(previous.evTargetW) || 0)) {
       this.recordDiagnosticCounter('fastReasonEvTarget'); return true;
     }
@@ -12265,7 +12317,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (feedbackMode && current.zone !== 'inside') {
       const diagnosticCpu = this.startDiagnosticCpuSection('fast_feedback_preflight');
       try {
-        if (this.canSkipBatteryFeedback(settings, now)) return false;
+        if (this.canSkipBatteryFeedback(settings, now, preflight)) return false;
       } finally {
         this.endDiagnosticCpuSection(diagnosticCpu);
       }
@@ -12321,20 +12373,21 @@ class HomeFluxEmsApp extends Homey.App {
       return false;
     }
 
-    // This predicate is intentionally tiny and runs on the latest in-memory P1
-    // values only. Stable meter noise therefore creates no 10-second sawtooth.
-    if (!this.shouldRunFastEvaluation(immediate, controlSettings, now)) {
-      this.fastEvaluationSkipped += 1;
-      this.recordDiagnosticCounter('fastSkipped');
-      return false;
-    }
-
     const intervalMs = Math.max(1, Number(controlSettings.commandIntervalSeconds) || DEFAULTS.commandIntervalSeconds || 10) * 1000;
     // Only an actual command publication reserves the battery interval. A
     // calculation that sends nothing must leave the next P1 correction free.
     const earliest = Math.max(this.nextCommandAllowedAt || 0,
       this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
     const wait = Math.max(0, earliest - now);
+    // Keep the cheap signal/safety gates, but do not build a charging feedback
+    // state while the existing command interval prevents its use. This object
+    // lives only in this synchronous request, never in the timer or on the app.
+    const preflight = { deferFeedback: wait > 0, at: now, settings: controlSettings, state: null };
+    if (!this.shouldRunFastEvaluation(immediate, controlSettings, now, preflight)) {
+      this.fastEvaluationSkipped += 1;
+      this.recordDiagnosticCounter('fastSkipped');
+      return false;
+    }
 
     if (wait === 0) {
       if (this.controlTimer) {
@@ -12344,7 +12397,7 @@ class HomeFluxEmsApp extends Homey.App {
       const forceEvaluation = Boolean(immediate || this.controlTimerForce);
       this.controlTimerForce = false;
       this.recordDiagnosticCounter('fastImmediate');
-      this.evaluateFastNow(forceEvaluation);
+      this.evaluateFastNow(forceEvaluation, preflight);
       return true;
     }
 
@@ -12677,12 +12730,14 @@ class HomeFluxEmsApp extends Homey.App {
     this.setSetting('_batteryChargeRestartState', next);
   }
 
-  evaluateFastNow(forceStatus = false) {
+  evaluateFastNow(forceStatus = false, preflight = null) {
     this.recordDiagnosticCounter('fastEvaluations');
     const diagnosticCpu = this.startDiagnosticCpuSection('fast_evaluation');
     try {
       const now = Date.now();
-      const storedSettings = this.getSettings();
+      // Only requestEvaluate supplies this local snapshot, synchronously. A
+      // later millisecond or any timer invocation gets a fresh settings/state.
+      const storedSettings = preflight?.at === now ? preflight.settings : this.getSettings();
       const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
       if (paused) return paused;
 
@@ -12694,7 +12749,9 @@ class HomeFluxEmsApp extends Homey.App {
       }
 
       const pvDeltaW = this.getRecentPvDelta(now);
-      const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
+      const prepared = preflight?.state && preflight.at === now && preflight.settings === storedSettings;
+      const evaluationState = prepared ? preflight.state : this.getEvaluationState(storedSettings, now, pvDeltaW);
+      if (prepared) this.recordDiagnosticCounter('fastEvaluationStateReused');
       const settings = this.controlRuntimeSettings;
       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
       this.rememberBatteryChargeRestartState(calculated);
@@ -13667,7 +13724,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.2',
+      version: '1.1.3',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13740,7 +13797,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.2',
+        version: '1.1.3',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14079,7 +14136,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.2',
+      version: '1.1.3',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

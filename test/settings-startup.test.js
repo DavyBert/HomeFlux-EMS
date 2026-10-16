@@ -16,7 +16,7 @@ const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'trans
 const flowActionIds = new Set(appJson.flow.actions.map(card => card.id));
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '1.1.2');
+  assert.equal(manifest.version, '1.1.3');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -217,7 +217,7 @@ assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval 
 assert(html.includes('id="planningMinIntervalMinutes"'), 'planning block setting missing');
 assert.deepStrictEqual(appJson.api.refreshPlanning, { method: 'POST', path: '/planning/refresh' });
 assert(apiJs.includes('async refreshPlanning({ homey })'));
-assert(appJs.includes('evaluateFastNow(forceStatus = false)'));
+assert(appJs.includes('evaluateFastNow(forceStatus = false, preflight = null)'));
 assert(appJs.includes('evaluateContextNow(forceStatus = false)'));
 
 for (const id of ['evCount','evIdleHouseLoadW','hvacCount','boilerCount','boilerEnabled','boilerColdResetTime','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes','flexibleLoadPriorityOrder']) {

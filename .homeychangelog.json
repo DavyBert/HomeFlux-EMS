@@ -1,4 +1,8 @@
 {
+  "1.1.3": {
+    "en": "Reduced redundant battery-control work during changing solar and grid charging.",
+    "nl": "Minder overbodig batterijregelwerk bij wisselend laden uit zon en net."
+  },
   "1.1.2": {
     "en": "Reduced redundant battery evaluations during planned charging while a slow context update is pending.",
     "nl": "Minder overbodige batterijberekeningen tijdens gepland laden terwijl een trage contextupdate wacht."
