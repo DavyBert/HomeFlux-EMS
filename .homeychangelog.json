@@ -1,4 +1,8 @@
 {
+  "1.1.4": {
+    "en": "Night planning uses the median of relevant PV forecasts until solar production starts.",
+    "nl": "Nachtplanning gebruikt de mediaan van relevante PV-voorspellingen tot de zonneproductie start."
+  },
   "1.1.3": {
     "en": "Reduced redundant battery-control work during changing solar and grid charging.",
     "nl": "Minder overbodig batterijregelwerk bij wisselend laden uit zon en net."

@@ -1,0 +1,148 @@
+{
+  "before": {
+    "trial": false,
+    "span": 64.9,
+    "movement": 259.4,
+    "out": [
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 348
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 360
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 374
+      },
+      {
+        "forecast": 14,
+        "targetSoc": 37.8,
+        "forecastUsed": 14,
+        "plannedChargeW": 0
+      },
+      {
+        "forecast": 2,
+        "targetSoc": 93.3,
+        "forecastUsed": 2,
+        "plannedChargeW": 1849
+      },
+      {
+        "forecast": 9,
+        "targetSoc": 60.9,
+        "forecastUsed": 9,
+        "plannedChargeW": 170
+      },
+      {
+        "forecast": 7,
+        "targetSoc": 70.2,
+        "forecastUsed": 7,
+        "plannedChargeW": 701
+      },
+      {
+        "forecast": 15,
+        "targetSoc": 33.1,
+        "forecastUsed": 15,
+        "plannedChargeW": 0
+      },
+      {
+        "forecast": 1,
+        "targetSoc": 98,
+        "forecastUsed": 1,
+        "plannedChargeW": 2490
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 505
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 532
+      }
+    ]
+  },
+  "after": {
+    "trial": false,
+    "span": 0,
+    "movement": 0,
+    "out": [
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 348
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 360
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 374
+      },
+      {
+        "forecast": 14,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 388
+      },
+      {
+        "forecast": 2,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 404
+      },
+      {
+        "forecast": 9,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 421
+      },
+      {
+        "forecast": 7,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 439
+      },
+      {
+        "forecast": 15,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 459
+      },
+      {
+        "forecast": 1,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 481
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 505
+      },
+      {
+        "forecast": 8,
+        "targetSoc": 65.6,
+        "forecastUsed": 8,
+        "plannedChargeW": 532
+      }
+    ]
+  }
+}

@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.4
+
+Night planning uses the median of relevant PV forecasts until solar production starts.
+
 ### 1.1.3
 
 Reduced redundant battery-control work during changing solar and grid charging.

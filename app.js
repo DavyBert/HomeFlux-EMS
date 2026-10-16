@@ -78,6 +78,7 @@ class HomeFluxEmsApp extends Homey.App {
       ev: { soc: false, connected: false, chargeCurrent: false },
       hvac: { roomTemperature: false, outdoorTemperature: false, mode: false, setpoint: false, fanSpeed: false },
     };
+    this.nightForecastMedian = null;
     this.inputUpdatedAt = {
       grid: 0,
       pv: 0,
@@ -616,7 +617,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.3 initialized');
+    this.log('HomeFlux EMS v1.1.4 initialized');
   }
 
   refreshSettingsCache() {
@@ -1609,7 +1610,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.1.3',
+      version: '1.1.4',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -5631,8 +5632,8 @@ class HomeFluxEmsApp extends Homey.App {
     });
 
     this.homey.flow.getActionCard('set_forecast_remaining').registerRunListener(async args => {
-      const value = Number(args.energy);
-      if (!Number.isFinite(value)) return false;
+      const value = parseFiniteInputNumber(args.energy);
+      if (value === null) return false;
       if (!this.updateForecastInput(value)) return true;
       this.invalidatePlanningCache();
       this.requestContextEvaluate(false, 'forecast_remaining');
@@ -5640,8 +5641,8 @@ class HomeFluxEmsApp extends Homey.App {
     });
 
     this.homey.flow.getActionCard('set_forecast_tomorrow').registerRunListener(async args => {
-      const value = Number(args.energy);
-      if (!Number.isFinite(value)) return false;
+      const value = parseFiniteInputNumber(args.energy);
+      if (value === null) return false;
       if (!this.updateForecastTomorrowInput(value)) return true;
       this.invalidatePlanningCache();
       this.requestContextEvaluate(false, 'forecast_tomorrow');
@@ -6371,21 +6372,64 @@ class HomeFluxEmsApp extends Homey.App {
     return sunChance.reserve({ ...this.state, nightPlanningActive: this.isNightPlanningPhase(at), planningForecastDay: this.getPlanningForecastDay(at) }, settings, this.getLocalDateKey(new Date(at)), tariff);
   }
 
-  getPlanningForecastDay(at = Date.now()) {
-    const today = this.getLocalDateKey(new Date(at));
+  getPlanningForecastDay(at = Date.now(), today = '') {
+    if (!today) today = this.getLocalDateKey(new Date(at));
     if (this.state.nightPlanningActive && String(this.state.nightPlanningStartedDate || '') === today) return 'tomorrow';
     return 'today';
   }
 
-  isNightPlanningPhase(at = Date.now()) {
+  isNightPlanningPhase(at = Date.now(), today = '') {
     if (this.state.nightPlanningActive) return true;
-    const today = this.getLocalDateKey(new Date(at));
+    if (!today) today = this.getLocalDateKey(new Date(at));
     const pvStartedToday = String(this.state.pvProducingDate || '') === today
       && Boolean(this.state.pvSeenProducingToday);
     // The solar-day phase starts on observed PV, not at a clock boundary. Until
     // then the continuing night plan remains authoritative, including after the
     // configured charging deadline on dark winter mornings.
     return !pvStartedToday;
+  }
+
+  getNightForecastRuntime(at = Date.now()) {
+    if (!this.isNightPlanningPhase(at)) return null;
+    const today = this.getLocalDateKey(new Date(at));
+    const forecastDay = this.getPlanningForecastDay(at);
+    const targetDate = forecastDay === 'tomorrow' ? shiftDateKey(today, 1) : today;
+    if (this.nightForecastMedian?.targetDate === targetDate) return this.nightForecastMedian;
+    const runtime = { targetDate, samples: [], value: null };
+    this.nightForecastMedian = runtime;
+    // Seed a new night with at most the one valid forecast already available.
+    // Midnight promotion is not a new observation of the same forecast day.
+    const seed = forecastDay === 'tomorrow'
+      ? (this.inputSeen.forecastTomorrow && this.state.forecastTomorrowDate === targetDate
+        ? this.state.forecastTomorrowKwh : null)
+      : (this.state.forecastDailyMaxDate === targetDate
+        ? (this.inputSeen.forecast ? this.state.forecastRemainingKwh : this.state.forecastDailyMaxKwh) : null);
+    this.addNightForecastSample(runtime, seed);
+    return runtime;
+  }
+
+  getNightForecastInputRuntime(forecastDay, at) {
+    return this.isNightPlanningPhase(at) && this.getPlanningForecastDay(at) === forecastDay
+      ? this.getNightForecastRuntime(at) : null;
+  }
+
+  addNightForecastSample(runtime, value) {
+    const numeric = parseFiniteInputNumber(value);
+    if (!runtime || numeric === null || numeric < 0) return false;
+    const previous = runtime.value;
+    // Maintain sorted observations only on actual forecast input. Reading P1,
+    // status or planning neither adds a sample nor sorts the history again.
+    const samples = runtime.samples;
+    let low = 0, high = samples.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (samples[middle] <= numeric) low = middle + 1;
+      else high = middle;
+    }
+    samples.splice(low, 0, numeric);
+    const middle = samples.length >>> 1;
+    runtime.value = samples.length % 2 ? samples[middle] : (samples[middle - 1] + samples[middle]) / 2;
+    return previous !== runtime.value;
   }
 
   updatePvPlanningState(pvPowerW, at = Date.now()) {
@@ -6409,6 +6453,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.state.nightPlanningActive = false;
       this.state.nightPlanningStartedDate = '';
       this.state.nightPlanningDecisionSource = '';
+      this.nightForecastMedian = null;
       if (wasNightPlanning) {
         this.invalidatePlanningCache(true);
         this.requestContextEvaluate(true, 'pv_started_day_planning');
@@ -6480,9 +6525,12 @@ class HomeFluxEmsApp extends Homey.App {
 
   activateNightPlanning(source, at = Date.now(), planningStartedDate = '') {
     const today = this.getLocalDateKey(new Date(at));
+    const wasNightPlanning = this.isNightPlanningPhase(at);
     this.state.nightPlanningActive = true;
     this.state.nightPlanningStartedDate = String(planningStartedDate || today);
     this.state.nightPlanningDecisionSource = String(source || 'pv_end');
+    if (!wasNightPlanning) this.nightForecastMedian = null;
+    this.getNightForecastRuntime(at);
     this.invalidatePlanningCache(true);
     this.forceChargePlanPublication = true;
     this.clearPvStopTimer();
@@ -7162,9 +7210,11 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   updateForecastInput(value, at = Date.now()) {
+    const parsed = parseFiniteInputNumber(value);
+    if (parsed === null) return false;
     this.ensureForecastDayCurrent(at);
-    const normalized = Math.max(0, Number(value));
-    if (!Number.isFinite(normalized)) return false;
+    const normalized = Math.max(0, parsed);
+    const nightForecast = this.getNightForecastInputRuntime('today', at);
 
     const wasSeen = Boolean(this.inputSeen.forecast);
     const previousRemaining = Number(this.state.forecastRemainingKwh);
@@ -7193,13 +7243,16 @@ class HomeFluxEmsApp extends Homey.App {
       this.setSetting('_forecastDailyMaxDate', dateKey);
       this.setSetting('_forecastDailyMaxKwh', nextMax);
     }
-    return changed;
+    const medianChanged = this.addNightForecastSample(nightForecast, normalized);
+    return changed || medianChanged;
   }
 
   updateForecastTomorrowInput(value, at = Date.now()) {
-    const normalized = Math.max(0, Number(value));
-    if (!Number.isFinite(normalized)) return false;
+    const parsed = parseFiniteInputNumber(value);
+    if (parsed === null) return false;
+    const normalized = Math.max(0, parsed);
     this.ensureForecastDayCurrent(at);
+    const nightForecast = this.getNightForecastInputRuntime('tomorrow', at);
     const targetDate = this.getForecastDateKey(at + (24 * 60 * 60 * 1000));
     const wasSeen = Boolean(this.inputSeen.forecastTomorrow);
     const previousValue = Number(this.state.forecastTomorrowKwh);
@@ -7215,7 +7268,8 @@ class HomeFluxEmsApp extends Homey.App {
       this.setSetting('_forecastTomorrowDate', targetDate);
       this.setSetting('_forecastTomorrowKwh', normalized);
     }
-    return changed;
+    const medianChanged = this.addNightForecastSample(nightForecast, normalized);
+    return changed || medianChanged;
   }
 
   normalizeEvOperatingMode(mode) {
@@ -7734,6 +7788,17 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now)) {
     const count = this.getBatteryCount(settings);
+    const today = this.getLocalDateKey(new Date(now));
+    const planningForecastDay = this.getPlanningForecastDay(now, today);
+    const nightPlanningActive = this.isNightPlanningPhase(now, today);
+    let nightForecast = null;
+    if (nightPlanningActive) {
+      const targetDate = planningForecastDay === 'tomorrow' ? shiftDateKey(today, 1) : today;
+      // The hot path reads a cached scalar. Collecting/sorting observations is
+      // restricted to forecast input and seeding a genuinely new night.
+      nightForecast = this.nightForecastMedian?.targetDate === targetDate
+        ? this.nightForecastMedian : this.getNightForecastRuntime(now);
+    }
     // SoC is value-based, not freshness-based. Once a battery has supplied a
     // valid SoC value, keep using the last known value until a newer one arrives.
     // A battery is unavailable only when no valid SoC has ever been received.
@@ -7770,6 +7835,12 @@ class HomeFluxEmsApp extends Homey.App {
         ? this.efficiencyActiveCountSticky : null,
       forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
       forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
+      // Project the night median into the existing engine inputs, leaving raw
+      // forecast inputs and the daytime full-day maximum unchanged. The same
+      // selected value then drives both the plan and live battery context.
+      ...(nightForecast && nightForecast.value !== null ? (planningForecastDay === 'tomorrow'
+        ? { forecastTomorrowKwh: nightForecast.value }
+        : { forecastRemainingKwh: nightForecast.value, forecastDailyMaxKwh: nightForecast.value }) : {}),
       gridPowerW: liveGridPowerW,
       // The real meter remains authoritative. A positive EV grid target is a
       // target offset, not subtracted EV consumption: normal household import
@@ -7782,9 +7853,9 @@ class HomeFluxEmsApp extends Homey.App {
       gridAverage5sW,
       controlGridSource,
       pvDeltaW: Number(pvDeltaW) || 0,
-      planningForecastDay: this.getPlanningForecastDay(now),
+      planningForecastDay,
       planningDecisionSource: this.state.nightPlanningDecisionSource || '',
-      nightPlanningActive: this.isNightPlanningPhase(now),
+      nightPlanningActive,
       lowForecastSunnyOverrideActive: this.isLowForecastSunnyOverrideActive(settings, now),
       peakGuardExtraLoadW: this.getBoilerPeakGuardReserveW(settings, now),
     };
@@ -13724,7 +13795,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.3',
+      version: '1.1.4',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13797,7 +13868,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.3',
+        version: '1.1.4',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14136,7 +14207,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.3',
+      version: '1.1.4',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -14333,13 +14404,13 @@ class HomeFluxEmsApp extends Homey.App {
         meterContextInputChanged = true;
       }
     }
-    if (body.forecastRemainingKwh !== undefined && Number.isFinite(Number(body.forecastRemainingKwh))) {
-      this.updateForecastInput(Number(body.forecastRemainingKwh));
+    if (body.forecastRemainingKwh !== undefined && parseFiniteInputNumber(body.forecastRemainingKwh) !== null) {
+      this.updateForecastInput(body.forecastRemainingKwh);
       contextInputChanged = true;
       planningInputChanged = true;
     }
-    if (body.forecastTomorrowKwh !== undefined && Number.isFinite(Number(body.forecastTomorrowKwh))) {
-      this.updateForecastTomorrowInput(Number(body.forecastTomorrowKwh));
+    if (body.forecastTomorrowKwh !== undefined && parseFiniteInputNumber(body.forecastTomorrowKwh) !== null) {
+      this.updateForecastTomorrowInput(body.forecastTomorrowKwh);
       contextInputChanged = true;
       planningInputChanged = true;
     }
