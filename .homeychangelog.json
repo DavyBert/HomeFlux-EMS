@@ -1,4 +1,8 @@
 {
+  "1.1.5": {
+    "en": "EV control now also works with battery output disabled or without configured home batteries.",
+    "nl": "EV-sturing werkt nu ook met uitgeschakelde batterij-uitvoer of zonder geconfigureerde thuisbatterijen."
+  },
   "1.1.4": {
     "en": "Night planning uses the median of relevant PV forecasts until solar production starts.",
     "nl": "Nachtplanning gebruikt de mediaan van relevante PV-voorspellingen tot de zonneproductie start."

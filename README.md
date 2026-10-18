@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.5
+
+EV control now also works with battery output disabled or without configured home batteries.
+
 ### 1.1.4
 
 Night planning uses the median of relevant PV forecasts until solar production starts.

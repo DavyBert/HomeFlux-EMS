@@ -617,7 +617,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.4 initialized');
+    this.log('HomeFlux EMS v1.1.5 initialized');
   }
 
   refreshSettingsCache() {
@@ -1610,7 +1610,7 @@ class HomeFluxEmsApp extends Homey.App {
     );
     const report = {
       schema: 'homeflux-diagnostics-v1',
-      version: '1.1.4',
+      version: '1.1.5',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -7965,7 +7965,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (notes.length) safeStatusText = `${calculated.statusText} · ${notes.join(' · ')}`;
     return {
       ...calculated,
-      statusText: controlEnabled ? safeStatusText : `SIMULATIE · ${safeStatusText}`,
+      statusText: controlEnabled ? safeStatusText : this.getBatteryDisabledStatusText(settings, safeStatusText),
       calculatedCommands,
       calculatedTotalCommandW,
       candidateCommands: canPublishCommands ? calculatedCommands : Array(count).fill(0),
@@ -8652,6 +8652,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   shouldUseEvBatterySupport(settings = this.getSettings(), mode = 'smart') {
+    if (!Boolean(settings.controlEnabled)) return false;
     if (this.getBatteryCount(settings) === 0) return false;
     if (String(mode) === 'emergency') return Boolean(settings.evPeakGuardBatteryAssistEmergency);
     return Boolean(settings.evPeakGuardBatteryAssistNormal);
@@ -8692,7 +8693,8 @@ class HomeFluxEmsApp extends Homey.App {
       active: false, targetSoc: null, avgSoc: null, energyAboveTargetKwh: 0, remainingHours: 0,
       targetAt: 0, supportAvailableW: 0, reason: 'inactive',
     };
-    if (!this.isNightPlanningPhase(now) || this.getBatteryCount(settings) === 0) return inactive;
+    if (!Boolean(settings.controlEnabled)
+      || !this.isNightPlanningPhase(now) || this.getBatteryCount(settings) === 0) return inactive;
     if (this.isHybridExternalControlActive(settings)) return { ...inactive, reason: 'external_ems' };
 
     const avgSoc = Number(result?.avgSoc);
@@ -9172,10 +9174,13 @@ class HomeFluxEmsApp extends Homey.App {
     if (evCount <= 0) return [];
     for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
     const runtimeSettings = this.getRuntimeSettings(storedSettings);
+    const batteryOutputEnabled = Boolean(runtimeSettings.controlEnabled)
+      && this.getBatteryCount(runtimeSettings) > 0 && this.isChargeTestValid(runtimeSettings);
     const tariff = result?.tariff || findCurrentTariff(new Date(), runtimeSettings);
     const rawGridW = Number(this.state.gridPowerW) || 0;
     const currentBatteryW = Number(currentBatteryCommandW) || 0;
-    const nextBatteryW = Number(nextBatteryCommandW) || 0;
+    const nextBatteryW = batteryOutputEnabled || options.physicalOnly
+      ? Number(nextBatteryCommandW) || 0 : currentBatteryW;
     // EV safety is always budgeted from the PHYSICAL battery output that is
     // already active. A queued/candidate HomeFlux battery setpoint may never
     // create virtual Peak Guard headroom for an EV. This is especially
@@ -9223,7 +9228,7 @@ class HomeFluxEmsApp extends Homey.App {
     const pvCurtailmentHeadroomW = this.getPvCurtailmentHeadroomW(runtimeSettings);
     const nonBatteryPvW = Math.max(0, residualExportPvW + pvCurtailmentHeadroomW + flexibleEvPvPowerW);
     const totalFlexiblePvW = Math.max(0, nonBatteryPvW + batteryPvChargeW);
-    const evPvSharePercent = this.getEvPvSharePercent(runtimeSettings);
+    const evPvSharePercent = batteryOutputEnabled ? this.getEvPvSharePercent(runtimeSettings) : 100;
 
     // The configured PV percentage is a PRIORITY split while both the home
     // battery and EV pool can actually use their share. It is not a reservation
@@ -9237,25 +9242,26 @@ class HomeFluxEmsApp extends Homey.App {
     // by design because HomeFlux does not publish a battery candidate. The
     // battery's physical PV charge is nevertheless still in use and must not be
     // labelled as an unused battery share that can be released to the EV pool.
-    const externallyOwnedPhysicalBatteryPvW = this.isHybridExternalControlActive(runtimeSettings)
+    const externallyOwnedPhysicalBatteryPvW = !batteryOutputEnabled || this.isHybridExternalControlActive(runtimeSettings)
       ? batteryPvChargeW
       : 0;
     const plannedBatteryPvChargeW = Math.min(
       totalFlexiblePvW,
       Math.max(
         0,
-        Number(result?.pvChargeW) || 0,
+        batteryOutputEnabled ? Number(result?.pvChargeW) || 0 : 0,
         externallyOwnedPhysicalBatteryPvW,
       ),
     );
     const unusedPvAfterBatteryPlanW = Math.max(0, totalFlexiblePvW - plannedBatteryPvChargeW);
-    const evPvPoolBudgetW = Math.min(
-      totalFlexiblePvW,
-      Math.max(configuredEvPvBudgetW, unusedPvAfterBatteryPlanW),
-    );
+    const evPvPoolBudgetW = !batteryOutputEnabled
+      // HomeFlux cannot transfer PV out of a battery it is not controlling.
+      // Wait for real meter headroom after its physical charge has stopped.
+      ? Math.min(totalFlexiblePvW, nonBatteryPvW)
+      : Math.min(totalFlexiblePvW, Math.max(configuredEvPvBudgetW, unusedPvAfterBatteryPlanW));
     const releasedBatteryPvBudgetW = Math.max(0, evPvPoolBudgetW - configuredEvPvBudgetW);
-    const batteryGridChargeW = Math.max(0, Number(result?.gridChargeAssistW) || 0);
-    const nightSurplusConfigured = Array.from({ length: evCount }, (_, index) => (
+    const batteryGridChargeW = batteryOutputEnabled ? Math.max(0, Number(result?.gridChargeAssistW) || 0) : 0;
+    const nightSurplusConfigured = batteryOutputEnabled && Array.from({ length: evCount }, (_, index) => (
       Boolean(runtimeSettings[this.getEvSettingKey(index, 'NightSurplusChargeEnabled')])
     )).some(Boolean);
     const nightSurplusStatus = nightSurplusConfigured
@@ -9447,7 +9453,7 @@ class HomeFluxEmsApp extends Homey.App {
     // discharge headroom and therefore exposes zero battery support. Night
     // surplus is stricter: it may use only discharge headroom above the
     // calculated night target SoC.
-    const batterySupportCapacityW = this.isHybridExternalControlActive(runtimeSettings)
+    const batterySupportCapacityW = !batteryOutputEnabled || this.isHybridExternalControlActive(runtimeSettings)
       ? 0
       : options.physicalOnly
         ? Math.min(Math.max(0, Math.min(currentBatteryW, nextBatteryW)),
@@ -11516,7 +11522,9 @@ class HomeFluxEmsApp extends Homey.App {
   async publishEvPortfolioNow(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
     const storedSettings = this.getSettings();
     const evCount = this.getEvCount(storedSettings);
-    const physicalOnly = Boolean(options.evOnly) || options.allowEvIncrease === false;
+    const batteryOutputEnabled = Boolean(storedSettings.controlEnabled)
+      && this.getBatteryCount(storedSettings) > 0 && this.isChargeTestValid(storedSettings);
+    const physicalOnly = Boolean(options.evOnly) || options.allowEvIncrease === false || !batteryOutputEnabled;
     if (options.evOnly) {
       // Rebuild after any preceding asynchronous EV pass. Never replay a
       // heartbeat decision made while another Flow publication was pending.
@@ -11531,8 +11539,12 @@ class HomeFluxEmsApp extends Homey.App {
     if (physicalOnly) {
       // Reserve the more importing outcome of current, planned, pending and
       // in-flight battery commands, including Split Command minimum watts.
-      const targets = [Number(currentBatteryCommandW) || 0, Number(nextBatteryCommandW) || 0];
-      for (const commands of [result?.candidateCommands, this.pendingResult?.candidateCommands, this.inFlightBatteryCommands]) {
+      const targets = [Number(currentBatteryCommandW) || 0];
+      if (batteryOutputEnabled) targets.push(Number(nextBatteryCommandW) || 0);
+      // A disabled battery's simulated candidate is not an actual pending
+      // command. Real in-flight writes still reserve their importing outcome.
+      for (const commands of [batteryOutputEnabled ? result?.candidateCommands : null,
+        this.pendingResult?.candidateCommands, this.inFlightBatteryCommands]) {
         if (!Array.isArray(commands)) continue;
         let total = 0;
         for (let index = 0; index < commands.length; index += 1) {
@@ -11550,8 +11562,8 @@ class HomeFluxEmsApp extends Homey.App {
     const portfolio = this.calculateEvPortfolioDecisions(
       result, nextBatteryCommandW, currentBatteryCommandW, storedSettings, { physicalOnly },
     );
-    const heartbeatInputSafe = !options.evOnly
-      || (Boolean(storedSettings.controlEnabled) && this.getInputReadiness(storedSettings).ready);
+    // P1 readiness belongs to EV control itself, independently of battery
+    // configuration/test/output. Use the same gate in every portfolio route.
     const evDecisions = [];
     let adjustedGridW = Number(this.state.gridPowerW) || 0;
     let totalActualEvPowerW = 0;
@@ -11559,16 +11571,25 @@ class HomeFluxEmsApp extends Homey.App {
     let evStartedThisCycle = false;
 
     for (let index = 0; index < evCount; index += 1) {
-      const instanceSettings = this.getEvInstanceSettings(index, storedSettings);
+      // An earlier EV publication may have awaited Homey I/O. Recheck the
+      // latest enable/connection/P1 state before granting the next EV output.
+      const liveSettings = index > 0 ? this.getSettings() : storedSettings;
+      const instanceSettings = this.getEvInstanceSettings(index, liveSettings);
       instanceSettings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
       let decision = { ...(portfolio[index] || {}), instance: index + 1 };
+      const input = this.getEvInputSnapshot(index);
+      const evInputSafe = this.getGridFreshness(liveSettings).fresh;
+      const evConfigured = index < this.getEvCount(liveSettings) && Boolean(instanceSettings.evEnabled);
+      const connected = Boolean(input?.seen?.connected && input.connected)
+        && !this.getEvSessionDetectionRuntime(index)?.endedLatched;
       const previousActive = this.isEvOutputActiveFor(index, storedSettings);
       // A heartbeat/deferred-output pass budgets from physical headroom. No
       // unrelated battery publication is required to release a safe EV start.
-      if (!heartbeatInputSafe) {
+      if ((!evInputSafe || !evConfigured || !connected) && decision.allowed) {
         decision = { ...decision, allowed: false, desiredCurrentA: 0, desiredPowerW: 0,
           effectiveChargeMode: 'stop', peakLimited: true, source: 'off',
-          reason: storedSettings.controlEnabled ? 'Wachten op geldige netmeting' : 'EMS-uitvoer uitgeschakeld' };
+          reason: !evConfigured ? 'EV-module uit' : !connected
+            ? 'EV niet aangesloten of sessie beëindigd' : 'Wachten op geldige netmeting' };
       }
 
       let desiredActive = this.isEvDecisionOutputActiveFor(index, decision, storedSettings);
@@ -13795,7 +13816,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.4',
+      version: '1.1.5',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13868,7 +13889,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.4',
+        version: '1.1.5',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -13894,6 +13915,13 @@ class HomeFluxEmsApp extends Homey.App {
     this.invalidatePlanningCache(true);
     await this.runContextEvaluation(true);
     return this.getPlanningStatus();
+  }
+
+  getBatteryDisabledStatusText(settings, batteryStatus = 'HomeFlux EMS gereed') {
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      if (settings[this.getEvSettingKey(index, 'Enabled')]) return 'Batterij-uitvoer uit · EV-regeling zelfstandig';
+    }
+    return `SIMULATIE · ${batteryStatus}`;
   }
 
   getPublicStatus() {
@@ -13945,10 +13973,14 @@ class HomeFluxEmsApp extends Homey.App {
 
     const preview = { ...(this.latestResult || {}) };
     const fallbackStatus = readiness.ready
-      ? (controlEnabled ? 'HomeFlux EMS gereed' : 'SIMULATIE · HomeFlux EMS gereed')
+      ? (controlEnabled ? 'HomeFlux EMS gereed' : this.getBatteryDisabledStatusText(storedSettings))
       : `Wachten op data: ${(readiness.missing || []).join(', ')}`;
 
     preview.statusText = String(preview.statusText || fallbackStatus);
+    if (!controlEnabled && readiness.ready) {
+      preview.statusText = this.getBatteryDisabledStatusText(storedSettings,
+        preview.statusText.replace(/^SIMULATIE · /, ''));
+    }
     preview.inputReady = Boolean(readiness.ready);
     preview.missingInputs = Array.isArray(readiness.missing) ? readiness.missing.slice() : [];
     preview.degradedInputs = Array.isArray(readiness.degraded) ? readiness.degraded.slice() : [];
@@ -14207,7 +14239,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.4',
+      version: '1.1.5',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

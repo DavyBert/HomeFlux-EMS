@@ -5,13 +5,14 @@ Module._load=function(n,p,m){if(n==='homey')return {App:class {}};if(n==='homey-
 const App=require(root+'/app');Module._load=original;
 const {DEFAULTS}=require(root+'/lib/ems-engine');
 async function boot(store=new Map()) {
- const app=new App(),errors=[],logs=[],timers=[],cards=new Map(),tokens=new Map();
+ const app=new App(),errors=[],logs=[],timers=[],cards=new Map(),tokens=new Map(),settingListeners=[];
  function card(id){if(!cards.has(id))cards.set(id,{registerRunListener(fn){this.listener=fn;return this},registerArgumentAutocompleteListener(name,fn){(this.autocomplete ||= {})[name]=fn;return this},trigger:async()=>{}});return cards.get(id)}
- app.homey={clock:{getTimezone:()=> 'Europe/Brussels'},i18n:{getLanguage:()=> 'en'},settings:{get:k=>store.has(k)?store.get(k):null,set:(k,v)=>store.set(k,structuredClone(v)),on:()=>{}},
+ app.homey={clock:{getTimezone:()=> 'Europe/Brussels'},i18n:{getLanguage:()=> 'en'},settings:{get:k=>store.has(k)?store.get(k):null,set:(k,v)=>store.set(k,structuredClone(v)),on:(event,listener)=>{if(event==='set')settingListeners.push(listener);}},
  flow:{getToken:k=>tokens.get(k),createToken:async(k)=>{const t={setValue:async()=>{},unregister:async()=>{}};tokens.set(k,t);return t},getTriggerCard:card,getActionCard:card,getConditionCard:card},
  setTimeout:(fn,ms)=>{timers.push({fn,ms,type:'timeout'});return timers.length},setInterval:(fn,ms)=>{timers.push({fn,ms,type:'interval'});return timers.length},clearTimeout:()=>{},clearInterval:()=>{},manifest:JSON.parse(fs.readFileSync(root+'/app.json'))};
  app.log=(...v)=>logs.push(v.join(' '));app.error=(...v)=>errors.push(v.map(x=>x.stack||x).join(' '));
  await app.onInit();
- return {app,store,errors,logs,timers,cards,tokens};
+ return {app,store,errors,logs,timers,cards,tokens,
+  setExternalSetting:async(key,value)=>{store.set(key,structuredClone(value));for(const listener of settingListeners)await listener(key);}};
 }
 module.exports = { boot, DEFAULTS };

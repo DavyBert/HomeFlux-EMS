@@ -97,7 +97,7 @@ function baseNightDecision(overrides = {}) {
     requestedFloor = floor;
     return 5000;
   };
-  const settings = { batteryCount: 1, timezone: 'UTC', nightTargetTime: '07:00' };
+  const settings = { batteryCount: 1, controlEnabled: true, timezone: 'UTC', nightTargetTime: '07:00' };
   const now = Date.parse('2026-09-15T22:00:00Z');
   const status = app.getEvNightSurplusStatus({
     avgSoc: 80, targetSoc: 60, effectiveCapacityKwh: 10, forecastPlanningDay: 'tomorrow',
@@ -170,6 +170,7 @@ function nightPortfolio(count, { controlType = 'current', mode = 'smart', select
   const rate = { id: 'night', name: 'Night', avoidGridImport: false, evMaxGridImportW: 10000 };
   const settings = {
     timezone: 'Europe/Brussels', contractType: 'tou', batteryCount: 4, evCount: count,
+    controlEnabled: true, chargeTestPassed: true,
     evPvSharePercent: 50,
     touRates: [rate],
     touSchedule: [{ rateId: 'night', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
@@ -204,6 +205,7 @@ function nightPortfolio(count, { controlType = 'current', mode = 'smart', select
     rate[`${stem}PvStopGridImportW`] = 1000;
   }
   app.getSettings = () => settings;
+  app.homey = { settings: { get: () => app.getChargeTestSignature(settings) } };
   const result = {
     tariff: { kind: 'tou', rateId: 'night', className: 'normal', label: 'Night' },
     candidateCommands: [0,0,0,0], candidateTotalCommandW: 0,

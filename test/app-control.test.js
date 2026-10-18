@@ -65,6 +65,18 @@ function bareApp() {
   return app;
 }
 
+// Allocation fixtures below represent enabled, validated battery control.
+// Supply the eligibility fields explicitly; omitted fields previously bypassed
+// the distinction between a real battery candidate and a disabled simulation.
+function prepareBatteryAllocationFixture(app, settings) {
+  if (settings.controlEnabled === undefined) settings.controlEnabled = true;
+  if (settings.chargeTestPassed === undefined) settings.chargeTestPassed = true;
+  if (app._allocationSettingsReader) return;
+  app._allocationSettingsReader = app.homey.settings.get;
+  app.homey.settings.get = key => key === '_chargeTestSignature'
+    ? app.getChargeTestSignature(settings) : app._allocationSettingsReader(key);
+}
+
 // v0.5.3: an explicit zero battery count remains zero throughout the app
 // layer. It requires no charge test, no battery SoC inputs and gives the EV
 // pool the full flexible PV budget.
@@ -1037,6 +1049,7 @@ function bareApp() {
   app.getRuntimeSettings = settings => settings;
   const settings = {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: 1,
+    batteryCount: 1, controlEnabled: true, chargeTestPassed: true,
     touRates: [{ id: 'normal', name: 'Normal', evChargeAllowed: false, evPvChargeAllowed: true }],
     touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1,2,3,4,5,6,7] }],
     evEnabled: true, evSocEnabled: false, evMode: 'smart', evSmartPvPriority: 'ev_first', evPvSharePercent: 90, evSmartGridPriority: 'battery_first', evWeight: 1,
@@ -1044,6 +1057,7 @@ function bareApp() {
     peakShaveEnabled: false, exportLimitEnabled: false, minimumExportW: 0,
   };
   app.getSettings = () => settings;
+  app.homey.settings.get = () => app.getChargeTestSignature(settings);
   const result = {
     tariff: { kind: 'tou', rateId: 'normal', className: 'normal', label: 'Normal' },
     candidateCommands: [-3000], candidateTotalCommandW: -3000,
@@ -1051,6 +1065,7 @@ function bareApp() {
     commands: [-3000], totalCommandW: -3000,
     gridChargeAssistW: 0, pvChargeW: 3000,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 11);
   assert.equal(result.candidateTotalCommandW, -3000);
@@ -1084,6 +1099,7 @@ function bareApp() {
     commands: [], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.pvSharePercent, 100);
   assert.equal(ev.desiredCurrentA, 13);
@@ -1127,6 +1143,7 @@ function bareApp() {
     commands: [-8200], totalCommandW: -8200,
     gridChargeAssistW: 0, pvChargeW: 8200,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 13);
   assert.equal(ev.pvAllocatedW, 8970);
@@ -1166,6 +1183,7 @@ function bareApp() {
     commands: [], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.pvSharePercent, 100);
   assert.equal(ev.desiredCurrentA, 7);
@@ -1199,6 +1217,7 @@ function bareApp() {
     commands: [-3000], totalCommandW: -3000,
     gridChargeAssistW: 0, pvChargeW: 3000,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(result.candidateTotalCommandW, -3000);
@@ -1233,6 +1252,7 @@ function bareApp() {
     commands: [-10000], totalCommandW: -10000,
     gridChargeAssistW: 0, pvChargeW: 10000,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 10);
   assert.equal(ev.pvAllocatedW, 6900);
@@ -1269,6 +1289,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [-8000], totalCommandW: -8000,
     gridChargeAssistW: 0, pvChargeW: 8000,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, expectedA);
   assert.equal(result.candidateTotalCommandW, -8000);
@@ -1301,6 +1322,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [0], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 8); // 1840 W is the highest whole ampere step <= 2000 W.
   assert.equal(ev.gridImportLimitW, 2000);
@@ -1336,6 +1358,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [0], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(ev.gridImportLimitW, 2000);
@@ -1369,6 +1392,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [0], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(result.candidateTotalCommandW, 0);
@@ -1411,6 +1435,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [0], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   app.coordinateEvBatteryPriority(result, settings);
   assert.equal(result.evDecisions.length, 2);
   assert.ok(result.evDecisions[0].desiredPowerW > result.evDecisions[1].desiredPowerW);
@@ -1995,6 +2020,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [-9900], totalCommandW: -9900,
     gridChargeAssistW: 0, pvChargeW: 9900,
   };
+  prepareBatteryAllocationFixture(app, settings);
   app.coordinateEvBatteryPriority(result, settings);
   assert.equal(result.candidateTotalCommandW, -9900);
 }
@@ -2396,7 +2422,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '1.1.4');
+  assert.equal(simulation.version, '1.1.5');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2597,6 +2623,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [9040], totalCommandW: 9040,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 10);
   assert.equal(ev.desiredPowerW, 6900);
@@ -2797,6 +2824,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [0], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 10); // 2300 W battery-support budget on one phase.
   assert.equal(ev.batterySupportAllocatedW, 2300);
@@ -2834,6 +2862,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [0], totalCommandW: 0,
     gridChargeAssistW: 0, pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(result.candidateTotalCommandW, 0);
@@ -2871,6 +2900,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [-3000], totalCommandW: -3000,
     gridChargeAssistW: 0, pvChargeW: 3000,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.desiredCurrentA, 0);
   assert.equal(result.candidateTotalCommandW, -3000);
@@ -3192,6 +3222,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     // Battery is full/limited and therefore has no PV charge candidate.
     pvChargeW: 0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.pvSharePercent, 10);
   assert.equal(ev.pvConfiguredShareBudgetW, 500);
@@ -3229,6 +3260,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     commands: [-4500], totalCommandW: -4500,
     gridChargeAssistW: 0, pvChargeW: 4500,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.pvConfiguredShareBudgetW, 500);
   assert.equal(ev.pvReleasedBatteryBudgetW, 0);
@@ -3899,6 +3931,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     calculatedCommands:[], calculatedTotalCommandW:0,
     commands:[], totalCommandW:0, gridChargeAssistW:0, pvChargeW:0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   let ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.source, 'guarantee');
   assert.equal(ev.guaranteeActive, true);
@@ -3911,6 +3944,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   // The same persistent target with guarantee=No may still use PV/favourable
   // tariffs, but must not consume an otherwise blocked tariff from the grid.
   app.evEnergyPlans[0].guarantee = false;
+  prepareBatteryAllocationFixture(app, settings);
   ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.allowed, false);
   assert.equal(ev.desiredCurrentA, 0);
@@ -3956,6 +3990,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     calculatedCommands:[], calculatedTotalCommandW:0,
     commands:[], totalCommandW:0, gridChargeAssistW:0, pvChargeW:0,
   };
+  prepareBatteryAllocationFixture(app, settings);
   const ev = app.coordinateEvBatteryPriority(result, settings);
   assert.equal(ev.source, 'guarantee');
   assert.equal(ev.guaranteeActive, true);
@@ -4110,6 +4145,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
           lowForecastBatterySaveActive:false, lowForecastDischargeToTargetActive:false,
           peakReserveProtected:false, batteryPauseCode:'', override:null,
         };
+        prepareBatteryAllocationFixture(app, settings);
         app.coordinateEvBatteryPriority(result, settings);
         assert.equal(result.evDecisions.length, count, `${mode}/${controlType}/hybrid=${hybridDelegated}/count=${count}`);
         const totalDesiredW = result.evDecisions.reduce((sum, d) => sum + Math.max(0, Number(d.desiredPowerW) || 0), 0);

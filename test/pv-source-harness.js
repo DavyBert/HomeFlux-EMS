@@ -25,8 +25,8 @@ async function setup(root = path.join(__dirname, '..'), overrides = {}, start = 
     _chargeTestSignature: '4:normal:single|single|single|single' }));
   const h = await boot(store);
   const app = h.app;
-  assert(app.getSettings().controlEnabled);
-  assert(app.isChargeTestValid(), 'use genuine charge-test signature');
+  assert.equal(Boolean(app.getSettings().controlEnabled),
+    Boolean(settings.controlEnabled) && app.isChargeTestValid(), 'genuine startup output eligibility');
   Object.assign(app.state, { gridPowerW: 623 - initialPv, pvPowerW: initialPv,
     batterySoc: [57.8,57.8,57.8,57.8], lastTotalCommandW: 0, targetSocOverride: 80,
     forecastRemainingKwh: 0, forecastDailyMaxKwh: 0, forecastTomorrowKwh: 0,

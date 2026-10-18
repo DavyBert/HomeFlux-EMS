@@ -106,6 +106,7 @@ function configure({
   const rate = { id: 'normal', name: 'Normal' };
   const settings = {
     timezone: 'Europe/Brussels', contractType: 'tou', batteryCount, evCount: count,
+    controlEnabled: true, chargeTestPassed: true,
     hybridEmsEnabled: hybridDelegated,
     touRates: [rate],
     touSchedule: [{ rateId: 'normal', start: '00:00', end: '00:00', days: [1, 2, 3, 4, 5, 6, 7] }],
@@ -145,6 +146,7 @@ function configure({
     rate[`${stem}MaxGridImportW`] = 0;
   }
   app.getSettings = () => settings;
+  app.homey.settings = { get: () => app.getChargeTestSignature(settings) };
   return { app, settings };
 }
 
