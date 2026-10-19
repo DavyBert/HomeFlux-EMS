@@ -1777,7 +1777,8 @@
     "Zonder tijdige terugmelding vervalt de EV-netvrijgave na 60 seconden en kan de thuisbatterij het EV-verbruik opnieuw gaan voeden.": "Without timely feedback, the EV grid allowance expires after 60 seconds and the home battery may start supplying the EV again.",
     "Batterij-uitvoer uit · EV-regeling zelfstandig": "Battery output disabled · independent EV control",
     "EV niet aangesloten of sessie beëindigd": "EV disconnected or session ended",
-    "EV-regeling werkt onafhankelijk van deze batterijschakelaar en de batterijtest. Schakel de EV-module zelf uit om EV-sturing te stoppen.": "EV control works independently of this battery switch and the battery test. Disable the EV module itself to stop EV control."
+    "EV-regeling werkt onafhankelijk van deze batterijschakelaar en de batterijtest. Schakel de EV-module zelf uit om EV-sturing te stoppen.": "EV control works independently of this battery switch and the battery test. Disable the EV module itself to stop EV control.",
+    "Logt echte herberekeningen van de energieplanning en relevante EV-beslissingen, feedbackovergangen en commando-uitkomsten. Bewaart één settingsbasis en daarna alleen wijzigingen; geen uitgebreide logging per P1-meting.": "Logs actual energy-planning recalculations and relevant EV decisions, feedback transitions and command outcomes. Stores one settings baseline followed by changes; no detailed log for every P1 reading."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

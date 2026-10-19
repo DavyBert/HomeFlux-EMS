@@ -213,9 +213,10 @@ console.log('0.9.9 Autotune scheduling regression tests passed');
   assert.deepEqual(app.diagnostics.planningEvents[0].contextReasons, ['planning_date_changed']);
 
   settings.safetySoc = 30;
+  app.recordDiagnosticSetting('safetySoc', 30);
   app.recordDiagnosticPlanning(plan, Date.now() + 2000, settings, state);
   assert.equal(app.diagnostics.planningConfigurations.length, 2, 'changed settings must create a new planning configuration snapshot');
-  assert.equal(app.diagnostics.planningConfigurations[1].settings.safetySoc, 30);
+  assert.equal(app.diagnostics.planningConfigurations[1].changes.safetySoc, 30);
 }
 
 // Error logging is bounded and remains completely passive while disabled.
@@ -260,14 +261,14 @@ console.log('0.9.9 Autotune scheduling regression tests passed');
   const firstAt = Date.now();
   app.startDiagnosticsSession(app.getDiagnosticsOptions(), firstAt);
   const fixedExpiry = app.diagnostics.expiresAt;
-  assert.equal(app.getDiagnosticsReport().planning.currentSettings, null, 'CPU-only diagnostics must not include planning configuration');
+  assert.equal(app.getDiagnosticsReport().planning.currentConfigId, null, 'CPU-only diagnostics must not include planning configuration');
 
   settings.diagnosticsPlanningEnabled = true;
   app.handleDiagnosticsSettingsChanged();
   assert.equal(app.diagnostics.expiresAt, fixedExpiry, 'adding Planning must not extend the 48-hour session');
   const report = app.getDiagnosticsReport();
-  assert(report.planning.currentSettings, 'Planning diagnostics should include the current HomeFlux configuration');
-  assert.equal(report.planning.currentSettings.safetySoc, 25);
+  assert(report.planning.currentConfigId, 'Planning diagnostics should reference the current HomeFlux configuration');
+  assert.equal(report.planning.configurations[0].settings.safetySoc, 25);
 }
 
 // An expired session must stay disabled after an app restart and may not be

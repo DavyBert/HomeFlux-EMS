@@ -1,4 +1,8 @@
 {
+  "1.1.6": {
+    "en": "Compact diagnostic settings history and targeted EV decision and command details.",
+    "nl": "Compacte settingshistoriek en gerichte EV-beslis- en commandogegevens in de diagnose."
+  },
   "1.1.5": {
     "en": "EV control now also works with battery output disabled or without configured home batteries.",
     "nl": "EV-sturing werkt nu ook met uitgeschakelde batterij-uitvoer of zonder geconfigureerde thuisbatterijen."

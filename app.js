@@ -3,6 +3,7 @@
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
+const { CompactDiagnostics } = require('./lib/compact-diagnostics');
 const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normalizeSecondary } = require('./lib/price-normalization');
 const { extractMathExpression } = require('./lib/price-formula');
 
@@ -617,7 +618,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.5 initialized');
+    this.log('HomeFlux EMS v1.1.6 initialized');
   }
 
   refreshSettingsCache() {
@@ -637,6 +638,12 @@ class HomeFluxEmsApp extends Homey.App {
       if (value !== null && value !== undefined) result[key] = value;
     }
     this.settingsCache = result;
+    if (this.isDiagnosticEnabled('planning') && this.diagnostics.compact?.values) {
+      const previous = this.diagnostics.compact.values;
+      for (const key of new Set([...Object.keys(previous), ...Object.keys(result)])) {
+        this.recordDiagnosticSetting(key, result[key]);
+      }
+    }
     return result;
   }
 
@@ -646,6 +653,7 @@ class HomeFluxEmsApp extends Homey.App {
     const value = this.homey.settings.get(key);
     this.settingsCache[key] = value !== null && value !== undefined ? value : DEFAULTS[key];
     this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
+    this.recordDiagnosticSetting(key, this.settingsCache[key]);
   }
 
   setSetting(key, value) {
@@ -665,6 +673,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.settingsCache && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
       this.settingsCache[key] = value;
       this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
+      this.recordDiagnosticSetting(key, value);
     }
   }
 
@@ -1094,6 +1103,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
         this.diagnostics.cpuSampleAt = now;
       }
+      if (options.planning) this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), now);
       this.armDiagnosticsExpiry();
       return;
     }
@@ -1113,6 +1123,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
       this.diagnostics.cpuSampleAt = at;
     }
+    if (options?.planning) this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), at);
     this.setSetting('_diagnosticsStartedAt', at);
     this.setSetting('_diagnosticsExpiresAt', expiresAt);
     this.armDiagnosticsExpiry();
@@ -1142,8 +1153,17 @@ class HomeFluxEmsApp extends Homey.App {
       return;
     }
 
+    const planningWasEnabled = Boolean(runtime.options?.planning);
     const cpuWasEnabled = Boolean(runtime.options?.cpu);
     runtime.options = options;
+    if (!planningWasEnabled && options.planning) {
+      // Changes made while Planning was disabled are reconciled once here.
+      if (runtime.compact?.values) {
+        const settings = this.getSettings();
+        for (const key of new Set([...Object.keys(runtime.compact.values), ...Object.keys(settings)])) this.recordDiagnosticSetting(key, settings[key]);
+      }
+      this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), now);
+    }
     if (!cpuWasEnabled && Boolean(options.cpu)) {
       runtime.cpuSampleUsage = this.readDiagnosticCpuUsage();
       runtime.cpuSampleAt = now;
@@ -1204,6 +1224,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
       this.diagnostics.cpuSampleAt = Date.now();
     }
+    if (active && options.planning) this.getOrCreateDiagnosticPlanningConfig(this.getSettings());
     if (active) this.armDiagnosticsExpiry();
     return this.getDiagnosticsReport();
   }
@@ -1477,30 +1498,60 @@ class HomeFluxEmsApp extends Homey.App {
     const sensitive = /(token|secret|password|credential|api[_-]?key|authorization|cookie)/i;
     const excluded = new Set(['dynamicSlots', ...Object.values(DIAGNOSTIC_SETTING_KEYS)]);
     for (const [key, value] of Object.entries(settings || {})) {
-      if (excluded.has(key)) continue;
+      if (excluded.has(key) || key.startsWith('_diagnostics')) continue;
       if (sensitive.test(key)) snapshot[key] = '[redacted]';
       else snapshot[key] = this.cloneDiagnosticValue(value);
     }
     return snapshot;
   }
 
+  getCompactDiagnostics() {
+    if (!this.diagnostics.compact) this.diagnostics.compact = new CompactDiagnostics(this, this.diagnostics);
+    return this.diagnostics.compact;
+  }
+
   getOrCreateDiagnosticPlanningConfig(settings, now = Date.now()) {
-    const snapshot = this.getDiagnosticConfigurationSnapshot(settings);
-    const json = JSON.stringify(snapshot);
-    if (json === this.diagnostics.lastPlanningConfigJson && this.diagnostics.lastPlanningConfigId) {
-      return this.diagnostics.lastPlanningConfigId;
-    }
-    this.diagnostics.planningConfigSequence = (Number(this.diagnostics.planningConfigSequence) || 0) + 1;
-    const id = `cfg-${this.diagnostics.planningConfigSequence}`;
-    this.diagnostics.planningConfigurations.push({ id, at: Number(now) || Date.now(), settings: snapshot });
-    if (this.diagnostics.planningConfigurations.length > 50) {
-      // Config changes should be rare. Preserve the newest snapshots while
-      // keeping diagnostics bounded even during settings experimentation.
-      this.diagnostics.planningConfigurations.splice(0, this.diagnostics.planningConfigurations.length - 50);
-    }
-    this.diagnostics.lastPlanningConfigJson = json;
-    this.diagnostics.lastPlanningConfigId = id;
-    return id;
+    return this.getCompactDiagnostics().config(settings, now);
+  }
+
+  recordDiagnosticSetting(key, value) {
+    if (!this.isDiagnosticEnabled('planning') || !this.diagnostics.compact?.values) return;
+    try {
+      const normalized = Object.entries(NAME_SETTINGS).find(([, name]) => name === key);
+      this.diagnostics.compact.setting(String(key), normalized ? sourceName(normalized[0], { [key]: value }) : value);
+    } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  recordDiagnosticEvDecision(index, decision, settings, command) {
+    if (!this.isDiagnosticEnabled('planning')) return;
+    try { this.getCompactDiagnostics().decision(index, decision, settings, command); }
+    catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  createDiagnosticEvOutput(index, decision, command) {
+    if (!this.isDiagnosticEnabled('planning')) return null;
+    try {
+      const runtime = this.diagnostics, recorder = this.getCompactDiagnostics();
+      const request = recorder.output(index, decision, command, 'requested');
+      return (phase, detail = {}) => {
+        if (this.diagnostics !== runtime || !this.isDiagnosticEnabled('planning')) return;
+        try { recorder.output(index, decision, command, phase, detail, request); }
+        catch (_) { runtime.diagnosticRecordFailures = (runtime.diagnosticRecordFailures || 0) + 1; }
+      };
+    } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; return null; }
+  }
+
+  recordDiagnosticEvAllowance(control, settings, now, selectedGridW, controlGridSource) {
+    if (!this.isDiagnosticEnabled('planning', now) || (this.getEvCount(settings) <= 0
+      && !this.diagnostics.compact?.memos.has('allowance'))) return;
+    try { this.getCompactDiagnostics().allowance(control, settings, now, selectedGridW, controlGridSource); }
+    catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  recordDiagnosticBatteryOutput(result, phase, commandsW, error = null) {
+    if (!this.isDiagnosticEnabled('planning') || this.getEvCount(this.settingsCache || {}) <= 0) return;
+    try { this.getCompactDiagnostics().batteryOutput(result, phase, commandsW, error); }
+    catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
   }
 
   recordDiagnosticPlanning(plan, now = Date.now(), settings = this.getSettings(), state = this.state) {
@@ -1593,6 +1644,9 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkDiagnosticsExpiry(Date.now());
     const runtime = this.diagnostics || this.createDiagnosticsRuntime();
     const generatedAt = Date.now();
+    if (this.isDiagnosticEnabled('planning', generatedAt) && !runtime.compact?.values) {
+      this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), generatedAt);
+    }
     const cpuSections = {};
     for (const [name, bucket] of Object.entries(runtime.cpuSections || {})) {
       const calls = Math.max(0, Number(bucket.calls) || 0);
@@ -1603,14 +1657,9 @@ class HomeFluxEmsApp extends Homey.App {
         avgWallMs: calls ? Math.round(((Number(bucket.wallMs) || 0) / calls) * 1000) / 1000 : 0,
       };
     }
-    const includePlanningSettings = Boolean(
-      runtime.options?.planning
-      || runtime.planningConfigurations?.length
-      || runtime.planningEvents?.length
-    );
     const report = {
-      schema: 'homeflux-diagnostics-v1',
-      version: '1.1.5',
+      schema: 'homeflux-diagnostics-v2',
+      version: '1.1.6',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -1643,8 +1692,18 @@ class HomeFluxEmsApp extends Homey.App {
         samples: this.cloneDiagnosticValue(runtime.memorySamples) || [],
       },
       errors: this.cloneDiagnosticValue(runtime.errors) || [],
+      recordingFailures: runtime.diagnosticRecordFailures || 0,
+      ev: {
+        events: this.cloneDiagnosticValue(runtime.compact?.events) || [],
+        droppedEvents: runtime.compact?.droppedEvents || 0,
+        allocationChangeResolutionW: 100,
+      },
       planning: {
-        currentSettings: includePlanningSettings ? this.getDiagnosticConfigurationSnapshot() : null,
+        configurationFormat: 'snapshot-and-changes-v1',
+        currentConfigId: runtime.compact?.id || null,
+        reconstruction: 'Apply the first snapshot, then each changes object and removed-key list in order. Each event references configId.',
+        droppedConfigurations: runtime.compact?.droppedConfigurations || 0,
+        droppedEvents: runtime.compact?.droppedPlanningEvents || 0,
         configurations: this.cloneDiagnosticValue(runtime.planningConfigurations) || [],
         events: this.cloneDiagnosticValue(runtime.planningEvents) || [],
         batteryEfficiencyLatest: this.cloneDiagnosticValue(runtime.batteryEfficiencyLatest),
@@ -7822,6 +7881,7 @@ class HomeFluxEmsApp extends Homey.App {
     const selectedControlGridW = selectedGridW - activeEvGridImportTargetW;
     let controlGridSource = gridSelection.source;
     if (activeEvGridImportTargetW > 0) controlGridSource += '_ev_grid_target';
+    this.recordDiagnosticEvAllowance(evGridControl, settings, now, selectedGridW, controlGridSource);
 
     return {
       ...this.state,
@@ -9788,6 +9848,16 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
     const combinedPortfolioGridImportTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW + portfolioEvGridImportTargetW));
+    if (this.isDiagnosticEnabled('planning')) {
+      try {
+        this.getCompactDiagnostics().portfolio({ tariffId: tariff?.rateId || tariff?.className,
+          gridImportLimitW, peakLimitW: runtimeSettings.peakLimitW, peakBudgetW,
+          pvPoolW: smartPvPoolBudgetW, gridTargetW: combinedPortfolioGridImportTargetW,
+          guaranteedGridW: guaranteedGridBudgetW, evCount,
+          gridPowerW: rawGridW, currentBatteryCommandW: currentBatteryW,
+          batteryOutputEnabled, batteryGridChargeW, batteryPvChargeW });
+      } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+    }
     for (const decision of decisions) decision.portfolioGridImportTargetW = combinedPortfolioGridImportTargetW;
     return decisions;
   }
@@ -10241,7 +10311,9 @@ class HomeFluxEmsApp extends Homey.App {
     const currentChanged = ['current','hybrid'].includes(controlType) && (forceOutput || desiredA !== Number(this.lastPublishedEvCurrentA || 0));
     const modeChanged = ['mode','hybrid'].includes(controlType) && (forceOutput || chargeMode !== String(this.lastPublishedEvChargeMode || ''));
     const allowedChanged = forceOutput || allowed !== Boolean(this.lastPublishedEvAllowed);
+    this.recordDiagnosticEvDecision(0, decision, settings, { currentA: desiredA, mode: chargeMode, allowed });
     if (!currentChanged && !modeChanged && !allowedChanged) return;
+    const diagnosticOutput = this.createDiagnosticEvOutput(0, decision, { currentA: desiredA, mode: chargeMode, allowed });
 
     const intervalMs = this.getEvCommandIntervalMs(settings);
     const now = Date.now();
@@ -10252,15 +10324,18 @@ class HomeFluxEmsApp extends Homey.App {
       || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || !Boolean(settings.evEnabled) || !decision.connected)));
     const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
     if (!isSafetyReduction && now < allowedAt) {
+      diagnosticOutput?.('waiting', { reason: 'command_interval', allowedAt });
       this.scheduleEvPublish(allowedAt - now);
       return;
     }
     if (this.evPublishing) {
+      diagnosticOutput?.('waiting', { reason: 'publication_mutex' });
       this.scheduleEvPublish(Math.max(250, intervalMs));
       return;
     }
 
     this.evPublishing = true;
+    diagnosticOutput?.('publishing');
     try {
       if (currentChanged) {
         const token = this.tokens.get('emsevcurrent');
@@ -10275,6 +10350,7 @@ class HomeFluxEmsApp extends Homey.App {
           }));
         }
         this.lastPublishedEvCurrentA = desiredA;
+        diagnosticOutput?.('component_published', { component: 'current', value: desiredA });
         this.noteAutoTuneEvCurrentCommand(0, desiredA, Date.now());
       }
       if (modeChanged) {
@@ -10287,6 +10363,7 @@ class HomeFluxEmsApp extends Homey.App {
           }), { charge_mode: chargeMode });
         }
         this.lastPublishedEvChargeMode = chargeMode;
+        diagnosticOutput?.('component_published', { component: 'mode', value: chargeMode });
         this.noteAutoTuneEvModeCommand(0, chargeMode, Date.now());
         if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
           this.armEvPeakGuardStopHold(settings);
@@ -10303,9 +10380,14 @@ class HomeFluxEmsApp extends Homey.App {
           }));
         }
         this.lastPublishedEvAllowed = allowed;
+        diagnosticOutput?.('component_published', { component: 'allowed', value: allowed });
       }
       this.lastEvPublishedAt = Date.now();
       this.forceEvOutput = false;
+      diagnosticOutput?.('published');
+    } catch (err) {
+      diagnosticOutput?.('failed', { error: String(err?.message || err).slice(0, 1000) });
+      throw err;
     } finally {
       this.evPublishing = false;
     }
@@ -10396,7 +10478,9 @@ class HomeFluxEmsApp extends Homey.App {
     const currentChanged = ['current','hybrid'].includes(controlType) && (forceOutput || desiredA !== Number(runtime.lastPublishedCurrentA || 0));
     const modeChanged = ['mode','hybrid'].includes(controlType) && (forceOutput || chargeMode !== String(runtime.lastPublishedChargeMode || ''));
     const allowedChanged = forceOutput || allowed !== Boolean(runtime.lastPublishedAllowed);
+    this.recordDiagnosticEvDecision(index, decision, settings, { currentA: desiredA, mode: chargeMode, allowed });
     if (!currentChanged && !modeChanged && !allowedChanged) return;
+    const diagnosticOutput = this.createDiagnosticEvOutput(index, decision, { currentA: desiredA, mode: chargeMode, allowed });
     const intervalMs = this.getEvCommandIntervalMs(settings);
     const now = Date.now();
     const allowedAt = runtime.lastPublishedAt > 0 ? runtime.lastPublishedAt + intervalMs : 0;
@@ -10406,14 +10490,17 @@ class HomeFluxEmsApp extends Homey.App {
       || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || !Boolean(settings.evEnabled) || !decision.connected)));
     const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
     if (!isSafetyReduction && now < allowedAt) {
+      diagnosticOutput?.('waiting', { reason: 'command_interval', allowedAt });
       this.scheduleAdditionalEvPublish(index, allowedAt - now);
       return;
     }
     if (runtime.publishing) {
+      diagnosticOutput?.('waiting', { reason: 'publication_mutex' });
       this.scheduleAdditionalEvPublish(index, Math.max(250, intervalMs));
       return;
     }
     runtime.publishing = true;
+    diagnosticOutput?.('publishing');
     try {
       if (currentChanged && triggers.current) {
         await triggers.current.trigger(this.localizeDisplayTokens({
@@ -10424,11 +10511,13 @@ class HomeFluxEmsApp extends Homey.App {
           target_soc: Number(decision.targetSoc) || 0,
         }));
         runtime.lastPublishedCurrentA = desiredA;
+        diagnosticOutput?.('component_published', { component: 'current', value: desiredA });
         this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
       }
       if (modeChanged && triggers.mode) {
         await triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
         runtime.lastPublishedChargeMode = chargeMode;
+        diagnosticOutput?.('component_published', { component: 'mode', value: chargeMode });
         this.noteAutoTuneEvModeCommand(index, chargeMode, Date.now());
         if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
           this.armEvStopHoldFor(index, settings);
@@ -10441,9 +10530,14 @@ class HomeFluxEmsApp extends Homey.App {
           reason: String(decision.reason || ''),
         }));
         runtime.lastPublishedAllowed = allowed;
+        diagnosticOutput?.('component_published', { component: 'allowed', value: allowed });
       }
       runtime.lastPublishedAt = Date.now();
       runtime.forceOutput = false;
+      diagnosticOutput?.('published');
+    } catch (err) {
+      diagnosticOutput?.('failed', { error: String(err?.message || err).slice(0, 1000) });
+      throw err;
     } finally {
       runtime.publishing = false;
     }
@@ -13468,6 +13562,7 @@ class HomeFluxEmsApp extends Homey.App {
       const efficiencyOutputTransition = this.limitEfficiencyHandoverAtOutput(result, requestedInternalCommands, settings);
       const internalCommands = efficiencyOutputTransition.commands;
       this.inFlightBatteryCommands = internalCommands;
+      this.recordDiagnosticBatteryOutput(result, 'requested', internalCommands);
       const internalTotal = internalCommands.reduce((sum, value) => sum + value, 0);
       const commands = internalCommands.map(value => this.toPublishedCommand(value, settings));
       const publishedTotal = this.toPublishedCommand(internalTotal, settings);
@@ -13501,6 +13596,7 @@ class HomeFluxEmsApp extends Homey.App {
       // fresh EMS calculation is scheduled for the first allowed switch moment.
       const effectiveInternalCommands = await this.publishSplitBatteryCommands(internalCommands, settings);
       const effectiveInternalTotal = effectiveInternalCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+      this.recordDiagnosticBatteryOutput(result, 'published', effectiveInternalCommands);
 
       const previousInternalTotal = Number(this.state.lastTotalCommandW) || 0;
       // Flexible loads and PV limiting belong to the slow/output pass. A pure
@@ -13593,6 +13689,9 @@ class HomeFluxEmsApp extends Homey.App {
         // invalidate a fresh proof established from that new output.
         this.requestContextEvaluate(false, 'battery_output_changed', 0, false, false);
       }
+    } catch (err) {
+      this.recordDiagnosticBatteryOutput(result, 'failed', this.inFlightBatteryCommands, err);
+      throw err;
     } finally {
       this.inFlightBatteryCommands = null;
       this.endDiagnosticCpuSection(diagnosticCpu);
@@ -13816,7 +13915,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.5',
+      version: '1.1.6',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13889,7 +13988,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.5',
+        version: '1.1.6',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14239,7 +14338,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.5',
+      version: '1.1.6',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

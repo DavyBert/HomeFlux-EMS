@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.6
+
+Compact diagnostic settings history and targeted EV decision and command details.
+
 ### 1.1.5
 
 EV control now also works with battery output disabled or without configured home batteries.
