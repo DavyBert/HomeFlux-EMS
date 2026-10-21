@@ -1,11 +1,11 @@
-# HomeFlux EMS 1.1.7 — EV-verbruik en batterijregeling
+# HomeFlux EMS 1.1.8 — EV-verbruik en batterijregeling
 
 ## Bron en vorige werkstatus
 
 Basis: de nieuwste beschikbare `origin/main`, commit
 `2a0994756dfc8cd5c2ab4b3aa2ca9a611d4a98a3` (19 oktober 2026).
 De remote HEAD is tijdens deze werkzaamheden opnieuw gecontroleerd en bleef gelijk.
-Het versienummer is op verzoek verhoogd naar **1.1.7**. De basiscommit is versie 1.1.6.
+Het versienummer is op verzoek verhoogd naar **1.1.8**. De basiscommit is versie 1.1.6.
 
 De vorige afgeronde wijziging was de compacte diagnostiek, vastgelegd in
 `docs/COMPACT-DIAGNOSTICS-1.1.6.md`. Deze staat al in de repository en is behouden.
@@ -83,7 +83,7 @@ als gelijkheidscriterium gebruikt. Er is geen nieuwe Homey-CPU-meting verricht.
 
 ## Validatie en overdracht
 
-Resultaat: **`npm run check` geslaagd: 57 testsuites plus syntaxcontroles**.
+Functionele controle vóór de verhoging naar 1.1.8: **`npm run check` geslaagd: 57 testsuites plus syntaxcontroles**.
 Ook de oorspronkelijke, ongewijzigde code heeft vóór de correctie haar volledige
 56-suitescontrole doorlopen. Het pakket bevat beide checklogs, de patch en de
 vergelijkingsuitkomst van de 13 batterijlaadreplays.
@@ -116,3 +116,13 @@ moet nog met die log worden bevestigd.
 
 Lokale werkbranch: `fix/ev-measured-grid-protection`.
 Voor hervatten: gebruik de meegeleverde broncode en deze overdracht als werkstatus.
+
+## Versie 1.1.8 en changelog
+
+Alle actieve versievermeldingen zijn verhoogd naar 1.1.8. De changelog bevat nu
+volledige Nederlandse en Engelse vermeldingen voor 1.1.8 en de ontbrekende
+vermelding voor 1.1.7. Oudere vermeldingen zijn ongewijzigd behouden.
+De EV-regellogica is bytegewijs gelijk aan 1.1.7 na vervanging van de
+versietekst. Syntaxcontrole en de bestaande settings-startup-, widget- en
+app-control-tests zijn opnieuw geslaagd voor 1.1.8. Manifesten, npm-lockfile,
+changelogtalen en pakketinhoud zijn gecontroleerd.

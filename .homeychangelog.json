@@ -1,4 +1,12 @@
 {
+  "1.1.8": {
+    "en": "Fixed cases where the home battery unintentionally supplied EV charging power when the measured charging current differed from the requested current. Peak Guard and explicitly enabled battery support remain active.",
+    "nl": "Situaties verholpen waarbij de thuisbatterij onbedoeld vermogen voor EV-laden leverde wanneer de gemeten laadstroom afweek van de gevraagde stroom. Peak Guard en expliciet ingeschakelde batterijondersteuning blijven actief."
+  },
+  "1.1.7": {
+    "en": "Fixed cases where the home battery unintentionally supplied EV charging power when the measured charging current differed from the requested current. Peak Guard and explicitly enabled battery support remain active.",
+    "nl": "Situaties verholpen waarbij de thuisbatterij onbedoeld vermogen voor EV-laden leverde wanneer de gemeten laadstroom afweek van de gevraagde stroom. Peak Guard en expliciet ingeschakelde batterijondersteuning blijven actief."
+  },
   "1.1.6": {
     "en": "Compact diagnostic settings history and targeted EV decision and command details.",
     "nl": "Compacte settingshistoriek en gerichte EV-beslis- en commandogegevens in de diagnose."
