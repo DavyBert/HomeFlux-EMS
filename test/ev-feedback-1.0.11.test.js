@@ -159,8 +159,11 @@ function verify(results) {
   const stale = byName('expired-and-restored-feedback');
   assert.equal(stale.samples.find(s=>s.second===95).active,0);
   assert(stale.final.active>0 && Math.abs(stale.final.batteryW-623)<30);
-  assert(byName('above-grid-budget').samples.every(s=>s.active<=5000));
-  assert.equal(byName('above-grid-budget').samples.find(s=>s.second===90).active,5000, 'above-command feedback is valid but capped to the net budget while context refresh waits');
+  const aboveBudget = byName('above-grid-budget');
+  assert.equal(aboveBudget.samples.find(s=>s.second===90).active, aboveBudget.final.actualEvW,
+    'measured EV load stays protected above the setpoint budget while context refresh waits');
+  assert(Math.abs(aboveBudget.final.batteryW - aboveBudget.final.house) < 30,
+    'a charger exceeding its requested limit must not move EV consumption onto the battery');
   assert(byName('pv-and-house-variation').samples.some(s=>s.batteryW < -1000),'PV surplus must still charge batteries');
   assert(byName('planned-battery-charge').samples.some(s=>s.batteryW < -500),'planned battery charge must still publish');
   assert(byName('peak-guard').samples.filter(s=>s.second>=180).every(s=>s.physicalGridW<=9010),'Peak Guard sees raw physical grid');

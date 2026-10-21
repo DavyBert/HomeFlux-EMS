@@ -2422,7 +2422,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '1.1.6');
+  assert.equal(simulation.version, '1.1.7');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2631,17 +2631,18 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(result.candidateTotalCommandW, 9040);
   assert.deepStrictEqual(result.candidateCommands, [9040]);
 
-  // Measured current, not command confirmation, releases the tariff budget.
+  // Measured current, not command confirmation or the setpoint budget,
+  // determines the battery correction, capped by physical net consumption.
   app.latestEvDecision = ev;
   let coordination = app.getEvGridImportControlStatus(settings, now);
   assert.equal(coordination.state, 'active');
   assert.equal(coordination.requestedTargetW, 4900);
-  assert.equal(coordination.activeTargetW, 5000);
+  assert.equal(coordination.activeTargetW, 9040);
   app.lastPublishedEvCurrentA = 10;
   app.lastEvPublishedAt = now;
   app.inputUpdatedAt.ev.chargeCurrent = now - 1000;
   coordination = app.getEvGridImportControlStatus(settings, now + 3000);
-  assert.equal(coordination.activeTargetW, 5000, 'new commands do not expire fresh measurements');
+  assert.equal(coordination.activeTargetW, 9040, 'new commands do not expire fresh measurements');
   coordination = app.getEvGridImportControlStatus(settings, now + 60001);
   assert.equal(coordination.state, 'waiting_response');
   assert.equal(coordination.activeTargetW, 0, 'expired feedback cannot release grid import');
@@ -2649,7 +2650,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.inputUpdatedAt.ev.chargeCurrent = now;
   coordination = app.getEvGridImportControlStatus(settings, now + 3000);
   assert.equal(coordination.state, 'active');
-  assert.equal(coordination.activeTargetW, 5000);
+  assert.equal(coordination.activeTargetW, 5520);
 
   app.getPlanningForecastDay = () => 'today';
   app.isNightPlanningPhase = () => false;
@@ -2658,8 +2659,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.gridInputHistory = [];
   const evaluationState = app.getEvaluationState({ ...settings, gridControlWindowSeconds: 0, pvDeltaThresholdW: 0 }, now + 3000, 0);
   assert.equal(evaluationState.gridPowerW, 0, 'raw P1 must remain untouched');
-  assert.equal(evaluationState.evGridImportTargetW, 5000);
-  assert.equal(evaluationState.controlGridPowerW, -5000, 'only the battery meter target is shifted by the permitted EV grid share');
+  assert.equal(evaluationState.evGridImportTargetW, 5520);
+  assert.equal(evaluationState.controlGridPowerW, -5520, 'only the battery meter target is shifted by the measured EV grid share');
 }
 
 // Ampere feedback is actual consumption, independent of the published limit.

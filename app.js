@@ -618,7 +618,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.6 initialized');
+    this.log('HomeFlux EMS v1.1.7 initialized');
   }
 
   refreshSettingsCache() {
@@ -1659,7 +1659,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     const report = {
       schema: 'homeflux-diagnostics-v2',
-      version: '1.1.6',
+      version: '1.1.7',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -9107,9 +9107,17 @@ class HomeFluxEmsApp extends Homey.App {
   getEvCommandedPowerW(index, storedSettings = this.getSettings()) {
     const settings = this.getEvInstanceSettings(index, storedSettings);
     const perAmpW = evPowerPerAmp(settings);
-    // Keep the last current/mode available for display and Flow compatibility,
-    // but never treat it as a live portfolio reservation after HomeFlux has
-    // published charging permission = false.
+    // This historical helper name also serves physical portfolio accounting.
+    // Fresh delivery remains a real load even while a lower/STOP output is
+    // taking effect. The PV pool separately gates permission to prevent a
+    // stopped EV from financing its own PV restart with old telemetry.
+    if (this.getEvControlType(settings) !== 'mode') {
+      const measured = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index));
+      if (measured.fresh) return measured.currentA * perAmpW;
+    }
+    // Without fresh telemetry, never reserve an old current/mode after
+    // HomeFlux has published charging permission = false. Keep those output
+    // values themselves available for display and Flow compatibility.
     if (!this.isEvOutputPermittedFor(index)) return 0;
     const session = this.getEvSessionDetectionRuntime(index);
     if (this.getEvControlType(settings) === 'mode') {
@@ -10163,6 +10171,7 @@ class HomeFluxEmsApp extends Homey.App {
     const waitingCommandInstances = [];
     const waitingResponseInstances = [];
     let confirmedEvPowerW = 0;
+    let confirmedEvGridPowerW = 0;
     let modeControlRelevant = false;
     let configuredEvPowerCeilingW = 0;
     let modeConfiguredPowerCeilingW = 0;
@@ -10200,6 +10209,10 @@ class HomeFluxEmsApp extends Homey.App {
         }
         const measuredPowerW = measured.currentA * perAmpW;
         confirmedEvPowerW += measuredPowerW;
+        // Explicit battery/night-surplus support must remain battery-funded.
+        confirmedEvGridPowerW += Math.max(0, measuredPowerW
+          - Math.max(0, Number(decision.batterySupportAllocatedW) || 0)
+          - Math.max(0, Number(decision.nightSurplusAllocatedW) || 0));
         configuredEvPowerCeilingW += measuredPowerW;
       }
     }
@@ -10227,22 +10240,28 @@ class HomeFluxEmsApp extends Homey.App {
       && Number.isFinite(baselineW) && baselineW >= 0
       && Number.isFinite(detectedEvLoadW) && detectedEvLoadW >= 0;
     if (houseLoadProtectionAvailable) {
-      physicalAllowanceW = Math.min(physicalAllowanceW, detectedEvLoadW);
+      // Mode-only P1 inference cannot invalidate direct current telemetry
+      // from another EV in the same portfolio.
+      physicalAllowanceW = Math.min(physicalAllowanceW, Math.max(confirmedEvPowerW, detectedEvLoadW));
     }
     const houseLoadHold = modeControlRelevant && Boolean(detection.gridReleaseBlocked);
-    let allowedTargetW = requestedTargetW;
+    if (houseLoadHold) physicalAllowanceW = Math.min(physicalAllowanceW, confirmedEvPowerW);
+    let allowedTargetW = Math.max(requestedTargetW, confirmedEvGridPowerW);
     // Re-read current tariff budgets while a slow context update is pending.
     // Emergency/deadline overrides retain their existing portfolio policy.
     if (storedSettings.contractType && relevant.some(({ settings }) => this.getEvControlType(settings) !== 'mode')
       && !relevant.some(({ index, decision }) => decision.guaranteeActive || this.getEffectiveEvModeFor(index, storedSettings) === 'emergency')) {
       const tariff = currentTariff ||= findCurrentTariff(new Date(now), { ...storedSettings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || storedSettings.dynamicSlots });
       const gridLimitW = this.getEvGridImportLimitW(tariff, storedSettings);
-      // The portfolio request is derived from desired setpoints. It is not a
-      // measurement ceiling: an actual load above that request is still valid
-      // inside the permitted meter budget. Keep mode-only attribution intact.
-      allowedTargetW = Math.min(gridLimitW, Math.max(allowedTargetW, confirmedEvPowerW));
+      // The grid limit controls EV setpoints, not physical load attribution.
+      // Capping measured watts here makes the battery supply the difference
+      // while the charger responds to a lower command. A zero budget still
+      // revokes the existing permission immediately. Keep mode-only policy.
+      allowedTargetW = gridLimitW > 0
+        ? Math.max(Math.min(gridLimitW, allowedTargetW), confirmedEvGridPowerW)
+        : 0;
     }
-    const activeTargetW = houseLoadHold ? 0 : Math.min(allowedTargetW, physicalAllowanceW);
+    const activeTargetW = Math.min(allowedTargetW, physicalAllowanceW);
     const waitingForPhysicalLoad = requestedTargetW > 0 && activeTargetW <= 0.5;
     const noLoadRemainingSeconds = modeControlRelevant && Number(detection.noLoadSince) > 0 && !houseLoadHold
       ? Math.max(0, Math.ceil(((Number(detection.noLoadSince) + 60000) - now) / 1000)) : 0;
@@ -10251,7 +10270,7 @@ class HomeFluxEmsApp extends Homey.App {
       requestedTargetW: Math.round(requestedTargetW),
       activeTargetW: Math.round(activeTargetW),
       batteryDischargeW: Math.round(batteryDischargeW),
-      state: houseLoadHold ? 'house_load_hold'
+      state: houseLoadHold && activeTargetW <= 0.5 ? 'house_load_hold'
         : noLoadRemainingSeconds > 0 ? 'house_load_observation'
         : activeTargetW <= 0.5 && waitingResponseInstances.length ? 'waiting_response'
           : waitingForPhysicalLoad ? 'waiting_load' : 'active',
@@ -10263,6 +10282,7 @@ class HomeFluxEmsApp extends Homey.App {
       waitingResponseInstances,
       physicalImportBeforeBatteryW: Math.round(physicalImportBeforeBatteryW),
       confirmedEvPowerW: Math.round(confirmedEvPowerW),
+      confirmedEvGridPowerW: Math.round(confirmedEvGridPowerW),
       configuredEvPowerCeilingW: Math.round(configuredEvPowerCeilingW),
       modeConfiguredPowerCeilingW: Math.round(modeConfiguredPowerCeilingW),
       houseBaselineW: Number.isFinite(baselineW) ? Math.round(baselineW) : null,
@@ -13915,7 +13935,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.6',
+      version: '1.1.7',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -13988,7 +14008,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.6',
+        version: '1.1.7',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14338,7 +14358,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.6',
+      version: '1.1.7',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
