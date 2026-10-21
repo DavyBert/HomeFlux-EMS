@@ -1,5 +1,7 @@
 # EV/batterijcorrecties binnen 1.1.9
 
+Historische beschrijving van 1.1.9. De PV-toerekening en testverwachting voor huishoudelijke batterijondersteuning zijn vanaf 1.1.11 verfijnd naar PV eerst voor het huis; zie [EV-PV-HOUSE-FIRST-1.1.11.md](EV-PV-HOUSE-FIRST-1.1.11.md). De STOP-bescherming blijft behouden.
+
 ## Basis en afbakening
 
 Basis is de beschikbare 1.1.9-code met de SoC-doorlaadkeuze. De remote HEAD en main zijn opnieuw gecontroleerd en wijzen nog naar `2a0994756dfc8cd5c2ab4b3aa2ca9a611d4a98a3` (1.1.6). De lokale aangeleverde correcties uit 1.1.8 en de eerder gemaakte 1.1.9-uitbreiding zijn behouden. Er is niets gereset, gepusht of gepubliceerd en de versie blijft 1.1.9.

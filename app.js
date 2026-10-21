@@ -623,7 +623,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.10 initialized');
+    this.log('HomeFlux EMS v1.1.11 initialized');
   }
 
   refreshSettingsCache() {
@@ -1664,7 +1664,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     const report = {
       schema: 'homeflux-diagnostics-v2',
-      version: '1.1.10',
+      version: '1.1.11',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -9349,21 +9349,10 @@ class HomeFluxEmsApp extends Homey.App {
     // an already-active tariff-aware EV load grid-funded. Smart and SoC-target
     // modes both reuse this PV pool; Emergency is deliberately excluded. This
     // reconstructs: battery PV + active flexible-EV PV + residual export.
-    // Ordinary household discharge is not EV battery support. Removing that
-    // contribution as well would reassign the house's PV to itself on every
-    // refresh and progressively extinguish legitimate household support.
-    let measuredEvW = 0;
-    let allActiveEvMeasured = true;
-    for (let index = 0; index < evCount; index += 1) {
-      if (!this.isEvOutputPermittedFor(index) || !this.isEvOutputActiveFor(index, storedSettings)) continue;
-      const measured = this.getEvMeasuredCurrent(index);
-      if (!measured.fresh) { allActiveEvMeasured = false; break; }
-      measuredEvW += measured.currentA * evPowerPerAmp(this.getEvInstanceSettings(index, runtimeSettings));
-    }
-    const observedHouseW = allActiveEvMeasured && measuredEvW > 0 && this.inputSeen.pv
-      ? Math.max(0, rawGridW + Math.max(0, Number(this.state.pvPowerW) || 0) + currentBatteryW - measuredEvW) : 0;
-    const ordinaryHouseDischargeW = Math.min(Math.max(0, currentBatteryW), observedHouseW);
-    const importWithoutBatteryDischargeW = Math.max(0, gridWithoutCurrentBatteryDischargeW - ordinaryHouseDischargeW);
+    // Remove ALL discharge, including household support: PV covers the house
+    // before entering the flexible pool. Crediting existing house discharge
+    // here would let that command finance its own continuation despite sunlight.
+    const importWithoutBatteryDischargeW = Math.max(0, gridWithoutCurrentBatteryDischargeW);
     const batteryPvChargeW = Math.max(0, currentBatteryChargeW - importWithoutBatteryDischargeW);
     const importAfterBatteryChargeW = Math.max(0, importWithoutBatteryDischargeW - currentBatteryChargeW);
     const flexibleEvPvPowerW = Math.max(0, currentFlexibleEvPowerW - importAfterBatteryChargeW);
@@ -10225,11 +10214,21 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   recordEvBatteryHouseReference(now = Date.now(), settings = this.getSettings()) {
-    if (!this.inputSeen?.pv || Number(this.inputUpdatedAt?.pv) > Number(this.inputUpdatedAt?.grid)) return;
     const evCount = this.getEvCount(settings);
     if (evCount <= 0) return;
+    const gridAt = Number(this.inputUpdatedAt?.grid) || now;
+    // Retain the command that accompanied THIS P1 sample. A later publication
+    // cannot retroactively change the physical supply reconstructed from it.
+    this.evBatteryPhysicalImportAt = gridAt;
+    this.evBatteryPhysicalImportW = (Number(this.state.gridPowerW) || 0)
+      + (Number(this.state.lastTotalCommandW) || 0);
     const previousGridAt = Number(this.evBatteryHouseLastGridAt) || 0;
-    this.evBatteryHouseLastGridAt = Number(this.inputUpdatedAt?.grid) || now;
+    this.evBatteryHouseLastGridAt = gridAt;
+    // A P1 update ahead of its PV update must not teach the PV delta as a
+    // household change. Keep the last coherent house reference until both
+    // source streams have advanced, without adding a timer or polling.
+    const pvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    if (!this.inputSeen?.pv || pvAt > gridAt || (previousGridAt > 0 && pvAt <= previousGridAt)) return;
     let measuredW = 0;
     for (let index = 0; index < evCount; index += 1) {
       const measured = this.getEvMeasuredCurrent(index);
@@ -10395,9 +10394,33 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     const waitingInstances = [...new Set([...waitingCommandInstances, ...waitingResponseInstances])];
+    const detection = this.evSessionDetection || {};
+    const baselineW = detection.portfolioBaselineW === null || detection.portfolioBaselineW === undefined
+      ? NaN : Number(detection.portfolioBaselineW);
+    // Reconstructed from P1 + PV + signed battery command - measured EV power.
+    // This is an estimate, not a separate house or battery power measurement.
+    const houseReferenceW = Number.isFinite(this.evBatteryHouseReferenceW)
+      ? this.evBatteryHouseReferenceW : (Number.isFinite(baselineW) ? baselineW : null);
     const pvFresh = this.inputSeen?.pv && Number(this.inputUpdatedAt?.pv) > 0
       && now - Number(this.inputUpdatedAt.pv) <= 5 * 60 * 1000;
-    const protectedPvW = Math.min(attributedPvW, pvFresh ? Math.max(0, Number(this.state?.pvPowerW) || 0) : attributedPvW);
+    const measuredPvW = Math.max(0, Number(this.state?.pvPowerW) || 0);
+    let accountingPvW = measuredPvW;
+    const gridAt = Number(this.inputUpdatedAt?.grid) || 0;
+    if (pvFresh && houseReferenceW !== null && Number(this.inputUpdatedAt.pv) < gridAt
+      && configuredEvPowerCeilingW <= confirmedEvPowerW + heldEvPowerW + 0.5) {
+      // P1 can reveal a PV drop before its PV Flow arrives. With direct EV
+      // feedback, cap the old PV attribution using the last coherent house
+      // reference and this meter sample. This is a conservative estimate, not
+      // another PV measurement; mode-only inference cannot establish it.
+      const sampleImportW = this.evBatteryPhysicalImportAt === gridAt
+        ? this.evBatteryPhysicalImportW : (Number(this.state.gridPowerW) || 0) + batteryPowerW;
+      accountingPvW = Math.min(accountingPvW,
+        Math.max(0, houseReferenceW + confirmedEvPowerW + heldEvPowerW - sampleImportW));
+    }
+    // Apply one portfolio-wide ceiling, also between allocator evaluations and
+    // during STOP. No EV can claim PV that is needed by the household first.
+    const evPvAvailableW = pvFresh ? Math.max(0, accountingPvW - (houseReferenceW ?? 0)) : attributedPvW;
+    const protectedPvW = Math.min(attributedPvW, evPvAvailableW);
     const pvScale = attributedPvW > 0 ? protectedPvW / attributedPvW : 0;
     confirmedEvGridPowerW = Math.max(0, confirmedEvGridPowerW - (attributedPvW - modeAttributedPvW) * pvScale);
     modeConfiguredPowerCeilingW = Math.max(0, modeConfiguredPowerCeilingW - modeAttributedPvW * pvScale);
@@ -10415,9 +10438,6 @@ class HomeFluxEmsApp extends Homey.App {
     const physicalImportBeforeBatteryW = Math.max(0, rawGridW + batteryPowerW);
     let physicalAllowanceW = physicalImportBeforeBatteryW;
     physicalAllowanceW = Math.min(physicalAllowanceW, configuredEvPowerCeilingW);
-    const detection = this.evSessionDetection || {};
-    const baselineW = detection.portfolioBaselineW === null || detection.portfolioBaselineW === undefined
-      ? NaN : Number(detection.portfolioBaselineW);
     const detectedEvLoadW = detection.detectedEvLoadW === null || detection.detectedEvLoadW === undefined
       ? NaN : Number(detection.detectedEvLoadW);
     const houseLoadProtectionAvailable = modeControlRelevant
@@ -10431,19 +10451,11 @@ class HomeFluxEmsApp extends Homey.App {
     const houseLoadHold = modeControlRelevant && Boolean(detection.gridReleaseBlocked);
     if (houseLoadHold) physicalAllowanceW = Math.min(physicalAllowanceW, confirmedEvPowerW + heldEvPowerW);
     let allowedTargetW = confirmedEvGridPowerW + modeConfiguredPowerCeilingW;
-    // Reserve the observed household load instead of exempting it as EV import.
-    // This is an estimate, capped against the live site meter, not a house meter.
-    const houseReferenceW = Number.isFinite(this.evBatteryHouseReferenceW)
-      ? this.evBatteryHouseReferenceW : (Number.isFinite(baselineW) ? baselineW : null);
+    // Only the household deficit after PV remains eligible for ordinary battery
+    // support. Keep measured EV demand protected above a reduced EV setpoint.
     if (houseReferenceW !== null && pvFresh) {
-      let allMeasuredEvW = 0;
-      for (let index = 0; index < evCount; index += 1) {
-        const measured = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index), now);
-        if (measured.fresh) allMeasuredEvW += measured.currentA * evPowerPerAmp(this.getEvInstanceSettings(index, storedSettings));
-      }
-      const unassignedPvW = Math.max(0, Number(this.state?.pvPowerW) - Math.max(configuredEvPowerCeilingW, allMeasuredEvW));
       physicalAllowanceW = Math.min(physicalAllowanceW,
-        Math.max(0, physicalImportBeforeBatteryW - Math.max(0, houseReferenceW - unassignedPvW)));
+        Math.max(0, physicalImportBeforeBatteryW - Math.max(0, houseReferenceW - accountingPvW)));
     }
     // A mode estimate remains subject to its existing planned allowance.
     if (modeControlRelevant) allowedTargetW = Math.min(allowedTargetW,
@@ -14138,7 +14150,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.10',
+      version: '1.1.11',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -14211,7 +14223,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.10',
+        version: '1.1.11',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14562,7 +14574,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.10',
+      version: '1.1.11',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

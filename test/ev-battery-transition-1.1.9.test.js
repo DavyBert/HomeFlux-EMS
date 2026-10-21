@@ -85,9 +85,10 @@ async function directCases() {
 
   const pv = await fixture(), b = pv.app;
   await warm(pv,1,5000);
-  assert(latest(b).pvAllocatedW>4000, 'the real allocator must assign PV');
-  assert(Math.abs(b.state.lastTotalCommandW-house)<35,
-    `mixed PV/grid must retain house battery: ${b.state.lastTotalCommandW}`);
+  assert(latest(b).pvAttributedW>4000 && latest(b).pvAttributedW<=5000-house+2,
+    'PV first covers the house; only the surplus belongs to the EV');
+  assert(b.state.lastTotalCommandW<35,
+    `PV covers the house, so house battery discharge must stop: ${b.state.lastTotalCommandW}`);
   results.push({ scenario:'mixed-pv-grid', batteryW:b.state.lastTotalCommandW,
     allowance:b.getEvGridImportControlStatus(), decision:latest(b) });
   cases++;
@@ -232,4 +233,4 @@ async function run() {
  } finally {Date.now=original;restore();}
 }
 if(require.main===module)run().catch(e=>{console.error(e);process.exitCode=1;});
-module.exports={run};
+module.exports={run,fixture,status,pass,step,warm,permitted,latest,perAmpW,start};
