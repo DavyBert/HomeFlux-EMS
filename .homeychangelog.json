@@ -1,4 +1,8 @@
 {
+  "1.1.10": {
+    "nl": "De periodieke herhaling van de actieve batterijmodus bij split control is nu instelbaar in seconden, vanaf 1 seconde. Bestaande instellingen worden bij de upgrade automatisch omgerekend van minuten naar seconden, met behoud van het ingestelde interval.",
+    "en": "The periodic resend of the active battery mode in split control can now be configured in seconds, starting at 1 second. Existing settings are automatically converted from minutes to seconds during the upgrade, preserving the configured interval."
+  },
   "1.1.9": {
     "en": "Choose per EV whether charging stops at the SoC target or continues according to configured tariff and PV preferences. Existing configurations keep stopping by default. Manual session stops and kWh targets retain their stop behaviour. Improved power accounting when EV charging stops and when solar and grid power are combined: remaining physical load stays separate from charging permission, with the solar share accounted for separately.",
     "nl": "Kies per EV of laden stopt bij het SoC-doel of verdergaat volgens de ingestelde tarief- en PV-voorkeuren. Bestaande instellingen blijven standaard stoppen. Handmatige sessiestops en kWh-doelen behouden hun stopwerking. Verbeterde vermogensboekhouding tijdens het stoppen van EV-laden en bij gecombineerd PV- en netladen: actuele restbelasting blijft onderscheiden van laadtoestemming en het PV-aandeel wordt afzonderlijk toegerekend."

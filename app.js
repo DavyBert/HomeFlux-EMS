@@ -561,7 +561,7 @@ class HomeFluxEmsApp extends Homey.App {
         if (key === 'batteryCount' || key === 'invertBatteryCommand') {
           await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
         }
-        const splitMatch = /^splitCommandBattery([1-8])(Enabled|ChargePowerPositive|KeepMinimumPower|MinimumPowerW|ZeroMode|ChargeMinSwitchSeconds|DischargeMinSwitchSeconds|MinBetweenSwitchSeconds|DirectionConfirmSeconds|SafetyModeResendEnabled|SafetyModeResendMinutes)$/.exec(String(key));
+        const splitMatch = /^splitCommandBattery([1-8])(Enabled|ChargePowerPositive|KeepMinimumPower|MinimumPowerW|ZeroMode|ChargeMinSwitchSeconds|DischargeMinSwitchSeconds|MinBetweenSwitchSeconds|DirectionConfirmSeconds|SafetyModeResendEnabled|SafetyModeResendSeconds)$/.exec(String(key));
         if (splitMatch) {
           const splitIndex = Number(splitMatch[1]) - 1;
           const splitState = this.splitCommandState?.[splitIndex];
@@ -574,7 +574,7 @@ class HomeFluxEmsApp extends Homey.App {
           if (['Enabled', 'ChargePowerPositive', 'KeepMinimumPower', 'MinimumPowerW', 'ZeroMode'].includes(splitMatch[2])) {
             await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
           }
-          if (['SafetyModeResendEnabled', 'SafetyModeResendMinutes'].includes(splitMatch[2])) {
+          if (['SafetyModeResendEnabled', 'SafetyModeResendSeconds'].includes(splitMatch[2])) {
             this.rescheduleSplitSafetyModeResend(splitIndex);
           }
         }
@@ -623,7 +623,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.9 initialized');
+    this.log('HomeFlux EMS v1.1.10 initialized');
   }
 
   refreshSettingsCache() {
@@ -1664,7 +1664,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     const report = {
       schema: 'homeflux-diagnostics-v2',
-      version: '1.1.9',
+      version: '1.1.10',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -4563,7 +4563,20 @@ class HomeFluxEmsApp extends Homey.App {
     if (!Array.isArray(this.homey.settings.get('dynamicPriceSources'))) {
       this.setSetting('dynamicPriceSources', sourceOrder(this.homey.settings.get('dynamicPriceSource')).filter(Boolean));
     }
-    this.setSetting('settingsSchemaVersion', 70);
+    if (schema < 71) {
+      // v1.1.10: separate keys make the unit conversion idempotent, including
+      // interrupted upgrades. Never multiply a seconds value on a later boot.
+      for (let battery = 1; battery <= 8; battery += 1) {
+        const secondsKey = `splitCommandBattery${battery}SafetyModeResendSeconds`;
+        const seconds = this.homey.settings.get(secondsKey);
+        const validSeconds = seconds !== null && seconds !== undefined && seconds !== '' && Number.isFinite(Number(seconds));
+        const minutes = this.homey.settings.get(`splitCommandBattery${battery}SafetyModeResendMinutes`);
+        const legacyMinutes = minutes === null || minutes === undefined || !Number.isFinite(Number(minutes)) ? 10 : Math.max(1, Number(minutes));
+        const nextSeconds = validSeconds ? Number(seconds) : legacyMinutes * 60;
+        this.setSetting(secondsKey, Math.max(1, Math.min(86400, Math.round(nextSeconds))));
+      }
+    }
+    this.setSetting('settingsSchemaVersion', 71);
   }
 
   async ensureDefaults() {
@@ -4704,6 +4717,8 @@ class HomeFluxEmsApp extends Homey.App {
 
   getSplitBatteryConfig(index, settings = this.getSettings()) {
     const battery = index + 1;
+    const rawResendSeconds = settings[`splitCommandBattery${battery}SafetyModeResendSeconds`];
+    const resendSeconds = rawResendSeconds == null || rawResendSeconds === '' ? NaN : Number(rawResendSeconds);
     return {
       battery,
       enabled: Boolean(settings[`splitCommandBattery${battery}Enabled`]),
@@ -4716,7 +4731,7 @@ class HomeFluxEmsApp extends Homey.App {
       minBetweenSwitchSeconds: Number.isFinite(Number(settings[`splitCommandBattery${battery}MinBetweenSwitchSeconds`])) ? Math.max(0, Number(settings[`splitCommandBattery${battery}MinBetweenSwitchSeconds`])) : 60,
       directionConfirmSeconds: Number.isFinite(Number(settings[`splitCommandBattery${battery}DirectionConfirmSeconds`])) ? Math.max(0, Number(settings[`splitCommandBattery${battery}DirectionConfirmSeconds`])) : 15,
       safetyModeResendEnabled: Boolean(settings[`splitCommandBattery${battery}SafetyModeResendEnabled`]),
-      safetyModeResendMinutes: Number.isFinite(Number(settings[`splitCommandBattery${battery}SafetyModeResendMinutes`])) ? Math.max(1, Number(settings[`splitCommandBattery${battery}SafetyModeResendMinutes`])) : 10,
+      safetyModeResendSeconds: Number.isFinite(resendSeconds) ? Math.max(1, Math.min(86400, Math.round(resendSeconds))) : 600,
     };
   }
 
@@ -4855,7 +4870,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     const config = this.getSplitBatteryConfig(index, settings);
     if (!state || state.safetyTimer || !config.enabled || !config.safetyModeResendEnabled || !state.currentMode) return;
-    const intervalMs = Math.max(1, Number(config.safetyModeResendMinutes) || 10) * 60 * 1000;
+    const intervalMs = config.safetyModeResendSeconds * 1000;
     state.safetyTimer = this.homey.setTimeout(async () => {
       state.safetyTimer = null;
       try {
@@ -14123,7 +14138,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.9',
+      version: '1.1.10',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -14196,7 +14211,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.9',
+        version: '1.1.10',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14547,7 +14562,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.9',
+      version: '1.1.10',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),

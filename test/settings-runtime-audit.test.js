@@ -41,7 +41,7 @@ for (let instance = 1; instance <= 4; instance += 1) {
 const splitSuffixes = [
   'Enabled', 'ChargePowerPositive', 'KeepMinimumPower', 'MinimumPowerW', 'ZeroMode',
   'ChargeMinSwitchSeconds', 'DischargeMinSwitchSeconds', 'MinBetweenSwitchSeconds',
-  'DirectionConfirmSeconds', 'SafetyModeResendEnabled', 'SafetyModeResendMinutes',
+  'DirectionConfirmSeconds', 'SafetyModeResendEnabled', 'SafetyModeResendSeconds',
 ];
 for (let battery = 1; battery <= 8; battery += 1) {
   persisted.add(`battery${battery}MaxChargeW`);
