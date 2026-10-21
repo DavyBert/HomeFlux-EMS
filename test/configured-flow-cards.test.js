@@ -34,7 +34,11 @@ for (const kind of Object.keys(getters)) {
   for (const old of baseline[kind]) {
     const card = current.get(old.id);
     const expected = (replaced.has(old.id) || priceDeprecatedIds.has(old.id)) ? { ...old, deprecated: true } : old;
-    if (displayMetadataChangeIds.has(old.id)) {
+    if (/^set_ev[1-4]_(soc|energy)_deadline$|^set_ev_(soc|energy)_deadline_for$/.test(old.id)) {
+      assert.deepEqual({ ...card, hint: expected.hint }, expected, `Legacy functional schema changed: ${card.id}`);
+      assert.match(card.hint.en, card.id.includes('_soc_') ? /per-EV setting/ : /session stops/);
+      assert.match(card.hint.nl, card.id.includes('_soc_') ? /instelling per EV/ : /sessie stopt/);
+    } else if (displayMetadataChangeIds.has(old.id)) {
       assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
         `Original 0.7.12 functional schema changed: ${old.id}`);
     } else {

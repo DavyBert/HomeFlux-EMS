@@ -10,3 +10,5 @@ Het doel: meer nuttig zelfverbruik, energie op de juiste momenten inkopen, reser
 Gebruik optioneel het HomeFlux EMS-apparaat voor snelle bediening/status en voeg de EMS-status- en Winst-widgets toe om planning, ownership en kostimpact zichtbaar te houden op je Homey-dashboard.
 
 Autotune kan afzonderlijk goedgekeurde parameters alleen automatisch beheren boven een instelbare vertrouwensdrempel en binnen zelf bepaalde grenzen. Winst neemt ook PV-export/injectie mee; positieve exportprijzen zijn vergoedingen, negatieve prijzen zijn injectiekosten.
+
+Per EV kies je of laden stopt bij het SoC-doel (standaard) of verdergaat volgens de ingestelde tarief- en PV-voorkeuren. Handmatige sessiestops en kWh-doelen blijven stoppen.

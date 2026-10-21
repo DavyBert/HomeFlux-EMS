@@ -37,7 +37,11 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
     const card = current.get(previous.id);
     assert.ok(card, `Old card removed: ${previous.id}`);
     const expected = (legacyIds.has(card.id) || dropdownIds.has(card.id) || priceDeprecatedIds.has(card.id)) ? { ...previous, deprecated: true } : previous;
-    if (displayMetadataChangeIds.has(previous.id)) {
+    if (/^set_ev[1-4]_(soc|energy)_deadline$|^set_ev_(soc|energy)_deadline_for$/.test(card.id)) {
+      assert.deepEqual({ ...card, hint: expected.hint }, expected, `Legacy functional schema changed: ${card.id}`);
+      assert.match(card.hint.en, card.id.includes('_soc_') ? /per-EV setting/ : /session stops/);
+      assert.match(card.hint.nl, card.id.includes('_soc_') ? /instelling per EV/ : /sessie stopt/);
+    } else if (displayMetadataChangeIds.has(previous.id)) {
       assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
         `Old functional schema changed: ${previous.id}`);
     } else {

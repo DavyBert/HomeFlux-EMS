@@ -1778,7 +1778,12 @@
     "Batterij-uitvoer uit · EV-regeling zelfstandig": "Battery output disabled · independent EV control",
     "EV niet aangesloten of sessie beëindigd": "EV disconnected or session ended",
     "EV-regeling werkt onafhankelijk van deze batterijschakelaar en de batterijtest. Schakel de EV-module zelf uit om EV-sturing te stoppen.": "EV control works independently of this battery switch and the battery test. Disable the EV module itself to stop EV control.",
-    "Logt echte herberekeningen van de energieplanning en relevante EV-beslissingen, feedbackovergangen en commando-uitkomsten. Bewaart één settingsbasis en daarna alleen wijzigingen; geen uitgebreide logging per P1-meting.": "Logs actual energy-planning recalculations and relevant EV decisions, feedback transitions and command outcomes. Stores one settings baseline followed by changes; no detailed log for every P1 reading."
+    "Logt echte herberekeningen van de energieplanning en relevante EV-beslissingen, feedbackovergangen en commando-uitkomsten. Bewaart één settingsbasis en daarna alleen wijzigingen; geen uitgebreide logging per P1-meting.": "Logs actual energy-planning recalculations and relevant EV decisions, feedback transitions and command outcomes. Stores one settings baseline followed by changes; no detailed log for every P1 reading.",
+    "Na bereiken SoC-doel": "After reaching the SoC target",
+    "Verder laden volgens ingestelde tarief- en PV-voorkeuren": "Continue charging according to configured tariff and PV preferences",
+    "Stoppen met laden": "Stop charging",
+    "Stoppen is de standaard, ook voor bestaande instellingen. Bij verder laden vervalt de doelgedreven laadverplichting en regelt Smart verder volgens de ingestelde tarieven, PV-voorkeuren en vermogenslimieten. Dit geldt ook voor SoC-doelen uit Flows. Een handmatige sessiestop en kWh-doelen blijven stoppen.": "Stopping is the default, including for existing settings. When continuing, the target-driven charging requirement ends and Smart follows the configured tariffs, PV preferences and power limits. This also applies to SoC targets set through Flows. Manual session stops and kWh targets still stop charging.",
+    "SoC-doel bereikt · wacht op PV-overschot of geselecteerd tarief": "SoC target reached · waiting for PV surplus or a selected tariff"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",
@@ -2033,7 +2038,8 @@
     "Netladen volgt het planningsdoel in een geselecteerd goedkoop": "Grid charging follows the planning target in a selected cheap",
     "Netladen tijdens Normaal is ook toegestaan tot maximaal": "Grid charging during Normal is also allowed up to",
     "% SoC en nooit boven het planningsdoel.": "% SoC and never above the planning target.",
-    "Geen toegestaan laadvenster gevonden vóór het doelmoment.": "No permitted charging window found before the target time."
+    "Geen toegestaan laadvenster gevonden vóór het doelmoment.": "No permitted charging window found before the target time.",
+    "SoC-doel bereikt": "SoC target reached"
   },
   "strings": {
     "planning.forecastDecisionTomorrow": "Night planning is active. Both energy planning and day strategy now use tomorrow’s PV forecast.",

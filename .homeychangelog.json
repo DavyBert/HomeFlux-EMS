@@ -1,4 +1,8 @@
 {
+  "1.1.9": {
+    "en": "Choose per EV whether charging stops at the SoC target or continues according to configured tariff and PV preferences. Existing configurations keep stopping by default. Manual session stops and kWh targets retain their stop behaviour. Improved power accounting when EV charging stops and when solar and grid power are combined: remaining physical load stays separate from charging permission, with the solar share accounted for separately.",
+    "nl": "Kies per EV of laden stopt bij het SoC-doel of verdergaat volgens de ingestelde tarief- en PV-voorkeuren. Bestaande instellingen blijven standaard stoppen. Handmatige sessiestops en kWh-doelen behouden hun stopwerking. Verbeterde vermogensboekhouding tijdens het stoppen van EV-laden en bij gecombineerd PV- en netladen: actuele restbelasting blijft onderscheiden van laadtoestemming en het PV-aandeel wordt afzonderlijk toegerekend."
+  },
   "1.1.8": {
     "en": "Fixed cases where the home battery unintentionally supplied EV charging power when the measured charging current differed from the requested current. Peak Guard and explicitly enabled battery support remain active.",
     "nl": "Situaties verholpen waarbij de thuisbatterij onbedoeld vermogen voor EV-laden leverde wanneer de gemeten laadstroom afweek van de gevraagde stroom. Peak Guard en expliciet ingeschakelde batterijondersteuning blijven actief."

@@ -10,3 +10,5 @@ The goal: increase useful self-consumption, buy energy at the right moments, pro
 Use the optional HomeFlux EMS device for quick control/status and add the EMS status and Savings widgets to keep planning, ownership and cost impact visible on your Homey dashboard.
 
 Autotune can auto-manage individually approved parameters only above a configurable confidence threshold and within user-defined limits. Savings also includes PV export/feed-in; positive export prices are compensation, negative prices are injection costs.
+
+Each EV can stop at its SoC target (default) or continue according to configured tariff and PV preferences. Manual session stops and kWh targets still stop charging.

@@ -4,8 +4,8 @@
     "nl": "Stel EV 1: kWh nodig tegen tijd in"
   },
   "hint": {
-    "en": "Sets a persistent minimum energy target for EV 1. It remains active until another EV target is submitted or the planning override is cleared. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps deadline charging on configured favourable tariffs/PV; Yes may use any tariff when required to secure the minimum. After the minimum is reached, charging may continue on favourable moments. Peak Guard always remains absolute.",
-    "nl": "Stelt een blijvend minimum-energiedoel voor EV 1 in. Het blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee gebruikt voor de deadline alleen ingestelde gunstige tarieven/PV; Ja mag elk tarief gebruiken wanneer dat nodig is om het minimum te garanderen. Na het minimum mag laden op gunstige momenten verdergaan. Peak Guard blijft altijd absoluut."
+    "en": "Sets a persistent minimum energy target for EV 1. It remains active until another EV target is submitted or the planning override is cleared. HomeFlux tracks delivered energy from the reported charge current. Guarantee = No keeps deadline charging on configured favourable tariffs/PV; Yes may use any tariff when required to secure the minimum. The session stops after the requested kWh has been delivered. Peak Guard always remains absolute.",
+    "nl": "Stelt een blijvend minimum-energiedoel voor EV 1 in. Het blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. HomeFlux volgt de geleverde energie via de gerapporteerde laadstroom. Doel gegarandeerd = Nee gebruikt voor de deadline alleen ingestelde gunstige tarieven/PV; Ja mag elk tarief gebruiken wanneer dat nodig is om het minimum te garanderen. De sessie stopt zodra de gevraagde kWh is geleverd. Peak Guard blijft altijd absoluut."
   },
   "args": [
     {

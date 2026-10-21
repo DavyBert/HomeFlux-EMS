@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.9
+
+Choose per EV whether to stop at the SoC target (default) or continue with the configured tariff and PV preferences. This also applies to SoC Flow targets. Explicit session stops and kWh targets keep stopping.
+
 ### 1.1.6
 
 Compact diagnostic settings history and targeted EV decision and command details.
