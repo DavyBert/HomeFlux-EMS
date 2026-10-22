@@ -34,6 +34,8 @@ async function transitionCases() {
  for(const route of ['numbered','api']) {
   const h=await fixture('current');await warm(h);const requests=[],orig=h.app.requestContextEvaluate.bind(h.app);
   h.app.requestContextEvaluate=(...args)=>{requests.push(args[1]);return orig(...args)};
+  const deferred=h.app.setEvContextRefreshRequest.bind(h.app);
+  h.app.setEvContextRefreshRequest=(reason,needed)=>{if(needed)requests.push(reason);return deferred(reason,needed)};
   h.setNow(h.now()+1000);await input(h,route,0,true,12);assert(requests.length>0);requests.length=0;
   h.setNow(h.now()+1000);await input(h,route,0,true,12);assert.equal(requests.length,0);
   h.setNow(h.now()+61000);await input(h,route,0,true,12);assert(requests.length>0,'stale recovery must reevaluate');requests.length=0;

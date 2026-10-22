@@ -1,0 +1,37 @@
+[
+  {
+    "name": "battery",
+    "identical": true,
+    "contexts": 4,
+    "batteryPublications": 8,
+    "flexiblePublications": 1
+  },
+  {
+    "name": "pvExport",
+    "identical": true,
+    "contexts": 4,
+    "batteryPublications": 8,
+    "flexiblePublications": 1
+  },
+  {
+    "name": "hvac",
+    "identical": true,
+    "contexts": 4,
+    "batteryPublications": 2,
+    "flexiblePublications": 4
+  },
+  {
+    "name": "boiler",
+    "identical": true,
+    "contexts": 4,
+    "batteryPublications": 2,
+    "flexiblePublications": 3
+  },
+  {
+    "name": "combined",
+    "identical": true,
+    "contexts": 4,
+    "batteryPublications": 2,
+    "flexiblePublications": 10
+  }
+]

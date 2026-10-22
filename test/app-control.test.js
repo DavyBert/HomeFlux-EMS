@@ -2422,7 +2422,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     pvLiveW: 250,
     time: '10:00',
   });
-  assert.equal(simulation.version, '1.1.12');
+  assert.equal(simulation.version, '1.1.13');
   assert.equal(simulation.phase, 'day');
   assert.equal(simulation.planningForecastDay, 'today');
   assert.equal(simulation.plan.targetSoc, 70);
@@ -2739,13 +2739,14 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.match(timing.reason, /Slim laden via PV/);
 }
 
-// When the primary EV output timer expires, EV1 must request a complete fresh
-// EMS/portfolio evaluation just like EV2-4. It must not republish a legacy
+// When the primary EV output timer expires, EV1 must request a fresh EV-only
+// portfolio evaluation just like EV2-4. It must not republish a legacy
 // single-EV decision that can bypass the current PV distribution.
 {
   const app = bareApp();
   let timerCallback = null;
   let evaluation = null;
+  let evRefreshes = 0;
   let legacyCalculationCalled = false;
   let directPublishCalled = false;
   app.evTimer = null;
@@ -2755,6 +2756,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     return 77;
   };
   app.requestContextEvaluate = (force, reason) => { evaluation = { force, reason }; };
+  app.refreshEvOnlyContext = async () => { evRefreshes += 1; };
   app.calculateEvControl = () => { legacyCalculationCalled = true; return null; };
   app.publishEvDecision = async () => { directPublishCalled = true; };
   app.scheduleEvPublish(1234);
@@ -2762,7 +2764,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.ok(timerCallback);
   timerCallback();
   assert.equal(app.evTimer, null);
-  assert.deepEqual(evaluation, { force: true, reason: 'ev1_output_timer' });
+  assert.equal(evaluation, null, 'EV output retry must not recalculate unrelated modules');
+  assert.equal(evRefreshes, 1);
   assert.equal(legacyCalculationCalled, false);
   assert.equal(directPublishCalled, false);
 }

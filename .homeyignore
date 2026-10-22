@@ -1,11 +1,51 @@
-# Generated Homey build output. Always rebuild this from the current source/Compose files.
-.homeybuild/
+# Generated output: Homey rebuilds this from the current source.
+/.homeybuild/
 
-# Repository and CI metadata are not part of the Homey runtime package.
-.git/
-.github/
+# Repository, CI and editor files.
+/.git/
+/.github/
+/.gitignore
+/.gitattributes
+/.editorconfig
+/.vscode/
+/.idea/
 
-# Development-only files that are not needed by the installed Homey app.
-test/
+# Development documentation, tests and investigation reports.
+/docs/
+/DOCS/
+/test/
+/tests/
+/investigation/
+/coverage/
+/.nyc_output/
+/README.md
+/DEPENDENCIES.txt
+/top.txt
+
+# Old source copies, temporary files and profiling output, at any depth.
+*.precoherent
+*.bak
+*.orig
+*.rej
+*~
 *.log
-app.js.precoherent
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local environment files and source archives in the project root.
+/env.json
+/.env
+/.env.*
+/*.zip
+/*.tgz
+/*.tar.gz
+
+# Keep runtime code, dependencies, assets, locales, settings and widgets.
+# Keep .homeycompose, manifests, package files, LICENSE, .homeychangelog.json,
+# README.txt and README.<language>.txt available for building and publishing.
