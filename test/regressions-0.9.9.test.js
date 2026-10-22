@@ -307,8 +307,8 @@ console.log('0.9.9 Autotune scheduling regression tests passed');
   assert.equal(hidden._diagnosticsExpiresAt, 0);
 }
 
-// CPU diagnostics must stay lightweight in the fast path: section timing uses
-// wall time only, while process CPU is sampled separately on the slow heartbeat.
+// CPU diagnostics measure synchronous scopes only. Async Flow waiting must
+// never be presented as attributable CPU, and disabled diagnostics do no reads.
 {
   const app = Object.create(HomeFluxEmsApp.prototype);
   const now = Date.now();
@@ -319,19 +319,26 @@ console.log('0.9.9 Autotune scheduling regression tests passed');
   });
   const startSource = HomeFluxEmsApp.prototype.startDiagnosticCpuSection.toString();
   const endSource = HomeFluxEmsApp.prototype.endDiagnosticCpuSection.toString();
-  assert.equal(startSource.includes('process.cpuUsage'), false, 'fast-path section start must not poll process CPU');
-  assert.equal(endSource.includes('process.cpuUsage'), false, 'fast-path section end must not poll process CPU');
   assert.equal(startSource.includes('hrtime.bigint'), false, 'CPU diagnostics must not depend on BigInt timing');
   assert.equal(endSource.includes('hrtime.bigint'), false, 'CPU diagnostics must not depend on BigInt timing');
 
+  let cpuReads = 0;
+  app.readDiagnosticCpuUsage = () => ({ user: ++cpuReads * 1000, system: 0 });
   const token = app.startDiagnosticCpuSection('fast_evaluation');
   assert(token, 'enabled CPU diagnostics should return a lightweight timing token');
   app.endDiagnosticCpuSection(token);
   assert.equal(app.diagnostics.cpuSections.fast_evaluation.calls, 1);
   const report = app.getDiagnosticsReport();
-  assert.equal(report.cpu.perSectionCpuSampling, false);
-  assert.equal(report.cpu.measurementMode, 'process_cpu_60s_plus_section_wall_time');
-  assert.equal(Object.prototype.hasOwnProperty.call(report.cpu.sections.fast_evaluation, 'cpuMs'), false, 'per-section CPU polling must not be reported as if it were measured');
+  assert.equal(report.cpu.perSectionCpuSampling, true);
+  assert.equal(report.cpu.measurementMode, 'process_cpu_60s_plus_sync_cpu_and_section_wall_time');
+  assert.equal(report.cpu.sections.fast_evaluation.cpuMs, 1);
+  assert.equal(cpuReads, 2);
+  app.endDiagnosticCpuSection(app.startDiagnosticCpuSection('battery_command_publish'));
+  assert.equal(cpuReads, 2, 'async publication uses wall time only');
+  assert.equal(app.diagnostics.cpuSections.battery_command_publish.cpuMs, undefined);
+  app.diagnostics.options.cpu = false;
+  assert.equal(app.startDiagnosticCpuSection('fast_evaluation'), null);
+  assert.equal(cpuReads, 2, 'disabled CPU diagnostics must not sample');
 }
 
 

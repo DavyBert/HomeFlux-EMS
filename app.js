@@ -610,6 +610,17 @@ class HomeFluxEmsApp extends Homey.App {
 
     // The one-minute heartbeat checks context boundaries and independently
     // services EVs. The EV pass never runs battery/planning/HVAC/boiler work.
+    this.homey.on?.('cpuwarn', data => {
+      // Warning-boundary evidence survives in Homey's crash log. Do not build
+      // a full report, serialize settings or write persistent state here.
+      this.log('HomeFlux CPU warning', JSON.stringify({
+        at: Date.now(), count: data?.count, limit: data?.limit,
+        counters: this.diagnostics?.counters || {},
+        lastCpuSample: this.diagnostics?.cpuSamples?.at(-1) || null,
+        commandPublishing: Boolean(this.commandPublishing),
+        contextRunning: Boolean(this.contextEvaluationRunning), evPublishing: Boolean(this.evPortfolioPass),
+      }));
+    });
     this.contextHeartbeatTimer = this.homey.setInterval(() => {
       const diagnosticCpu = this.startDiagnosticCpuSection('heartbeat');
       try {
@@ -623,7 +634,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.11 initialized');
+    this.log('HomeFlux EMS v1.1.12 initialized');
   }
 
   refreshSettingsCache() {
@@ -1416,10 +1427,16 @@ class HomeFluxEmsApp extends Homey.App {
     try {
       if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.cpu) return null;
       if (Number(this.diagnostics.expiresAt) <= Date.now()) return null;
-      return {
+      const token = {
         name: String(name || 'unknown'),
         wallAt: performance.now(),
       };
+      // Process CPU can be attributed only to these synchronous scopes.
+      // Async Flow/publication scopes retain wall time, including I/O waiting.
+      if (['context_evaluation','fast_evaluation','fast_feedback_preflight','planning_calculation','heartbeat'].includes(token.name)) {
+        token.cpuAt = this.readDiagnosticCpuUsage();
+      }
+      return token;
     } catch (_) {
       return null;
     }
@@ -1438,6 +1455,15 @@ class HomeFluxEmsApp extends Homey.App {
       bucket.calls += 1;
       bucket.wallMs += wallMs;
       bucket.maxWallMs = Math.max(bucket.maxWallMs, wallMs);
+      if (token.cpuAt) {
+        const current = this.readDiagnosticCpuUsage();
+        if (current) {
+          const cpuMs = Math.max(0, current.user - token.cpuAt.user + current.system - token.cpuAt.system) / 1000;
+          bucket.cpuCalls = (bucket.cpuCalls || 0) + 1;
+          bucket.cpuMs = (bucket.cpuMs || 0) + cpuMs;
+          bucket.maxCpuMs = Math.max(bucket.maxCpuMs || 0, cpuMs);
+        }
+      }
       this.diagnostics.cpuSections[name] = bucket;
     } catch (_) {
       // Diagnostics must fail open and may never break battery control.
@@ -1660,11 +1686,16 @@ class HomeFluxEmsApp extends Homey.App {
         wallMs: Math.round((Number(bucket.wallMs) || 0) * 1000) / 1000,
         maxWallMs: Math.round((Number(bucket.maxWallMs) || 0) * 1000) / 1000,
         avgWallMs: calls ? Math.round(((Number(bucket.wallMs) || 0) / calls) * 1000) / 1000 : 0,
+        ...(bucket.cpuCalls ? {
+          cpuCalls: bucket.cpuCalls, cpuMs: Math.round(bucket.cpuMs * 1000) / 1000,
+          avgCpuMs: Math.round(bucket.cpuMs / bucket.cpuCalls * 1000) / 1000,
+          maxCpuMs: Math.round(bucket.maxCpuMs * 1000) / 1000,
+        } : {}),
       };
     }
     const report = {
       schema: 'homeflux-diagnostics-v2',
-      version: '1.1.11',
+      version: '1.1.12',
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -1685,8 +1716,9 @@ class HomeFluxEmsApp extends Homey.App {
         arch: process.arch,
       },
       cpu: {
-        measurementMode: 'process_cpu_60s_plus_section_wall_time',
-        perSectionCpuSampling: false,
+        measurementMode: 'process_cpu_60s_plus_sync_cpu_and_section_wall_time',
+        perSectionCpuSampling: true,
+        sectionCpuScope: 'synchronous process CPU deltas; inclusive/nested, not additive; async sections are wall time only',
         status: this.cloneDiagnosticValue(runtime.diagnosticStatus?.cpu) || { available: null, failures: 0, lastError: '' },
         counters: { ...runtime.counters },
         sections: cpuSections,
@@ -3004,6 +3036,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   requestContextEvaluate(immediate = false, reason = 'context', requestedAt = 0, bypassInterval = false, invalidatesBatteryContext = true) {
+    if (this.contextTimer || this.contextEvaluationRunning) this.recordDiagnosticCounter('contextRequestsCoalesced');
     this.markContextDirty(reason, invalidatesBatteryContext);
     if (this.contextEvaluationRunning) {
       this.contextEvaluationPending = true;
@@ -3053,6 +3086,9 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.contextDirtyReasons) this.contextDirtyReasons.clear();
     this.activeContextDiagnosticReasons = reasons;
     this.recordDiagnosticCounter('contextEvaluations');
+    if (reasons.some(reason => /grid_|pv_context/.test(reason))) this.recordDiagnosticCounter('evContextFromMeter');
+    if (reasons.some(reason => /^ev\d_status|api_context_input/.test(reason))) this.recordDiagnosticCounter('evContextFromInput');
+    if (reasons.includes('battery_output_changed')) this.recordDiagnosticCounter('evContextFromBattery');
     const diagnosticCpu = this.startDiagnosticCpuSection('context_evaluation');
     try {
       const result = this.evaluateContextNow(forceStatus);
@@ -4751,6 +4787,21 @@ class HomeFluxEmsApp extends Homey.App {
     return magnitude;
   }
 
+  getEffectiveSplitCommands(commands, settings) {
+    if (!commands.some((_, index) => settings[`splitCommandBattery${index + 1}Enabled`])) return commands;
+    return commands.map((value, index) => {
+      const config = this.getSplitBatteryConfig(index, settings);
+      if (!config.enabled) return value;
+      const desiredMode = this.getSplitDesiredMode(value, config);
+      const currentMode = this.splitCommandState?.[index]?.currentMode;
+      // splitModeChangeNeeded already handles/schedules the direction change.
+      // A blocked change physically retains the old mode at its minimum power.
+      const mode = currentMode || desiredMode;
+      const power = Math.abs(this.getSplitPowerValue(mode, mode === desiredMode ? value : 0, config));
+      return mode === 'charge' ? -power : power;
+    });
+  }
+
   getSplitModeHoldUntil(index) {
     this.ensureSplitCommandState();
     const state = this.splitCommandState[index];
@@ -5747,31 +5798,9 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.getEvCount() < 1) return true;
       const current = parseFiniteInputNumber(args.charge_current);
       if (current === null || current < 0) return false;
-      const wasFresh = this.getEvControlType(this.getEvInstanceSettings(0)) === 'mode'
-        || this.getEvMeasuredCurrent(0).fresh;
-      const now = Date.now();
-      const nextConnected = String(args.connected || 'no') === 'yes';
-      const wasConnected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
-      const connectionChanged = this.hasBooleanInputChanged(
-        this.state.evConnected, nextConnected, Boolean(this.inputSeen.ev?.connected),
-      );
-      const normalizedCurrent = Math.max(0, current);
-      const currentChanged = this.hasNumericInputChanged(
-        this.state.evChargeCurrentA, normalizedCurrent, Boolean(this.inputSeen.ev?.chargeCurrent), 0.05,
-      );
-      this.tickEvEnergyPlan(0, now);
-      this.noteEvBatteryCurrentTransition(0, normalizedCurrent, nextConnected, now);
-      this.state.evConnected = nextConnected;
-      this.state.evChargeCurrentA = normalizedCurrent;
-      this.inputSeen.ev.connected = true;
-      this.inputSeen.ev.chargeCurrent = true;
-      this.inputUpdatedAt.ev.connected = now;
-      this.inputUpdatedAt.ev.chargeCurrent = now;
-      this.noteAutoTuneEvFeedback(0, normalizedCurrent, now);
-      if (connectionChanged) this.handleEvSessionConnectionTransition(wasConnected, nextConnected);
-      if (connectionChanged) this.handleEvDetectionConnectionTransition(0, wasConnected, nextConnected, now);
-      this.updateEvSessionFromCurrent(0, nextConnected, normalizedCurrent, now);
-      if (connectionChanged || currentChanged || !wasFresh) this.requestContextEvaluate(connectionChanged, 'ev1_status');
+      const connected = String(args.connected || 'no') === 'yes';
+      const connectionChanged = this.hasBooleanInputChanged(this.state.evConnected, connected, Boolean(this.inputSeen.ev?.connected));
+      if (this.updateEvStatusInput(0, connected, current)) this.requestContextEvaluate(connectionChanged, 'ev1_status');
       return true;
     });
 
@@ -5913,29 +5942,9 @@ class HomeFluxEmsApp extends Homey.App {
         const runtime = this.getExtraEv(index);
         const current = parseFiniteInputNumber(args.charge_current);
         if (!runtime || current === null || current < 0) return false;
-        const wasFresh = this.getEvControlType(this.getEvInstanceSettings(index)) === 'mode'
-          || this.getEvMeasuredCurrent(index).fresh;
-        const now = Date.now();
-        const nextConnected = String(args.connected || 'no') === 'yes';
-        const wasConnected = Boolean(runtime.seen.connected) && Boolean(runtime.state.connected);
-        const connectionChanged = this.hasBooleanInputChanged(runtime.state.connected, nextConnected, Boolean(runtime.seen.connected));
-        const normalizedCurrent = Math.max(0, current);
-        const currentChanged = this.hasNumericInputChanged(
-          runtime.state.chargeCurrentA, normalizedCurrent, Boolean(runtime.seen.chargeCurrent), 0.05,
-        );
-        this.tickEvEnergyPlan(index, now);
-        this.noteEvBatteryCurrentTransition(index, normalizedCurrent, nextConnected, now);
-        runtime.state.connected = nextConnected;
-        runtime.state.chargeCurrentA = normalizedCurrent;
-        runtime.seen.connected = true;
-        runtime.seen.chargeCurrent = true;
-        runtime.updatedAt.connected = now;
-        runtime.updatedAt.chargeCurrent = now;
-        this.noteAutoTuneEvFeedback(index, normalizedCurrent, now);
-        if (connectionChanged) this.handleEvSessionConnectionTransitionFor(index, wasConnected, nextConnected);
-        if (connectionChanged) this.handleEvDetectionConnectionTransition(index, wasConnected, nextConnected, now);
-        this.updateEvSessionFromCurrent(index, nextConnected, normalizedCurrent, now);
-        if (connectionChanged || currentChanged || !wasFresh) this.requestContextEvaluate(connectionChanged, `ev${instance}_status`);
+        const connected = String(args.connected || 'no') === 'yes';
+        const connectionChanged = this.hasBooleanInputChanged(runtime.state.connected, connected, Boolean(runtime.seen.connected));
+        if (this.updateEvStatusInput(index, connected, current)) this.requestContextEvaluate(connectionChanged, `ev${instance}_status`);
         return true;
       });
 
@@ -9301,6 +9310,7 @@ class HomeFluxEmsApp extends Homey.App {
   calculateEvPortfolioDecisions(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, storedSettings = this.getSettings(), options = {}) {
     const evCount = this.getEvCount(storedSettings);
     if (evCount <= 0) return [];
+    this.recordDiagnosticCounter('evPortfolioCalculations');
     for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
     const runtimeSettings = this.getRuntimeSettings(storedSettings);
     const batteryOutputEnabled = Boolean(runtimeSettings.controlEnabled)
@@ -10112,6 +10122,63 @@ class HomeFluxEmsApp extends Homey.App {
     return [5, 10, 15, 20].includes(value) ? value : 15;
   }
 
+  updateEvStatusInput(index, connected, currentA, now = Date.now()) {
+    const input = this.getEvInputSnapshot(index);
+    if (!input) return false;
+    const parsed = parseFiniteInputNumber(currentA);
+    const hasCurrent = parsed !== null && parsed >= 0;
+    const hasConnection = connected !== undefined;
+    const wasConnected = Boolean(input.seen?.connected && input.connected);
+    const nextConnected = hasConnection ? Boolean(connected) : wasConnected;
+    const connectionChanged = hasConnection && this.hasBooleanInputChanged(input.connected, nextConnected, Boolean(input.seen?.connected));
+    const currentChanged = hasCurrent && this.hasNumericInputChanged(input.chargeCurrentA, parsed, Boolean(input.seen?.chargeCurrent), 0.05);
+    const modeControl = this.getEvControlType(this.getEvInstanceSettings(index)) === 'mode';
+    const measuredWasFresh = this.getEvMeasuredCurrent(index, input, now).fresh;
+    const wasFresh = modeControl || measuredWasFresh;
+    this.tickEvEnergyPlan(index, now);
+    if (hasCurrent) this.noteEvBatteryCurrentTransition(index, parsed, nextConnected, now);
+    const runtime = index === 0 ? null : this.getExtraEv(index);
+    const seen = index === 0 ? this.inputSeen.ev : runtime.seen;
+    const updatedAt = index === 0 ? this.inputUpdatedAt.ev : runtime.updatedAt;
+    if (hasConnection) {
+      if (index === 0) this.state.evConnected = nextConnected;
+      else runtime.state.connected = nextConnected;
+      seen.connected = true; updatedAt.connected = now;
+    }
+    if (hasCurrent) {
+      if (index === 0) this.state.evChargeCurrentA = parsed;
+      else runtime.state.chargeCurrentA = parsed;
+      seen.chargeCurrent = true; updatedAt.chargeCurrent = now;
+      this.noteAutoTuneEvFeedback(index, parsed, now);
+      this.recordDiagnosticCounter('evFeedbackInputs');
+    }
+    if (connectionChanged) {
+      this.handleEvSessionConnectionTransitionFor(index, wasConnected, nextConnected);
+      this.handleEvDetectionConnectionTransition(index, wasConnected, nextConnected, now);
+    }
+    if (hasCurrent) {
+      // A repeated mode-current sample is a liveness update, not a new
+      // session transition. P1 may have established loadAbsent since the
+      // previous sample. Clearing it here makes the next P1 sample force a
+      // full context evaluation again, even while the output remains STOP.
+      // Keep energy integration, feedback timestamps and autotune above;
+      // changed inputs and stale recovery still take the normal path.
+      if (!modeControl || connectionChanged || currentChanged || !measuredWasFresh) {
+        this.updateEvSessionFromCurrent(index, nextConnected, parsed, now);
+      } else {
+        const session = this.getEvSessionDetectionRuntime(index);
+        if (nextConnected && parsed > 0.5 && session?.state === 'charging'
+          && !session.loadAbsent && !session.endedLatched) session.lastChargingAt = now;
+      }
+    }
+    // Disconnected telemetry cannot be a usable physical load. Repeated 0 A
+    // while disconnected is not a repeated stale-to-fresh transition.
+    const changed = Boolean(connectionChanged || currentChanged || (hasCurrent && nextConnected && !wasFresh));
+    if (hasCurrent && !changed) this.recordDiagnosticCounter('evFeedbackUnchanged');
+    if (changed) this.recordDiagnosticCounter('evInputEvaluationRequests');
+    return changed;
+  }
+
   getEvMeasuredCurrent(index, input = this.getEvInputSnapshot(index), now = Date.now()) {
     const value = parseFiniteInputNumber(input?.chargeCurrentA);
     const updatedAt = Number(input?.updatedAt?.chargeCurrent) || 0;
@@ -10272,6 +10339,7 @@ class HomeFluxEmsApp extends Homey.App {
       };
     }
 
+    this.recordDiagnosticCounter('evPhysicalAccountingChecks');
     const relevant = [];
     let currentTariff = null;
     let requestedTargetW = 0;
@@ -12653,7 +12721,10 @@ class HomeFluxEmsApp extends Homey.App {
     if (preview.peakActive) return false;
     const same = values => Array.isArray(values) && values.length === preview.commands.length
       && preview.commands.every((value, index) => value === values[index]);
-    if (!same(this.lastEmittedCommands) || !same(result.candidateCommands)
+    const effectivePreview = this.getEffectiveSplitCommands(preview.commands, settings);
+    const sameOutput = effectivePreview.length === this.lastEmittedCommands.length
+      && effectivePreview.every((value, index) => value === this.lastEmittedCommands[index]);
+    if (!sameOutput || !same(result.candidateCommands)
       || !same(result.calculatedCommands)) return false;
     // Split direction timers are independent of watts and must remain armed.
     if (this.splitModeChangeNeeded(result, settings, now)) return false;
@@ -13522,6 +13593,12 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.lastEmittedCommands.length !== commands.length) return true;
     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride !== (result.override || '')) return true;
     if (splitModeChangeNow) return true;
+    const effective = this.getEffectiveSplitCommands(commands, settings);
+    if (effective.some((value, index) => value !== commands[index])
+      && effective.every((value, index) => value === this.lastEmittedCommands[index])) {
+      this.recordDiagnosticCounter('batterySplitIdenticalOutputSkipped');
+      return false;
+    }
     if (settings.optimizeMultiBatteryEfficiency && this.getBatteryCount(settings) >= 2) {
       // A SoC rotation changes individual setpoints without changing their sum.
       // Publication still passes through the ordinary battery interval/locks,
@@ -14150,7 +14227,7 @@ class HomeFluxEmsApp extends Homey.App {
     const result = evaluate(simulationState, settings, simulatedAt);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.11',
+      version: '1.1.12',
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -14223,7 +14300,7 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.11',
+        version: '1.1.12',
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...buildSocPlan(state, settings, new Date(now)),
@@ -14574,7 +14651,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.11',
+      version: '1.1.12',
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -14794,20 +14871,14 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (body.ev && typeof body.ev === 'object') {
       const now = Date.now();
-      this.tickEvEnergyPlan(0, now);
-      const wasConnected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
-      if (parseFiniteInputNumber(body.ev.chargeCurrentA) !== null && Number(body.ev.chargeCurrentA) >= 0) {
-        this.noteEvBatteryCurrentTransition(0, Number(body.ev.chargeCurrentA), body.ev.connected === undefined
-          ? wasConnected : Boolean(body.ev.connected), now);
+      contextInputChanged = this.updateEvStatusInput(0, body.ev.connected, body.ev.chargeCurrentA, now) || contextInputChanged;
+      if (Number.isFinite(Number(body.ev.soc))) {
+        const soc = Math.max(0, Math.min(100, Number(body.ev.soc)));
+        const changed = this.hasNumericInputChanged(this.state.evSoc, soc, Boolean(this.inputSeen.ev.soc), 0.01)
+          || !this.getEvSocFreshness(0, this.getEvInstanceSettings(0), now).fresh;
+        this.state.evSoc = soc; this.inputSeen.ev.soc = true; this.inputUpdatedAt.ev.soc = now;
+        contextInputChanged = changed || contextInputChanged;
       }
-      if (Number.isFinite(Number(body.ev.soc))) { this.state.evSoc = Math.max(0, Math.min(100, Number(body.ev.soc))); this.inputSeen.ev.soc = true; this.inputUpdatedAt.ev.soc = now; contextInputChanged = true; }
-      if (body.ev.connected !== undefined) { this.state.evConnected = Boolean(body.ev.connected); this.inputSeen.ev.connected = true; this.inputUpdatedAt.ev.connected = now; contextInputChanged = true; }
-      if (parseFiniteInputNumber(body.ev.chargeCurrentA) !== null && Number(body.ev.chargeCurrentA) >= 0) { this.state.evChargeCurrentA = Math.max(0, Number(body.ev.chargeCurrentA)); this.inputSeen.ev.chargeCurrent = true; this.inputUpdatedAt.ev.chargeCurrent = now; this.noteAutoTuneEvFeedback(0, this.state.evChargeCurrentA, now); contextInputChanged = true; }
-      if (body.ev.connected !== undefined) {
-        this.handleEvSessionConnectionTransition(wasConnected, this.state.evConnected);
-        this.handleEvDetectionConnectionTransition(0, wasConnected, this.state.evConnected, now);
-      }
-      if (parseFiniteInputNumber(body.ev.chargeCurrentA) !== null && Number(body.ev.chargeCurrentA) >= 0) this.updateEvSessionFromCurrent(0, Boolean(this.state.evConnected), this.state.evChargeCurrentA, now);
     }
     if (body.hvac && typeof body.hvac === 'object') {
       const now = Date.now();
@@ -14823,20 +14894,14 @@ class HomeFluxEmsApp extends Homey.App {
         const runtime = this.getExtraEv(index);
         if (!runtime) return;
         const now = Date.now();
-        this.tickEvEnergyPlan(index, now);
-        const wasConnected = Boolean(runtime.seen.connected) && Boolean(runtime.state.connected);
-        if (parseFiniteInputNumber(value.chargeCurrentA) !== null && Number(value.chargeCurrentA) >= 0) {
-          this.noteEvBatteryCurrentTransition(index, Number(value.chargeCurrentA), value.connected === undefined
-            ? wasConnected : Boolean(value.connected), now);
+        contextInputChanged = this.updateEvStatusInput(index, value.connected, value.chargeCurrentA, now) || contextInputChanged;
+        if (Number.isFinite(Number(value.soc))) {
+          const soc = Math.max(0, Math.min(100, Number(value.soc)));
+          const changed = this.hasNumericInputChanged(runtime.state.soc, soc, Boolean(runtime.seen.soc), 0.01)
+            || !this.getEvSocFreshness(index, this.getEvInstanceSettings(index), now).fresh;
+          runtime.state.soc = soc; runtime.seen.soc = true; runtime.updatedAt.soc = now;
+          contextInputChanged = changed || contextInputChanged;
         }
-        if (Number.isFinite(Number(value.soc))) { runtime.state.soc = Math.max(0, Math.min(100, Number(value.soc))); runtime.seen.soc = true; runtime.updatedAt.soc = now; contextInputChanged = true; }
-        if (value.connected !== undefined) { runtime.state.connected = Boolean(value.connected); runtime.seen.connected = true; runtime.updatedAt.connected = now; contextInputChanged = true; }
-        if (parseFiniteInputNumber(value.chargeCurrentA) !== null && Number(value.chargeCurrentA) >= 0) { runtime.state.chargeCurrentA = Math.max(0, Number(value.chargeCurrentA)); runtime.seen.chargeCurrent = true; runtime.updatedAt.chargeCurrent = now; this.noteAutoTuneEvFeedback(index, runtime.state.chargeCurrentA, now); contextInputChanged = true; }
-        if (value.connected !== undefined) {
-          this.handleEvSessionConnectionTransitionFor(index, wasConnected, runtime.state.connected);
-          this.handleEvDetectionConnectionTransition(index, wasConnected, runtime.state.connected, now);
-        }
-        if (parseFiniteInputNumber(value.chargeCurrentA) !== null && Number(value.chargeCurrentA) >= 0) this.updateEvSessionFromCurrent(index, Boolean(runtime.state.connected), runtime.state.chargeCurrentA, now);
       });
     }
     if (Array.isArray(body.hvacs)) {
