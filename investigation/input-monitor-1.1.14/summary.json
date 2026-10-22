@@ -1,0 +1,103 @@
+{
+  "version": "1.1.14",
+  "allCardScenarios": 186,
+  "actionCards": 93,
+  "monitorScenarios": 19,
+  "regressionTestFiles": 67,
+  "allCommandsIdentical": true,
+  "micro": {
+    "callsPerSample": 500000,
+    "samples": {
+      "direct": [
+        5.334,
+        2.65,
+        2.558,
+        2.966,
+        2.774,
+        2.771,
+        2.717
+      ],
+      "off": [
+        11.177,
+        22.398,
+        9.36,
+        9.978,
+        9.911,
+        9.285,
+        9.975
+      ],
+      "on": [
+        77.283,
+        66.473,
+        72.925,
+        64.583,
+        60.817,
+        60.909,
+        60.001
+      ]
+    },
+    "medianCpuMs": {
+      "direct": 2.771,
+      "off": 9.975,
+      "on": 64.583
+    },
+    "memory": {
+      "baselineHeapBytes": 7330544,
+      "after100kBytes": 7325504,
+      "after1100kBytes": 7325384,
+      "retainedGrowthAfterMillionMoreBytes": -120,
+      "rows": 1,
+      "events": 2
+    },
+    "marker": 116500000
+  },
+  "replay": {
+    "baseline": {
+      "medianCpuMs": 632.626,
+      "medianRetainedHeapBytes": 1154880,
+      "updates": 4500,
+      "seconds": 300,
+      "contexts": 5,
+      "fastEvaluations": 26,
+      "portfolios": 16
+    },
+    "off": {
+      "medianCpuMs": 684.9,
+      "medianRetainedHeapBytes": 1102240,
+      "updates": 4500,
+      "seconds": 300,
+      "contexts": 5,
+      "fastEvaluations": 26,
+      "portfolios": 16
+    },
+    "on": {
+      "medianCpuMs": 578.049,
+      "medianRetainedHeapBytes": 201416,
+      "updates": 4500,
+      "seconds": 300,
+      "contexts": 5,
+      "fastEvaluations": 26,
+      "portfolios": 16
+    }
+  },
+  "changed": [
+    "api.js",
+    "app.json",
+    ".homeychangelog.json",
+    "package.json",
+    "app.js",
+    "package-lock.json",
+    "test/split-resend-seconds-1.1.10.test.js",
+    "test/widget.test.js",
+    "test/settings-startup.test.js",
+    "settings/index.html",
+    ".homeycompose/app.json",
+    "settings/translations/en.json"
+  ],
+  "new": [
+    "test/input-monitor-1.1.14.test.js",
+    "test/input-monitor-ui-1.1.14.test.js",
+    "settings/input-monitor.js",
+    "lib/input-monitor.js"
+  ]
+}

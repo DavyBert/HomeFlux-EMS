@@ -4,6 +4,7 @@ const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
 const { CompactDiagnostics } = require('./lib/compact-diagnostics');
+const { InputMonitor } = require('./lib/input-monitor');
 const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normalizeSecondary } = require('./lib/price-normalization');
 const { extractMathExpression } = require('./lib/price-formula');
 
@@ -3037,6 +3038,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   requestContextEvaluate(immediate = false, reason = 'context', requestedAt = 0, bypassInterval = false, invalidatesBatteryContext = true) {
+    if (this.inputMonitor?.active) this.inputMonitor.noteRequest('context');
     if (this.contextTimer || this.contextEvaluationRunning) this.recordDiagnosticCounter('contextRequestsCoalesced');
     this.markContextDirty(reason, invalidatesBatteryContext);
     if (this.contextEvaluationRunning) {
@@ -3086,6 +3088,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.contextDirty = false;
     if (this.contextDirtyReasons) this.contextDirtyReasons.clear();
     this.activeContextDiagnosticReasons = reasons;
+    if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('context');
     this.recordDiagnosticCounter('contextEvaluations');
     if (reasons.some(reason => /grid_|pv_context/.test(reason))) this.recordDiagnosticCounter('evContextFromMeter');
     if (reasons.some(reason => /^ev\d_status|api_context_input/.test(reason))) this.recordDiagnosticCounter('evContextFromInput');
@@ -3174,6 +3177,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (!pending.requests.size) this.clearEvContextRefresh(true);
       return;
     }
+    if (this.inputMonitor?.active) this.inputMonitor.noteRequest('evDeferred');
     this.recordDiagnosticCounter('evContextRequests');
     pending.requests.add(reason);
     if (pending.timer || pending.due) return;
@@ -5692,29 +5696,46 @@ class HomeFluxEmsApp extends Homey.App {
     });
   }
 
+  getInputMonitor() {
+    if (!this.inputMonitor) this.inputMonitor = new InputMonitor({
+      definitions: (this.homey.manifest || require('./app.json')).flow?.actions || [],
+      version: (this.homey.manifest || require('./app.json')).version,
+      now: () => Date.now(),
+      setTimeout: (fn, ms) => this.homey.setTimeout(fn, ms),
+      clearTimeout: timer => clearTimeout(timer),
+    });
+    return this.inputMonitor;
+  }
+
+  getInputMonitorReport() { return this.getInputMonitor().snapshot(); }
+  startInputMonitor() { return this.getInputMonitor().start(); }
+  stopInputMonitor() { return this.getInputMonitor().stop(); }
+  clearInputMonitor() { return this.getInputMonitor().clear(); }
+
   registerFlowCards() {
-    this.configuredFlowCards = new ConfiguredFlowCards(this.homey.flow, {
+    const flow = this.getInputMonitor().observeFlow(this.homey.flow);
+    this.configuredFlowCards = new ConfiguredFlowCards(flow, {
       getSlots: kind => this.getConfiguredFlowSlots(kind),
       getLanguage: () => this.homey.i18n?.getLanguage?.() || 'en',
     });
     this.slotFlowCards = new SlotFlowCards(this.configuredFlowCards);
-    this.commandTrigger = this.homey.flow.getTriggerCard('battery_commands_updated');
-    this.calculatedSetpointTrigger = this.homey.flow.getTriggerCard('battery_setpoint_calculated');
-    this.balanceWarningTrigger = this.homey.flow.getTriggerCard('battery_balance_warning');
-    this.statusChangedTrigger = this.homey.flow.getTriggerCard('ems_status_changed');
-    this.pvLimitTrigger = this.homey.flow.getTriggerCard('pv_power_limit_updated');
-    this.chargePlanTrigger = this.homey.flow.getTriggerCard('charge_plan_updated');
+    this.commandTrigger = flow.getTriggerCard('battery_commands_updated');
+    this.calculatedSetpointTrigger = flow.getTriggerCard('battery_setpoint_calculated');
+    this.balanceWarningTrigger = flow.getTriggerCard('battery_balance_warning');
+    this.statusChangedTrigger = flow.getTriggerCard('ems_status_changed');
+    this.pvLimitTrigger = flow.getTriggerCard('pv_power_limit_updated');
+    this.chargePlanTrigger = flow.getTriggerCard('charge_plan_updated');
     this.evCurrentTrigger = this.slotFlowCards.getTriggerCard('ev1_charge_current_updated');
     this.evAllowedTrigger = this.slotFlowCards.getTriggerCard('ev1_charging_allowed_updated');
     this.evModeTrigger = this.slotFlowCards.getTriggerCard('ev1_charge_mode_updated');
-    this.evTargetWarningTrigger = this.homey.flow.getTriggerCard('ev_target_cannot_be_reached');
+    this.evTargetWarningTrigger = flow.getTriggerCard('ev_target_cannot_be_reached');
     this.hvacPowerTrigger = this.slotFlowCards.getTriggerCard('hvac1_power_updated');
     this.hvacModeTrigger = this.slotFlowCards.getTriggerCard('hvac1_mode_updated');
     this.hvacSetpointTrigger = this.slotFlowCards.getTriggerCard('hvac1_setpoint_updated');
     this.hvacFanTrigger = this.slotFlowCards.getTriggerCard('hvac1_fan_updated');
-    this.boilerTrigger = this.homey.flow.getTriggerCard('boiler_power_updated');
-    this.boilerWarmedTrigger = this.homey.flow.getTriggerCard('boiler_warmed_updated');
-    this.externalEmsSelfConsumptionTrigger = this.homey.flow.getTriggerCard('external_ems_self_consumption_requested');
+    this.boilerTrigger = flow.getTriggerCard('boiler_power_updated');
+    this.boilerWarmedTrigger = flow.getTriggerCard('boiler_warmed_updated');
+    this.externalEmsSelfConsumptionTrigger = flow.getTriggerCard('external_ems_self_consumption_requested');
     this.extraEvTriggers = Array.from({ length: 3 }, (_, offset) => {
       const instance = offset + 2;
       return {
@@ -5743,18 +5764,18 @@ class HomeFluxEmsApp extends Homey.App {
       };
     });
     this.inputRequestTriggers = {
-      pv: this.homey.flow.getTriggerCard('request_pv_power_needed'),
-      forecast: this.homey.flow.getTriggerCard('request_forecast_needed'),
-      forecastTomorrow: this.homey.flow.getTriggerCard('request_forecast_tomorrow_needed'),
+      pv: flow.getTriggerCard('request_pv_power_needed'),
+      forecast: flow.getTriggerCard('request_forecast_needed'),
+      forecastTomorrow: flow.getTriggerCard('request_forecast_tomorrow_needed'),
       evSoc: this.slotFlowCards.getTriggerCard('request_ev1_soc_needed'),
       batterySoc: Array.from({ length: 8 }, (_, index) =>
         this.slotFlowCards.getTriggerCard(`request_battery${index + 1}_soc_needed`)),
     };
 
-    this.homey.flow.getActionCard('set_external_ems_setpoint').registerRunListener(async args =>
+    flow.getActionCard('set_external_ems_setpoint').registerRunListener(async args =>
       this.handleExternalEmsSetpoint(args.power));
 
-    this.homey.flow.getActionCard('set_grid_power').registerRunListener(async args => {
+    flow.getActionCard('set_grid_power').registerRunListener(async args => {
       const value = parseFiniteInputNumber(args.power);
       if (value === null) return false;
       this.recordDiagnosticCounter('gridInputs');
@@ -5799,7 +5820,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_imported_energy_today').registerRunListener(async args => {
+    flow.getActionCard('set_imported_energy_today').registerRunListener(async args => {
       const value = Number(args.energy);
       if (!Number.isFinite(value) || value < 0) return false;
       const now = Date.now();
@@ -5812,7 +5833,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_exported_energy_today').registerRunListener(async args => {
+    flow.getActionCard('set_exported_energy_today').registerRunListener(async args => {
       const value = Number(args.energy);
       if (!Number.isFinite(value) || value < 0) return false;
       const now = Date.now();
@@ -5825,7 +5846,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_pv_power').registerRunListener(async args => {
+    flow.getActionCard('set_pv_power').registerRunListener(async args => {
       const value = parseFiniteInputNumber(args.power);
       if (value === null) return false;
       this.recordDiagnosticCounter('pvInputs');
@@ -5866,7 +5887,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_sun_chance_forecast').registerRunListener(async args => {
+    flow.getActionCard('set_sun_chance_forecast').registerRunListener(async args => {
       const today = sunChance.number(args.today);
       const tomorrow = sunChance.number(args.tomorrow);
       if (today === null || tomorrow === null || today < 0 || today > 100 || tomorrow < 0 || tomorrow > 100) return false;
@@ -5874,7 +5895,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_forecast_remaining').registerRunListener(async args => {
+    flow.getActionCard('set_forecast_remaining').registerRunListener(async args => {
       const value = parseFiniteInputNumber(args.energy);
       if (value === null) return false;
       if (!this.updateForecastInput(value)) return true;
@@ -5883,7 +5904,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_forecast_tomorrow').registerRunListener(async args => {
+    flow.getActionCard('set_forecast_tomorrow').registerRunListener(async args => {
       const value = parseFiniteInputNumber(args.energy);
       if (value === null) return false;
       if (!this.updateForecastTomorrowInput(value)) return true;
@@ -5955,7 +5976,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_hvac_outdoor_temperature').registerRunListener(async args => {
+    flow.getActionCard('set_hvac_outdoor_temperature').registerRunListener(async args => {
       if (this.getHvacCount() < 1) return true;
       const value = Number(args.temperature);
       if (!Number.isFinite(value)) return false;
@@ -6153,12 +6174,12 @@ class HomeFluxEmsApp extends Homey.App {
       });
     }
 
-    this.homey.flow.getActionCard('set_forced_mode').registerRunListener(async args => {
+    flow.getActionCard('set_forced_mode').registerRunListener(async args => {
       await this.setForcedMode(String(args.mode || 'auto'), 'flow');
       return true;
     });
 
-    this.homey.flow.getActionCard('set_external_electricity_price').registerRunListener(async args => {
+    flow.getActionCard('set_external_electricity_price').registerRunListener(async args => {
       const price = Number(args.price);
       if (!Number.isFinite(price)) throw new Error('External electricity price must be a valid number');
       this.externalEnergy.currentPrice = price;
@@ -6171,7 +6192,7 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_external_export_price').registerRunListener(async args => {
+    flow.getActionCard('set_external_export_price').registerRunListener(async args => {
       const price = Number(args.price);
       if (!Number.isFinite(price)) throw new Error('External export price must be a valid number');
       const now = Date.now();
@@ -6184,13 +6205,13 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
-    this.homey.flow.getActionCard('set_external_electricity_price_curve').registerRunListener(async args =>
+    flow.getActionCard('set_external_electricity_price_curve').registerRunListener(async args =>
       this.readExternalPrices('external', args.curve, { legacy: true }));
-    this.homey.flow.getActionCard('set_pbth_electricity_price_curve').registerRunListener(async args =>
+    flow.getActionCard('set_pbth_electricity_price_curve').registerRunListener(async args =>
       this.readExternalPrices('external', args.curve, { period: args.period || 'this_day', sequentialOnly: true }));
-    this.homey.flow.getActionCard('read_external_prices_json').registerRunListener(async args =>
+    flow.getActionCard('read_external_prices_json').registerRunListener(async args =>
       this.readExternalPrices(String(args.source), args.curve, { period: args.period || 'next_hours' }));
-    const namedPriceCard = this.homey.flow.getActionCard('read_external_prices_json_named');
+    const namedPriceCard = flow.getActionCard('read_external_prices_json_named');
     namedPriceCard.registerArgumentAutocompleteListener('source', async query => {
       const settings = this.getSettings(), text = String(query || '').trim().toLocaleLowerCase();
       return ['external', 'external2'].map(id => ({ id, name: sourceName(id, settings),
@@ -6203,7 +6224,7 @@ class HomeFluxEmsApp extends Homey.App {
       return this.readExternalPrices(id, args.curve, { period: args.period || 'next_hours' });
     });
 
-    this.homey.flow.getActionCard('get_ems_status').registerRunListener(async () => {
+    flow.getActionCard('get_ems_status').registerRunListener(async () => {
       const result = this.latestResult || await this.runContextEvaluation(true);
       return this.localizeDisplayTokens({
         status: String(result?.statusText || 'Stand-by'),
@@ -6213,63 +6234,63 @@ class HomeFluxEmsApp extends Homey.App {
       });
     });
 
-    this.homey.flow.getActionCard('refresh_homey_energy_prices').registerRunListener(async () => {
+    flow.getActionCard('refresh_homey_energy_prices').registerRunListener(async () => {
       await this.refreshHomeyEnergyPrices(true);
       return true;
     });
 
-    this.homey.flow.getActionCard('recalculate_now').registerRunListener(async () => {
+    flow.getActionCard('recalculate_now').registerRunListener(async () => {
       await this.runContextEvaluation(true);
       return true;
     });
 
-    this.homey.flow.getConditionCard('homey_energy_cheapest_now').registerRunListener(async args => {
+    flow.getConditionCard('homey_energy_cheapest_now').registerRunListener(async args => {
       await this.ensureHomeyEnergyFresh();
       return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'cheap');
     });
-    this.homey.flow.getConditionCard('homey_energy_expensive_now').registerRunListener(async args => {
+    flow.getConditionCard('homey_energy_expensive_now').registerRunListener(async args => {
       await this.ensureHomeyEnergyFresh();
       return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'expensive');
     });
-    this.homey.flow.getConditionCard('homey_energy_cheapest_block_now').registerRunListener(async args => {
+    flow.getConditionCard('homey_energy_cheapest_block_now').registerRunListener(async args => {
       await this.ensureHomeyEnergyFresh();
       return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'cheapest_block');
     });
 
     // Read-only EMS condition cards for Advanced Flow. They expose existing
     // runtime state and never change control outputs.
-    this.homey.flow.getConditionCard('ems_control_is_enabled').registerRunListener(async () => {
+    flow.getConditionCard('ems_control_is_enabled').registerRunListener(async () => {
       const settings = this.getSettings();
       return Boolean(settings.controlEnabled) && this.isChargeTestValid(settings);
     });
-    this.homey.flow.getConditionCard('ems_mode_is').registerRunListener(async args =>
+    flow.getConditionCard('ems_mode_is').registerRunListener(async args =>
       String(this.latestResult?.baseMode || '') === String(args.mode || ''));
-    this.homey.flow.getConditionCard('ems_action_is').registerRunListener(async args =>
+    flow.getConditionCard('ems_action_is').registerRunListener(async args =>
       String(this.latestResult?.action || 'idle') === String(args.action || ''));
-    this.homey.flow.getConditionCard('ems_current_tariff_is').registerRunListener(async args => {
+    flow.getConditionCard('ems_current_tariff_is').registerRunListener(async args => {
       const actual = String(this.latestResult?.tariff?.label || '').trim().toLocaleLowerCase();
       const expected = String(args.tariff || '').trim().toLocaleLowerCase();
       return Boolean(expected) && actual === expected;
     });
-    this.homey.flow.getConditionCard('ems_peak_guard_is_active').registerRunListener(async () =>
+    flow.getConditionCard('ems_peak_guard_is_active').registerRunListener(async () =>
       String(this.latestResult?.override || '') === 'peak_shave');
-    this.homey.flow.getConditionCard('ems_battery_state_is').registerRunListener(async args => {
+    flow.getConditionCard('ems_battery_state_is').registerRunListener(async args => {
       const commandW = Number(this.state.lastTotalCommandW) || 0;
       const state = commandW < -1 ? 'charging' : (commandW > 1 ? 'discharging' : 'idle');
       return state === String(args.state || '');
     });
-    this.homey.flow.getConditionCard('ems_planning_phase_is').registerRunListener(async args =>
+    flow.getConditionCard('ems_planning_phase_is').registerRunListener(async args =>
       (this.isNightPlanningPhase() ? 'night' : 'day') === String(args.phase || ''));
-    this.homey.flow.getConditionCard('ems_price_data_is_fresh').registerRunListener(async () => {
+    flow.getConditionCard('ems_price_data_is_fresh').registerRunListener(async () => {
       const settings = this.getSettings();
       if (!isDynamicContract(settings)) return true;
       const lastUpdatedAt = Number(this.homeyEnergy?.lastUpdatedAt) || 0;
       const ready = this.getInputReadiness(settings).priceDataReady !== false;
       return ready && lastUpdatedAt > 0 && (Date.now() - lastUpdatedAt) <= 20 * 60 * 1000;
     });
-    this.homey.flow.getConditionCard('ems_pv_power_above').registerRunListener(async args =>
+    flow.getConditionCard('ems_pv_power_above').registerRunListener(async args =>
       Boolean(this.inputSeen.pv) && Number(this.state.pvPowerW) > Number(args.power || 0));
-    this.homey.flow.getConditionCard('ems_average_battery_soc_above').registerRunListener(async args => {
+    flow.getConditionCard('ems_average_battery_soc_above').registerRunListener(async args => {
       const soc = this.getAverageBatterySoc(this.getSettings());
       return soc !== null && Number(soc) > Number(args.soc || 0);
     });
@@ -6301,8 +6322,8 @@ class HomeFluxEmsApp extends Homey.App {
       if (index >= this.getHvacCount()) return false;
       return this.isHvacManagedActiveFor(index);
     });
-    this.homey.flow.getConditionCard('boiler_is_on').registerRunListener(async () => Boolean(this.boilerState?.outputOn));
-    this.homey.flow.getConditionCard('boiler_is_warm').registerRunListener(async () => Boolean(this.boilerState?.latestDecision?.warm));
+    flow.getConditionCard('boiler_is_on').registerRunListener(async () => Boolean(this.boilerState?.outputOn));
+    flow.getConditionCard('boiler_is_warm').registerRunListener(async () => Boolean(this.boilerState?.latestDecision?.warm));
   }
 
   setupInputRequestSchedule() {
@@ -6391,6 +6412,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async onUninit() {
+    this.inputMonitor?.destroy();
     this.clearEvContextRefresh();
     this.persistSavingsState(Date.now());
     this.clearInputRequestSchedule();
@@ -9413,6 +9435,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.evContextRefresh) this.evContextRefresh.reference = null;
       return [];
     }
+    if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('evPortfolio');
     this.recordDiagnosticCounter('evPortfolioCalculations');
     for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
     const runtimeSettings = this.getRuntimeSettings(storedSettings);
@@ -12972,6 +12995,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   requestEvaluate(immediate = false) {
+    if (this.inputMonitor?.active) this.inputMonitor.noteRequest('fast');
     this.recordDiagnosticCounter('fastRequests');
     const now = Date.now();
     const controlSettings = this.getSettings();
@@ -13345,6 +13369,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   evaluateFastNow(forceStatus = false, preflight = null) {
+    if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('fast');
     this.recordDiagnosticCounter('fastEvaluations');
     const diagnosticCpu = this.startDiagnosticCpuSection('fast_evaluation');
     try {

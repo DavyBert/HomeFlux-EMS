@@ -1,0 +1,3156 @@
+{
+  "node": "v24.19.0",
+  "scope": "Host CPU; Homey I/O and time simulated. Not a real Homey CPU reading.",
+  "micro": {
+    "callsPerSample": 500000,
+    "samples": {
+      "direct": [
+        5.334,
+        2.65,
+        2.558,
+        2.966,
+        2.774,
+        2.771,
+        2.717
+      ],
+      "off": [
+        11.177,
+        22.398,
+        9.36,
+        9.978,
+        9.911,
+        9.285,
+        9.975
+      ],
+      "on": [
+        77.283,
+        66.473,
+        72.925,
+        64.583,
+        60.817,
+        60.909,
+        60.001
+      ]
+    },
+    "medianCpuMs": {
+      "direct": 2.771,
+      "off": 9.975,
+      "on": 64.583
+    },
+    "memory": {
+      "baselineHeapBytes": 7330544,
+      "after100kBytes": 7325504,
+      "after1100kBytes": 7325384,
+      "retainedGrowthAfterMillionMoreBytes": -120,
+      "rows": 1,
+      "events": 2
+    },
+    "marker": 116500000
+  },
+  "replay": {
+    "summary": {
+      "baseline": {
+        "medianCpuMs": 632.626,
+        "medianRetainedHeapBytes": 1154880,
+        "updates": 4500,
+        "seconds": 300,
+        "contexts": 5,
+        "fastEvaluations": 26,
+        "portfolios": 16
+      },
+      "off": {
+        "medianCpuMs": 684.9,
+        "medianRetainedHeapBytes": 1102240,
+        "updates": 4500,
+        "seconds": 300,
+        "contexts": 5,
+        "fastEvaluations": 26,
+        "portfolios": 16
+      },
+      "on": {
+        "medianCpuMs": 578.049,
+        "medianRetainedHeapBytes": 201416,
+        "updates": 4500,
+        "seconds": 300,
+        "contexts": 5,
+        "fastEvaluations": 26,
+        "portfolios": 16
+      }
+    },
+    "results": [
+      {
+        "run": 1,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 752.628,
+        "retainedHeapBytes": 2392224,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 1,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 799.778,
+        "retainedHeapBytes": 2143472,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 1,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 879.657,
+        "retainedHeapBytes": 1413544,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 901.185,
+            "averagePercentOneCore": 0.300395
+          },
+          "memory": {
+            "start": {
+              "rss": 110952448,
+              "heapTotal": 58228736,
+              "heapUsed": 25295536,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            },
+            "end": {
+              "rss": 133931008,
+              "heapTotal": 57585664,
+              "heapUsed": 30292552,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 2,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 604.741,
+        "retainedHeapBytes": 341192,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 626.132,
+            "averagePercentOneCore": 0.20871066666666663
+          },
+          "memory": {
+            "start": {
+              "rss": 109797376,
+              "heapTotal": 58486784,
+              "heapUsed": 27361040,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            },
+            "end": {
+              "rss": 110497792,
+              "heapTotal": 57470976,
+              "heapUsed": 32023288,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 2,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 609.673,
+        "retainedHeapBytes": 714136,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 2,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 614.131,
+        "retainedHeapBytes": 1224144,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 3,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 829.905,
+        "retainedHeapBytes": 1194712,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 3,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 785.267,
+        "retainedHeapBytes": 1188848,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 3,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 562.904,
+        "retainedHeapBytes": 191456,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 587.896,
+            "averagePercentOneCore": 0.19596533333333332
+          },
+          "memory": {
+            "start": {
+              "rss": 143818752,
+              "heapTotal": 92942336,
+              "heapUsed": 41157352,
+              "external": 4117977,
+              "arrayBuffers": 146575
+            },
+            "end": {
+              "rss": 143212544,
+              "heapTotal": 92712960,
+              "heapUsed": 29673008,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 4,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 578.049,
+        "retainedHeapBytes": 437768,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 602.472,
+            "averagePercentOneCore": 0.200824
+          },
+          "memory": {
+            "start": {
+              "rss": 143446016,
+              "heapTotal": 92450816,
+              "heapUsed": 41615752,
+              "external": 4117977,
+              "arrayBuffers": 146575
+            },
+            "end": {
+              "rss": 143753216,
+              "heapTotal": 93990912,
+              "heapUsed": 46047224,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 4,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 767.305,
+        "retainedHeapBytes": 1102240,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 4,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 596.284,
+        "retainedHeapBytes": 1233616,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 5,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 766.133,
+        "retainedHeapBytes": -350680,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 5,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 547.544,
+        "retainedHeapBytes": 1172360,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 5,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 755.813,
+        "retainedHeapBytes": -257408,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 780.359,
+            "averagePercentOneCore": 0.2601196666666667
+          },
+          "memory": {
+            "start": {
+              "rss": 146202624,
+              "heapTotal": 93876224,
+              "heapUsed": 41606968,
+              "external": 4117977,
+              "arrayBuffers": 146575
+            },
+            "end": {
+              "rss": 167604224,
+              "heapTotal": 94892032,
+              "heapUsed": 49725648,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 6,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 577.029,
+        "retainedHeapBytes": 135936,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 600.572,
+            "averagePercentOneCore": 0.20019066666666666
+          },
+          "memory": {
+            "start": {
+              "rss": 144605184,
+              "heapTotal": 93876224,
+              "heapUsed": 41084096,
+              "external": 4117977,
+              "arrayBuffers": 146575
+            },
+            "end": {
+              "rss": 144465920,
+              "heapTotal": 92860416,
+              "heapUsed": 29575664,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 6,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 587.458,
+        "retainedHeapBytes": 776064,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 6,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 541.274,
+        "retainedHeapBytes": 1060352,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 7,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 783.956,
+        "retainedHeapBytes": 1213432,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 7,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 684.9,
+        "retainedHeapBytes": 1197664,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 7,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 555.879,
+        "retainedHeapBytes": 201416,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 582.718,
+            "averagePercentOneCore": 0.19423933333333332
+          },
+          "memory": {
+            "start": {
+              "rss": 214228992,
+              "heapTotal": 162250752,
+              "heapUsed": 76535752,
+              "external": 4117977,
+              "arrayBuffers": 459711
+            },
+            "end": {
+              "rss": 213635072,
+              "heapTotal": 161132544,
+              "heapUsed": 30237592,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 8,
+        "mode": "on",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 663.224,
+        "retainedHeapBytes": 513568,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": {
+          "schemaVersion": 1,
+          "homeFluxVersion": "1.1.14",
+          "active": false,
+          "session": {
+            "startedAt": 1792663200000,
+            "expiresAt": 1792664100000,
+            "endedAt": 1792663500000,
+            "durationMs": 300000,
+            "remainingMs": 0,
+            "stopReason": "manual"
+          },
+          "thresholds": {
+            "normalMaxPerSecond": 1,
+            "possibleLoopMinPerSecond": 2,
+            "consecutiveSeconds": 5,
+            "bucketMs": 1000
+          },
+          "totalReceived": 4500,
+          "possibleLoopInputs": 2,
+          "activePossibleLoops": 2,
+          "possibleLoopEpisodes": 2,
+          "requests": {
+            "context": 330,
+            "fast": 603,
+            "evDeferred": 162
+          },
+          "evaluations": {
+            "context": 5,
+            "fast": 26,
+            "evPortfolio": 16
+          },
+          "attribution": "Per-input requests cover the synchronous handler only. Async continuations and timers are not attributed. Requests may be coalesced; they are not evaluations.",
+          "frequencyMethod": "One-second buckets aligned to session start. Large or structured payloads are not deeply compared.",
+          "cpu": {
+            "scope": "whole_app_process",
+            "cpuMs": 690.322,
+            "averagePercentOneCore": 0.23010733333333333
+          },
+          "memory": {
+            "start": {
+              "rss": 214290432,
+              "heapTotal": 161234944,
+              "heapUsed": 75479696,
+              "external": 4117977,
+              "arrayBuffers": 459711
+            },
+            "end": {
+              "rss": 215748608,
+              "heapTotal": 162148352,
+              "heapUsed": 49067672,
+              "external": 3804841,
+              "arrayBuffers": 146575
+            }
+          },
+          "limits": {
+            "maxRows": 256,
+            "maxEvents": 256,
+            "droppedRows": 0,
+            "eventsDropped": 0,
+            "maxComparableTextCharacters": 16384,
+            "observerErrors": 0
+          },
+          "inputs": [
+            {
+              "key": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "name": {
+                "en": "Set EV 1 status",
+                "nl": "Stel EV 1-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "name": {
+                "en": "Set EV 2 status",
+                "nl": "Stel EV 2-status in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 1500,
+              "identical": 1499,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "connected": "yes",
+                "charge_current": 10
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 5,
+              "secondsAboveThreshold": 300,
+              "consecutiveHighSeconds": 300,
+              "loopActive": true,
+              "possibleLoopEpisodes": 1,
+              "firstWarningAt": 1792663205000,
+              "lastWarningAt": 1792663205000,
+              "requests": {
+                "context": 0,
+                "fast": 0,
+                "evDeferred": 1
+              },
+              "updatesPerSecond": 5,
+              "averagePerSecond": 5,
+              "status": "possible_loop"
+            },
+            {
+              "key": "set_pv_power",
+              "cardId": "set_pv_power",
+              "name": {
+                "en": "Set PV power",
+                "nl": "Stel PV-vermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 279,
+              "changed": 20,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 800
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 22,
+                "fast": 301,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_grid_power",
+              "cardId": "set_grid_power",
+              "name": {
+                "en": "Set grid power",
+                "nl": "Stel netvermogen in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 274,
+              "changed": 25,
+              "uncomparable": 0,
+              "latestValue": {
+                "power": 4415
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 296,
+                "fast": 301,
+                "evDeferred": 160
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_battery_soc:battery=1",
+              "cardId": "set_battery_soc",
+              "name": {
+                "en": "Set battery SoC",
+                "nl": "Stel batterij-SoC in"
+              },
+              "kind": "input",
+              "selectors": {
+                "battery": "1"
+              },
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "battery": "1",
+                "soc": 50
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 1,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac1_room_temperature",
+              "cardId": "set_hvac1_room_temperature",
+              "name": {
+                "en": "Set HVAC 1 room temperature",
+                "nl": "Stel HVAC 1 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 22
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            },
+            {
+              "key": "set_hvac2_room_temperature",
+              "cardId": "set_hvac2_room_temperature",
+              "name": {
+                "en": "Set HVAC 2 room temperature",
+                "nl": "Stel HVAC 2 ruimtetemperatuur in"
+              },
+              "kind": "input",
+              "selectors": {},
+              "received": 300,
+              "identical": 299,
+              "changed": 0,
+              "uncomparable": 0,
+              "latestValue": {
+                "temperature": 23
+              },
+              "lastReceivedAt": 1792663500000,
+              "peakPerSecond": 1,
+              "secondsAboveThreshold": 0,
+              "consecutiveHighSeconds": 0,
+              "loopActive": false,
+              "possibleLoopEpisodes": 0,
+              "firstWarningAt": null,
+              "lastWarningAt": null,
+              "requests": {
+                "context": 1,
+                "fast": 0,
+                "evDeferred": 0
+              },
+              "updatesPerSecond": 1,
+              "averagePerSecond": 1,
+              "status": "normal"
+            }
+          ],
+          "events": [
+            {
+              "type": "started",
+              "at": 1792663200000
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 4
+            },
+            {
+              "type": "high_frequency_started",
+              "at": 1792663201000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 4
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev1_status",
+              "cardId": "set_ev1_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "possible_loop_started",
+              "at": 1792663205000,
+              "inputKey": "set_ev2_status",
+              "cardId": "set_ev2_status",
+              "frequency": 5,
+              "peakPerSecond": 5
+            },
+            {
+              "type": "stopped",
+              "at": 1792663500000,
+              "reason": "manual"
+            }
+          ]
+        }
+      },
+      {
+        "run": 8,
+        "mode": "off",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 702.757,
+        "retainedHeapBytes": -634536,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      },
+      {
+        "run": 8,
+        "mode": "baseline",
+        "seconds": 300,
+        "updates": 4500,
+        "cpuMs": 632.626,
+        "retainedHeapBytes": 1154880,
+        "counts": {
+          "context": 5,
+          "fast": 26,
+          "evPortfolio": 16
+        },
+        "report": null
+      }
+    ],
+    "outputsIdentical": true
+  }
+}

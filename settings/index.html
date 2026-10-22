@@ -8,6 +8,7 @@
 <script src="sun-chance.js" type="text/javascript"></script>
 <script src="display-language.js" type="text/javascript"></script>
 <script src="ev-headroom.js" type="text/javascript"></script>
+<script src="input-monitor.js" type="text/javascript"></script>
 <style>
     :root {
       color-scheme: dark;
@@ -774,6 +775,22 @@
 .savings-progress-fill { height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#4F8A10,#7ecb46); transition:width .25s ease; }
 .savings-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.45); }
 @media (max-width:620px) { .savings-summary,.savings-components,.savings-chart-grid { grid-template-columns:1fr; } }
+
+    .input-monitor-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0; }
+    .input-monitor-summary { display:flex; flex-wrap:wrap; gap:8px 24px; padding:12px 0; font-variant-numeric:tabular-nums; }
+    .input-monitor-table-wrap { max-height:60vh; overflow:auto; border:1px solid var(--hf-border); border-radius:12px; }
+    .input-monitor-table { width:100%; min-width:1080px; border-collapse:collapse; font-size:12px; }
+    .input-monitor-table th, .input-monitor-table td { padding:10px; text-align:left; vertical-align:top; border-bottom:1px solid var(--hf-border); }
+    .input-monitor-table th { position:sticky; top:0; background:var(--hf-surface-3); z-index:2; }
+    .input-monitor-table td:first-child { min-width:180px; max-width:240px; }
+    .input-monitor-table td:nth-child(2) { max-width:230px; overflow-wrap:anywhere; }
+    .input-monitor-table small { display:block; margin-top:4px; color:var(--hf-muted); overflow-wrap:anywhere; }
+    .input-monitor-high_frequency { background:rgba(240,160,76,.15); }
+    .input-monitor-possible_loop { background:rgba(239,68,68,.24); }
+    .input-monitor-possible_loop td:first-child { border-left:4px solid #ef4444; }
+    #inputMonitorCountdown { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; margin-left:auto; }
+    #inputMonitorExport { width:100%; min-height:160px; margin-top:12px; font-family:monospace; font-size:11px; }
+    @media (max-width:600px) { .input-monitor-toolbar button { flex:1 1 45%; } #inputMonitorCountdown { flex-basis:100%; text-align:right; } }
 </style>
 </head>
 <body>
@@ -2008,6 +2025,36 @@
 <p class="muted">Het rapport bevat geen API-tokens, wachtwoorden of andere sleutelvelden. Planning bevat wel de HomeFlux-configuratie die nodig is om een beslissing achteraf te kunnen reproduceren. Kopiëren of downloaden wordt niet rechtstreeks door HomeFlux uitgevoerd; selecteer het rapport en gebruik de normale browser- of toestelactie.</p>
 <p class="muted">Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.</p>
 </div>
+
+<div class="card" id="inputMonitorCard">
+<h3>Input Monitor &amp; Loop Detection</h3>
+<p class="muted">Neem maximaal 15 minuten inkomende Flow-gegevens en opdrachten op. De opname blijft actief als je dit venster sluit en stopt automatisch. Er worden geen instellingen of regelstrategieën gewijzigd.</p>
+<div class="input-monitor-toolbar">
+<button class="homey-button-primary" id="startInputMonitoring" type="button">Start monitoring</button>
+<button class="homey-button-secondary" id="stopInputMonitoring" type="button" disabled>Stop monitoring</button>
+<button class="homey-button-secondary" id="exportInputMonitoring" type="button" disabled>Export JSON</button>
+<button class="homey-button-secondary" id="clearInputMonitoring" type="button" disabled>Wissen</button>
+<span id="inputMonitorCountdown" aria-label="Resterende opnametijd">15:00</span>
+</div>
+<div class="statusline" id="inputMonitorState" role="status">Klaar om te starten</div>
+<div class="input-monitor-summary">
+<span><span>Ontvangen inputs</span>: <strong id="inputMonitorTotal">0</strong></span>
+<span><span>Mogelijke loops (totaal)</span>: <strong id="inputMonitorLoops">0</strong></span>
+<span><span>Nu verdacht</span>: <strong id="inputMonitorActiveLoops">0</strong></span>
+</div>
+<p class="muted">Tot 1 update/s is normaal. Meer dan 1 update/s krijgt een markering; minstens 2 updates/s gedurende 5 opeenvolgende seconden geeft een mogelijke loop. Snelle meetkaarten kunnen bewust frequent rapporteren: een waarschuwing bewijst geen Flow-loop. Identieke waarden worden apart geteld.</p>
+<div class="input-monitor-table-wrap" tabindex="0" aria-label="Inkomende Flow-gegevens">
+<table class="input-monitor-table">
+<thead><tr><th>Inputkaart</th><th>Laatste waarde</th><th>Ontvangen</th><th>Updates/s</th><th>Piek/s</th><th>Identiek</th><th>Laatste ontvangst</th><th>Status</th><th>Evaluatieverzoeken</th></tr></thead>
+<tbody id="inputMonitorRows"></tbody>
+</table>
+</div>
+<p class="muted" id="inputMonitorEmpty">Nog geen inputs ontvangen tijdens deze opname.</p>
+<p class="muted">Veeg horizontaal voor alle kolommen. C = contextaanvragen, F = snelle aanvragen, EV = uitgestelde EV-aanvragen. Per input worden alleen aanvragen tijdens het synchrone deel van de handler gekoppeld; latere timers en async-verwerking kunnen niet betrouwbaar aan één input worden toegeschreven. Aanvragen kunnen worden gebundeld en zijn geen uitgevoerde berekeningen.</p>
+<p class="muted">De export bevat proces-CPU voor de hele app tijdens de opname. Vrije tekst en JSON-payloads worden afgeschermd. Grote of gestructureerde payloads worden niet diep vergeleken. Na een app-herstart vervalt de opname. Wissen is beschikbaar na stoppen.</p>
+<textarea class="homey-form-input" id="inputMonitorExport" readonly hidden aria-label="Input Monitor JSON"></textarea>
+</div>
+
 </section>
 <section class="panel" id="panel-support">
 <div class="card">
@@ -2344,6 +2391,8 @@ async function onHomeyReady(Homey) {
   }
 
   function q(id) { return document.getElementById(id); }
+
+  const inputMonitorUi = HomeFluxInputMonitor.create({ document, api, getLanguage: () => uiLanguage });
 
   const diagnosticSettingIds = [
     'diagnosticsPlanningEnabled', 'diagnosticsCpuEnabled',
@@ -3273,6 +3322,7 @@ async function onHomeyReady(Homey) {
   function switchTab(name) {
     if (activeMainTab === 'planning-simulation' && name !== 'planning-simulation') clearPlanningSimulationResult();
     activeMainTab = name;
+    inputMonitorUi.setVisible(name === 'diagnostics' && !document.hidden);
     document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
     const selectedTab = document.querySelector(`.tab[data-tab="${name}"]`);
     if (selectedTab) q('activeTabLabel').textContent = selectedTab.textContent.trim();
@@ -5201,7 +5251,10 @@ async function onHomeyReady(Homey) {
     });
   });
 
+  window.addEventListener('pagehide', () => inputMonitorUi.setVisible(false));
+  window.addEventListener('pageshow', () => inputMonitorUi.setVisible(activeMainTab === 'diagnostics' && !document.hidden));
   document.addEventListener('visibilitychange', () => {
+    inputMonitorUi.setVisible(activeMainTab === 'diagnostics' && !document.hidden);
     if (document.hidden) return;
     if (q('panel-hybrid-ems').classList.contains('active')) refreshHybridStatus();
     else refreshStatus();

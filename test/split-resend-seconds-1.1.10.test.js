@@ -51,6 +51,9 @@ async function migrationTests() {
 async function timerTests() {
   const h = await boot(new Map([['settingsSchemaVersion',71], ['batteryCount',8],
     ['controlEnabled',true]]));
+  // Finish startup publications before isolating split-resend timers.
+  // Otherwise unrelated PV/status timers also appear in this test capture.
+  for (let pass = 0; pass < 40; pass++) await Promise.resolve();
   const a = h.app, timers = [], calls = [];
   let now = Date.parse('2026-10-21T10:00:00Z');
   const realNow = Date.now;
