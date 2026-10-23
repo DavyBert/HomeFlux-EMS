@@ -1,0 +1,35 @@
+{
+  "calls": 20,
+  "callers": [
+    [
+      "at HomeFluxEmsApp.calculateEvPortfolioDecisions (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      4
+    ],
+    [
+      "at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runEvHeartbeat (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.calculateEvPortfolioDecisions (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.coordinateEvBatteryPriority (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runContextEvaluation (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at /mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at Function.from (<anonymous>) < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runContextEvaluation (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.calculateEvPortfolioDecisions (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishFlexibleLoads (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishFlexibleLoads (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js < at Object.fn (/mnt/data/homeflux_evsettings_update/HomeFlux-EMS/app.js",
+      1
+    ]
+  ],
+  "cpuMs": 282.307,
+  "errors": []
+}

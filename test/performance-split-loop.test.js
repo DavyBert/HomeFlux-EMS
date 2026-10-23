@@ -146,7 +146,8 @@ Module._load = originalLoad;
   for (const forbidden of ['coordinateEvBatteryPriority(', 'publishFlexibleLoads(', 'calculatePvPowerLimit(', 'getRuntimeSettings(', 'buildSocPlan(', 'syncEmsDevices(']) {
     assert(!fastSource.includes(forbidden), `fast battery loop contains slow call ${forbidden}`);
   }
-  assert(fastSource.includes('evaluate(evaluationState, settings, new Date(now), this.controlContext)'));
+  assert(fastSource.includes('evaluate(evaluationState, settings, new Date(now), this.controlContext,'),
+    'fast path keeps prepared context and only adds an optional synchronous planner observer');
   assert(appSource.includes("this.requestContextEvaluate(false, 'grid_context', 0, false, false)"));
   assert(appSource.includes("this.requestContextEvaluate(false, 'pv_context', 0, false, false)"));
   assert(appSource.includes('this.controlRuntimeSettings || this.cachedRuntimeSettings'));

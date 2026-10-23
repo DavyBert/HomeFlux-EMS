@@ -48,6 +48,15 @@
       q('inputMonitorTotal').textContent = String(data.totalReceived || 0);
       q('inputMonitorLoops').textContent = String(data.possibleLoopEpisodes || 0);
       q('inputMonitorActiveLoops').textContent = String(data.activePossibleLoops || 0);
+      q('inputMonitorCalculationTotal').textContent = String(data.calculationSummary?.total || 0);
+      q('inputMonitorCalculationLoops').textContent = String(data.calculationSummary?.possibleRepeats || 0);
+      const planEvents = data.planningEvents || {};
+      const countPlans = prefix => Object.entries(planEvents).reduce((total, [key, count]) =>
+        total + (key.startsWith(prefix + ':ev') ? Number(count) || 0 : 0), 0);
+      q('inputMonitorEvPlanRequested').textContent = String(countPlans('requested'));
+      q('inputMonitorEvPlanHandled').textContent = String(countPlans('handled'));
+      q('inputMonitorEvDeadlineReused').textContent = String(countPlans('soc_deadline_reused'));
+      q('inputMonitorEvTariffReused').textContent = String(countPlans('tariff_suffix_reused'));
       buttons(data);
       const body = q('inputMonitorRows');
       body.replaceChildren();
@@ -76,6 +85,56 @@
         body.appendChild(row);
       }
       q('inputMonitorEmpty').hidden = Boolean(data.inputs?.length);
+      const calculations = q('inputMonitorCalculationRows');
+      calculations.replaceChildren();
+      const functionName = kind => ({
+        batterySocPlan: t('Batterij-SoC-plan', 'Battery SoC plan'),
+        batteryChargeTarget: t('Batterij-laadvermogensplan', 'Battery charge-power planning'),
+        evSettingsBuild: t('EV-instellingenopbouw', 'EV settings expansion'),
+        evSocDeadline: t('EV-SoC-deadline', 'EV SoC deadline resolution'),
+        evDecision: t('EV-laadbeslissing', 'EV charging decision'),
+        evTariffScan: t('EV-tariefvensterscan', 'EV tariff-window scan'),
+      })[kind] || kind;
+      const routeName = origin => ({
+        context: t('Trage context', 'Slow context'),
+        heartbeat: 'Heartbeat', publication: t('Publicatie', 'Publication'),
+        deferred: t('Uitgestelde EV-context', 'Deferred EV context'),
+        simulation: t('Simulatie', 'Simulation'),
+        single: t('EV 1 afzonderlijk', 'EV 1 standalone'),
+        legacy: t('Oud EV-pad', 'Legacy EV path'),
+        fast: t('Snelle batterijregeling', 'Fast battery control'),
+        fastPreview: t('Snelle batterij-preview', 'Fast battery preview'),
+        runtime: t('Gedeelde functies', 'Shared helpers'),
+        flow: 'Flow', status: t('Status', 'Status'),
+        settings: t('Instellingen', 'Settings'),
+        summary: t('Samenvatting', 'Summary'),
+      })[origin] || origin;
+      const milliseconds = n => `${Number(n || 0).toFixed(2)} ms`;
+      for (const calculation of data.calculations || []) {
+        const row = document.createElement('tr');
+        row.className = 'input-monitor-' + (calculation.status === 'possible_repetition' ? 'possible_loop' : calculation.status);
+        cell(row, functionName(calculation.kind) + (calculation.instance ? ` · EV ${calculation.instance}` : ''));
+        cell(row, routeName(calculation.origin));
+        cell(row, String(calculation.executions));
+        cell(row, String(calculation.updatesPerSecond));
+        cell(row, String(calculation.peakPerSecond));
+        cell(row, milliseconds(calculation.totalWallMs));
+        cell(row, `${milliseconds(calculation.averageWallMs)} / ${milliseconds(calculation.maxWallMs)}`);
+        cell(row, milliseconds(calculation.totalCpuMs));
+        cell(row, date(calculation.lastAt));
+        const status = cell(row, calculation.status === 'possible_repetition'
+          ? t('Mogelijke rekenherhaling', 'Possible repeated calculation')
+          : calculation.status === 'high_frequency'
+            ? t('Verhoogde rekenfrequentie', 'Elevated calculation rate')
+            : t('Normaal', 'Normal'));
+        if (calculation.possibleRepeats) {
+          const history = document.createElement('small');
+          history.textContent = `${t('Eerste waarschuwing', 'First warning')}: ${date(calculation.firstWarningAt)} · ${calculation.possibleRepeats}×`;
+          status.appendChild(history);
+        }
+        calculations.appendChild(row);
+      }
+      q('inputMonitorCalculationEmpty').hidden = Boolean(data.calculations?.length);
     }
 
     async function refresh() {

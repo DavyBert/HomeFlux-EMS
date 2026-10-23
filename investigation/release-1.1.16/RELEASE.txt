@@ -1,0 +1,38 @@
+HomeFlux EMS 1.1.16 — 23 oktober 2026
+
+Deze release bevat alle wijzigingen uit de recentste HomeFlux-EMS-v1.1.15.zip,
+inclusief het afgeronde onderzoek naar EV-doelkaarten voor SoC en kWh.
+
+Release notes (NL/EN)
+Identieke SoC- en kWh-doelen vermijden herhaalde berekeningen en opslag en
+behouden de laadvoortgang. Actieve SoC-doelen hergebruiken kalenderwerk.
+Dubbele tariefvensterberekeningen binnen dezelfde EV-beslissing vervallen.
+Interne opslag veroorzaakt geen extra EMS-context. Werkelijk gewijzigde doelen
+en nieuwe dagelijkse deadlines blijven werken. Diagnostiek volgt de appversie.
+De beschrijving van de eerdere EV-controle-/timeroptimalisaties blijft bij 1.1.15.
+
+Versie
+app.json, .homeycompose/app.json, package.json, beide rootversies in
+package-lock.json en de opstartmelding staan op 1.1.16.
+Diagnostiek, live status, Input Monitor en planningssimulatie zijn tijdens
+uitvoering gecontroleerd: alle vier geven 1.1.16 terug.
+
+Verificatie
+- npm run check: 69 testscripts en alle bijbehorende syntaxcontroles geslaagd
+  op de volledige bron vóór de uitsluitend administratieve versieverhoging.
+- Na de versieverhoging: syntaxcontrole van app.js, app-control.test.js en
+  ev-plan-1.1.15.test.js geslaagd: 33 scenario's en 975 exacte kalender-/DST-
+  vergelijkingen. Ook de JSON-versievelden en NL/EN-release notes gecontroleerd.
+- De EV-planningstest controleert onder meer dat identieke invoer een voltooid
+  doel niet herstart of geleverde kWh aanvult. Dezelfde doelwaarde voor een
+  nieuwe dagelijkse deadline wordt wel verwerkt. Restore, reconnect en
+  tijdzonewijzigingen blijven ondersteund.
+- Vergelijking met de aangeleverde ZIP: alleen zeven versie-/releasebestanden
+  gewijzigd. app.js verschilt uitsluitend in de opstartmelding. Alle overige
+  broncode, beveiligingen, Flow-schema's en .homeyignore zijn bytegelijk.
+
+Het eerdere onderzoeksrapport en de meetbestanden blijven historisch onder
+investigation/ev-plan-1.1.15/ staan. De daar genoemde 1.1.15 beschrijft de
+onderzoeksversie; deze bundel levert dezelfde verbeteringen als 1.1.16 op.
+De eerdere CPU-proeven waren hostmetingen met gesimuleerde Homey-I/O, geen
+nieuwe meting op Freds Homey of een voorspelling van diens CPU-percentage.

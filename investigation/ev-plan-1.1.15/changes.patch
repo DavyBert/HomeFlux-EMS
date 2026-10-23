@@ -1,0 +1,312 @@
+--- 1.1.15-before/.homeychangelog.json
++++ 1.1.15-updated/.homeychangelog.json
+@@ -1,7 +1,7 @@
+ {
+   "1.1.15": {
+-    "nl": "Efficiëntere EV-verwerking door fysieke EV-controles en afgeleide EV-instellingen binnen dezelfde snelle verwerkingsgang te hergebruiken. Verwijdert vervallen EV-contextaanvragen vóór timeruitvoering, ook na wachten op een andere publicatie. Minder heartbeatwerk bij volledig losgekoppelde EV’s. Bestaande laadstrategieën, beveiligingen en contextcadans blijven behouden.",
+-    "en": "More efficient EV processing by reusing physical EV checks and derived EV settings within the same synchronous fast-control request. Resolved EV context requests are discarded before timer execution, including after waiting for another publication. Reduced heartbeat work for fully disconnected EVs. Existing charging strategies, safety protections and context cadence are preserved."
++    "nl": "Efficiëntere EV-verwerking door fysieke EV-controles en afgeleide EV-instellingen binnen dezelfde snelle verwerkingsgang te hergebruiken. Verwijdert vervallen EV-contextaanvragen vóór timeruitvoering, ook na wachten op een andere publicatie. Minder heartbeatwerk bij volledig losgekoppelde EV’s. Bestaande laadstrategieën, beveiligingen en contextcadans blijven behouden. Identieke SoC- en kWh-plandoelen via Flow veroorzaken geen nieuwe planning of opslag. Minder kalenderwerk bij actieve SoC-Flow-doelen, zonder de exacte deadline te veranderen. Interne EV-plandoelopslag veroorzaakt geen dubbele EMS-context; diagnostiek toont de werkelijke appversie. Identieke tariefvensters worden binnen één EV-beslissing hergebruikt.",
++    "en": "More efficient EV processing by reusing physical EV checks and derived EV settings within the same synchronous fast-control request. Resolved EV context requests are discarded before timer execution, including after waiting for another publication. Reduced heartbeat work for fully disconnected EVs. Existing charging strategies, safety protections and context cadence are preserved. Identical SoC and kWh Flow targets no longer restart planning or persistence. Reduced calendar work for active SoC Flow targets while preserving exact deadlines. Internal EV target persistence no longer starts duplicate EMS contexts; diagnostics show the actual app version. Identical tariff windows are reused within a single EV decision."
+   },
+   "1.1.14": {
+     "nl": "Nieuwe Input Monitor & Loop Detection in Diagnostiek: bekijk maximaal 15 minuten welke Flow-kaarten gegevens of opdrachten sturen, hoe vaak waarden identiek blijven en waar mogelijk overactieve Flows voorkomen. Met automatische stop, live frequenties en JSON-export. De bestaande EMS-regeling blijft ongewijzigd.",
+--- 1.1.15-before/README.md
++++ 1.1.15-updated/README.md
+@@ -34,9 +34,9 @@
+ 
+ ### 1.1.15
+ 
+-Reduced repeated EV physical checks and settings expansion within a synchronous fast-control request. Resolved EV context requests are discarded before timer execution and after waiting for another publication. Fully disconnected EVs skip unnecessary heartbeat calculations once outputs and physical safeguards are settled. Charging strategies, immediate safety responses, Input Monitor and the regular context interval are preserved.
+-
+-Minder herhaalde fysieke EV-controles en instellingenopbouw binnen dezelfde snelle verwerkingsgang. Vervallen EV-contextaanvragen worden vóór timeruitvoering en na wachten op een andere publicatie verwijderd. Volledig losgekoppelde EV’s slaan onnodige heartbeatberekeningen over zodra uitgangen en fysieke beveiligingen zijn afgehandeld. Laadstrategieën, onmiddellijke veiligheidsreacties, Input Monitor en het reguliere contextinterval blijven behouden.
++Reduced repeated EV physical checks and settings expansion within a synchronous fast-control request. Resolved EV context requests are discarded before timer execution and after waiting for another publication. Fully disconnected EVs skip unnecessary heartbeat calculations once outputs and physical safeguards are settled. Charging strategies, immediate safety responses, Input Monitor and the regular context interval are preserved. Identical SoC/kWh Flow targets avoid redundant planning and writes; active SoC targets reuse calendar work without changing their exact deadline. Internal EV plan persistence avoids duplicate contexts, and diagnostic version fields follow the app manifest.
++
++Minder herhaalde fysieke EV-controles en instellingenopbouw binnen dezelfde snelle verwerkingsgang. Vervallen EV-contextaanvragen worden vóór timeruitvoering en na wachten op een andere publicatie verwijderd. Volledig losgekoppelde EV’s slaan onnodige heartbeatberekeningen over zodra uitgangen en fysieke beveiligingen zijn afgehandeld. Laadstrategieën, onmiddellijke veiligheidsreacties, Input Monitor en het reguliere contextinterval blijven behouden. Identieke SoC-/kWh-Flow-doelen vermijden herhaalde planning en opslag; actieve SoC-doelen hergebruiken kalenderwerk met behoud van de exacte deadline. Interne EV-planopslag veroorzaakt geen dubbele context en diagnostische versievelden volgen het appmanifest.
+ 
+ ### 1.1.9
+ 
+--- 1.1.15-before/app.js
++++ 1.1.15-updated/app.js
+@@ -449,6 +449,17 @@
+ 
+     this.homey.settings.on('set', async key => {
+       try {
++        // These keys persist EV state already changed by its handler or
++        // energy accounting. Goal changes request their own context; energy
++        // completion stops immediately. A later settings callback must not
++        // invalidate tariffs/planning or start a duplicate EMS pass.
++        if (key === 'evSocDeadlineOverrides' || key === 'evEnergyDeadlineOverrides') {
++          if (this.isDiagnosticEnabled('planning')) {
++            this.recordDiagnosticSetting(key, this.homey.settings.get(key));
++          }
++          this.recordDiagnosticCounter('evPlanPersistenceEventsSkipped');
++          return;
++        }
+         // Keep the RAM snapshot authoritative for all following calculations.
+         // An external settings write costs one Homey read here, instead of a
+         // complete settings scan in every nested helper.
+@@ -1698,7 +1709,7 @@
+     }
+     const report = {
+       schema: 'homeflux-diagnostics-v2',
+-      version: '1.1.13',
++      version: this.homey?.manifest?.version || require('./app.json').version,
+       generatedAt,
+       session: {
+         active: Boolean(runtime.sessionActive),
+@@ -3497,6 +3508,16 @@
+     return observation.control;
+   }
+ 
++  getEvSocPlanDeadlineAt(now, time, timezone) {
++    // Current Homey dates have minute-aligned timezone offsets/transitions.
++    // Resolve the calendar minute through the existing bounded pure cache,
++    // then restore the scan's exact seconds/milliseconds. This keeps the old
++    // rolling deadline, DST handling and 26-hour fallback byte-for-byte equal.
++    // Historical sub-minute offsets retain the original exact-timestamp path.
++    const remainder = now >= Date.UTC(2000, 0, 1) ? now % 60000 : 0;
++    return findNextLocalTime(new Date(now - remainder), time, timezone).getTime() + remainder;
++  }
++
+   getEvInstanceSettings(index, source = this.getSettings()) {
+     this.recordDiagnosticCounter('evInstanceSettingsBuilds');
+     const fields = [
+@@ -3565,8 +3586,7 @@
+       settings.evSocPlanOverrideActive = true;
+       settings.evTargetSoc = Math.max(0, Math.min(100, Number(socPlan.targetSoc) || 0));
+       settings.evTargetTime = String(socPlan.targetTime || settings.evTargetTime || '07:00');
+-      const nextDeadline = findNextLocalTime(new Date(now), settings.evTargetTime, settings.timezone || 'Europe/Brussels');
+-      socPlan.deadlineAt = nextDeadline.getTime();
++      socPlan.deadlineAt = this.getEvSocPlanDeadlineAt(now, settings.evTargetTime, settings.timezone || 'Europe/Brussels');
+       settings.evSocDeadlineAt = socPlan.deadlineAt;
+       settings.evGuaranteeTarget = true;
+       settings.evAllowUnselectedTariffForDeadline = Boolean(socPlan.guarantee);
+@@ -5766,7 +5786,7 @@
+   getInputMonitor() {
+     if (!this.inputMonitor) this.inputMonitor = new InputMonitor({
+       definitions: (this.homey.manifest || require('./app.json')).flow?.actions || [],
+-      version: (this.homey.manifest || require('./app.json')).version,
++      version: this.homey?.manifest?.version || require('./app.json').version,
+       now: () => Date.now(),
+       setTimeout: (fn, ms) => this.homey.setTimeout(fn, ms),
+       clearTimeout: timer => clearTimeout(timer),
+@@ -8642,6 +8662,7 @@
+     const raw = this.homey.settings.get('evEnergyDeadlineOverrides');
+     const saved = Array.isArray(raw) ? raw : [];
+     const now = Date.now();
++    const timezone = this.homey.clock.getTimezone() || 'UTC';
+     this.evEnergyPlans = Array.from({ length: 4 }, (_, index) => {
+       const item = saved[index] || {};
+       const targetKwh = Math.max(0, Math.min(250, Number(item.targetKwh) || 0));
+@@ -8654,6 +8675,8 @@
+         remainingKwh,
+         targetTime,
+         deadlineAt,
++        targetOccurrenceAt: deadlineAt,
++        targetTimezone: timezone,
+         // Never integrate charge current across app downtime. The remaining
+         // value is persisted periodically, then counting resumes from startup.
+         lastTickAt: now,
+@@ -8687,11 +8710,15 @@
+   restoreEvSocPlanOverrides() {
+     const raw = this.homey.settings.get('evSocDeadlineOverrides');
+     const saved = Array.isArray(raw) ? raw : [];
++    const now = Date.now();
++    const timezone = this.homey.clock.getTimezone() || 'UTC';
+     this.evSocPlans = Array.from({ length: 4 }, (_, index) => {
+       const item = saved[index] || {};
+       const targetSoc = Math.max(1, Math.min(100, Number(item.targetSoc) || 80));
+       const targetTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(item.targetTime || '')) ? String(item.targetTime) : '07:00';
+-      return { active: Boolean(item.active), targetSoc, targetTime, deadlineAt: 0, guarantee: Boolean(item.guarantee) };
++      return { active: Boolean(item.active), targetSoc, targetTime, deadlineAt: 0, guarantee: Boolean(item.guarantee),
++        targetOccurrenceAt: item.active ? this.getEvSocPlanDeadlineAt(now, targetTime, timezone) : 0,
++        targetTimezone: timezone };
+     });
+   }
+ 
+@@ -8755,12 +8782,19 @@
+     // A command is no delivery proof. Integrate only a bounded interval after
+     // actual current feedback, settling it before the next reading replaces it.
+     const elapsedHours = feedbackAt > 0 ? Math.max(0, Math.min(now, feedbackAt + EV_CURRENT_FEEDBACK_MAX_MS) - Math.max(last, feedbackAt)) / 3600000 : 0;
+-    const settings = this.getEvInstanceSettings(index, this.getSettings());
+     const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+     const actualCurrentA = connected && input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+     const session = this.getEvSessionDetectionRuntime(index);
+-    const deliveredKwh = session?.loadAbsent || session?.endedLatched ? 0 : elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000;
+     const before = Math.max(0, Number(plan.remainingKwh) || 0);
++    const canDeliver = elapsedHours > 0 && actualCurrentA > 0 && before > 0
++      && !session?.loadAbsent && !session?.endedLatched;
++    // Keep the helper's existing expired-deadline rollover side effect, but
++    // avoid rebuilding settings when zero/stale/absent feedback delivers no
++    // energy. lastTickAt still advances exactly as before.
++    const settings = canDeliver || !(Number(plan.deadlineAt) > now)
++      ? this.getEvInstanceSettings(index, this.getSettings()) : null;
++    const deliveredKwh = canDeliver ? elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000 : 0;
++    if (!settings) this.recordDiagnosticCounter('evEnergyAccountingIdleSkipped');
+     if (deliveredKwh > 0 && before > 0) plan.remainingKwh = Math.max(0, before - deliveredKwh);
+     plan.lastTickAt = now;
+     if (deliveredKwh > 0 && before > 0) {
+@@ -8783,6 +8817,8 @@
+         const settings = this.getSettings();
+         const deadline = findNextLocalTime(new Date(now), String(plan.targetTime || '07:00'), settings.timezone || 'Europe/Brussels');
+         plan.deadlineAt = deadline.getTime();
++        plan.targetOccurrenceAt = plan.deadlineAt;
++        plan.targetTimezone = settings.timezone || 'Europe/Brussels';
+         changed = true;
+       }
+       plan.sessionStarted = true;
+@@ -8803,23 +8839,44 @@
+     return changed;
+   }
+ 
++  isEvPlanGoalCurrent(plan, now = Date.now()) {
++    // deadlineAt may roll forward while displaying an existing persistent
++    // plan. Keep the submitted occurrence separate: the same HH:mm tomorrow
++    // is a real new goal, while repeated inputs today cannot refill progress.
++    return !plan.active || (plan.targetTimezone === (this.homey.clock.getTimezone() || 'UTC')
++      && now < Math.floor(Number(plan.targetOccurrenceAt) / 60000) * 60000);
++  }
++
+   setEvEnergyPlan(index, energyKwh, targetTime, guaranteeInput = 'no') {
++    this.recordDiagnosticCounter('evEnergyTargetInputs');
+     const kwh = Math.max(0, Number(energyKwh) || 0);
+     const time = String(targetTime || '').trim();
+     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
++    const guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
++    const plan = this.evEnergyPlans[index];
++    if (!plan) return false;
++    // Compare the submitted persistent goal, not its decreasing remainder.
++    // Repeated feedback must not refill already delivered kWh or reset ticks.
++    // Completion stays latched until a new goal occurrence, clear or reconnect.
++    if (plan.active === (kwh > 0) && Math.abs(Number(plan.targetKwh) - kwh) <= 1e-9
++      && plan.targetTime === time && plan.guarantee === guarantee && !this.evSocPlans?.[index]?.active
++      && this.isEvPlanGoalCurrent(plan)) {
++      this.recordDiagnosticCounter('evEnergyTargetUnchanged');
++      return true;
++    }
+     const settings = this.getSettings();
+     const now = Date.now();
+     const deadline = findNextLocalTime(new Date(now), time, settings.timezone || 'Europe/Brussels');
+-    const plan = this.evEnergyPlans[index];
+-    if (!plan) return false;
+     this.rearmEvCompletedTarget(index);
+     plan.active = kwh > 0;
+     plan.targetKwh = kwh;
+     plan.remainingKwh = kwh;
+     plan.targetTime = time;
+     plan.deadlineAt = plan.active ? deadline.getTime() : 0;
++    plan.targetOccurrenceAt = plan.deadlineAt;
++    plan.targetTimezone = settings.timezone || 'Europe/Brussels';
+     plan.lastTickAt = now;
+-    plan.guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
++    plan.guarantee = guarantee;
+     const input = this.getEvInputSnapshot(index);
+     plan.sessionStarted = plan.active && Boolean(input?.seen?.connected) && Boolean(input?.connected);
+ 
+@@ -8839,10 +8896,19 @@
+   }
+ 
+   setEvSocPlan(index, targetSocInput, targetTime, guaranteeInput = 'no') {
++    this.recordDiagnosticCounter('evSocTargetInputs');
+     const targetSoc = Number(targetSocInput);
+     const time = String(targetTime || '').trim();
+     if (!Number.isFinite(targetSoc) || targetSoc < 1 || targetSoc > 100) return false;
+     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
++    const guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
++    const existing = this.evSocPlans?.[index];
++    if (existing?.active && Math.abs(Number(existing.targetSoc) - targetSoc) <= 1e-9
++      && existing.targetTime === time && existing.guarantee === guarantee && !this.evEnergyPlans?.[index]?.active
++      && this.isEvPlanGoalCurrent(existing)) {
++      this.recordDiagnosticCounter('evSocTargetUnchanged');
++      return true;
++    }
+     const settings = this.getSettings();
+     const deadline = findNextLocalTime(new Date(), time, settings.timezone || 'Europe/Brussels');
+     if (!Array.isArray(this.evSocPlans)) this.evSocPlans = Array.from({ length: 4 }, () => ({ active:false, targetSoc:0, targetTime:'07:00', deadlineAt:0, guarantee:false }));
+@@ -8853,7 +8919,9 @@
+     plan.targetSoc = Math.max(1, Math.min(100, targetSoc));
+     plan.targetTime = time;
+     plan.deadlineAt = deadline.getTime();
+-    plan.guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
++    plan.targetOccurrenceAt = plan.deadlineAt;
++    plan.targetTimezone = settings.timezone || 'Europe/Brussels';
++    plan.guarantee = guarantee;
+     this.persistEvSocPlanOverrides();
+     const energyPlan = this.evEnergyPlans?.[index];
+     if (energyPlan) {
+@@ -14500,7 +14568,7 @@
+     const result = evaluate(simulationState, settings, simulatedAt);
+     const tariff = result.tariff || {};
+     return {
+-      version: '1.1.13',
++      version: this.homey?.manifest?.version || require('./app.json').version,
+       simulatedAt: simulatedAt.getTime(),
+       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
+       timezone,
+@@ -14573,7 +14641,7 @@
+     let plan;
+     try {
+       plan = {
+-        version: '1.1.13',
++        version: this.homey?.manifest?.version || require('./app.json').version,
+         nightPlanningActive: this.isNightPlanningPhase(now),
+         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
+         ...buildSocPlan(state, settings, new Date(now)),
+@@ -14924,7 +14992,7 @@
+     };
+ 
+     return this.localizeDisplay({
+-      version: '1.1.13',
++      version: this.homey?.manifest?.version || require('./app.json').version,
+       settings: {
+         batteryCount: storedSettings.batteryCount,
+         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
+--- 1.1.15-before/lib/flexible-loads.js
++++ 1.1.15-updated/lib/flexible-loads.js
+@@ -332,8 +332,9 @@
+     return { ...base, emergencyTariffBlocked: true, reason: 'Emergency charge wacht op geselecteerd laadtarief' };
+   }
+ 
++  let deadlineTariffMinutes = null;
+   if (energyNeedKwh !== null && energyNeedKwh > 0.001 && mode !== 'emergency') {
+-    const tariffMinutes = countEvTariffMinutes(now, deadline, settings, 5);
++    const tariffMinutes = deadlineTariffMinutes = countEvTariffMinutes(now, deadline, settings, 5);
+     const selectedCapacityKwh = (tariffMinutes.selectedMinutes / 60) * (maxPowerW / 1000);
+     const totalCapacityKwh = (Math.max(0, deadline.getTime() - now.getTime()) / 3600000) * (maxPowerW / 1000);
+     base.targetReachableOnSelectedTariffs = energyNeedKwh <= selectedCapacityKwh + 0.001;
+@@ -402,7 +403,10 @@
+       source = desiredA > beforeTariffA ? (beforeTariffA > 0 ? 'pv+tariff' : 'tariff') : source;
+ 
+       if (guaranteeEnabled && energyNeedKwh !== null) {
+-        const minutes = countEvTariffMinutes(now, deadline, settings, 5).selectedMinutes;
++        // Same immutable inputs and window as the reachability check above.
++        // Keep this local to one decision; the future-start window below is
++        // different and must retain its own calculation.
++        const minutes = (deadlineTariffMinutes || countEvTariffMinutes(now, deadline, settings, 5)).selectedMinutes;
+         if (minutes > 0) {
+           const requiredSelectedPowerW = (energyNeedKwh * 1000) / (minutes / 60);
+           desiredA = Math.max(desiredA, controlType === 'mode' ? modeStandardA : quantizeCurrent(requiredSelectedPowerW, settings, 'ceil'));
+--- 1.1.15-before/package.json
++++ 1.1.15-updated/package.json
+@@ -5,8 +5,8 @@
+   "main": "app.js",
+   "private": true,
+   "scripts": {
+-    "test": "node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/ev-headroom.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/autotune.test.js && node test/settings-startup.test.js && node test/settings-translations.test.js && node test/settings-runtime-audit.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js && node test/savings.test.js && node test/widget.test.js && node test/regressions-0.7.8.test.js && node test/regressions-0.7.9.test.js && node test/regressions-0.7.10.test.js && node test/regressions-0.7.11.test.js && node test/flow-slot-cards.test.js && node test/configured-flow-cards.test.js && node test/regressions-0.7.15.test.js && node test/regressions-0.7.16.test.js && node test/voltage-ui-0.7.16.test.js && node test/regressions-0.8.1.test.js && node test/regressions-0.8.2.test.js && node test/regressions-0.8.3.test.js && node test/regressions-0.8.4.test.js && node test/regressions-0.8.7.test.js && node test/pv-plan-feedback.test.js && node test/regressions-0.9.1.test.js && node test/regressions-0.9.2.test.js && node test/regressions-0.9.3.test.js && node test/regressions-0.9.5.test.js && node test/regressions-0.9.7.test.js && node test/regressions-0.9.8.test.js && node test/regressions-0.9.9.test.js && node test/regressions-1.0.0.test.js && node test/efficiency.test.js && node test/price-sources-1.0.6.test.js && node test/price-ui-1.0.6.test.js && node test/price-alignment-names-1.0.6.test.js && node test/fast-control-audit-1.0.6.test.js && node test/planning-limits-1.0.7.test.js && node test/charge-feedback-1.0.8.test.js && node test/idle-guard-1.0.8.test.js && node test/context-refresh-1.0.10.test.js && node test/ev-feedback-1.0.11.test.js && node test/settings-cache-1.0.12.test.js && node test/pv-source-1.1.1.test.js && node test/active-charge-1.1.2.test.js && node test/source-switch-1.1.3.test.js && node test/night-forecast-1.1.4.test.js && node test/independent-ev-1.1.5.test.js && node test/diagnostics-1.1.6.test.js && node test/ev-battery-protection-1.1.6.test.js && node test/soc-completion-1.1.9.test.js && node test/ev-battery-transition-1.1.9.test.js && node test/split-resend-seconds-1.1.10.test.js && node test/ev-pv-house-first-1.1.11.test.js && node test/ev-input-work-1.1.12.test.js && node test/ev-deadline-cache-1.1.12.test.js && node test/ev-duplicate-cpu-1.1.12.test.js && node test/ev-context-delay-1.1.13.test.js && node test/input-monitor-1.1.14.test.js && node test/input-monitor-ui-1.1.14.test.js && node test/ev-work-1.1.15.test.js",
+-    "check": "node --check test/ev-work-harness.js && node --check test/ev-work-memory-1.1.15.js && node --check test/ev-work-benchmark-1.1.15.js && node --check lib/input-monitor.js && node --check settings/input-monitor.js && node --check lib/compact-diagnostics.js && node --check lib/price-source-names.js && node --check lib/external-prices.js && node --check lib/price-normalization.js && node --check widgets/status/api.js && node --check lib/configured-flow-cards.js && node --check lib/flow-slot-cards.js && node --check app.js && node --check api.js && node --check widgets/savings/api.js && node --check lib/ems-engine.js && node --check lib/homey-energy.js && node --check lib/flexible-loads.js && node --check lib/ev-session.js && node --check lib/savings.js && node --check settings/ev-headroom.js && node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/ev-headroom.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/autotune.test.js && node test/settings-startup.test.js && node test/settings-translations.test.js && node test/settings-runtime-audit.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js && node test/savings.test.js && node test/widget.test.js && node test/regressions-0.7.8.test.js && node test/regressions-0.7.9.test.js && node test/regressions-0.7.10.test.js && node test/regressions-0.7.11.test.js && node test/flow-slot-cards.test.js && node test/configured-flow-cards.test.js && node test/regressions-0.7.15.test.js && node test/regressions-0.7.16.test.js && node test/voltage-ui-0.7.16.test.js && node test/regressions-0.8.1.test.js && node test/regressions-0.8.2.test.js && node test/regressions-0.8.3.test.js && node test/regressions-0.8.4.test.js && node test/regressions-0.8.7.test.js && node test/pv-plan-feedback.test.js && node test/regressions-0.9.1.test.js && node test/regressions-0.9.2.test.js && node test/regressions-0.9.3.test.js && node test/regressions-0.9.5.test.js && node test/regressions-0.9.7.test.js && node test/regressions-0.9.8.test.js && node test/regressions-0.9.9.test.js && node test/regressions-1.0.0.test.js && node test/efficiency.test.js && node test/price-sources-1.0.6.test.js && node test/price-ui-1.0.6.test.js && node test/price-alignment-names-1.0.6.test.js && node test/fast-control-audit-1.0.6.test.js && node test/planning-limits-1.0.7.test.js && node test/charge-feedback-1.0.8.test.js && node test/idle-guard-1.0.8.test.js && node test/context-refresh-1.0.10.test.js && node test/ev-feedback-1.0.11.test.js && node test/settings-cache-1.0.12.test.js && node test/pv-source-1.1.1.test.js && node test/active-charge-1.1.2.test.js && node test/source-switch-1.1.3.test.js && node test/night-forecast-1.1.4.test.js && node test/independent-ev-1.1.5.test.js && node test/diagnostics-1.1.6.test.js && node test/ev-battery-protection-1.1.6.test.js && node test/soc-completion-1.1.9.test.js && node test/ev-battery-transition-1.1.9.test.js && node test/split-resend-seconds-1.1.10.test.js && node test/ev-pv-house-first-1.1.11.test.js && node test/ev-input-work-1.1.12.test.js && node test/ev-deadline-cache-1.1.12.test.js && node test/ev-duplicate-cpu-1.1.12.test.js && node test/ev-context-delay-1.1.13.test.js && node test/input-monitor-1.1.14.test.js && node test/input-monitor-ui-1.1.14.test.js && node test/ev-work-1.1.15.test.js"
++    "test": "node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/ev-headroom.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/autotune.test.js && node test/settings-startup.test.js && node test/settings-translations.test.js && node test/settings-runtime-audit.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js && node test/savings.test.js && node test/widget.test.js && node test/regressions-0.7.8.test.js && node test/regressions-0.7.9.test.js && node test/regressions-0.7.10.test.js && node test/regressions-0.7.11.test.js && node test/flow-slot-cards.test.js && node test/configured-flow-cards.test.js && node test/regressions-0.7.15.test.js && node test/regressions-0.7.16.test.js && node test/voltage-ui-0.7.16.test.js && node test/regressions-0.8.1.test.js && node test/regressions-0.8.2.test.js && node test/regressions-0.8.3.test.js && node test/regressions-0.8.4.test.js && node test/regressions-0.8.7.test.js && node test/pv-plan-feedback.test.js && node test/regressions-0.9.1.test.js && node test/regressions-0.9.2.test.js && node test/regressions-0.9.3.test.js && node test/regressions-0.9.5.test.js && node test/regressions-0.9.7.test.js && node test/regressions-0.9.8.test.js && node test/regressions-0.9.9.test.js && node test/regressions-1.0.0.test.js && node test/efficiency.test.js && node test/price-sources-1.0.6.test.js && node test/price-ui-1.0.6.test.js && node test/price-alignment-names-1.0.6.test.js && node test/fast-control-audit-1.0.6.test.js && node test/planning-limits-1.0.7.test.js && node test/charge-feedback-1.0.8.test.js && node test/idle-guard-1.0.8.test.js && node test/context-refresh-1.0.10.test.js && node test/ev-feedback-1.0.11.test.js && node test/settings-cache-1.0.12.test.js && node test/pv-source-1.1.1.test.js && node test/active-charge-1.1.2.test.js && node test/source-switch-1.1.3.test.js && node test/night-forecast-1.1.4.test.js && node test/independent-ev-1.1.5.test.js && node test/diagnostics-1.1.6.test.js && node test/ev-battery-protection-1.1.6.test.js && node test/soc-completion-1.1.9.test.js && node test/ev-battery-transition-1.1.9.test.js && node test/split-resend-seconds-1.1.10.test.js && node test/ev-pv-house-first-1.1.11.test.js && node test/ev-input-work-1.1.12.test.js && node test/ev-deadline-cache-1.1.12.test.js && node test/ev-duplicate-cpu-1.1.12.test.js && node test/ev-context-delay-1.1.13.test.js && node test/input-monitor-1.1.14.test.js && node test/input-monitor-ui-1.1.14.test.js && node test/ev-work-1.1.15.test.js && node test/ev-plan-1.1.15.test.js",
++    "check": "node --check test/ev-plan-clock-1.1.15.cjs && node --check test/ev-plan-probe-1.1.15.cjs && node --check test/ev-plan-comparison-1.1.15.cjs && node --check test/ev-work-harness.js && node --check test/ev-work-memory-1.1.15.js && node --check test/ev-work-benchmark-1.1.15.js && node --check lib/input-monitor.js && node --check settings/input-monitor.js && node --check lib/compact-diagnostics.js && node --check lib/price-source-names.js && node --check lib/external-prices.js && node --check lib/price-normalization.js && node --check widgets/status/api.js && node --check lib/configured-flow-cards.js && node --check lib/flow-slot-cards.js && node --check app.js && node --check api.js && node --check widgets/savings/api.js && node --check lib/ems-engine.js && node --check lib/homey-energy.js && node --check lib/flexible-loads.js && node --check lib/ev-session.js && node --check lib/savings.js && node --check settings/ev-headroom.js && node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/ev-headroom.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/autotune.test.js && node test/settings-startup.test.js && node test/settings-translations.test.js && node test/settings-runtime-audit.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js && node test/savings.test.js && node test/widget.test.js && node test/regressions-0.7.8.test.js && node test/regressions-0.7.9.test.js && node test/regressions-0.7.10.test.js && node test/regressions-0.7.11.test.js && node test/flow-slot-cards.test.js && node test/configured-flow-cards.test.js && node test/regressions-0.7.15.test.js && node test/regressions-0.7.16.test.js && node test/voltage-ui-0.7.16.test.js && node test/regressions-0.8.1.test.js && node test/regressions-0.8.2.test.js && node test/regressions-0.8.3.test.js && node test/regressions-0.8.4.test.js && node test/regressions-0.8.7.test.js && node test/pv-plan-feedback.test.js && node test/regressions-0.9.1.test.js && node test/regressions-0.9.2.test.js && node test/regressions-0.9.3.test.js && node test/regressions-0.9.5.test.js && node test/regressions-0.9.7.test.js && node test/regressions-0.9.8.test.js && node test/regressions-0.9.9.test.js && node test/regressions-1.0.0.test.js && node test/efficiency.test.js && node test/price-sources-1.0.6.test.js && node test/price-ui-1.0.6.test.js && node test/price-alignment-names-1.0.6.test.js && node test/fast-control-audit-1.0.6.test.js && node test/planning-limits-1.0.7.test.js && node test/charge-feedback-1.0.8.test.js && node test/idle-guard-1.0.8.test.js && node test/context-refresh-1.0.10.test.js && node test/ev-feedback-1.0.11.test.js && node test/settings-cache-1.0.12.test.js && node test/pv-source-1.1.1.test.js && node test/active-charge-1.1.2.test.js && node test/source-switch-1.1.3.test.js && node test/night-forecast-1.1.4.test.js && node test/independent-ev-1.1.5.test.js && node test/diagnostics-1.1.6.test.js && node test/ev-battery-protection-1.1.6.test.js && node test/soc-completion-1.1.9.test.js && node test/ev-battery-transition-1.1.9.test.js && node test/split-resend-seconds-1.1.10.test.js && node test/ev-pv-house-first-1.1.11.test.js && node test/ev-input-work-1.1.12.test.js && node test/ev-deadline-cache-1.1.12.test.js && node test/ev-duplicate-cpu-1.1.12.test.js && node test/ev-context-delay-1.1.13.test.js && node test/input-monitor-1.1.14.test.js && node test/input-monitor-ui-1.1.14.test.js && node test/ev-work-1.1.15.test.js && node test/ev-plan-1.1.15.test.js"
+   },
+   "engines": {
+     "node": ">=18"
+--- 1.1.15-before/test/app-control.test.js
++++ 1.1.15-updated/test/app-control.test.js
+@@ -2422,7 +2422,7 @@
+     pvLiveW: 250,
+     time: '10:00',
+   });
+-  assert.equal(simulation.version, '1.1.13');
++  assert.equal(simulation.version, require('../app.json').version);
+   assert.equal(simulation.phase, 'day');
+   assert.equal(simulation.planningForecastDay, 'today');
+   assert.equal(simulation.plan.targetSoc, 70);

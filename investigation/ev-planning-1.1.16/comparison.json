@@ -1,0 +1,128 @@
+{
+  "version": "1.1.16",
+  "source": "HomeFlux-EMS-1.1.16-planning-monitor.zip",
+  "measurement": "Node.js simulated Homey, not Homey CPU percent",
+  "profiles": [
+    {
+      "scenario": "connected-stop",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 378,
+      "settingsBuildsAfter": 198,
+      "processCpuMsBeforeOneRun": 274.172,
+      "processCpuMsAfterOneRun": 241.998,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "disconnected",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 180,
+      "settingsBuildsAfter": 0,
+      "processCpuMsBeforeOneRun": 127.089,
+      "processCpuMsAfterOneRun": 55.511,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "connected-jitter",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 378,
+      "settingsBuildsAfter": 198,
+      "processCpuMsBeforeOneRun": 258.942,
+      "processCpuMsAfterOneRun": 210.775,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "identical-feedback",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 386,
+      "settingsBuildsAfter": 206,
+      "processCpuMsBeforeOneRun": 276.939,
+      "processCpuMsAfterOneRun": 227.874,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "live-status",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 468,
+      "settingsBuildsAfter": 288,
+      "processCpuMsBeforeOneRun": 422.579,
+      "processCpuMsAfterOneRun": 350.691,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "disconnected-status",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 270,
+      "settingsBuildsAfter": 90,
+      "processCpuMsBeforeOneRun": 251.599,
+      "processCpuMsAfterOneRun": 199.149,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "two-current",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 1266,
+      "settingsBuildsAfter": 906,
+      "processCpuMsBeforeOneRun": 719.197,
+      "processCpuMsAfterOneRun": 712.374,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "two-hybrid",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 855,
+      "settingsBuildsAfter": 495,
+      "processCpuMsBeforeOneRun": 542.682,
+      "processCpuMsAfterOneRun": 428.92,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "no-battery",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 424,
+      "settingsBuildsAfter": 244,
+      "processCpuMsBeforeOneRun": 556.885,
+      "processCpuMsAfterOneRun": 505.965,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "battery-disabled",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 424,
+      "settingsBuildsAfter": 244,
+      "processCpuMsBeforeOneRun": 686.018,
+      "processCpuMsAfterOneRun": 623.852,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "pv-only",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 620,
+      "settingsBuildsAfter": 440,
+      "processCpuMsBeforeOneRun": 968.869,
+      "processCpuMsAfterOneRun": 911.378,
+      "outputsIdentical": true
+    },
+    {
+      "scenario": "diagnostics-off",
+      "durationSeconds": 180,
+      "settingsBuildsBefore": 378,
+      "settingsBuildsAfter": 198,
+      "processCpuMsBeforeOneRun": 253.833,
+      "processCpuMsAfterOneRun": 186.801,
+      "outputsIdentical": true
+    }
+  ],
+  "totalSettingsBuildsBefore": 6027,
+  "totalSettingsBuildsAfter": 3507,
+  "measuredReductionCount": 2520,
+  "settingsBuildReductionPct": 41.8,
+  "profilesWithIdenticalOutputs": 12,
+  "testNotes": {
+    "evWorkScenarios": 9,
+    "evPlanningScenarios": 33,
+    "calendarDstComparisons": 975,
+    "deadlineReferenceComparisons": 238,
+    "extraDirectDecisions": 32,
+    "olderCombinedSuite": "not fully completed within execution limit"
+  }
+}

@@ -32,6 +32,24 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.16
+
+Physical EV control now reuses unchanged electrical configuration and tariff permissions between P1 measurements. Live power, tariff boundaries and safety checks remain current; relevant settings changes refresh the cached configuration.
+
+Reduced EV CPU work during frequent P1 updates by replacing redundant full EV settings expansions with targeted electrical and tariff-permission reads. Diagnostics now distinguishes full settings expansion from physical settings reads by source.
+
+More efficient EV charging plans: repeated SoC and kWh Flow targets avoid unnecessary updates, calendar work and tariff scans. Physical EV accounting and Live status now avoid redundant settings expansion. A heartbeat sharing an already completed, unchanged EV pass skips a duplicate allocation; a completed, still-connected session can remain quiet after STOP and physical load have settled. New input and time boundaries continue to trigger fresh checks.
+
+Efficiëntere EV-laadplanning: herhaalde SoC- en kWh-doelen via Flow vermijden onnodige updates, kalenderwerk en tariefscans. De fysieke EV-vermogenscontrole en Live-status bouwen minder vaak volledige instellingen op. Een heartbeat kan een identieke, net afgehandelde EV-berekening overslaan; ook een beëindigde, nog aangesloten sessie blijft na STOP en het verdwijnen van restbelasting rustig. Nieuwe invoer en tijdsgrenzen blijven opnieuw controleren.
+
+New 15-minute planning diagnostics show actual battery SoC plans, battery charge-power calculations, EV decisions, tariff-window scans, settings expansions and SoC deadline lookups. Each route has execution counts, frequency warnings and CPU/wall time, separately from incoming Flow loops. The JSON export contains the same measurements.
+
+Nieuwe planningsdiagnostiek tijdens de bestaande opname van 15 minuten: werkelijk uitgevoerde batterij-SoC-plannen, batterijlaadvermogensberekeningen, EV-beslissingen, tariefvensterscans, instellingenopbouwen en SoC-deadlineopzoekingen. Per route zijn aantallen, frequentiewaarschuwingen en CPU-/rekentijd zichtbaar, apart van inkomende Flow-loops. De JSON-export bevat dezelfde meetgegevens.
+
+Further EV planning improvements: SoC feedback and status displays avoid full EV settings expansion; Flow SoC deadlines use one calendar lookup per minute while preserving precise timing. A duplicate five-minute guarantee tariff-window suffix is reused within the same decision. The monitor adds per-EV plan revision requests, handled revisions, and reuse counts.
+
+Verdere EV-planningsoptimalisatie: SoC-feedback en statusweergaven vermijden volledige instellingenopbouw; SoC-Flow-deadlines vragen slechts één kalenderopzoeking per minuut met behoud van exacte timing. Een overlappend garantietariefvenster van vijf minuten wordt binnen dezelfde beslissing hergebruikt. De monitor telt bijkomend planningsrevisies en hergebruik.
+
 ### 1.1.15
 
 Reduced repeated EV physical checks and settings expansion within a synchronous fast-control request. Resolved EV context requests are discarded before timer execution and after waiting for another publication. Fully disconnected EVs skip unnecessary heartbeat calculations once outputs and physical safeguards are settled. Charging strategies, immediate safety responses, Input Monitor and the regular context interval are preserved.

@@ -22,6 +22,14 @@ const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue,
 const savingsHistory = require('./lib/savings-history');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
+const EV_PHYSICAL_CONFIG_SUFFIXES = new Set([
+  'Enabled', 'ControlType', 'Phases', 'Voltage', 'VoltageReference',
+  'MinCurrentA', 'StandardCurrentA', 'ModeSmartCurrentA',
+  'ModeStandardCurrentA', 'Weight', 'SmartGridPriority',
+  'DynamicCheapEnabled', 'DynamicNormalEnabled', 'DynamicExpensiveEnabled',
+  'FixedChargeWindowEnabled', 'PvStartSurplusW', 'PvStopSurplusW',
+  'PvStopDelaySeconds', 'FeedbackTolerancePercent',
+]);
 const EV_CURRENT_FEEDBACK_MAX_MS = 60000;
 const DIAGNOSTICS_MAX_MS = 48 * 60 * 60 * 1000;
 const DIAGNOSTIC_SETTING_KEYS = {
@@ -206,6 +214,10 @@ class HomeFluxEmsApp extends Homey.App {
     // the complete settings object through hundreds of homey.settings.get()
     // calls from several nested helpers on every meter update/evaluation.
     this.settingsCache = null;
+    // The physical EV configuration is immutable between relevant settings
+    // writes. Never cache live EV measurements, sessions or tariff selection.
+    this.evPhysicalConfigRevision = 0;
+    this.evPhysicalConfigMemo = Array(4).fill(null);
     this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
 
     // Optional diagnostics are entirely passive while disabled. When enabled,
@@ -242,6 +254,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.lastEvPublishedAt = 0;
     this.evPublishing = false;
     this.evTimer = null;
+    this.lastCompletedEvPortfolio = null;
     // v0.3.40: mode-controlled EV chargers are held in STOP for a configurable
     // minimum time after any HomeFlux STOP. The hold is timestamp-only: no extra
     // polling loop or per-second timer is created; normal EMS passes release it.
@@ -256,6 +269,11 @@ class HomeFluxEmsApp extends Homey.App {
     // after sustained real grid import. No extra polling timer is required.
     this.evPvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
     this.latestEvDecision = null;
+    // Planning requests are revisions, not extra timers. A slow context pass
+    // processes the latest revision; changes during Homey I/O stay pending.
+    this.evPlanRevision = [0, 0, 0, 0];
+    this.evPlanHandledRevision = [-1, -1, -1, -1];
+    this.evPlanRequestReasons = ['', '', '', ''];
     this.evEnergyPlans = Array.from({ length: 4 }, () => ({ active:false, targetKwh:0, remainingKwh:0, targetTime:'07:00', deadlineAt:0, lastTickAt:0, guarantee:false, sessionStarted:false }));
     this.evEnergyPlanPersistAt = 0;
     this.evSocPlans = Array.from({ length: 4 }, () => ({ active:false, targetSoc:0, targetTime:'07:00', deadlineAt:0, guarantee:false }));
@@ -449,6 +467,17 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.homey.settings.on('set', async key => {
       try {
+        // These keys persist EV state already changed by its handler or
+        // energy accounting. Goal changes request their own context; energy
+        // completion stops immediately. A later settings callback must not
+        // invalidate tariffs/planning or start a duplicate EMS pass.
+        if (key === 'evSocDeadlineOverrides' || key === 'evEnergyDeadlineOverrides') {
+          if (this.isDiagnosticEnabled('planning')) {
+            this.recordDiagnosticSetting(key, this.homey.settings.get(key));
+          }
+          this.recordDiagnosticCounter('evPlanPersistenceEventsSkipped');
+          return;
+        }
         // Keep the RAM snapshot authoritative for all following calculations.
         // An external settings write costs one Homey read here, instead of a
         // complete settings scan in every nested helper.
@@ -521,6 +550,15 @@ class HomeFluxEmsApp extends Homey.App {
         }
         if (key === 'evPeakGuardStopHoldSeconds' && Number(this.getSettings().evPeakGuardStopHoldSeconds) <= 0) {
           this.clearEvPeakGuardStopHold();
+        }
+        // Plan-affecting settings and price rights invalidate goal planning;
+        // fast P1/control feedback never increments these revisions.
+        const evPolicySetting = /^ev([2-4])?(Enabled|SocEnabled|Mode|AfterSocTarget|TargetSoc|TargetTime|GuaranteeTarget|AllowUnselectedTariffForDeadline|BatteryCapacityKwh|FixedChargeWindowEnabled|DynamicCheapEnabled|DynamicNormalEnabled|DynamicExpensiveEnabled|Phases|Voltage|ControlType|MinCurrentA|MaxCurrentA)$/.exec(String(key));
+        if (previousSettingValue !== this.settingsCache?.[key]) {
+          if (evPolicySetting) this.markEvPlanChanged(evPolicySetting[1] ? Number(evPolicySetting[1]) - 1 : 0, `setting:${key}`);
+          else if (['evCount','contractType','touRates','dynamicPriceSource','dynamicPriceSources','cheapHours','expensiveHours','fixedChargeStart','fixedChargeEnd'].includes(String(key))) {
+            for (let index = 0; index < 4; index += 1) this.markEvPlanChanged(index, `setting:${key}`);
+          }
         }
         const evGoalSetting = /^ev([2-4])?(AfterSocTarget|TargetSoc|TargetTime|Mode|SocEnabled)$/.exec(String(key));
         if (evGoalSetting && previousSettingValue !== this.settingsCache?.[key]) {
@@ -637,10 +675,21 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.15 initialized');
+    this.log('HomeFlux EMS v1.1.16 initialized');
+  }
+
+  invalidateEvPhysicalConfig(key = '') {
+    const name = String(key);
+    const evSetting = /^ev(?:[2-4])?([A-Z].*)$/.exec(name);
+    if (name && name !== 'touRates' && name !== 'contractType'
+      && name !== 'evCount' && !(evSetting && EV_PHYSICAL_CONFIG_SUFFIXES.has(evSetting[1]))
+      && !/^_ev[1-4]ModeLoadTolerancePercent$/.test(name)) return;
+    this.evPhysicalConfigRevision = (this.evPhysicalConfigRevision || 0) + 1;
+    this.evPhysicalConfigMemo = Array(4).fill(null);
   }
 
   refreshSettingsCache() {
+    this.invalidateEvPhysicalConfig();
     this.batteryFeedbackMemo = null;
     // Declare private mode-only fields up front: adding them later can make
     // this large cache expensive to copy on every getSettings() call.
@@ -670,7 +719,9 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.settingsCache || !Object.prototype.hasOwnProperty.call(DEFAULTS, key)) return;
     this.batteryFeedbackMemo = null;
     const value = this.homey.settings.get(key);
-    this.settingsCache[key] = value !== null && value !== undefined ? value : DEFAULTS[key];
+    const nextValue = value !== null && value !== undefined ? value : DEFAULTS[key];
+    if (!Object.is(this.settingsCache[key], nextValue)) this.invalidateEvPhysicalConfig(key);
+    this.settingsCache[key] = nextValue;
     this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
     this.recordDiagnosticSetting(key, this.settingsCache[key]);
   }
@@ -688,6 +739,9 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (key === 'balanceDeadbandPct' && this.getSettings().optimizeMultiBatteryEfficiency
       && this.getBatteryCount() >= 2) value = Math.max(2, Number(value) || 0);
+    // An internal settings write is visible to the control loop immediately;
+    // do not wait for Homey's asynchronous `set` event to invalidate the cache.
+    if (this.settingsCache && !Object.is(this.settingsCache[key], value)) this.invalidateEvPhysicalConfig(key);
     this.homey.settings.set(key, value);
     if (this.settingsCache && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
       this.settingsCache[key] = value;
@@ -1698,7 +1752,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     const report = {
       schema: 'homeflux-diagnostics-v2',
-      version: '1.1.13',
+      version: this.homey?.manifest?.version || require('./app.json').version,
       generatedAt,
       session: {
         active: Boolean(runtime.sessionActive),
@@ -1910,8 +1964,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (updatedAt > 0 && now - updatedAt > 15 * 60 * 1000) continue;
       const currentA = Math.max(0, Number(input.chargeCurrentA) || 0);
       if (currentA <= 0.05) continue;
-      const evSettings = this.getEvInstanceSettings(index, settings);
-      total += currentA * evPowerPerAmp(evSettings);
+      total += currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
     }
     return Math.max(0, total);
   }
@@ -3404,9 +3457,11 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     for (let index = 0; index < this.getEvCount(settings); index += 1) {
-      const instanceSettings = this.getEvInstanceSettings(index, settings);
-      if (!Boolean(instanceSettings.evEnabled) || instanceSettings.evSocEnabled === false) continue;
-      const fresh = this.getEvSocFreshness(index, instanceSettings, now);
+      if (!Boolean(settings[this.getEvSettingKey(index, 'Enabled')])
+        || settings[this.getEvSettingKey(index, 'SocEnabled')] === false) continue;
+      const fresh = this.getEvSocFreshness(index, {
+        evSocFreshnessMinutes: settings[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+      }, now);
       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
       if (decision && Boolean(decision.socFresh) !== Boolean(fresh.fresh)) {
         this.requestContextEvaluate(true, `ev${index + 1}_soc_freshness_changed`);
@@ -3436,6 +3491,19 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.updateEvPvImportSafety(now, settings);
     if (this.contextDirty && !this.contextTimer) this.requestContextEvaluate(false, 'heartbeat', 0, false, false);
+  }
+
+  markEvPlanChanged(index, reason = 'input') {
+    if (!Number.isInteger(index) || index < 0 || index >= 4) return;
+    if (!Array.isArray(this.evPlanRevision)) this.evPlanRevision = [0, 0, 0, 0];
+    this.evPlanRevision[index] = (this.evPlanRevision[index] || 0) + 1;
+    if (!Array.isArray(this.evPlanRequestReasons)) this.evPlanRequestReasons = ['', '', '', ''];
+    this.evPlanRequestReasons[index] = String(reason);
+    if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('requested', index + 1);
+  }
+
+  getEvPlanPending(index) {
+    return Number(this.evPlanHandledRevision?.[index] ?? -1) !== Number(this.evPlanRevision?.[index] ?? 0);
   }
 
   getEvCount(settings = this.getSettings()) {
@@ -3477,12 +3545,87 @@ class HomeFluxEmsApp extends Homey.App {
     return this.getEvControlType({ evControlType: settings[this.getEvSettingKey(index, 'ControlType')] });
   }
 
-  getEvObservationSettings(index, settings, now, observation = null) {
+  getEvElectricalSettingsFor(index, source = this.getSettings()) {
+    // These physical accounting helpers only require five electrical/current
+    // preferences. Expanding plans, sessions and TOU tariffs is unnecessary.
+    const read = suffix => source[this.getEvSettingKey(index, suffix)];
+    return {
+      evControlType: read('ControlType'), evPhases: read('Phases'),
+      evVoltage: read('Voltage'), evVoltageReference: read('VoltageReference'),
+      evMinCurrentA: read('MinCurrentA'), evStandardCurrentA: read('StandardCurrentA'),
+      evModeSmartCurrentA: read('ModeSmartCurrentA'),
+      evModeStandardCurrentA: read('ModeStandardCurrentA'),
+    };
+  }
+
+  getEvPhysicalAccountingSettingsFor(index, source = this.getSettings(), origin = 'physical', trustedSnapshot = false) {
+    // Only the internal synchronous P1 request (which just called
+    // getSettings() itself) may use the app-wide memo. Public helpers,
+    // customized snapshots, Live status and async contexts always get a
+    // fresh projection, preserving their existing snapshot semantics.
+    const eligible = trustedSnapshot === true;
+    const memo = eligible ? this.evPhysicalConfigMemo?.[index] : null;
+    if (memo && memo.revision === this.evPhysicalConfigRevision) {
+      this.recordDiagnosticCounter('evPhysicalConfigCacheHits');
+      if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('physical_config_reused', index + 1);
+      return memo.value;
+    }
+    return this.measurePlanningCalculation('evPhysicalSettingsRead', origin, index + 1, () => {
+    const read = suffix => source[this.getEvSettingKey(index, suffix)];
+    const projected = {
+      ...this.getEvElectricalSettingsFor(index, source),
+      contractType: source.contractType,
+      evEnabled: read('Enabled'),
+      evWeight: read('Weight'), evSmartGridPriority: read('SmartGridPriority'),
+      evDynamicCheapEnabled: read('DynamicCheapEnabled'),
+      evDynamicNormalEnabled: read('DynamicNormalEnabled'),
+      evDynamicExpensiveEnabled: read('DynamicExpensiveEnabled'),
+      evFixedChargeWindowEnabled: read('FixedChargeWindowEnabled'),
+      evPvStartSurplusW: read('PvStartSurplusW'),
+      evPvStopSurplusW: read('PvStopSurplusW'),
+      evPvStopDelaySeconds: read('PvStopDelaySeconds'),
+    };
+    if (this.getEvControlType(projected) === 'mode') {
+      projected.evModeLoadTolerancePercent = source[`_ev${index + 1}ModeLoadTolerancePercent`]
+        ?? read('FeedbackTolerancePercent');
+    }
+    if (source.contractType === 'tou') {
+      const stem = index === 0 ? 'ev' : `ev${index + 1}`;
+      projected.touRates = (Array.isArray(source.touRates) ? source.touRates : []).map(rate => ({
+        id: rate?.id, avoidGridImport: rate?.avoidGridImport,
+        evChargeAllowed: Boolean(rate?.[`${stem}ChargeAllowed`]),
+        evPvChargeAllowed: rate?.[`${stem}PvChargeAllowed`] !== false,
+        evPvMinSurplusW: Math.max(0, Number(rate?.[`${stem}PvMinSurplusW`]) || 0),
+        evPvStopGridImportW: Math.max(0, Number(rate?.[`${stem}PvStopGridImportW`] ?? 1000) || 0),
+        evPvGridTopUpAllowed: Boolean(rate?.[`${stem}PvGridTopUpAllowed`]),
+      }));
+    }
+    this.recordDiagnosticCounter('evPhysicalSettingsReads');
+    if (eligible) {
+      this.evPhysicalConfigMemo[index] = { revision: this.evPhysicalConfigRevision, value: projected };
+      if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('physical_config_built', index + 1);
+    }
+    return projected;
+    });
+  }
+
+  getEvPhysicalObservationSettings(index, settings, now, observation = null, origin = 'physical') {
     if (!observation || observation.settings !== settings || observation.at !== now) {
-      return this.getEvInstanceSettings(index, settings);
+      return this.getEvPhysicalAccountingSettingsFor(index, settings, origin);
+    }
+    if (!observation.physicalInstances) observation.physicalInstances = [];
+    if (!observation.physicalInstances[index]) {
+      observation.physicalInstances[index] = this.getEvPhysicalAccountingSettingsFor(index, settings, origin, observation.trustedPhysicalConfig === true);
+    } else this.recordDiagnosticCounter('evPhysicalSettingsReused');
+    return observation.physicalInstances[index];
+  }
+
+  getEvObservationSettings(index, settings, now, observation = null, origin = 'runtime') {
+    if (!observation || observation.settings !== settings || observation.at !== now) {
+      return this.getEvInstanceSettings(index, settings, origin);
     }
     if (!observation.instances[index]) {
-      observation.instances[index] = this.getEvInstanceSettings(index, settings);
+      observation.instances[index] = this.getEvInstanceSettings(index, settings, origin);
     } else this.recordDiagnosticCounter('evInstanceSettingsReused');
     return observation.instances[index];
   }
@@ -3497,7 +3640,30 @@ class HomeFluxEmsApp extends Homey.App {
     return observation.control;
   }
 
-  getEvInstanceSettings(index, source = this.getSettings()) {
+  getEvSocPlanDeadlineAt(now, time, timezone, instanceIndex = null) {
+    if (!this.inputMonitor?.active) {
+      const remainder = now >= Date.UTC(2000, 0, 1) ? now % 60000 : 0;
+      return findNextLocalTime(new Date(now - remainder), time, timezone).getTime() + remainder;
+    }
+    return this.measurePlanningCalculation('evSocDeadline', instanceIndex === null ? 'summary' : 'settings',
+      instanceIndex === null ? 0 : instanceIndex + 1, () => {
+    // Current Homey dates have minute-aligned timezone offsets/transitions.
+    // Resolve the calendar minute through the existing bounded pure cache,
+    // then restore the scan's exact seconds/milliseconds. This keeps the old
+    // rolling deadline, DST handling and 26-hour fallback byte-for-byte equal.
+    // Historical sub-minute offsets retain the original exact-timestamp path.
+    const remainder = now >= Date.UTC(2000, 0, 1) ? now % 60000 : 0;
+    return findNextLocalTime(new Date(now - remainder), time, timezone).getTime() + remainder;
+    });
+  }
+
+  getEvInstanceSettings(index, source = this.getSettings(), origin = 'runtime') {
+    // This *preceded* some EV portfolio evaluations in earlier CPU traces.
+    // Count every real settings expansion, even when no EV decision follows.
+    const monitor = this.inputMonitor?.active ? this.inputMonitor : null;
+    const buildStarted = monitor ? process.hrtime.bigint() : null;
+    const buildCpu = monitor ? process.cpuUsage() : null;
+    try {
     this.recordDiagnosticCounter('evInstanceSettingsBuilds');
     const fields = [
       'Enabled','SocEnabled','SocFreshnessMinutes','Mode','EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
@@ -3565,8 +3731,25 @@ class HomeFluxEmsApp extends Homey.App {
       settings.evSocPlanOverrideActive = true;
       settings.evTargetSoc = Math.max(0, Math.min(100, Number(socPlan.targetSoc) || 0));
       settings.evTargetTime = String(socPlan.targetTime || settings.evTargetTime || '07:00');
-      const nextDeadline = findNextLocalTime(new Date(now), settings.evTargetTime, settings.timezone || 'Europe/Brussels');
-      socPlan.deadlineAt = nextDeadline.getTime();
+      // A persistent Flow deadline is anchored to a local calendar minute.
+      // Within that minute the original resolver's exact-millisecond answer
+      // differs only by now % 60000. Resolve once, then restore the remainder.
+      // Minute / target / timezone changes always force an exact fresh lookup.
+      const timezone = settings.timezone || 'Europe/Brussels';
+      const minute = now >= Date.UTC(2000, 0, 1) ? Math.floor(now / 60000) : null;
+      const cached = socPlan._deadlineMinuteMemo;
+      if (minute !== null && cached?.minute === minute
+        && cached?.time === settings.evTargetTime && cached?.timezone === timezone) {
+        socPlan.deadlineAt = cached.base + (now % 60000);
+        this.recordDiagnosticCounter('evSocDeadlineMinuteReused');
+        if (monitor) monitor.notePlanningEvent('soc_deadline_reused', index + 1);
+      } else {
+        const base = this.getEvSocPlanDeadlineAt(minute === null ? now : minute * 60000,
+          settings.evTargetTime, timezone, index);
+        socPlan.deadlineAt = minute === null ? base : base + (now % 60000);
+        socPlan._deadlineMinuteMemo = minute === null ? null
+          : { minute, time: settings.evTargetTime, timezone, base };
+      }
       settings.evSocDeadlineAt = socPlan.deadlineAt;
       settings.evGuaranteeTarget = true;
       settings.evAllowUnselectedTariffForDeadline = Boolean(socPlan.guarantee);
@@ -3606,6 +3789,14 @@ class HomeFluxEmsApp extends Homey.App {
       settings.evPlanningGuarantee = false;
     }
     return settings;
+    } finally {
+      if (monitor) {
+        const wall = Number(process.hrtime.bigint() - buildStarted) / 1e6;
+        const cpu = process.cpuUsage(buildCpu);
+        try { monitor.noteCalculation('evSettingsBuild', origin, index + 1, wall, (cpu.user + cpu.system) / 1000); }
+        catch (_) { /* Optional monitor cannot alter EV settings. */ }
+      }
+    }
   }
 
   getHvacInstanceSettings(index, source = this.getSettings()) {
@@ -5538,9 +5729,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEvInstanceDeviceStatus(index, settings = this.getSettings()) {
-    const instanceSettings = this.getEvInstanceSettings(index, settings);
     const name = this.getEvInstanceName(index, settings);
-    if (!Boolean(instanceSettings.evEnabled)) return `${name}: uit`;
+    if (!Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) return `${name}: uit`;
     const input = this.getEvInputSnapshot(index);
     const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
     const mode = this.getEffectiveEvModeFor(index, settings);
@@ -5581,7 +5771,7 @@ class HomeFluxEmsApp extends Homey.App {
     const count = this.getEvCount(settings);
     const enabled = [];
     for (let index = 0; index < count; index += 1) {
-      if (Boolean(this.getEvInstanceSettings(index, settings).evEnabled)) enabled.push(index);
+      if (Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) enabled.push(index);
     }
     if (!enabled.length) return 'Uit';
     if (enabled.length === 1) return this.getEvInstanceDeviceStatus(enabled[0], settings).replace(/^EV \d+: /, '');
@@ -5593,19 +5783,28 @@ class HomeFluxEmsApp extends Homey.App {
     const isNl = language.startsWith('nl');
     const rows = [];
     for (let index = 0; index < this.getEvCount(settings); index += 1) {
-      const instanceSettings = this.getEvInstanceSettings(index, settings);
-      if (!Boolean(instanceSettings.evEnabled)) continue;
-      const source = String(instanceSettings.evPlanningSource || 'settings');
-      const time = String(instanceSettings.evPlanningTargetTime || instanceSettings.evTargetTime || '07:00');
-      const guarantee = Boolean(instanceSettings.evPlanningGuarantee);
+      if (!Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) continue;
+      const energy = this.evEnergyPlans?.[index];
+      const soc = this.evSocPlans?.[index];
+      const socEnabled = settings[this.getEvSettingKey(index, 'SocEnabled')] !== false;
+      const source = energy?.active ? 'flow_energy' : socEnabled && soc?.active ? 'flow_soc' : 'settings';
+      const targetTime = settings[this.getEvSettingKey(index, 'TargetTime')];
+      const time = String(source === 'flow_energy' ? energy.targetTime : source === 'flow_soc'
+        ? soc.targetTime : targetTime || '07:00');
+      const completed = settings[this.getEvSettingKey(index, 'AfterSocTarget')] === 'preferences'
+        && !energy?.active && Boolean(this.getEvSessionDetectionRuntime(index)?.socTargetReached);
+      const guarantee = !completed && (source === 'flow_energy' ? Boolean(energy.guarantee)
+        : source === 'flow_soc' ? Boolean(soc.guarantee)
+          : Boolean(settings[this.getEvSettingKey(index, 'GuaranteeTarget')])
+            && Boolean(settings[this.getEvSettingKey(index, 'AllowUnselectedTariffForDeadline')]));
       let target = '';
       if (source === 'flow_energy') {
-        const kwh = Math.max(0, Number(instanceSettings.evPlanningTargetKwh) || 0);
+        const kwh = Math.max(0, Number(energy.targetKwh) || 0);
         target = `${kwh.toFixed(1).replace('.0', '')} kWh`;
       } else if (source === 'flow_soc') {
-        target = `${Math.max(0, Number(instanceSettings.evPlanningTargetSoc) || 0).toFixed(0)}%`;
-      } else if (instanceSettings.evSocEnabled !== false) {
-        target = `${Math.max(0, Number(instanceSettings.evPlanningTargetSoc) || 0).toFixed(0)}%`;
+        target = `${Math.max(0, Number(soc.targetSoc) || 0).toFixed(0)}%`;
+      } else if (socEnabled) {
+        target = `${Math.max(0, Number(settings[this.getEvSettingKey(index, 'TargetSoc')]) || 0).toFixed(0)}%`;
       } else {
         target = isNl ? 'geen SoC-doel' : 'no SoC target';
       }
@@ -5766,12 +5965,40 @@ class HomeFluxEmsApp extends Homey.App {
   getInputMonitor() {
     if (!this.inputMonitor) this.inputMonitor = new InputMonitor({
       definitions: (this.homey.manifest || require('./app.json')).flow?.actions || [],
-      version: (this.homey.manifest || require('./app.json')).version,
+      version: this.homey?.manifest?.version || require('./app.json').version,
       now: () => Date.now(),
       setTimeout: (fn, ms) => this.homey.setTimeout(fn, ms),
       clearTimeout: timer => clearTimeout(timer),
     });
     return this.inputMonitor;
+  }
+
+  // Passive observer, activated only by the existing 15-minute monitor.
+  // Synchronous only: no timers, settings writes, awaits or controller changes.
+  measurePlanningCalculation(kind, origin, instance, calculate) {
+    const monitor = this.inputMonitor;
+    if (!monitor?.active) return calculate();
+    const started = process.hrtime.bigint();
+    const cpuStart = process.cpuUsage();
+    let failed = false;
+    try { return calculate(); }
+    catch (error) { failed = true; throw error; }
+    finally {
+      const wallMs = Number(process.hrtime.bigint() - started) / 1e6;
+      const cpu = process.cpuUsage(cpuStart);
+      try { monitor.noteCalculation(kind, origin, instance, wallMs, (cpu.user + cpu.system) / 1000, failed); }
+      catch (_) { /* Diagnostics must never affect regulation. */ }
+    }
+  }
+
+  measureEvPlanningDecision(instanceIndex, origin, input) {
+    const instance = instanceIndex + 1;
+    if (!this.inputMonitor?.active) return calculateEvDecision(input);
+    return this.measurePlanningCalculation('evDecision', origin, instance, () => calculateEvDecision({
+      ...input,
+      observeTariffScan: calculate => this.measurePlanningCalculation('evTariffScan', origin, instance, calculate),
+      observeTariffReuse: () => this.inputMonitor?.notePlanningEvent('tariff_suffix_reused', instance),
+    }));
   }
 
   getInputMonitorReport() { return this.getInputMonitor().snapshot(); }
@@ -6021,12 +6248,17 @@ class HomeFluxEmsApp extends Homey.App {
       if (!Number.isFinite(soc)) return false;
       if (!Boolean(this.getSettings().evSocEnabled)) return true;
       const normalized = Math.max(0, Math.min(100, soc));
-      const wasFresh = this.getEvSocFreshness(0, this.getEvInstanceSettings(0)).fresh;
+      const wasFresh = this.getEvSocFreshness(0, {
+        evSocFreshnessMinutes: this.getSettings().evSocFreshnessMinutes,
+      }).fresh;
       const changed = this.hasNumericInputChanged(this.state.evSoc, normalized, Boolean(this.inputSeen.ev?.soc), 0.01);
       this.state.evSoc = normalized;
       this.inputSeen.ev.soc = true;
       this.inputUpdatedAt.ev.soc = Date.now();
-      if (changed || !wasFresh) this.requestContextEvaluate(false, 'ev1_soc');
+      if (changed || !wasFresh) {
+        this.markEvPlanChanged(0, 'soc_feedback');
+        this.requestContextEvaluate(false, 'ev1_soc');
+      }
       return true;
     });
 
@@ -6164,15 +6396,20 @@ class HomeFluxEmsApp extends Homey.App {
         const runtime = this.getExtraEv(index);
         const soc = Number(args.soc);
         if (!runtime || !Number.isFinite(soc)) return false;
-        const instanceSettings = this.getEvInstanceSettings(index);
-        if (!Boolean(instanceSettings.evSocEnabled)) return true;
+        const source = this.getSettings();
+        if (!Boolean(source[this.getEvSettingKey(index, 'SocEnabled')])) return true;
         const normalized = Math.max(0, Math.min(100, soc));
-        const wasFresh = this.getEvSocFreshness(index, instanceSettings).fresh;
+        const wasFresh = this.getEvSocFreshness(index, {
+          evSocFreshnessMinutes: source[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+        }).fresh;
         const changed = this.hasNumericInputChanged(runtime.state.soc, normalized, Boolean(runtime.seen.soc), 0.01);
         runtime.state.soc = normalized;
         runtime.seen.soc = true;
         runtime.updatedAt.soc = Date.now();
-        if (changed || !wasFresh) this.requestContextEvaluate(false, `ev${instance}_soc`);
+        if (changed || !wasFresh) {
+          this.markEvPlanChanged(index, 'soc_feedback');
+          this.requestContextEvaluate(false, `ev${instance}_soc`);
+        }
         return true;
       });
 
@@ -6447,15 +6684,15 @@ class HomeFluxEmsApp extends Homey.App {
     const stored = this.getSettings();
     const count = this.getEvCount(stored);
     for (let index = 0; index < count; index += 1) {
-      const settings = this.getEvInstanceSettings(index, stored);
-      if (!Boolean(settings.evEnabled) || !Boolean(settings.evSocEnabled)) continue;
+      if (!Boolean(stored[this.getEvSettingKey(index, 'Enabled')])
+        || !Boolean(stored[this.getEvSettingKey(index, 'SocEnabled')])) continue;
       const card = index === 0 ? this.inputRequestTriggers?.evSoc : this.extraEvTriggers[index - 1]?.requestSoc;
       if (!card) continue;
       const request = () => {
         const currentStored = this.getSettings();
         if (index >= this.getEvCount(currentStored)) return;
-        const current = this.getEvInstanceSettings(index, currentStored);
-        if (!Boolean(current.evEnabled) || !Boolean(current.evSocEnabled)) return;
+        if (!Boolean(currentStored[this.getEvSettingKey(index, 'Enabled')])
+          || !Boolean(currentStored[this.getEvSettingKey(index, 'SocEnabled')])) return;
         card.trigger().catch(err => this.error(`EV ${index + 1} SoC request trigger failed`, err));
       };
       const initial = this.homey.setTimeout(request, 1000 + (index * 100));
@@ -7645,8 +7882,9 @@ class HomeFluxEmsApp extends Homey.App {
     if (override?.mode && ['smart', 'soc_target', 'emergency'].includes(String(override.mode))) {
       return this.normalizeEvOperatingMode(override.mode);
     }
-    const instanceSettings = this.getEvInstanceSettings(index, settings);
-    return this.normalizeEvOperatingMode(instanceSettings.evMode || 'smart');
+    // Operating mode is an EV preference/override, not a derived tariff or
+    // deadline setting. Do not rebuild all TOU rates and Flow plans to read it.
+    return this.normalizeEvOperatingMode(settings[this.getEvSettingKey(index, 'Mode')] || 'smart');
   }
 
   setEvSessionOverrideFor(index, mode, source = 'flow') {
@@ -7812,7 +8050,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (!session || !connected || session.endedLatched) return false;
     const charging = Math.max(0, Number(currentA) || 0) > 0.5;
     if (!charging && session.detectionSource === 'house_load'
-      && this.getEvControlType(this.getEvInstanceSettings(index)) === 'mode') return false;
+      && this.getEvControlTypeFor(index) === 'mode') return false;
     if (charging) {
       const newlyStarted = !(Number(session.startedAt) > 0);
       if (newlyStarted) session.startedAt = now;
@@ -7847,10 +8085,16 @@ class HomeFluxEmsApp extends Homey.App {
     const connectedIndexes = this.getConnectedEvIndexes(settings);
     let candidateSettings = null;
     const candidates = connectedIndexes.filter(index => {
-      const instanceSettings = this.getEvInstanceSettings(index, settings);
-      const candidate = instanceSettings.evEnabled && this.getEvControlType(instanceSettings) === 'mode'
+      const candidate = Boolean(settings[this.getEvSettingKey(index, 'Enabled')])
+        && this.getEvControlTypeFor(index, settings) === 'mode'
         && !this.getEvSessionDetectionRuntime(index)?.endedLatched;
-      if (candidate) candidateSettings = instanceSettings;
+      if (candidate) {
+        candidateSettings = this.measurePlanningCalculation('evElectricalSettingsRead', 'p1_load_detection', index + 1,
+          () => this.getEvElectricalSettingsFor(index, settings));
+        candidateSettings.evModeLoadTolerancePercent = settings[`_ev${index + 1}ModeLoadTolerancePercent`]
+          ?? settings[this.getEvSettingKey(index, 'FeedbackTolerancePercent')];
+        this.recordDiagnosticCounter('evModePhysicalSettingsReads');
+      }
       return candidate;
     });
     // A shared P1 meter cannot identify individual cars. Keep the existing
@@ -8642,6 +8886,7 @@ class HomeFluxEmsApp extends Homey.App {
     const raw = this.homey.settings.get('evEnergyDeadlineOverrides');
     const saved = Array.isArray(raw) ? raw : [];
     const now = Date.now();
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
     this.evEnergyPlans = Array.from({ length: 4 }, (_, index) => {
       const item = saved[index] || {};
       const targetKwh = Math.max(0, Math.min(250, Number(item.targetKwh) || 0));
@@ -8654,6 +8899,8 @@ class HomeFluxEmsApp extends Homey.App {
         remainingKwh,
         targetTime,
         deadlineAt,
+        targetOccurrenceAt: deadlineAt,
+        targetTimezone: timezone,
         // Never integrate charge current across app downtime. The remaining
         // value is persisted periodically, then counting resumes from startup.
         lastTickAt: now,
@@ -8687,11 +8934,15 @@ class HomeFluxEmsApp extends Homey.App {
   restoreEvSocPlanOverrides() {
     const raw = this.homey.settings.get('evSocDeadlineOverrides');
     const saved = Array.isArray(raw) ? raw : [];
+    const now = Date.now();
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
     this.evSocPlans = Array.from({ length: 4 }, (_, index) => {
       const item = saved[index] || {};
       const targetSoc = Math.max(1, Math.min(100, Number(item.targetSoc) || 80));
       const targetTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(item.targetTime || '')) ? String(item.targetTime) : '07:00';
-      return { active: Boolean(item.active), targetSoc, targetTime, deadlineAt: 0, guarantee: Boolean(item.guarantee) };
+      return { active: Boolean(item.active), targetSoc, targetTime, deadlineAt: 0, guarantee: Boolean(item.guarantee),
+        targetOccurrenceAt: item.active ? this.getEvSocPlanDeadlineAt(now, targetTime, timezone) : 0,
+        targetTimezone: timezone };
     });
   }
 
@@ -8731,6 +8982,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.persistEvSocPlanOverrides();
     this.persistEvEnergyPlanOverrides(true);
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
+    this.markEvPlanChanged(index, 'goal_cleared');
     this.requestContextEvaluate(true, 'ev'+(index+1)+'_planning_override_cleared');
     return true;
   }
@@ -8755,12 +9007,19 @@ class HomeFluxEmsApp extends Homey.App {
     // A command is no delivery proof. Integrate only a bounded interval after
     // actual current feedback, settling it before the next reading replaces it.
     const elapsedHours = feedbackAt > 0 ? Math.max(0, Math.min(now, feedbackAt + EV_CURRENT_FEEDBACK_MAX_MS) - Math.max(last, feedbackAt)) / 3600000 : 0;
-    const settings = this.getEvInstanceSettings(index, this.getSettings());
     const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
     const actualCurrentA = connected && input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
     const session = this.getEvSessionDetectionRuntime(index);
-    const deliveredKwh = session?.loadAbsent || session?.endedLatched ? 0 : elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000;
     const before = Math.max(0, Number(plan.remainingKwh) || 0);
+    const canDeliver = elapsedHours > 0 && actualCurrentA > 0 && before > 0
+      && !session?.loadAbsent && !session?.endedLatched;
+    // Keep the helper's existing expired-deadline rollover side effect, but
+    // avoid rebuilding settings when zero/stale/absent feedback delivers no
+    // energy. lastTickAt still advances exactly as before.
+    const settings = canDeliver || !(Number(plan.deadlineAt) > now)
+      ? this.getEvInstanceSettings(index, this.getSettings()) : null;
+    const deliveredKwh = canDeliver ? elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000 : 0;
+    if (!settings) this.recordDiagnosticCounter('evEnergyAccountingIdleSkipped');
     if (deliveredKwh > 0 && before > 0) plan.remainingKwh = Math.max(0, before - deliveredKwh);
     plan.lastTickAt = now;
     if (deliveredKwh > 0 && before > 0) {
@@ -8783,6 +9042,8 @@ class HomeFluxEmsApp extends Homey.App {
         const settings = this.getSettings();
         const deadline = findNextLocalTime(new Date(now), String(plan.targetTime || '07:00'), settings.timezone || 'Europe/Brussels');
         plan.deadlineAt = deadline.getTime();
+        plan.targetOccurrenceAt = plan.deadlineAt;
+        plan.targetTimezone = settings.timezone || 'Europe/Brussels';
         changed = true;
       }
       plan.sessionStarted = true;
@@ -8803,23 +9064,44 @@ class HomeFluxEmsApp extends Homey.App {
     return changed;
   }
 
+  isEvPlanGoalCurrent(plan, now = Date.now()) {
+    // deadlineAt may roll forward while displaying an existing persistent
+    // plan. Keep the submitted occurrence separate: the same HH:mm tomorrow
+    // is a real new goal, while repeated inputs today cannot refill progress.
+    return !plan.active || (plan.targetTimezone === (this.homey.clock.getTimezone() || 'UTC')
+      && now < Math.floor(Number(plan.targetOccurrenceAt) / 60000) * 60000);
+  }
+
   setEvEnergyPlan(index, energyKwh, targetTime, guaranteeInput = 'no') {
+    this.recordDiagnosticCounter('evEnergyTargetInputs');
     const kwh = Math.max(0, Number(energyKwh) || 0);
     const time = String(targetTime || '').trim();
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
+    const guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
+    const plan = this.evEnergyPlans[index];
+    if (!plan) return false;
+    // Compare the submitted persistent goal, not its decreasing remainder.
+    // Repeated feedback must not refill already delivered kWh or reset ticks.
+    // Completion stays latched until a new goal occurrence, clear or reconnect.
+    if (plan.active === (kwh > 0) && Math.abs(Number(plan.targetKwh) - kwh) <= 1e-9
+      && plan.targetTime === time && plan.guarantee === guarantee && !this.evSocPlans?.[index]?.active
+      && this.isEvPlanGoalCurrent(plan)) {
+      this.recordDiagnosticCounter('evEnergyTargetUnchanged');
+      return true;
+    }
     const settings = this.getSettings();
     const now = Date.now();
     const deadline = findNextLocalTime(new Date(now), time, settings.timezone || 'Europe/Brussels');
-    const plan = this.evEnergyPlans[index];
-    if (!plan) return false;
     this.rearmEvCompletedTarget(index);
     plan.active = kwh > 0;
     plan.targetKwh = kwh;
     plan.remainingKwh = kwh;
     plan.targetTime = time;
     plan.deadlineAt = plan.active ? deadline.getTime() : 0;
+    plan.targetOccurrenceAt = plan.deadlineAt;
+    plan.targetTimezone = settings.timezone || 'Europe/Brussels';
     plan.lastTickAt = now;
-    plan.guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
+    plan.guarantee = guarantee;
     const input = this.getEvInputSnapshot(index);
     plan.sessionStarted = plan.active && Boolean(input?.seen?.connected) && Boolean(input?.connected);
 
@@ -8834,15 +9116,25 @@ class HomeFluxEmsApp extends Homey.App {
     }
     this.persistEvEnergyPlanOverrides(true, now);
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
+    this.markEvPlanChanged(index, 'energy_goal');
     this.requestContextEvaluate(true, 'ev'+(index+1)+'_energy_deadline');
     return true;
   }
 
   setEvSocPlan(index, targetSocInput, targetTime, guaranteeInput = 'no') {
+    this.recordDiagnosticCounter('evSocTargetInputs');
     const targetSoc = Number(targetSocInput);
     const time = String(targetTime || '').trim();
     if (!Number.isFinite(targetSoc) || targetSoc < 1 || targetSoc > 100) return false;
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
+    const guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
+    const existing = this.evSocPlans?.[index];
+    if (existing?.active && Math.abs(Number(existing.targetSoc) - targetSoc) <= 1e-9
+      && existing.targetTime === time && existing.guarantee === guarantee && !this.evEnergyPlans?.[index]?.active
+      && this.isEvPlanGoalCurrent(existing)) {
+      this.recordDiagnosticCounter('evSocTargetUnchanged');
+      return true;
+    }
     const settings = this.getSettings();
     const deadline = findNextLocalTime(new Date(), time, settings.timezone || 'Europe/Brussels');
     if (!Array.isArray(this.evSocPlans)) this.evSocPlans = Array.from({ length: 4 }, () => ({ active:false, targetSoc:0, targetTime:'07:00', deadlineAt:0, guarantee:false }));
@@ -8853,7 +9145,9 @@ class HomeFluxEmsApp extends Homey.App {
     plan.targetSoc = Math.max(1, Math.min(100, targetSoc));
     plan.targetTime = time;
     plan.deadlineAt = deadline.getTime();
-    plan.guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
+    plan.targetOccurrenceAt = plan.deadlineAt;
+    plan.targetTimezone = settings.timezone || 'Europe/Brussels';
+    plan.guarantee = guarantee;
     this.persistEvSocPlanOverrides();
     const energyPlan = this.evEnergyPlans?.[index];
     if (energyPlan) {
@@ -8864,6 +9158,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.persistEvEnergyPlanOverrides(true);
     }
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
+    this.markEvPlanChanged(index, 'soc_goal');
     this.requestContextEvaluate(true, 'ev'+(index+1)+'_soc_deadline');
     return true;
   }
@@ -8887,7 +9182,7 @@ class HomeFluxEmsApp extends Homey.App {
     const storedSettings = this.getSettings();
     this.tickEvEnergyPlan(index);
     const runtimeBase = this.getRuntimeSettings(storedSettings);
-    const settings = this.getEvInstanceSettings(index, runtimeBase);
+    const settings = this.getEvInstanceSettings(index, runtimeBase, 'single');
     settings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
     const input = this.getEvInputSnapshot(index);
     const readiness = this.getInputReadiness(storedSettings);
@@ -8907,7 +9202,7 @@ class HomeFluxEmsApp extends Homey.App {
       };
     }
     const tariff = result?.tariff || findCurrentTariff(new Date(), settings);
-    let decision = calculateEvDecision({
+    let decision = this.measureEvPlanningDecision(index, 'single', {
       settings,
       now: new Date(),
       tariff,
@@ -8951,7 +9246,7 @@ class HomeFluxEmsApp extends Homey.App {
       };
     }
 
-    let decision = calculateEvDecision({
+    let decision = this.measureEvPlanningDecision(0, 'legacy', {
       settings,
       now: new Date(),
       tariff: result?.tariff || findCurrentTariff(new Date(), settings),
@@ -9367,7 +9662,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEvCommandedPowerW(index, storedSettings = this.getSettings()) {
-    const settings = this.getEvInstanceSettings(index, storedSettings);
+    const settings = this.getEvElectricalSettingsFor(index, storedSettings);
     const perAmpW = evPowerPerAmp(settings);
     // This historical helper name also serves physical portfolio accounting.
     // Fresh delivery remains a real load even while a lower/STOP output is
@@ -9535,9 +9830,12 @@ class HomeFluxEmsApp extends Homey.App {
     const gridWithoutCurrentBatteryDischargeW = rawGridW + Math.max(0, currentBatteryW) + pendingBatteryChargeW;
     const currentBatteryChargeW = Math.max(0, -currentBatteryW);
     let currentFlexibleEvPowerW = 0;
+    // Both phases of this synchronous portfolio evaluation use precisely the
+    // same settings snapshot. Build each EV's expanded policy once per pass;
+    // never retain it beyond the pass or across Homey I/O.
+    const evInstanceSettings = new Array(evCount);
     for (let index = 0; index < evCount; index += 1) {
-      const evSettings = this.getEvInstanceSettings(index, runtimeSettings);
-      if (!Boolean(evSettings.evEnabled)) continue;
+      if (!Boolean(runtimeSettings[this.getEvSettingKey(index, 'Enabled')])) continue;
       if (this.getEffectiveEvModeFor(index, storedSettings) === 'emergency') continue;
       const input = this.getEvInputSnapshot(index) || {};
       const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
@@ -9548,7 +9846,8 @@ class HomeFluxEmsApp extends Homey.App {
       // the output again; real residual export will then fund a fresh start.
       if (!connected || !this.isEvOutputPermittedFor(index) || !this.isEvOutputActiveFor(index, storedSettings)) continue;
       const controlCurrentA = this.getEvControlCurrentA(index, input, storedSettings);
-      currentFlexibleEvPowerW += Math.max(0, controlCurrentA) * evPowerPerAmp(evSettings);
+      currentFlexibleEvPowerW += Math.max(0, controlCurrentA)
+        * evPowerPerAmp(this.getEvElectricalSettingsFor(index, runtimeSettings));
     }
 
     // Attribute any present grid import to battery charging first, preserving
@@ -9615,7 +9914,8 @@ class HomeFluxEmsApp extends Homey.App {
     let nonSmartIncreaseW = 0;
 
     for (let index = 0; index < evCount; index += 1) {
-      const settings = this.getEvInstanceSettings(index, runtimeSettings);
+      const settings = evInstanceSettings[index]
+        || (evInstanceSettings[index] = this.getEvInstanceSettings(index, runtimeSettings, options.monitoringRoute || 'context'));
       settings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
       const input = this.getEvInputSnapshot(index) || {};
       const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
@@ -9624,7 +9924,7 @@ class HomeFluxEmsApp extends Homey.App {
       const measuredCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
       const actualCurrentA = this.getEvControlCurrentA(index, input, storedSettings);
       const pvAvailableW = evPvPoolBudgetW;
-      let decision = calculateEvDecision({
+      let decision = this.measureEvPlanningDecision(index, options.monitoringRoute || 'context', {
         settings,
         now: new Date(),
         tariff,
@@ -10152,6 +10452,17 @@ class HomeFluxEmsApp extends Homey.App {
     }
     for (const decision of decisions) decision.portfolioGridImportTargetW = combinedPortfolioGridImportTargetW;
     this.completeEvContextRefresh(storedSettings);
+    // The full portfolio ran synchronously. Record only revisions present
+    // in this pass, never clear a later request made during Homey I/O.
+    if (Array.isArray(this.evPlanRevision)) {
+      if (!Array.isArray(this.evPlanHandledRevision)) this.evPlanHandledRevision = [-1, -1, -1, -1];
+      for (let index = 0; index < evCount; index += 1) {
+        if (this.evPlanHandledRevision[index] !== this.evPlanRevision[index]) {
+          this.evPlanHandledRevision[index] = this.evPlanRevision[index];
+          if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('handled', index + 1);
+        } else if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('unchanged_portfolio', index + 1);
+      }
+    }
     return decisions;
   }
 
@@ -10251,8 +10562,8 @@ class HomeFluxEmsApp extends Homey.App {
     return Math.min(3600, Math.max(1, Number(settings.evCommandIntervalSeconds) || 10)) * 1000;
   }
 
-  getEvOutputTimingStatus(index, decision, storedSettings = this.getSettings(), now = Date.now()) {
-    const settings = this.getEvInstanceSettings(index, storedSettings);
+  getEvOutputTimingStatus(index, decision, storedSettings = this.getSettings(), now = Date.now(), observedSettings = null) {
+    const settings = observedSettings || this.getEvInstanceSettings(index, storedSettings);
     const controlType = this.getEvControlType(settings);
     const runtime = index === 0 ? null : this.getExtraEv(index);
     const publishedAt = index === 0
@@ -10331,7 +10642,7 @@ class HomeFluxEmsApp extends Homey.App {
     const nextConnected = hasConnection ? Boolean(connected) : wasConnected;
     const connectionChanged = hasConnection && this.hasBooleanInputChanged(input.connected, nextConnected, Boolean(input.seen?.connected));
     const currentChanged = hasCurrent && this.hasNumericInputChanged(input.chargeCurrentA, parsed, Boolean(input.seen?.chargeCurrent), 0.05);
-    const modeControl = this.getEvControlType(this.getEvInstanceSettings(index)) === 'mode';
+    const modeControl = this.getEvControlTypeFor(index) === 'mode';
     const measuredWasFresh = this.getEvMeasuredCurrent(index, input, now).fresh;
     const wasFresh = modeControl || measuredWasFresh;
     this.tickEvEnergyPlan(index, now);
@@ -10352,6 +10663,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.recordDiagnosticCounter('evFeedbackInputs');
     }
     if (connectionChanged) {
+      this.markEvPlanChanged(index, 'connection');
       this.handleEvSessionConnectionTransitionFor(index, wasConnected, nextConnected);
       this.handleEvDetectionConnectionTransition(index, wasConnected, nextConnected, now);
     }
@@ -10393,13 +10705,13 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvControlCurrentA(index, input = this.getEvInputSnapshot(index), storedSettings = this.getSettings()) {
     const session = this.getEvSessionDetectionRuntime(index);
-    const settings = this.getEvInstanceSettings(index, storedSettings);
-    if (this.getEvControlType(settings) !== 'mode') {
+    if (this.getEvControlTypeFor(index, storedSettings) !== 'mode') {
       const measuredA = parseFiniteInputNumber(input?.chargeCurrentA);
       return !session?.loadAbsent && input?.seen?.chargeCurrent && measuredA !== null
         ? Math.max(0, measuredA) : 0;
     }
-    // Mode-only chargers keep their existing P1-based power attribution.
+    // Only mode-only estimation needs the electrical/current preferences.
+    const settings = this.getEvElectricalSettingsFor(index, storedSettings);
     if (session?.observedModePowerW != null) {
       return Math.max(0, session.observedModePowerW) / evPowerPerAmp(settings);
     }
@@ -10422,7 +10734,7 @@ class HomeFluxEmsApp extends Homey.App {
       const input = this.getEvInputSnapshot(index);
       if (!settings[this.getEvSettingKey(index, 'Enabled')] || !input?.connected
         || this.getEvSessionDetectionRuntime(index)?.endedLatched) continue;
-      const evSettings = this.getEvObservationSettings(index, settings, now, evObservation);
+      const evSettings = this.getEvPhysicalObservationSettings(index, settings, now, evObservation, 'battery_grid_limit');
       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
       if (!decision || decision.connected === false || decision.emergencyTariffBlocked) continue;
       // Use current tariff eligibility as well as the latest EV decision, so a
@@ -10469,13 +10781,13 @@ class HomeFluxEmsApp extends Homey.App {
     const session = this.getEvSessionDetectionRuntime(index);
     if (session?.endedLatched) return;
     if (!this.evBatterySupply) this.evBatterySupply = Array(4).fill(null);
-    const settings = this.getEvInstanceSettings(index);
+    const modeOnly = this.getEvControlTypeFor(index) === 'mode';
     this.evBatterySupply[index] = {
       at: now, connectedAt: Number(session?.connectedAt) || 0,
       pvAllocatedW: Math.max(0, Number(decision.pvAttributedW ?? decision.pvAllocatedW) || 0),
       batterySupportAllocatedW: Math.max(0, Number(decision.batterySupportAllocatedW) || 0),
       nightSurplusAllocatedW: Math.max(0, Number(decision.nightSurplusAllocatedW) || 0),
-      modePowerW: this.getEvControlType(settings) === 'mode'
+      modePowerW: modeOnly
         ? Math.max(0, Number(session?.observedModePowerW) || 0) : 0,
     };
   }
@@ -10506,7 +10818,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.getEvSessionDetectionRuntime(index)?.endedLatched) return;
       if (!measured.fresh || measured.updatedAt > Number(this.inputUpdatedAt?.grid) || measured.updatedAt < previousGridAt
         || measured.currentA <= 0 || now < Number(this.evBatteryMeterLiveUntil || 0)) return;
-      measuredW += measured.currentA * evPowerPerAmp(this.getEvInstanceSettings(index, settings));
+      measuredW += measured.currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
     }
     if (measuredW <= 0) return;
     const siteW = this.getEvPhysicalSiteLoadW();
@@ -10564,7 +10876,7 @@ class HomeFluxEmsApp extends Homey.App {
     const residualInstances = [];
     for (let index = 0; index < evCount; index += 1) {
       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
-      const settings = this.getEvObservationSettings(index, storedSettings, now, evObservation);
+      const settings = this.getEvPhysicalObservationSettings(index, storedSettings, now, evObservation, 'grid_import_control');
       const input = this.getEvInputSnapshot(index);
       const session = this.getEvSessionDetectionRuntime(index);
       const pendingInputDrop = this.evBatteryCurrentDrop?.[index];
@@ -12105,10 +12417,15 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   isEvDecisionOutputActiveFor(index, decision, settings = this.getSettings()) {
-    const instanceSettings = this.getEvInstanceSettings(index, settings);
-    instanceSettings.evMode = this.getEffectiveEvModeFor(index, settings);
-    if (this.getEvControlType(instanceSettings) === 'mode') {
-      return this.getEvChargeModeFor(index, decision, instanceSettings) !== 'stop';
+    const type = this.getEvControlTypeFor(index, settings);
+    if (type === 'mode') {
+      // getEvChargeModeFor only reads enable/mode/type from the EV config.
+      // It does not need a cloned TOU schedule or Flow target/deadline.
+      return this.getEvChargeModeFor(index, decision, {
+        evEnabled: settings[this.getEvSettingKey(index, 'Enabled')],
+        evControlType: settings[this.getEvSettingKey(index, 'ControlType')],
+        evMode: this.getEffectiveEvModeFor(index, settings),
+      }) !== 'stop';
     }
     return Boolean(decision?.allowed && Number(decision?.desiredCurrentA || 0) > 0);
   }
@@ -12172,7 +12489,9 @@ class HomeFluxEmsApp extends Homey.App {
       nextBatteryCommandW = Math.min(...targets);
     }
     const portfolio = this.calculateEvPortfolioDecisions(
-      result, nextBatteryCommandW, currentBatteryCommandW, storedSettings, { physicalOnly },
+      result, nextBatteryCommandW, currentBatteryCommandW, storedSettings,
+      { physicalOnly, monitoringRoute: options.heartbeatEv ? 'heartbeat'
+        : (options.deferredEvContext ? 'deferred' : 'publication') },
     );
     if (options.deferredEvContext) this.recordDiagnosticCounter('evContextDeferredEvaluations');
     // P1 readiness belongs to EV control itself, independently of battery
@@ -12187,7 +12506,8 @@ class HomeFluxEmsApp extends Homey.App {
       // An earlier EV publication may have awaited Homey I/O. Recheck the
       // latest enable/connection/P1 state before granting the next EV output.
       const liveSettings = index > 0 ? this.getSettings() : storedSettings;
-      const instanceSettings = this.getEvInstanceSettings(index, liveSettings);
+      const instanceSettings = this.getEvInstanceSettings(index, liveSettings,
+        options.heartbeatEv ? 'heartbeat' : options.deferredEvContext ? 'deferred' : 'publication');
       instanceSettings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
       let decision = { ...(portfolio[index] || {}), instance: index + 1 };
       const input = this.getEvInputSnapshot(index);
@@ -12268,10 +12588,83 @@ class HomeFluxEmsApp extends Homey.App {
     return { evDecisions, adjustedGridW, totalActualEvPowerW, totalDesiredEvPowerW, evStartedThisCycle };
   }
 
+  getEvHeartbeatInputSignature(settings = this.getSettings()) {
+    // A compact, read-only identity for the physical inputs that a portfolio
+    // pass actually consumed. Never use the signature as a cached decision.
+    const count = this.getEvCount(settings);
+    const inputs = [];
+    for (let index = 0; index < count; index += 1) {
+      const input = this.getEvInputSnapshot(index) || {};
+      const session = this.getEvSessionDetectionRuntime(index);
+      const energy = this.evEnergyPlans?.[index];
+      const soc = this.evSocPlans?.[index];
+      inputs.push([
+        index, input.connected, input.chargeCurrentA, input.soc,
+        input.seen?.connected, input.seen?.chargeCurrent, input.seen?.soc,
+        input.updatedAt?.connected, input.updatedAt?.chargeCurrent, input.updatedAt?.soc,
+        session?.endedLatched, session?.loadAbsent, session?.observedModePowerW,
+        energy?.active, energy?.remainingKwh, energy?.deadlineAt, energy?.guarantee,
+        soc?.active, soc?.targetSoc, soc?.deadlineAt, soc?.guarantee,
+      ]);
+    }
+    return JSON.stringify([
+      count, this.inputUpdatedAt?.grid, this.inputUpdatedAt?.pv,
+      this.state.gridPowerW, this.state.pvPowerW, this.state.lastTotalCommandW,
+      this.controlContextRevision, this.planningCache?.generation,
+      inputs,
+    ]);
+  }
+
+  canCoalesceQueuedEvHeartbeat(completed, settings = this.getSettings(), now = Date.now()) {
+    if (!completed || completed.settings !== this.settingsCache
+      || completed.runtimeSettings !== this.cachedRuntimeSettings
+      || completed.completedAt < completed.startedAt
+      || now - completed.completedAt < 0 || now - completed.completedAt > 1000
+      || Math.floor(completed.startedAt / 60000) !== Math.floor(now / 60000)
+      || this.contextDirty || this.contextEvaluationRunning
+      || this.evPublishing || this.evTimer || this.forceEvOutput
+      || this.commandPublishing || this.pendingResult || this.inFlightBatteryCommands
+      || this.evContextRefresh?.timer || this.evContextRefresh?.due
+      || this.evContextRefresh?.requests?.size) return false;
+    const nextEvent = Number(this.latestResult?.nextEventAt);
+    if (nextEvent > completed.startedAt && nextEvent <= now) return false;
+    const nextTariff = Number(this.controlContext?.tariffValidUntil);
+    if (nextTariff > completed.startedAt && nextTariff <= now) return false;
+    if (!this.getGridFreshness(settings).fresh) return false;
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const runtime = this.getExtraEv(index);
+      if (runtime?.publishing || runtime?.timer || runtime?.forceOutput) return false;
+      const energy = this.evEnergyPlans?.[index];
+      const soc = this.evSocPlans?.[index];
+      if ((energy?.active && energy.deadlineAt > completed.startedAt && energy.deadlineAt <= now)
+        || (soc?.active && soc.deadlineAt > completed.startedAt && soc.deadlineAt <= now)) return false;
+      const decision = index === 0 ? this.latestEvDecision : runtime?.latestDecision;
+      if (decision && settings[this.getEvSettingKey(index, 'SocEnabled')] !== false) {
+        const fresh = this.getEvSocFreshness(index, {
+          evSocFreshnessMinutes: settings[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+        }, now);
+        if (Boolean(decision.socFresh) !== Boolean(fresh.fresh)) return false;
+      }
+    }
+    return completed.signature === this.getEvHeartbeatInputSignature(settings);
+  }
+
   async publishEvPortfolio(result, nextBatteryCommandW, currentBatteryCommandW, options = {}) {
     // Serialize the shared EV budget, not the battery controller. Per-charger
     // publication mutexes/intervals remain the final output gate.
-    while (this.evPortfolioPass) await this.evPortfolioPass;
+    let waitedForEvPublication = false;
+    while (this.evPortfolioPass) {
+      waitedForEvPublication = true;
+      await this.evPortfolioPass;
+    }
+    // A heartbeat that waited for an identical, just-finished pass does not
+    // need to repeat the tariff scan and shared allocation. New meter/Flow
+    // feedback, safety state, I/O or a time boundary always forces a fresh pass.
+    if (options.heartbeatEv && waitedForEvPublication
+      && this.canCoalesceQueuedEvHeartbeat(this.lastCompletedEvPortfolio)) {
+      this.recordDiagnosticCounter('evHeartbeatAlreadyServiced');
+      return null;
+    }
     if (options.heartbeatEv && this.isEvPortfolioQuiet(this.getSettings())) {
       this.recordDiagnosticCounter('evHeartbeatQuietSkipped');
       return null;
@@ -12284,8 +12677,20 @@ class HomeFluxEmsApp extends Homey.App {
     let release;
     const pass = new Promise(resolve => { release = resolve; });
     this.evPortfolioPass = pass;
+    const startedAt = Date.now();
+    const startSignature = this.getEvHeartbeatInputSignature();
+    const startSettings = this.settingsCache;
+    const startRuntimeSettings = this.cachedRuntimeSettings;
     try {
-      return await this.publishEvPortfolioNow(result, nextBatteryCommandW, currentBatteryCommandW, options);
+      const published = await this.publishEvPortfolioNow(result, nextBatteryCommandW, currentBatteryCommandW, options);
+      const completedAt = Date.now();
+      // Do not certify a pass if any physical/Flow input changed while Homey
+      // I/O was pending. A waiting heartbeat must then re-evaluate from scratch.
+      this.lastCompletedEvPortfolio = startSignature === this.getEvHeartbeatInputSignature()
+        ? { startedAt, completedAt, signature: startSignature,
+          settings: startSettings, runtimeSettings: startRuntimeSettings }
+        : null;
+      return published;
     } finally {
       this.evPortfolioPass = null;
       release();
@@ -12300,7 +12705,11 @@ class HomeFluxEmsApp extends Homey.App {
     for (let index = 0; index < 4; index += 1) {
       const runtime = index === 0 ? null : this.getExtraEv(index);
       const input = this.getEvInputSnapshot(index);
-      if (index < count && input?.connected) return false;
+      const session = index < count ? this.getEvSessionDetectionRuntime(index) : null;
+      if (index < count && input?.connected && !session?.endedLatched) return false;
+      // STOP is not settled if a mode-only charger is still attributed
+      // physical power by its latest P1 load observation.
+      if (index < count && Number(session?.observedModePowerW) > 0 && !session?.loadAbsent) return false;
       if (runtime?.publishing || runtime?.forceOutput || runtime?.timer || runtime?.pvSession?.active) return false;
       if (this.isEvOutputActiveFor(index, settings)) return false;
       const allowed = index === 0 ? this.lastPublishedEvAllowed : runtime?.lastPublishedAllowed;
@@ -12980,7 +13389,9 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
       || !Array.isArray(this.lastEmittedCommands)) return false;
     const charging = result.baseMode === 'charge';
-    const preview = previewBatteryFeedback(state, memo.runtime, result.ordinaryDischargeFloorSoc, charging ? result : null);
+    const preview = previewBatteryFeedback(state, memo.runtime, result.ordinaryDischargeFloorSoc, charging ? result : null,
+      this.inputMonitor?.active
+        ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'fastPreview', 0, compute) : null);
     if (charging && preview.plannedChargeW !== result.plannedChargeW) return false;
     // Predicted peak pressure includes withdrawing an existing battery output
     // and reserved flexible load, even when raw P1 is below the threshold.
@@ -13146,7 +13557,10 @@ class HomeFluxEmsApp extends Homey.App {
       // A timer, another input (even at the same timestamp), context or status
       // read creates its own observation. No EV result crosses an await.
       evObservation: this.getEvCount(controlSettings) > 0
-        ? { settings: controlSettings, at: now, instances: [], control: null } : null };
+        ? { settings: controlSettings, at: now, instances: [], control: null,
+          // Snapshot created from the canonical cache above; the synchronous
+          // P1 preflight cannot receive external scenario overrides.
+          trustedPhysicalConfig: true } : null };
     if (!this.shouldRunFastEvaluation(immediate, controlSettings, now, preflight)) {
       this.fastEvaluationSkipped += 1;
       this.recordDiagnosticCounter('fastSkipped');
@@ -13518,7 +13932,9 @@ class HomeFluxEmsApp extends Homey.App {
       const evaluationState = prepared ? preflight.state : this.getEvaluationState(storedSettings, now, pvDeltaW, preflight?.evObservation);
       if (prepared) this.recordDiagnosticCounter('fastEvaluationStateReused');
       const settings = this.controlRuntimeSettings;
-      const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
+      const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext,
+        this.inputMonitor?.active
+          ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'fast', 0, compute) : null);
       this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
@@ -13590,7 +14006,9 @@ class HomeFluxEmsApp extends Homey.App {
       }
       const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
       if (paused) return paused;
-      const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
+      const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext,
+        this.inputMonitor?.active
+          ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'context', 0, compute) : null);
       this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
@@ -14405,7 +14823,7 @@ class HomeFluxEmsApp extends Homey.App {
     const simulatedEvs = [];
     let eligibleEvGridPowerW = 0;
     for (const physical of physicalEvs) {
-      const decision = calculateEvDecision({
+      const decision = this.measureEvPlanningDecision(physical.index, 'simulation', {
         settings: physical.evSettings,
         connected: physical.connected,
         soc: physical.socAvailable ? physical.soc : NaN,
@@ -14496,11 +14914,14 @@ class HomeFluxEmsApp extends Homey.App {
 
     // Both engine calls are pure calculations. No app state, setting, planning
     // cache, Flow token or output command is written by this endpoint.
-    const plan = buildSocPlan(simulationState, settings, simulatedAt);
-    const result = evaluate(simulationState, settings, simulatedAt);
+    const plan = this.measurePlanningCalculation('batterySocPlan', 'simulation', 0,
+      () => buildSocPlan(simulationState, settings, simulatedAt));
+    const result = evaluate(simulationState, settings, simulatedAt, null,
+      this.inputMonitor?.active
+        ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'simulation', 0, compute) : null);
     const tariff = result.tariff || {};
     return {
-      version: '1.1.13',
+      version: this.homey?.manifest?.version || require('./app.json').version,
       simulatedAt: simulatedAt.getTime(),
       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
       timezone,
@@ -14573,10 +14994,11 @@ class HomeFluxEmsApp extends Homey.App {
     let plan;
     try {
       plan = {
-        version: '1.1.13',
+        version: this.homey?.manifest?.version || require('./app.json').version,
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
-        ...buildSocPlan(state, settings, new Date(now)),
+        ...this.measurePlanningCalculation('batterySocPlan', 'context', 0,
+          () => buildSocPlan(state, settings, new Date(now))),
       };
     } finally {
       this.endDiagnosticCpuSection(diagnosticCpu);
@@ -14795,17 +15217,20 @@ class HomeFluxEmsApp extends Homey.App {
       preview.batteryCommandPauseActive = false;
     }
 
-    const evGridControl = this.getEvGridImportControlStatus(storedSettings, statusNow);
+    // One read-only observation belongs to THIS status request only. A later
+    // status call must observe changed P1, battery commands and EV feedback.
+    const evObservation = { settings: storedSettings, at: statusNow, instances: [], control: null };
+    const evGridControl = this.getEvGridImportObservation(storedSettings, statusNow, evObservation);
     preview.evGridControl = evGridControl;
 
     const evStatuses = Array.from({ length: this.getEvCount(storedSettings) }, (_, index) => {
-      const instanceSettings = this.getEvInstanceSettings(index, storedSettings);
+      const instanceSettings = this.getEvObservationSettings(index, storedSettings, statusNow, evObservation, 'status');
       const input = this.getEvInputSnapshot(index);
       const runtime = index === 0 ? null : this.getExtraEv(index);
       const decision = index === 0 ? this.latestEvDecision : runtime?.latestDecision;
       const override = this.getEvSessionOverrideFor(index);
       const session = this.getEvSessionDetectionRuntime(index) || {};
-      const outputTiming = this.getEvOutputTimingStatus(index, decision, storedSettings, statusNow);
+      const outputTiming = this.getEvOutputTimingStatus(index, decision, storedSettings, statusNow, instanceSettings);
       return {
         instance: index + 1,
         name: this.getEvInstanceName(index, storedSettings),
@@ -14924,7 +15349,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
-      version: '1.1.13',
+      version: this.homey?.manifest?.version || require('./app.json').version,
       settings: {
         batteryCount: storedSettings.batteryCount,
         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
@@ -15151,8 +15576,11 @@ class HomeFluxEmsApp extends Homey.App {
       if (Number.isFinite(Number(body.ev.soc))) {
         const soc = Math.max(0, Math.min(100, Number(body.ev.soc)));
         const changed = this.hasNumericInputChanged(this.state.evSoc, soc, Boolean(this.inputSeen.ev.soc), 0.01)
-          || !this.getEvSocFreshness(0, this.getEvInstanceSettings(0), now).fresh;
+          || !this.getEvSocFreshness(0, {
+            evSocFreshnessMinutes: this.getSettings().evSocFreshnessMinutes,
+          }, now).fresh;
         this.state.evSoc = soc; this.inputSeen.ev.soc = true; this.inputUpdatedAt.ev.soc = now;
+        if (changed) this.markEvPlanChanged(0, 'api_soc');
         contextInputChanged = changed || contextInputChanged;
       }
     }
@@ -15176,8 +15604,11 @@ class HomeFluxEmsApp extends Homey.App {
         if (Number.isFinite(Number(value.soc))) {
           const soc = Math.max(0, Math.min(100, Number(value.soc)));
           const changed = this.hasNumericInputChanged(runtime.state.soc, soc, Boolean(runtime.seen.soc), 0.01)
-            || !this.getEvSocFreshness(index, this.getEvInstanceSettings(index), now).fresh;
+            || !this.getEvSocFreshness(index, {
+              evSocFreshnessMinutes: this.getSettings()[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+            }, now).fresh;
           runtime.state.soc = soc; runtime.seen.soc = true; runtime.updatedAt.soc = now;
+          if (changed) this.markEvPlanChanged(index, 'api_soc');
           contextInputChanged = changed || contextInputChanged;
         }
       });

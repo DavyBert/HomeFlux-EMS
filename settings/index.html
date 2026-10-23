@@ -2041,6 +2041,12 @@
 <span><span>Ontvangen inputs</span>: <strong id="inputMonitorTotal">0</strong></span>
 <span><span>Mogelijke loops (totaal)</span>: <strong id="inputMonitorLoops">0</strong></span>
 <span><span>Nu verdacht</span>: <strong id="inputMonitorActiveLoops">0</strong></span>
+<span><span>Planningsfuncties uitgevoerd</span>: <strong id="inputMonitorCalculationTotal">0</strong></span>
+<span><span>Mogelijke rekenherhalingen</span>: <strong id="inputMonitorCalculationLoops">0</strong></span>
+<span><span>EV-plan aangevraagd</span>: <strong id="inputMonitorEvPlanRequested">0</strong></span>
+<span><span>EV-plan verwerkt</span>: <strong id="inputMonitorEvPlanHandled">0</strong></span>
+<span><span>SoC-deadline hergebruikt</span>: <strong id="inputMonitorEvDeadlineReused">0</strong></span>
+<span><span>Tariefscan hergebruikt</span>: <strong id="inputMonitorEvTariffReused">0</strong></span>
 </div>
 <p class="muted">Tot 1 update/s is normaal. Meer dan 1 update/s krijgt een markering; minstens 2 updates/s gedurende 5 opeenvolgende seconden geeft een mogelijke loop. Snelle meetkaarten kunnen bewust frequent rapporteren: een waarschuwing bewijst geen Flow-loop. Identieke waarden worden apart geteld.</p>
 <div class="input-monitor-table-wrap" tabindex="0" aria-label="Inkomende Flow-gegevens">
@@ -2050,7 +2056,18 @@
 </table>
 </div>
 <p class="muted" id="inputMonitorEmpty">Nog geen inputs ontvangen tijdens deze opname.</p>
+<h4>Werkelijk uitgevoerde batterij- en EV-planningsberekeningen</h4>
+<p class="muted">EV-plan revisies en hergebruik zijn afzonderlijke eventtellers; ze worden niet bij het aantal uitgevoerde planningsfuncties opgeteld. Een verwerkte revisie betekent niet dat de volledige portfolio-evaluatie kon worden overgeslagen.</p>
+<p class="muted">Telt uitgevoerde functies, niet aanvragen of laadcommando's. De route maakt onderscheid tussen context, heartbeat, publicatie en simulatie. Een EV-beslissing kan meerdere tariefscans uitvoeren. Waarschuwing bij minstens 2 uitvoeringen/s van <strong>dezelfde functie, route en EV</strong> gedurende 5 opeenvolgende seconden; dit is geen bewijs van een Flow-loop. Totale rekentijd en CPU-tijd gelden uitsluitend voor de gemeten synchrone functies.</p>
+<div class="input-monitor-table-wrap" tabindex="0" aria-label="Werkelijk uitgevoerde planningsberekeningen">
+<table class="input-monitor-table">
+<thead><tr><th>Planningsfunctie</th><th>Route</th><th>Uitgevoerd</th><th>Uitvoeringen/s</th><th>Piek/s</th><th>Totale rekentijd</th><th>Gem. / max.</th><th>CPU-tijd</th><th>Laatste uitvoering</th><th>Status</th></tr></thead>
+<tbody id="inputMonitorCalculationRows"></tbody>
+</table>
+</div>
+<p class="muted" id="inputMonitorCalculationEmpty">Nog geen planningsberekeningen uitgevoerd tijdens deze opname.</p>
 <p class="muted">Veeg horizontaal voor alle kolommen. C = contextaanvragen, F = snelle aanvragen, EV = uitgestelde EV-aanvragen. Per input worden alleen aanvragen tijdens het synchrone deel van de handler gekoppeld; latere timers en async-verwerking kunnen niet betrouwbaar aan één input worden toegeschreven. Aanvragen kunnen worden gebundeld en zijn geen uitgevoerde berekeningen.</p>
+<p class="muted">Planningstijden zijn gemeten wall- en proces-CPU-tijden rond de synchrone functie, dus geen wachttijd op Homey-I/O. Geneste EV-tariefscans maken deel uit van de EV-beslissing: tel de CPU-tijden daarvan niet nogmaals bij die beslissing op. Het monitoren zelf heeft een kleine overhead.</p>
 <p class="muted">De export bevat proces-CPU voor de hele app tijdens de opname. Vrije tekst en JSON-payloads worden afgeschermd. Grote of gestructureerde payloads worden niet diep vergeleken. Na een app-herstart vervalt de opname. Wissen is beschikbaar na stoppen.</p>
 <textarea class="homey-form-input" id="inputMonitorExport" readonly hidden aria-label="Input Monitor JSON"></textarea>
 </div>
