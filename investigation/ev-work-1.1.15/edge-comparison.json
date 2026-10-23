@@ -1,0 +1,136 @@
+[
+  {
+    "version": "1.1.14",
+    "route": "flow-no-p1",
+    "counters": {
+      "evContextRequests": 1,
+      "evContextRequestsCoalesced": 0,
+      "evContextTimersStarted": 1,
+      "evContextTimersExpired": 0,
+      "evContextTimersCancelled": 0,
+      "evContextRequestsWithdrawn": 0,
+      "evContextReasonsResolved": 0,
+      "evContextDeferredSkipped": 0,
+      "evContextDeferredEvaluations": 1,
+      "evPortfolioCalculations": 1
+    },
+    "remainingReasons": [],
+    "errors": []
+  },
+  {
+    "version": "1.1.14",
+    "route": "expiry-revalidation",
+    "counters": {
+      "evContextRequests": 1,
+      "evContextRequestsCoalesced": 0,
+      "evContextTimersStarted": 1,
+      "evContextTimersExpired": 0,
+      "evContextTimersCancelled": 0,
+      "evContextRequestsWithdrawn": 0,
+      "evContextReasonsResolved": 0,
+      "evContextDeferredSkipped": 0,
+      "evContextDeferredEvaluations": 1,
+      "evPortfolioCalculations": 1
+    },
+    "remainingReasons": [],
+    "errors": []
+  },
+  {
+    "version": "1.1.14",
+    "route": "queued-publication",
+    "counters": {
+      "evContextRequests": 1,
+      "evContextRequestsCoalesced": 0,
+      "evContextTimersStarted": 1,
+      "evContextTimersExpired": 0,
+      "evContextTimersCancelled": 0,
+      "evContextRequestsWithdrawn": 0,
+      "evContextReasonsResolved": 0,
+      "evContextDeferredSkipped": 0,
+      "evContextDeferredEvaluations": 1,
+      "evPortfolioCalculations": 1
+    },
+    "remainingReasons": [],
+    "errors": []
+  },
+  {
+    "version": "1.1.14",
+    "route": "45-p1-then-10-status",
+    "p1": {
+      "getEvInstanceSettings": 311,
+      "getEvGridImportControlStatus": 88
+    },
+    "status": {
+      "getEvInstanceSettings": 40,
+      "getEvGridImportControlStatus": 10
+    },
+    "errors": []
+  },
+  {
+    "version": "1.1.15",
+    "route": "flow-no-p1",
+    "counters": {
+      "evContextRequests": 1,
+      "evContextRequestsCoalesced": 0,
+      "evContextTimersStarted": 1,
+      "evContextTimersExpired": 0,
+      "evContextTimersCancelled": 1,
+      "evContextRequestsWithdrawn": 1,
+      "evContextReasonsResolved": 1,
+      "evContextDeferredSkipped": 1,
+      "evContextDeferredEvaluations": 0,
+      "evPortfolioCalculations": 0
+    },
+    "remainingReasons": [],
+    "errors": []
+  },
+  {
+    "version": "1.1.15",
+    "route": "expiry-revalidation",
+    "counters": {
+      "evContextRequests": 1,
+      "evContextRequestsCoalesced": 0,
+      "evContextTimersStarted": 1,
+      "evContextTimersExpired": 1,
+      "evContextTimersCancelled": 0,
+      "evContextRequestsWithdrawn": 1,
+      "evContextReasonsResolved": 1,
+      "evContextDeferredSkipped": 1,
+      "evContextDeferredEvaluations": 0,
+      "evPortfolioCalculations": 0
+    },
+    "remainingReasons": [],
+    "errors": []
+  },
+  {
+    "version": "1.1.15",
+    "route": "queued-publication",
+    "counters": {
+      "evContextRequests": 1,
+      "evContextRequestsCoalesced": 0,
+      "evContextTimersStarted": 1,
+      "evContextTimersExpired": 1,
+      "evContextTimersCancelled": 1,
+      "evContextRequestsWithdrawn": 1,
+      "evContextReasonsResolved": 1,
+      "evContextDeferredSkipped": 1,
+      "evContextDeferredEvaluations": 0,
+      "evPortfolioCalculations": 0
+    },
+    "remainingReasons": [],
+    "errors": []
+  },
+  {
+    "version": "1.1.15",
+    "route": "45-p1-then-10-status",
+    "p1": {
+      "getEvGridImportControlStatus": 45,
+      "getEvInstanceSettings": 45
+    },
+    "status": {
+      "getEvGridImportControlStatus": 10,
+      "getEvInstanceSettings": 40
+    },
+    "errors": []
+  }
+]

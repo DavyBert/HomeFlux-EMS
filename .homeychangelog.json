@@ -1,4 +1,8 @@
 {
+  "1.1.15": {
+    "nl": "Efficiëntere EV-verwerking door fysieke EV-controles en afgeleide EV-instellingen binnen dezelfde snelle verwerkingsgang te hergebruiken. Verwijdert vervallen EV-contextaanvragen vóór timeruitvoering, ook na wachten op een andere publicatie. Minder heartbeatwerk bij volledig losgekoppelde EV’s. Bestaande laadstrategieën, beveiligingen en contextcadans blijven behouden.",
+    "en": "More efficient EV processing by reusing physical EV checks and derived EV settings within the same synchronous fast-control request. Resolved EV context requests are discarded before timer execution, including after waiting for another publication. Reduced heartbeat work for fully disconnected EVs. Existing charging strategies, safety protections and context cadence are preserved."
+  },
   "1.1.14": {
     "nl": "Nieuwe Input Monitor & Loop Detection in Diagnostiek: bekijk maximaal 15 minuten welke Flow-kaarten gegevens of opdrachten sturen, hoe vaak waarden identiek blijven en waar mogelijk overactieve Flows voorkomen. Met automatische stop, live frequenties en JSON-export. De bestaande EMS-regeling blijft ongewijzigd.",
     "en": "New Input Monitor & Loop Detection in Diagnostics: record up to 15 minutes of incoming Flow data and commands, repeated identical values and potentially overactive Flows. Includes automatic stop, live frequencies and JSON export. Existing EMS control is unchanged."

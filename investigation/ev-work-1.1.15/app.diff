@@ -1,0 +1,443 @@
+--- 1.1.14/app.js
++++ 1.1.15/app.js
+@@ -147,7 +147,8 @@
+     this.cachedRuntimeSettings = null;
+     this.fastResultSignature = '';
+     this.contextHeartbeatTimer = null;
+-    this.evContextRefresh = { timer: null, due: false, generation: 0, requests: new Set(), reference: null };
++    this.evContextRefresh = { timer: null, due: false, generation: 0, requests: new Set(), reference: null,
++      startedAt: 0, deadlineAt: 0 };
+     // Low-priority housekeeping shares the configured slow-context cadence.
+     // The 60-second heartbeat remains only as a coarse watchdog for time/safety
+     // boundaries and decides whether this slower housekeeping pass is due.
+@@ -636,7 +637,7 @@
+     this.checkNightPlanningFallback();
+     await this.runContextEvaluation(true);
+     this.appInitializedAt = Date.now();
+-    this.log('HomeFlux EMS v1.1.13 initialized');
++    this.log('HomeFlux EMS v1.1.15 initialized');
+   }
+ 
+   refreshSettingsCache() {
+@@ -1736,6 +1737,12 @@
+         events: this.cloneDiagnosticValue(runtime.compact?.events) || [],
+         droppedEvents: runtime.compact?.droppedEvents || 0,
+         allocationChangeResolutionW: 100,
++        deferredContext: {
++          startedAt: this.evContextRefresh?.startedAt || 0,
++          deadlineAt: this.evContextRefresh?.deadlineAt || 0,
++          due: Boolean(this.evContextRefresh?.due),
++          reasons: [...(this.evContextRefresh?.requests || [])],
++        },
+       },
+       planning: {
+         configurationFormat: 'snapshot-and-changes-v1',
+@@ -3122,7 +3129,7 @@
+ 
+   hasConfiguredFlexibleLoad(settings = this.getSettings()) {
+     for (let index = 0; index < this.getEvCount(settings); index += 1) {
+-      if (Boolean(this.getEvInstanceSettings(index, settings).evEnabled)) return true;
++      if (Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) return true;
+     }
+     for (let index = 0; index < this.getHvacCount(settings); index += 1) {
+       if (Boolean(this.getHvacInstanceSettings(index, settings).hvacEnabled)) return true;
+@@ -3165,6 +3172,8 @@
+     if (pending.timer) clearTimeout(pending.timer);
+     pending.timer = null;
+     pending.due = false;
++    pending.startedAt = 0;
++    pending.deadlineAt = 0;
+     pending.generation += 1;
+     pending.requests.clear();
+   }
+@@ -3179,13 +3188,17 @@
+     }
+     if (this.inputMonitor?.active) this.inputMonitor.noteRequest('evDeferred');
+     this.recordDiagnosticCounter('evContextRequests');
++    if (pending.timer || pending.due) this.recordDiagnosticCounter('evContextRequestsCoalesced');
+     pending.requests.add(reason);
+     if (pending.timer || pending.due) return;
+     this.recordDiagnosticCounter('evContextTimersStarted');
++    pending.startedAt = Date.now();
++    pending.deadlineAt = pending.startedAt + 15000;
+     const timer = this.homey.setTimeout(() => {
+       if (pending.timer !== timer) return;
+       pending.timer = null;
+-      if (!pending.requests.size) return;
++      this.recordDiagnosticCounter('evContextTimersExpired');
++      if (!this.revalidateEvContextRequests()) return;
+       pending.due = true;
+       const generation = pending.generation;
+       this.refreshEvOnlyContext({ deferredEvContext: true, evContextGeneration: generation })
+@@ -3197,6 +3210,35 @@
+         });
+     }, 15000);
+     pending.timer = timer;
++  }
++
++  revalidateEvContextRequests(settings = this.getSettings()) {
++    const pending = this.evContextRefresh;
++    if (!pending?.requests.size) return false;
++    const reference = pending.reference;
++    const current = reference ? this.getEvContextMeterSnapshot(settings) : null;
++    for (const reason of pending.requests) {
++      let needed = Boolean(current);
++      if (needed && reason === 'meter') {
++        needed = current.connected && (Math.abs(current.siteW - reference.siteW) >= 100
++          || Math.abs(current.pvW - reference.pvW) >= 100);
++      } else if (needed && /^feedback:[0-3]$/.test(reason)) {
++        const index = Number(reason.slice(-1));
++        needed = index < this.getEvCount(settings) && Boolean(this.getEvInputSnapshot(index)?.connected)
++          && Math.abs((current.currents[index] || 0) - (reference.currents[index] || 0)) >= 0.05;
++      }
++      // Future reason types keep their conservative pending behaviour until
++      // their own lightweight predicate is added here.
++      if (!needed) {
++        pending.requests.delete(reason);
++        this.recordDiagnosticCounter('evContextRequestsWithdrawn');
++        this.recordDiagnosticCounter('evContextReasonsResolved');
++      }
++    }
++    if (pending.requests.size) return true;
++    this.recordDiagnosticCounter('evContextDeferredSkipped');
++    this.clearEvContextRefresh(true);
++    return false;
+   }
+ 
+   updateEvMeterContextRequest(settings = this.getSettings()) {
+@@ -3431,7 +3473,32 @@
+     return raw || `HVAC ${index + 1}`;
+   }
+ 
++  getEvControlTypeFor(index, settings = this.getSettings()) {
++    return this.getEvControlType({ evControlType: settings[this.getEvSettingKey(index, 'ControlType')] });
++  }
++
++  getEvObservationSettings(index, settings, now, observation = null) {
++    if (!observation || observation.settings !== settings || observation.at !== now) {
++      return this.getEvInstanceSettings(index, settings);
++    }
++    if (!observation.instances[index]) {
++      observation.instances[index] = this.getEvInstanceSettings(index, settings);
++    } else this.recordDiagnosticCounter('evInstanceSettingsReused');
++    return observation.instances[index];
++  }
++
++  getEvGridImportObservation(settings, now, observation = null) {
++    if (!observation || observation.settings !== settings || observation.at !== now) {
++      return this.getEvGridImportControlStatus(settings, now);
++    }
++    if (!observation.control) {
++      observation.control = this.getEvGridImportControlStatus(settings, now, observation);
++    } else this.recordDiagnosticCounter('evPhysicalAccountingReused');
++    return observation.control;
++  }
++
+   getEvInstanceSettings(index, source = this.getSettings()) {
++    this.recordDiagnosticCounter('evInstanceSettingsBuilds');
+     const fields = [
+       'Enabled','SocEnabled','SocFreshnessMinutes','Mode','EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
+       'BatteryCapacityKwh','TargetSoc','AfterSocTarget','TargetTime','GuaranteeTarget','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA',
+@@ -5860,6 +5927,7 @@
+       this.requestEvaluate();
+       const contextPvDelta = this.lastContextPvInputW === null ? Infinity : Math.abs(this.state.pvPowerW - this.lastContextPvInputW);
+       const pvSettings = this.getSettings();
++      if (this.evContextRefresh?.requests.size) this.revalidateEvContextRequests(pvSettings);
+       if (this.needsSlowMeterContext(pvSettings) && contextPvDelta >= 100) {
+         this.lastContextPvInputW = this.state.pvPowerW;
+         if (this.needsNonEvMeterContext(pvSettings) || !this.contextDirtyReasons?.has('pv_context')) {
+@@ -7777,10 +7845,13 @@
+     if (detection.detectedEvLoadW === null) return false;
+ 
+     const connectedIndexes = this.getConnectedEvIndexes(settings);
++    let candidateSettings = null;
+     const candidates = connectedIndexes.filter(index => {
+       const instanceSettings = this.getEvInstanceSettings(index, settings);
+-      return instanceSettings.evEnabled && this.getEvControlType(instanceSettings) === 'mode'
++      const candidate = instanceSettings.evEnabled && this.getEvControlType(instanceSettings) === 'mode'
+         && !this.getEvSessionDetectionRuntime(index)?.endedLatched;
++      if (candidate) candidateSettings = instanceSettings;
++      return candidate;
+     });
+     // A shared P1 meter cannot identify individual cars. Keep the existing
+     // portfolio ceiling for multiple cars; never guess which session paused.
+@@ -7793,7 +7864,7 @@
+     const index = candidates[0];
+     const session = this.getEvSessionDetectionRuntime(index);
+     if (!session) return false;
+-    const instanceSettings = this.getEvInstanceSettings(index, settings);
++    const instanceSettings = candidateSettings;
+     const publishedMode = index === 0 ? this.lastPublishedEvChargeMode : this.getExtraEv(index)?.lastPublishedChargeMode;
+     const expectedW = this.getEvModeEstimatedCurrentA(publishedMode, instanceSettings) * evPowerPerAmp(instanceSettings);
+     const previousState = session.state;
+@@ -8034,7 +8105,7 @@
+     };
+   }
+ 
+-  getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now)) {
++  getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now), evObservation = null) {
+     const count = this.getBatteryCount(settings);
+     const today = this.getLocalDateKey(new Date(now));
+     const planningForecastDay = this.getPlanningForecastDay(now, today);
+@@ -8061,7 +8132,7 @@
+     const gridAverage5sW = this.getGridAverage(5, now);
+     const gridSelection = this.getGridControlSelection(settings, now, pvDeltaW);
+     const selectedGridW = gridSelection.value;
+-    const evGridControl = this.getEvGridImportControlStatus(settings, now);
++    const evGridControl = this.getEvGridImportObservation(settings, now, evObservation);
+     const activeEvGridImportTargetW = Math.max(0, Number(evGridControl.activeTargetW) || 0);
+     // The battery controller itself is unchanged. When Smart EV charging is
+     // explicitly allowed to use grid energy, shift only its meter TARGET by
+@@ -8096,7 +8167,7 @@
+       // is still regulated and Peak Guard continues to see raw gridPowerW.
+       controlGridPowerW: selectedControlGridW,
+       evGridImportTargetW: activeEvGridImportTargetW,
+-      plannedBatteryGridLimitW: this.getPlannedBatteryGridLimitW(settings, now),
++      plannedBatteryGridLimitW: this.getPlannedBatteryGridLimitW(settings, now, evObservation),
+       evGridImportRequestedTargetW: Math.max(0, Number(evGridControl.requestedTargetW) || 0),
+       evGridImportControlState: String(evGridControl.state || 'inactive'),
+       gridAverage5sW,
+@@ -10343,15 +10414,16 @@
+     return actualA;
+   }
+ 
+-  getPlannedBatteryGridLimitW(settings = this.getSettings(), now = Date.now()) {
++  getPlannedBatteryGridLimitW(settings = this.getSettings(), now = Date.now(), evObservation = null) {
+     let tariff = null;
+     const requests = [];
+     let activeEvPowerW = 0;
+     for (let index = 0; index < this.getEvCount(settings); index += 1) {
+-      const evSettings = this.getEvInstanceSettings(index, settings);
++      const input = this.getEvInputSnapshot(index);
++      if (!settings[this.getEvSettingKey(index, 'Enabled')] || !input?.connected
++        || this.getEvSessionDetectionRuntime(index)?.endedLatched) continue;
++      const evSettings = this.getEvObservationSettings(index, settings, now, evObservation);
+       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+-      const input = this.getEvInputSnapshot(index);
+-      if (!evSettings.evEnabled || !input?.connected || this.getEvSessionDetectionRuntime(index)?.endedLatched) continue;
+       if (!decision || decision.connected === false || decision.emergencyTariffBlocked) continue;
+       // Use current tariff eligibility as well as the latest EV decision, so a
+       // tariff transition cannot leave a stale reservation behind.
+@@ -10456,7 +10528,17 @@
+     this.evBatteryMeterLiveUntil = now + EV_CURRENT_FEEDBACK_MAX_MS;
+   }
+ 
+-  getEvGridImportControlStatus(storedSettings = this.getSettings(), now = Date.now()) {
++  hasEvPhysicalAccountingInput(settings, now) {
++    for (let index = 0; index < this.getEvCount(settings); index += 1) {
++      if (!settings[this.getEvSettingKey(index, 'Enabled')]) continue;
++      if (this.getEvInputSnapshot(index)?.connected) return true;
++      const drop = this.evBatteryCurrentDrop?.[index];
++      if (drop && now <= drop.expiresAt && Number(this.inputUpdatedAt?.grid) < drop.at) return true;
++    }
++    return false;
++  }
++
++  getEvGridImportControlStatus(storedSettings = this.getSettings(), now = Date.now(), evObservation = null) {
+     const evCount = this.getEvCount(storedSettings);
+     const batteryPowerW = Number(this.state?.lastTotalCommandW) || 0;
+     const batteryDischargeW = Math.max(0, batteryPowerW);
+@@ -10468,13 +10550,21 @@
+     }
+ 
+     this.recordDiagnosticCounter('evPhysicalAccountingChecks');
++    // A disconnected EV can still own load until a newer P1 acknowledges its
++    // falling feedback. Keep that case on the full accounting path. Otherwise
++    // the old loop would only build settings and return this same empty result.
++    if (!this.hasEvPhysicalAccountingInput(storedSettings, now)) {
++      this.recordDiagnosticCounter('evPhysicalAccountingInactiveSkipped');
++      return { requestedTargetW: 0, activeTargetW: 0, batteryDischargeW,
++        state: 'inactive', remainingSeconds: 0, waitingInstances: [], residualInstances: [] };
++    }
+     const relevant = [];
+     let currentTariff = null;
+     let requestedTargetW = 0;
+     const residualInstances = [];
+     for (let index = 0; index < evCount; index += 1) {
+       const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+-      const settings = this.getEvInstanceSettings(index, storedSettings);
++      const settings = this.getEvObservationSettings(index, storedSettings, now, evObservation);
+       const input = this.getEvInputSnapshot(index);
+       const session = this.getEvSessionDetectionRuntime(index);
+       const pendingInputDrop = this.evBatteryCurrentDrop?.[index];
+@@ -10853,18 +10943,14 @@
+   }
+ 
+   isEvOutputActiveFor(index, settings = this.getSettings()) {
+-    if (index === 0) {
+-      const instanceSettings = this.getEvInstanceSettings(0, settings);
+-      return ['mode','hybrid'].includes(this.getEvControlType(instanceSettings))
+-        ? ['smart', 'standard'].includes(String(this.lastPublishedEvChargeMode || '')) && (this.getEvControlType(instanceSettings) === 'mode' || Number(this.lastPublishedEvCurrentA || 0) > 0)
+-        : Number(this.lastPublishedEvCurrentA || 0) > 0;
+-    }
+-    const runtime = this.getExtraEv(index);
+-    const instanceSettings = this.getEvInstanceSettings(index, settings);
+-    if (!runtime) return false;
+-    return ['mode','hybrid'].includes(this.getEvControlType(instanceSettings))
+-      ? ['smart', 'standard'].includes(String(runtime.lastPublishedChargeMode || '')) && (this.getEvControlType(instanceSettings) === 'mode' || Number(runtime.lastPublishedCurrentA || 0) > 0)
+-      : Number(runtime.lastPublishedCurrentA || 0) > 0;
++    const type = this.getEvControlTypeFor(index, settings);
++    const runtime = index === 0 ? null : this.getExtraEv(index);
++    if (index > 0 && !runtime) return false;
++    const mode = index === 0 ? this.lastPublishedEvChargeMode : runtime.lastPublishedChargeMode;
++    const current = index === 0 ? this.lastPublishedEvCurrentA : runtime.lastPublishedCurrentA;
++    return ['mode','hybrid'].includes(type)
++      ? ['smart', 'standard'].includes(String(mode || '')) && (type === 'mode' || Number(current || 0) > 0)
++      : Number(current || 0) > 0;
+   }
+ 
+   isEvOutputPermittedFor(index) {
+@@ -12029,7 +12115,6 @@
+ 
+   getEvExpectedPowerFor(index, decision, settings = this.getSettings()) {
+     if (!decision) return 0;
+-    const instanceSettings = this.getEvInstanceSettings(index, settings);
+     const active = this.isEvDecisionOutputActiveFor(index, decision, settings);
+     const desired = Math.max(0, Number(decision.desiredPowerW) || 0);
+     if (desired > 0) return desired;
+@@ -12187,10 +12272,15 @@
+     // Serialize the shared EV budget, not the battery controller. Per-charger
+     // publication mutexes/intervals remain the final output gate.
+     while (this.evPortfolioPass) await this.evPortfolioPass;
++    if (options.heartbeatEv && this.isEvPortfolioQuiet(this.getSettings())) {
++      this.recordDiagnosticCounter('evHeartbeatQuietSkipped');
++      return null;
++    }
+     // A regular or output pass may have handled this request while we waited
+     // for Homey I/O. Never execute a withdrawn/superseded timer request.
+     if (options.deferredEvContext && (!this.evContextRefresh?.due
+-      || options.evContextGeneration !== this.evContextRefresh.generation)) return null;
++      || options.evContextGeneration !== this.evContextRefresh.generation
++      || !this.revalidateEvContextRequests())) return null;
+     let release;
+     const pass = new Promise(resolve => { release = resolve; });
+     this.evPortfolioPass = pass;
+@@ -12202,17 +12292,48 @@
+     }
+   }
+ 
++  isEvPortfolioQuiet(settings, now = Date.now()) {
++    if (this.evPortfolioPass || this.evPublishing || this.forceEvOutput || this.evTimer
++      || this.evContextRefresh?.timer || this.evContextRefresh?.due || this.evContextRefresh?.requests.size
++      || this.evPvSession?.active) return false;
++    const count = this.getEvCount(settings);
++    for (let index = 0; index < 4; index += 1) {
++      const runtime = index === 0 ? null : this.getExtraEv(index);
++      const input = this.getEvInputSnapshot(index);
++      if (index < count && input?.connected) return false;
++      if (runtime?.publishing || runtime?.forceOutput || runtime?.timer || runtime?.pvSession?.active) return false;
++      if (this.isEvOutputActiveFor(index, settings)) return false;
++      const allowed = index === 0 ? this.lastPublishedEvAllowed : runtime?.lastPublishedAllowed;
++      if (allowed) return false;
++      if (index < count) {
++        const type = this.getEvControlTypeFor(index, settings);
++        const mode = index === 0 ? this.lastPublishedEvChargeMode : runtime?.lastPublishedChargeMode;
++        if (['mode','hybrid'].includes(type) && mode !== 'stop') return false;
++        // Contradictory, still-fresh physical feedback must retain recovery.
++        if (input?.seen?.chargeCurrent && Number(input.chargeCurrentA) > 0
++          && now - Number(input.updatedAt?.chargeCurrent || 0) <= EV_CURRENT_FEEDBACK_MAX_MS) return false;
++      }
++      const drop = this.evBatteryCurrentDrop?.[index];
++      if (drop && now <= drop.expiresAt && Number(this.inputUpdatedAt?.grid) < drop.at) return false;
++    }
++    return true;
++  }
++
+   async runEvHeartbeat() {
+     if (this.evHeartbeatRunning) return;
+     const settings = this.getSettings();
+     const hasEv = Array.from({ length: this.getEvCount(settings) }, (_, index) =>
+-      Boolean(this.getEvInstanceSettings(index, settings).evEnabled)).some(Boolean);
++      Boolean(settings[this.getEvSettingKey(index, 'Enabled')])).some(Boolean);
+     if (!hasEv && ![0, 1, 2, 3].some(index => this.isEvOutputActiveFor(index, settings))) return;
++    if (this.isEvPortfolioQuiet(settings)) {
++      this.recordDiagnosticCounter('evHeartbeatQuietSkipped');
++      return;
++    }
+     this.evHeartbeatRunning = true;
+     const diagnosticCpu = this.startDiagnosticCpuSection('ev_heartbeat');
+     this.recordDiagnosticCounter('evHeartbeatEvaluations');
+     try {
+-      await this.refreshEvOnlyContext();
++      await this.refreshEvOnlyContext({ heartbeatEv: true });
+     } catch (err) {
+       this.error('EV heartbeat evaluation failed', err);
+     } finally {
+@@ -12552,7 +12673,7 @@
+     return Math.max(50, deadband, step);
+   }
+ 
+-  getFastControlSnapshot(settings = this.getSettings(), now = Date.now(), evaluationState = null) {
++  getFastControlSnapshot(settings = this.getSettings(), now = Date.now(), evaluationState = null, evObservation = null) {
+     const rawGridW = evaluationState && Number.isFinite(Number(evaluationState.gridPowerW))
+       ? Number(evaluationState.gridPowerW)
+       : Number(this.state.gridPowerW);
+@@ -12569,7 +12690,7 @@
+       // Select the meter before testing zones/deltas: averaged in-band P1
+       // must never hide a live correction. PV-live is not a scheduling reason.
+       const gridSelection = this.getGridControlSelection(settings, now);
+-      evTargetW = Math.max(0, Number(this.getEvGridImportControlStatus(settings, now).activeTargetW) || 0);
++      evTargetW = Math.max(0, Number(this.getEvGridImportObservation(settings, now, evObservation).activeTargetW) || 0);
+       controlGridW = gridSelection.value - evTargetW;
+     }
+ 
+@@ -12853,7 +12974,7 @@
+           .some(values => !Array.isArray(values) || values.length !== committed.length
+             || values.some((value, index) => value !== committed[index]))) return false;
+     }
+-    const state = this.getEvaluationState(settings, now, this.getRecentPvDelta(now));
++    const state = this.getEvaluationState(settings, now, this.getRecentPvDelta(now), preflight?.evObservation);
+     if (preflight) preflight.state = state;
+     if (memo.dependencies !== this.getBatteryFeedbackDependencies(state, memo.result.baseMode === 'charge')) return false;
+     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
+@@ -12893,7 +13014,7 @@
+     // Active charging has its own proof. Do not send every active setpoint
+     // through the zero-output idle guard before checking that proof.
+     const chargingSnapshot = this.latestResult.baseMode === 'charge'
+-      ? this.getFastControlSnapshot(settings, now) : null;
++      ? this.getFastControlSnapshot(settings, now, null, preflight?.evObservation) : null;
+     if (chargingSnapshot && !chargingSnapshot.peak
+       && this.canSkipUnchangedChargingInput(settings, now, chargingSnapshot)) return false;
+     const idleCpu = this.startDiagnosticCpuSection('fast_idle_guard');
+@@ -12902,7 +13023,7 @@
+     } finally {
+       this.endDiagnosticCpuSection(idleCpu);
+     }
+-    const current = chargingSnapshot || this.getFastControlSnapshot(settings, now);
++    const current = chargingSnapshot || this.getFastControlSnapshot(settings, now, null, preflight?.evObservation);
+     if (!current) {
+       this.recordDiagnosticCounter('fastSkipInvalidGrid');
+       return false;
+@@ -13020,7 +13141,12 @@
+     // Keep the cheap signal/safety gates, but do not build a charging feedback
+     // state while the existing command interval prevents its use. This object
+     // lives only in this synchronous request, never in the timer or on the app.
+-    const preflight = { deferFeedback: wait > 0, at: now, settings: controlSettings, state: null };
++    const preflight = { deferFeedback: wait > 0, at: now, settings: controlSettings, state: null,
++      // Private to this synchronous request, including its feedback preview.
++      // A timer, another input (even at the same timestamp), context or status
++      // read creates its own observation. No EV result crosses an await.
++      evObservation: this.getEvCount(controlSettings) > 0
++        ? { settings: controlSettings, at: now, instances: [], control: null } : null };
+     if (!this.shouldRunFastEvaluation(immediate, controlSettings, now, preflight)) {
+       this.fastEvaluationSkipped += 1;
+       this.recordDiagnosticCounter('fastSkipped');
+@@ -13389,7 +13515,7 @@
+ 
+       const pvDeltaW = this.getRecentPvDelta(now);
+       const prepared = preflight?.state && preflight.at === now && preflight.settings === storedSettings;
+-      const evaluationState = prepared ? preflight.state : this.getEvaluationState(storedSettings, now, pvDeltaW);
++      const evaluationState = prepared ? preflight.state : this.getEvaluationState(storedSettings, now, pvDeltaW, preflight?.evObservation);
+       if (prepared) this.recordDiagnosticCounter('fastEvaluationStateReused');
+       const settings = this.controlRuntimeSettings;
+       const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext);
+@@ -15103,6 +15229,9 @@
+         }
+       }
+     }
++    if (body.pvPowerW !== undefined && this.evContextRefresh?.requests.size) {
++      this.revalidateEvContextRequests(this.getSettings());
++    }
+     return this.latestResult || null;
+   }
+ }

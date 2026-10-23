@@ -32,6 +32,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.15
+
+Reduced repeated EV physical checks and settings expansion within a synchronous fast-control request. Resolved EV context requests are discarded before timer execution and after waiting for another publication. Fully disconnected EVs skip unnecessary heartbeat calculations once outputs and physical safeguards are settled. Charging strategies, immediate safety responses, Input Monitor and the regular context interval are preserved.
+
+Minder herhaalde fysieke EV-controles en instellingenopbouw binnen dezelfde snelle verwerkingsgang. Vervallen EV-contextaanvragen worden vóór timeruitvoering en na wachten op een andere publicatie verwijderd. Volledig losgekoppelde EV’s slaan onnodige heartbeatberekeningen over zodra uitgangen en fysieke beveiligingen zijn afgehandeld. Laadstrategieën, onmiddellijke veiligheidsreacties, Input Monitor en het reguliere contextinterval blijven behouden.
+
 ### 1.1.9
 
 Choose per EV whether to stop at the SoC target (default) or continue with the configured tariff and PV preferences. This also applies to SoC Flow targets. Explicit session stops and kWh targets keep stopping.

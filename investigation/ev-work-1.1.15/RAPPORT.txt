@@ -1,0 +1,132 @@
+HomeFlux EMS 1.1.15 – EV-verwerking en geldige contextaanvragen
+
+Bron en afbakening
+Gebaseerd op de meest recente beschikbare 1.1.14-bronbundel, inclusief de eerdere CPU-optimalisaties en Input Monitor. De ongewijzigde 1.1.14-bron is apart uitgepakt voor alle vergelijkingen. Versie 1.1.15 staat in app.json, .homeycompose/app.json, package.json en beide toepasselijke package-lock-versievelden. NL/EN-release notes staan in .homeychangelog.json en README.md. De bestaande .homeyignore is byte voor byte behouden; .homeychangelog.json wordt daardoor NIET uitgesloten van Homey.
+
+Bevestigde oorzaken
+- getFastControlSnapshot() voerde fysieke EV-accounting uit. Binnen dezelfde synchrone requestEvaluate()-aanroep kon canSkipBatteryFeedback() via getEvaluationState() dezelfde controle opnieuw uitvoeren. Het instellingenobject, de inputs en de commando's waren tussen deze twee aanroepen ongewijzigd.
+- Vragen naar alleen Enabled of het besturingstype riepen getEvInstanceSettings() aan. Die helper kopieert veel instellingen en bouwt per-EV TOU-tarieven op, terwijl deze specifieke antwoorden rechtstreeks uit dezelfde instellingen beschikbaar zijn. Sessiemodus-overrides veranderen Enabled/ControlType niet.
+- updateEvPortfolioLoadDetection() bouwde instellingen voor de enige kandidaat twee keer; getEvExpectedPowerFor() bouwde een ongebruikt exemplaar voordat de bestaande actieve-uitgangscontrole opnieuw instellingen opbouwde.
+- runEvHeartbeat() berekende ook een portfolio voor volledig afgekoppelde, afgehandelde EV's.
+- De 15-seconden-timer controleerde alleen geregistreerde redenen. Teruggekeerd PV zonder volgende P1 liet een inmiddels vervallen reden staan; hetzelfde kon gebeuren tijdens wachten op een publicatie.
+
+De eerste korte proef is met onze expliciet opgenomen fixture opnieuw uitgevoerd: 45 P1-inputs, één batterij, aangesloten EV op stop. 1.1.14: 88 fysieke controles / 311 instellingenopbouwen; 1.1.15: 45 / 45. Dit is 48,9% respectievelijk 85,5% minder uitgevoerde aanroepen. De oorspronkelijke 92/408 is geen universele constante; startup, opwarming en apparaatreacties beïnvloeden deze totalen. De vergelijking gebruikt voor beide versies precies dezelfde fixture.
+Tien aansluitende statusuitlezingen: in beide versies 10 actuele fysieke controles en 40 instellingenopbouwen. Er is geen cache tussen statusuitlezingen toegevoegd.
+
+Gerichte wijzigingen in app.js
+- Nieuwe getEvObservationSettings() en getEvGridImportObservation(): één lokaal waarnemingsobject per synchrone requestEvaluate()-aanroep. getFastControlSnapshot(), canSkipBatteryFeedback(), getEvaluationState(), getPlannedBatteryGridLimitW() en evaluateFastNow() kunnen het EV-gedeelte daarvan hergebruiken.
+- Er is geen app-brede of op tijdsduur gebaseerde EV-cache. Het lokale object wordt niet bewaard op de app en gaat niet mee naar timers of over een await. Een nieuwe input krijgt een ander object, ook wanneer Date.now() gelijk is. Andere instellingenreferentie of ander evaluatietijdstip dwingt een verse berekening af. De betrokken functies wijzigen in dit stuk geen EV-beslissingen, inputs of batterijcommando's. De gedeelde instellingen worden daar uitsluitend gelezen.
+- Nieuwe getEvControlTypeFor(); hasConfiguredFlexibleLoad(), isEvOutputActiveFor() en runEvHeartbeat() gebruiken ruwe instellingen voor zuivere Enabled-/typevragen. De overige regelingen in deze gedeelde functies zijn ongewijzigd.
+- getEvInstanceSettings() behoudt zijn bestaande sessie-, kWh-/SoC-, tarief- en deadlinewerking. Mutable gebruikers van de helper houden hun eigen exemplaren. updateEvStatusInput() blijft de bestaande helper gebruiken, zodat noodzakelijke deadlinebijwerkingen behouden zijn.
+- getPlannedBatteryGridLimitW() slaat de instellingenopbouw over voor uitgeschakelde, disconnected of beëindigde EV's die eerder toch geen reservering kregen. De reserveringsberekening zelf is ongewijzigd.
+- updateEvPortfolioLoadDetection() bewaart alleen de al opgebouwde instellingen van de enige kandidaat; getEvExpectedPowerFor() verliest uitsluitend een ongebruikt exemplaar.
+- Nieuwe hasEvPhysicalAccountingInput() geeft een goedkoop inactief resultaat wanneer geen ingeschakelde EV aangesloten is en er geen geldige wachtende meterdaling is. Lopende restverbruiksbescherming blijft het volledige bestaande pad volgen. De fysieke teller staat nog steeds vóór deze controle, zodat ook het goedkopere werkelijk uitgevoerde werk zichtbaar blijft.
+- Nieuwe isEvPortfolioQuiet() is uitsluitend een heartbeatvoorcontrole. Publicaties, geforceerde uitgangen, uitgangstimers, actieve PV-sessies, pending-redenen, actieve/toegestane uitgangen, noodzakelijke modus-STOP, verse tegenstrijdige stroomfeedback en onbevestigde dalingen verhinderen overslaan. De controle wordt na wachten op een portfolio-publicatie opnieuw uitgevoerd. Een aangesloten wachtende EV houdt zijn gewone heartbeat voor tarieven en deadlines.
+- Nieuwe revalidateEvContextRequests() toetst geregistreerde meter- en feedbackredenen licht aan de actuele bestaande toestand. Bestaande 100 W-/0,05 A-grenzen blijven gelijk. Onbekende toekomstige redenstypen worden conservatief behouden. PV-Flow en PV-API kunnen een vervallen reden onmiddellijk verwijderen. Timerafloop en de publicatiewachtrij toetsen nogmaals, zonder een nieuwe timer te starten.
+- clearEvContextRefresh() en setEvContextRefreshRequest() beheren tevens start-/deadlinetimestamps voor diagnostiek. getDiagnosticsReport() exporteert de actuele pending-status. De bestaande generatie- en callbackidentiteitsbescherming blijft aanwezig.
+- onInit() heeft de versieaanduiding 1.1.15; geen andere startupstrategie gewijzigd.
+
+Timer, bundeling en annulering
+Eén gedeelde timer blijft exact op start + 15000 ms staan. Herhaalde aanvragen en andere EV's verlengen hem niet. Iedere nieuwe P1 blijft het bestaande lichte afwijkingscriterium toetsen, zodat verdwijnen van de aanleiding tijdig annuleert. Redenen worden afzonderlijk verwijderd; één opgeloste reden wist geen andere EV-aanvraag. Een gewone context-/portfolioberekening voltooit de aanvraag en vernieuwt het referentiebeeld zoals voorheen. Afgehandelde ongewijzigde afwijkingen starten daardoor geen eindeloze timers.
+Bij timerafloop en na wachten op andere Homey-I/O gelden de actuele redenen én de bestaande due/generatiecontrole. Zonder geldige redenen wordt geen portfolio gestart. Geen polling, extra interval of zware voorbereidende EV-berekening toegevoegd.
+
+Concrete oude fout vóór/na (edge-comparison.json)
+- PV herstelt na 8 s, zonder nieuwe P1: één aanvraag en timer in beide versies; oude versie één extra portfolio, nieuwe versie nul en één annulering/verwijderde reden.
+- Herstel is pas beschikbaar bij timerafloop: oude versie één extra portfolio, nieuwe versie nul en één vervallen reden; de nieuwe afloop-teller registreert wel de werkelijk afgelopen timer.
+- Aanvraag was al due en wachtte op een andere publicatie: oude versie één extra portfolio, nieuwe versie nul; opnieuw gevalideerd na vrijgave.
+- Vijftien herhaalde aanvragen bij aanhoudende afwijking: één timer met vaste deadline, veertien samengevoegde aanvragen, één aanvullende evaluatie. Daarna geen herstart bij dezelfde toestand. Deze correcte eerdere werking is behouden.
+
+Waarom sommige controles blijven
+Elke nieuwe input en ieder statusverzoek moet nieuwe feedback, P1/PV, batterijcommando's en tijdsgrenzen kunnen zien. Restbelasting tijdens STOP/disconnect en de bevestiging door een nieuwere P1 blijven onmiddellijk beschermd. Een statusverzoek kan dus nog één fysieke controle doen; volledig disconnected is die controle goedkoop.
+De mogelijke overlap tussen coordinateEvBatteryPriority() en publishEvPortfolioNow() is onderzocht en niet algemeen verwijderd. De eerste verdeelt tegen het context-/kandidaatbudget. De tweede kan physicalOnly gebruiken, huidige/pending/in-flight en Split-minimumcommando's reserveren en na asynchrone publicatie nieuwere gegevens zien. Er is geen bewijs dat al deze afhankelijkheden altijd gelijk zijn. De verse fysieke publicatievalidatie blijft daarom aanwezig.
+
+Diagnostische betekenis
+Bestaande ontvangen-aanvragen-, input-, portfolio- en fysieke tellers blijven op hun bestaande werkpunten staan. Toegevoegd: evInstanceSettingsBuilds, evInstanceSettingsReused, evPhysicalAccountingReused, evPhysicalAccountingInactiveSkipped, evContextRequestsCoalesced, evContextTimersExpired, evContextReasonsResolved, evContextDeferredSkipped en evHeartbeatQuietSkipped. De bestaande evContextRequestsWithdrawn/TimersCancelled/Satisfied/DeferredEvaluations blijven beschikbaar. 'Satisfied' telt een afgehandelde bundel, niet iedere herhaalde aanvraag of elke verwijderde reden. Een timer kan verlopen en daarna tijdens wachten alsnog worden geannuleerd; deze gebeurtenissen zijn dus niet onderling exclusief.
+De bestaande herhalingsbundeling van ev_grid_allowance_transition is niet gewijzigd. Herhaalde waarnemingen worden niet als extra overgangen gepresenteerd. Input Monitor, diens ontvangen-inputregistratie en onderscheid tussen aanvragen en uitvoeringen zijn behouden.
+
+Vergelijkende meting
+Node-versie: v24.19.0. Twaalf profielen, 300 virtuele seconden per profiel en versie, zeven herhalingen: 168 uitvoeringen. De eerste twee herhalingen warmen op; tabellen geven de mediaan van de overige vijf. Voor/na-volgorde wisselt per herhaling. Echte inputhandlers, evaluatoren en publicatiepoorten; Homey-I/O en tijd zijn gesimuleerd. De gesimuleerde laadpaal volgt gepubliceerde commando's en de P1 omvat de batterijreactie. Zelfde instellingen en diagnostiek per paar. Input Monitor is in deze meting uit; zijn bestaande functie- en interfacetests zijn apart uitgevoerd.
+Alle batterij- en EV-uitvoerreeksen zijn per paar exact vergeleken, inclusief tijdstippen en tokens: identiek in alle 84 paren. Het verschil in de expliciete vervallen-aanvraagproeven is de bedoelde correctie.
+
+Werk per 300 P1-inputs (fysieke helperaanroepen omvatten ook heartbeat/context/status):
+Profiel | Fysieke controles 14 -> 15 | Per P1 14 -> 15 | EV-instellingen 14 -> 15 | Portfolio 14 -> 15
+connected-stop | 603 -> 305 | 2.010 -> 1.017 | 2506 -> 675 | 5 -> 5
+disconnected | 603 -> 300 | 2.010 -> 1.000 | 2206 -> 305 | 5 -> 0
+connected-jitter | 603 -> 305 | 2.010 -> 1.017 | 2506 -> 675 | 5 -> 5
+identical-feedback | 604 -> 306 | 2.013 -> 1.020 | 2229 -> 693 | 6 -> 6
+live-status | 753 -> 455 | 2.510 -> 1.517 | 3106 -> 1275 | 5 -> 5
+disconnected-status | 753 -> 450 | 2.510 -> 1.500 | 2806 -> 755 | 5 -> 0
+two-current | 637 -> 616 | 2.123 -> 2.053 | 5253 -> 3232 | 21 -> 21
+two-hybrid | 313 -> 311 | 1.043 -> 1.037 | 2776 -> 1756 | 16 -> 16
+no-battery | 611 -> 311 | 2.037 -> 1.037 | 3043 -> 1463 | 16 -> 16
+battery-disabled | 611 -> 311 | 2.037 -> 1.037 | 3370 -> 1463 | 16 -> 16
+pv-only | 1219 -> 619 | 4.063 -> 2.063 | 5265 -> 1869 | 24 -> 24
+diagnostics-off | 603 -> 305 | 2.010 -> 1.017 | 2506 -> 675 | 5 -> 5
+
+Proces-CPU en wall-clock zijn afzonderlijk gemeten. Dit zijn hostmilliseconden voor 300 VIRTUELE seconden en geen Homey-CPU-percentages. CPU bevat user + system van process.cpuUsage(); wall-clock is performance.now(). Garbage collection voor/na het meetblok zit niet in de CPU-tijd. Meetruis en JIT/GC maken de exacte CPU-winst afhankelijk van de uitvoering; deterministische werk-aantallen zijn sterker bewijs.
+Profiel | CPU ms 14 -> 15 | Minder CPU | Wall-clock ms 14 -> 15
+connected-stop | 210.5 -> 163.3 | 22.4% | 194.1 -> 147.2
+disconnected | 135.3 -> 87.9 | 35.1% | 117.3 -> 77.8
+connected-jitter | 224.7 -> 183.2 | 18.5% | 204.8 -> 157.7
+identical-feedback | 252.0 -> 193.1 | 23.4% | 230.0 -> 181.7
+live-status | 398.9 -> 325.8 | 18.3% | 368.3 -> 298.7
+disconnected-status | 293.9 -> 221.1 | 24.8% | 259.5 -> 206.3
+two-current | 822.5 -> 710.8 | 13.6% | 784.9 -> 656.4
+two-hybrid | 418.2 -> 387.7 | 7.3% | 386.5 -> 354.7
+no-battery | 537.4 -> 466.1 | 13.3% | 507.9 -> 447.3
+battery-disabled | 540.4 -> 494.0 | 8.6% | 508.6 -> 471.8
+pv-only | 840.4 -> 787.6 | 6.3% | 795.8 -> 753.7
+diagnostics-off | 255.3 -> 163.7 | 35.9% | 233.2 -> 153.9
+
+Aanvragenvoorbeeld, twee EV's met wisselende PV: beide versies 103 ontvangen aanvragen, 11 timerstarts, 6 effectieve deferred-evaluaties en 21 portfolio's inclusief reguliere passes. De nieuwe teller maakt de 92 samengevoegde aanvragen expliciet. Noodzakelijke evaluaties zijn niet kunstmatig weggefilterd. Bij identieke feedback waren van 300 updates 299 identiek en één gewijzigd; één timer/effectieve aanvullende evaluatie in beide versies. Een voortdurend disconnected EV start geen EV Deferred-aanvraag en slaat vijf overbodige heartbeatportfolio's over.
+Bij geopend live status (één uitlezing per twee seconden) komen in beide versies 150 actuele fysieke controles bij; bronstatus wordt niet uit een oude request hergebruikt. De CPU-kosten van statusserialisatie zijn in dit profiel meegenomen.
+
+Geheugen
+Naast heap/RSS-velden voor ieder CPU-meetblok is een afzonderlijke duurproef uitgevoerd in een vers Node-proces per versie en profiel. Diagnostiek uit, 2000 opwarminputs, daarna 10000 inputs (P1 + identieke EV-feedback, elk 1/s) per uitvoering. Vijf blokken van 2000 inputs met GC ertussen. Alleen de onbeperkte testharnessregistratie van reeds afgehandelde timers/uitgangen wordt geleegd; toepassingsdata blijft intact. Live status wordt waar aangegeven 2500 maal opgebouwd/geserialiseerd.
+Profiel | Heap laatste - start KiB 14 -> 15 | Hoogste RSS MiB 14 -> 15 | Pending testtimers
+connected | -740.8 -> -43.7 | 84.0 -> 85.9 | 0 in alle vijf snapshots
+disconnected | -653.3 -> 355.5 | 90.4 -> 82.8 | 0 in alle vijf snapshots
+connected + status | -51.1 -> -475.9 | 116.9 -> 102.8 | 0 in alle vijf snapshots
+Geen monotone heapgroei of groeiende timerwachtrij gemeten. Een kleine positieve nettoheapdelta in één profiel past binnen de schommelingen tussen de blokken; dit bewijst geen onbeperkte levensduur of algemeen lager geheugenverbruik. Absolute RSS omvat Node/JIT/harness en is geen Homey-appgeheugen. Er wordt geen hardwarepercentage of geheugenbesparing geclaimd.
+
+Verificatie
+npm run check: alle 68 testscripts en de syntaxcontroles geslaagd. Daaronder de bestaande batterij-, PV-, HVAC-, boiler-, multi-battery-, instellingen-, Flow-, widget-, EV- en Input Monitor-regressies. Nieuwe gerichte EV-test bevat 22 scenario's; na de laatste aanvullende testasserties opnieuw geslaagd. Optionele benchmark- en geheugenscripts zijn apart uitgevoerd.
+Dekking van de 18 gevraagde situaties:
+1. Disconnected met P1/s: korte proef, 300 s replay en duurproef; geen EV Deferred-aanvragen en goedkope heartbeat-rust.
+2. Connected/stop, stabiele P1: korte proef en connected-stop.
+3. Connected/stop, wisselende P1: connected-jitter.
+4. Stabiele en wisselende PV: bestaande EV/PV-regressies en two-current/pv-only.
+5. Aanleiding verdwijnt vóór deadline: bestaande deferred-regressie en nieuwe Flow-/API-annulering.
+6. PV herstelt zonder P1: nieuwe Flow-/API-/afloopproeven plus vergelijking met oude versie.
+7. Vervalt achter publicatiemutex: nieuwe wachtrijproef en edge-comparison.
+8. Aanhoudend: één timer/evaluatie en geen eindeloze herhaling.
+9. Herhaald: deadline blijft gelijk, veertien coalesced-verzoeken.
+10. Reguliere context tijdens timer: bestaande ev-context-delay-1.1.13 normalContextAndMulti/generatietests.
+11. Disconnect/reconnect: oude callback ongeldig, onmiddellijke reguliere aansluitingsevaluatie; bestaande veiligheidsregressies.
+12. Identieke feedback/s gedurende minuten: 300 s replays en lange geheugentest; ontvangen blijft meetellen.
+13. Meerdere EV's met verschillende redenen: oplossen meter behoudt feedback:1 en dezelfde deadline; bestaande tweevoudige feedbackredenen.
+14. Werkelijk laden, snelle vermogensveranderingen: gesimuleerde fysieke laadpaal in replays en bestaande EV/PV/transitieregressies.
+15. Peak Guard: bestaande deferred-test controleert STOP op hetzelfde meter-event voor current/mode/hybrid; alle veiligheidsregressies slagen.
+16. Zonder batterij / regeling uit: afzonderlijke replays en independent-ev-regressies.
+17. Herhaalde live-status bij veranderende toestand: ieder verzoek vers, dezelfde milliseconde geen hergebruik; live-status-replays en bestaande restbelastingtests.
+18. Feedback-, batterijcommando-, instellingen- en deadlinewijziging: verse statuscontrole na wijziging, verschillende waarnemingsobjecten voor twee inputs op hetzelfde tijdstip, instellingenwijziging en rollover van SoC-deadline. Bestaande SoC/kWh-deadline- en overgangstests slagen.
+
+Behouden functionele grenzen
+Peak Guard, stroomverlagingen, STOP, disconnect, feedbackhoudbaarheid en bescherming tegen ongewenste batterijontlading behouden hun bestaande directe paden. De 15 s betreft uitsluitend gewone aanvullende EV-contextaanvragen. Geen aanpassing aan batterijplanning, tariefplanning, PV-capture/curtailment/exportregeling, snelle batterijformules, HVAC, boiler, multi-batteryverdeling, contextcadans, P1-frequentie, gebruikersconfiguraties of Flow-schema's. Gedeelde grid_context-aanvragen blijven bestaan.
+lib/, settings/, widgets/, locales/ en Flow-kaartschema's zijn byte-identiek aan 1.1.14. app.json en .homeycompose/app.json verschillen alleen in versie. Andere gewijzigde bronbestanden: app.js; package.json (versie/testopdrachten), package-lock.json (versie), test/settings-startup.test.js en test/widget.test.js (versieasserties), README.md en .homeychangelog.json (release notes). Nieuwe testbestanden: ev-work-harness.js, ev-work-1.1.15.test.js, ev-work-benchmark-1.1.15.js en ev-work-memory-1.1.15.js. Nieuwe bewijsbestanden staan uitsluitend in deze investigation-map en gaan dankzij .homeyignore niet naar Homey.
+
+Bewijs en herhalen
+- cpu-comparison.json: alle 168 individuele uitvoeringen, commando's, CPU/wall/heap/RSS en tellers.
+- memory-comparison.json: onafhankelijke processen, alle geheugenblokken.
+- edge-comparison.json: oude/nieuwe foutreproducties en korte 45-input-/10-statusproef.
+- regression-check.log: volledige regressie-uitvoer.
+- app.diff en source-1.1.14-sha256.json: bronwijziging en referentiehashes.
+- source-scope.json: overzicht van gewijzigde en toegevoegde bestanden.
+Vanuit de uitgepakte 1.1.15-map, met de originele 1.1.14-map als referentie:
+  npm run check
+  node --expose-gc test/ev-work-benchmark-1.1.15.js /pad/naar/1.1.14
+  node --expose-gc test/ev-work-memory-1.1.15.js /pad/naar/1.1.14
+EV_WORK_OUTPUT respectievelijk EV_WORK_MEMORY_OUTPUT kiest een JSON-bestand; EV_WORK_RUNS/EV_WORK_SECONDS regelen de CPU-proef. De oude bron is niet dubbel in deze bundel opgenomen; gebruik de originele 1.1.14-release.
+
+Oplevering
+Versie 1.1.15 met bijgewerkte NL/EN-release notes en behouden .homeyignore. Alle genoemde lokale regressies slagen. De simulaties tonen minder werkelijk uitgevoerde EV-verwerking en afwijzing van vervallen aanvragen; een exacte winst op echte Homey-hardware vereist dezelfde opname op dat apparaat.
