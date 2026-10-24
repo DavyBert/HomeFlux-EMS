@@ -1,0 +1,242 @@
+[
+  {
+    "name": "Production replay: overnight goal met outside daily cheap hours",
+    "syntheticPrices": true,
+    "current": {
+      "energyKwh": 5.971416666666671,
+      "costEUR": 1.1942833333333336,
+      "finalSoc": 69.85708333333335,
+      "deadlineMet": true,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792792800000,
+          "on": true
+        },
+        {
+          "at": 1792805340000,
+          "on": false
+        }
+      ],
+      "contexts": 787,
+      "priceWindows": 1,
+      "selections": 1,
+      "cpuMs": 3506.916,
+      "wallMs": 3165.834819
+    },
+    "baseline": {
+      "energyKwh": 2.500000000000001,
+      "costEUR": 0.7466666666666671,
+      "finalSoc": 52.50000000000001,
+      "deadlineMet": false,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792788360000,
+          "on": true
+        },
+        {
+          "at": 1792792860000,
+          "on": false
+        }
+      ],
+      "contexts": 787,
+      "priceWindows": 0,
+      "selections": 0,
+      "cpuMs": 3175.332,
+      "wallMs": 2892.929149
+    }
+  },
+  {
+    "name": "Cost per delivered kWh and normalized equal-energy comparison",
+    "syntheticPrices": true,
+    "current": {
+      "energyKwh": 6.0000000000000036,
+      "costEUR": 1.2000000000000008,
+      "finalSoc": 70.00000000000001,
+      "deadlineMet": true,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792792800000,
+          "on": true
+        },
+        {
+          "at": 1792797300000,
+          "on": false
+        }
+      ],
+      "contexts": 787,
+      "priceWindows": 1,
+      "selections": 1,
+      "cpuMs": 3146.218,
+      "wallMs": 2957.8506860000007
+    },
+    "baseline": {
+      "energyKwh": 5.4101333333333335,
+      "costEUR": 1.62204,
+      "finalSoc": 67.05066666666667,
+      "deadlineMet": false,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792788360000,
+          "on": true
+        },
+        {
+          "at": 1792792860000,
+          "on": false
+        }
+      ],
+      "contexts": 787,
+      "priceWindows": 0,
+      "selections": 0,
+      "cpuMs": 3077.695,
+      "wallMs": 2918.124732
+    },
+    "normalizedSixKwh": {
+      "currentEUR": 1.2000000000000002,
+      "baselineEUR": 1.7988909700315459,
+      "note": "Normalization to equal energy; actual delivered amounts and deadline outcomes are reported separately."
+    }
+  },
+  {
+    "name": "Already charging across midnight keeps window and chosen intervals",
+    "fastBuilds": 0,
+    "selections": 1,
+    "windowBuilds": 1
+  },
+  {
+    "name": "CPU and calculation counts: 180 unchanged one-second meter inputs",
+    "current": [
+      {
+        "cpuMs": 84.89,
+        "wallMs": 73.07826700000078,
+        "contexts": 4,
+        "fast": 4,
+        "priceSorts": 0,
+        "selections": 0,
+        "fastCpuMs": 3.536,
+        "contextCpuMs": 5.797999999999998
+      },
+      {
+        "cpuMs": 75.465,
+        "wallMs": 68.03365499999927,
+        "contexts": 4,
+        "fast": 4,
+        "priceSorts": 0,
+        "selections": 0,
+        "fastCpuMs": 2.2769999999999997,
+        "contextCpuMs": 5.469999999999999
+      },
+      {
+        "cpuMs": 81.178,
+        "wallMs": 74.7918179999997,
+        "contexts": 4,
+        "fast": 4,
+        "priceSorts": 0,
+        "selections": 0,
+        "fastCpuMs": 2.835,
+        "contextCpuMs": 8.932000000000002
+      }
+    ],
+    "baseline": [
+      {
+        "cpuMs": 76.675,
+        "wallMs": 70.72107899999901,
+        "contexts": 3,
+        "fast": 4,
+        "priceSorts": 0,
+        "selections": 0,
+        "fastCpuMs": 3.857,
+        "contextCpuMs": 5.009999999999998
+      },
+      {
+        "cpuMs": 66.508,
+        "wallMs": 61.25754400000005,
+        "contexts": 3,
+        "fast": 4,
+        "priceSorts": 0,
+        "selections": 0,
+        "fastCpuMs": 2.02,
+        "contextCpuMs": 3.8309999999999995
+      },
+      {
+        "cpuMs": 67.689,
+        "wallMs": 60.19783600000119,
+        "contexts": 3,
+        "fast": 4,
+        "priceSorts": 0,
+        "selections": 0,
+        "fastCpuMs": 2.179,
+        "contextCpuMs": 5.582999999999999
+      }
+    ],
+    "note": "Process CPU on this host, inclusive sections; not physical Homey CPU percentages."
+  },
+  {
+    "name": "Forecast promotion, live correction in both directions and plan/display agreement",
+    "promotionKwh": 8,
+    "increasedTarget": 100,
+    "decreasedTarget": 30,
+    "priceSorts": 1
+  },
+  {
+    "name": "Late forecast correction exposes infeasible target",
+    "missingKwh": 11.033888888888889,
+    "message": "Alle laadvensters vóór het doelmoment zijn al voorbij; er is geen resterende laadtijd."
+  },
+  {
+    "name": "Partial, missing and newly published prices",
+    "unknownNotFree": true,
+    "identicalPublicationReused": true,
+    "missingPriceFallback": true
+  },
+  {
+    "name": "PV capture above planning cap and authoritative day transition",
+    "pvCaptureAboveNightCap": true,
+    "dayTarget": "17:00"
+  },
+  {
+    "name": "Hourly prices use the same deadline and do not change public classes",
+    "publicClass": "normal",
+    "batteryClass": "cheap"
+  },
+  {
+    "name": "Normal-price permission keeps its own SoC cap",
+    "normalCapSoc": 45
+  },
+  {
+    "name": "Restart reconstructs the same remaining window from persisted dated forecasts",
+    "reconstructed": true,
+    "freshAppBoot": true
+  },
+  {
+    "name": "DST absolute hours and local forecast tomorrow dates",
+    "autumnQuarters": 100,
+    "springQuarters": 92
+  },
+  {
+    "name": "Price hysteresis retains feasible sessions; material savings replan",
+    "tinyChangeRetained": true,
+    "significantChangeApplied": true
+  },
+  {
+    "name": "Near-equal scattered quarters prefer one session; early PV end starts now",
+    "chargingSessions": 1,
+    "earlyNightStart": "16:00"
+  },
+  {
+    "name": "Shared Peak Guard and EV deadline plan remain independent",
+    "evDeadlineRetained": true,
+    "peakGuardApplied": true
+  }
+]

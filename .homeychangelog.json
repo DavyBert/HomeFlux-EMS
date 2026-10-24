@@ -1,4 +1,8 @@
 {
+  "1.1.18": {
+    "nl": "Batterijnachtplanning vergelijkt beschikbare dynamische uur- en kwartierprijzen tot het ingestelde ochtenddoel, ook over middernacht. De resterende laadbehoefte blijft bijgewerkt met SoC en PV-voorspellingen. Goedkope laadvensters worden waar nodig uitgebreid, met behoud van PV-prioriteit, Peak Guard en de afzonderlijke EV-planning.",
+    "en": "Battery night planning compares available dynamic hourly and quarter-hour prices up to the configured morning target, including across midnight. Remaining charging needs stay current with SoC and solar forecasts. Cheap charging windows expand when needed, while preserving solar priority, Peak Guard and independent EV planning."
+  },
   "1.1.17": {
     "nl": "EV-laaddoelen vergelijken beschikbare dynamische prijzen binnen één doorlopend venster tot de deadline, ook over middernacht. De goedkoopste benodigde laadintervallen krijgen een eigen EV-prijsselectie, met hergebruik van plannen, stabilisatie bij kleine prijsverschillen en behoud van deadlinegarantie, PV-prioriteit en Peak Guard. Batterijplanning, doelmomenten en verwerking van nieuwe PV-voorspellingen blijven gescheiden en behouden hun bestaande werking.",
     "en": "EV charging targets compare available dynamic prices in one continuous window up to the deadline, including across midnight. The cheapest required charging intervals use an independent EV price selection, with plan reuse, stability for small price differences and existing deadline guarantees, solar priority and Peak Guard. Battery planning, target times and new solar forecast processing remain separate and retain their existing behaviour."

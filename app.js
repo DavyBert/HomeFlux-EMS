@@ -9,6 +9,8 @@ const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normal
 const { extractMathExpression } = require('./lib/price-formula');
 
 const { EvDeadlinePlanner, prepareEvPriceCurve } = require('./lib/ev-deadline-planner');
+const { BatteryNightPlanner } = require('./lib/battery-night-planner');
+const { getBatteryNightPlanningInputs, batteryNightTariff } = require('./lib/ems-engine');
 
 const Homey = require('homey');
 const { performance } = require('perf_hooks');
@@ -7873,7 +7875,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.state.forecastDailyMaxKwh = storedDate === today && Number.isFinite(storedMax) && storedMax >= 0 ? storedMax : null;
     this.state.forecastTomorrowDate = tomorrowDate;
     this.state.forecastTomorrowKwh = Number.isFinite(tomorrow) && tomorrow >= 0 ? tomorrow : null;
-    this.inputSeen.forecastTomorrow = Boolean(this.state.forecastTomorrowKwh !== null && tomorrowDate === this.getForecastDateKey(at + (24 * 60 * 60 * 1000)));
+    this.inputSeen.forecastTomorrow = Boolean(this.state.forecastTomorrowKwh !== null && tomorrowDate === shiftDateKey(today, 1));
     if (tomorrowDate === today && this.state.forecastTomorrowKwh !== null) {
       this.state.forecastDailyMaxKwh = Math.max(this.state.forecastDailyMaxKwh ?? 0, this.state.forecastTomorrowKwh);
       this.state.forecastTomorrowKwh = null;
@@ -7956,7 +7958,7 @@ class HomeFluxEmsApp extends Homey.App {
     const normalized = Math.max(0, parsed);
     this.ensureForecastDayCurrent(at);
     const nightForecast = this.getNightForecastInputRuntime('tomorrow', at);
-    const targetDate = this.getForecastDateKey(at + (24 * 60 * 60 * 1000));
+    const targetDate = shiftDateKey(this.getForecastDateKey(at), 1);
     const wasSeen = Boolean(this.inputSeen.forecastTomorrow);
     const previousValue = Number(this.state.forecastTomorrowKwh);
     const previousDate = String(this.state.forecastTomorrowDate || '');
@@ -13225,6 +13227,39 @@ class HomeFluxEmsApp extends Homey.App {
   refreshControlContext(storedSettings, evaluationState, now = Date.now()) {
     const runtimeSettings = this.getRuntimeSettings(storedSettings);
     this.controlContext = prepareControlContext(evaluationState, runtimeSettings, new Date(now));
+    const inputs = getBatteryNightPlanningInputs(evaluationState, runtimeSettings, new Date(now), this.controlContext.targetDetails);
+    if (inputs) {
+      // getRuntimeSettings has just validated the shared price source. Keep its
+      // public daily classes; only this battery plan receives absolute intervals.
+      const selection = this.evDeadlinePriceSelection?.selection;
+      let curve = null;
+      if (selection?.source && selection.source !== 'none') {
+        const source = selection.source === 'homey' ? this.homeyEnergy : selection.source === 'external2' ? this.externalEnergy2 : this.externalEnergy;
+        const model = selection.calibration;
+        const key = [source?.slots, selection.source, runtimeSettings.timezone, this.getDynamicTargetInterval(runtimeSettings), model?.scale, model?.offset, model?.learnedAt];
+        const previous = this.batteryNightCurve;
+        if (!previous || !key.every((value, i) => value === previous.key[i])) {
+          const prepared = prepareEvPriceCurve(selection.slots, runtimeSettings.timezone, this.getDynamicTargetInterval(runtimeSettings));
+          this.batteryNightCurve = { key, curve: previous?.curve.fingerprint === prepared.fingerprint ? previous.curve : prepared };
+          this.recordDiagnosticCounter('batteryNightPriceCurveBuilds');
+        }
+        curve = this.batteryNightCurve.curve;
+      }
+      if (!this.batteryNightPlanner) this.batteryNightPlanner = new BatteryNightPlanner();
+      const planner = this.batteryNightPlanner, builds = planner.builds, windows = planner.windowBuilds;
+      runtimeSettings.batteryNightPlan = this.measurePlanningCalculation('batteryNightPlan', 'context', 0,
+        () => planner.evaluate({ ...inputs, curve }));
+      this.recordDiagnosticCounter(planner.builds > builds ? 'batteryNightPlanBuilds' : 'batteryNightPlanReuses');
+      if (planner.windowBuilds > windows) this.recordDiagnosticCounter('batteryNightPriceWindowBuilds');
+      this.controlContext.tariff = batteryNightTariff(this.controlContext.tariff, evaluationState, runtimeSettings, new Date(now));
+      const eventAt = this.controlContext.tariff.batteryNight?.nextAt;
+      if (eventAt > now) this.controlContext.tariffValidUntil = Math.min(this.controlContext.tariffValidUntil || Infinity, eventAt);
+    } else {
+      // PV start owns the existing transition to daytime. Never carry a night
+      // schedule into the day or a different contract after a settings change.
+      this.batteryNightPlanner = null;
+      this.batteryNightCurve = null;
+    }
     this.controlRuntimeSettings = runtimeSettings;
     this.cachedRuntimeSettings = runtimeSettings;
     this.controlContextDirty = false;
@@ -14961,11 +14996,13 @@ class HomeFluxEmsApp extends Homey.App {
       forecastTomorrowDataReady: true,
       pvDataReady: true,
     };
+    let batterySimulationCurve = null;
     if (isDynamicContract(settings)) {
       const targetInterval = this.getDynamicTargetInterval(settings);
       const simulatedDateKey = localParts(simulatedAt, timezone).dateKey;
       const sourceNow = new Date();
       const selectedSourceSlots = this.getDynamicPriceSelection(settings, sourceNow, { readOnly: true }).slots;
+      batterySimulationCurve = prepareEvPriceCurve(selectedSourceSlots, timezone, targetInterval);
       const dynamicSlots = selectedSourceSlots
         .filter(slot => slot.dateKey === simulatedDateKey && Number.isFinite(Number(slot.price)) && Number.isFinite(Number(slot.minute)))
         .sort((a, b) => a.minute - b.minute)
@@ -15096,6 +15133,9 @@ class HomeFluxEmsApp extends Homey.App {
 
     // Both engine calls are pure calculations. No app state, setting, planning
     // cache, Flow token or output command is written by this endpoint.
+    const batteryInputs = getBatteryNightPlanningInputs(simulationState, settings, simulatedAt);
+    if (batteryInputs && batterySimulationCurve?.intervals.length) settings.batteryNightPlan = new BatteryNightPlanner()
+      .evaluate({ ...batteryInputs, curve: batterySimulationCurve });
     const plan = this.measurePlanningCalculation('batterySocPlan', 'simulation', 0,
       () => buildSocPlan(simulationState, settings, simulatedAt));
     const result = evaluate(simulationState, settings, simulatedAt, null,

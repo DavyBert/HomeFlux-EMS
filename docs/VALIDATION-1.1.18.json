@@ -1,0 +1,110 @@
+{
+  "version": "1.1.18",
+  "baseVersion": "1.1.17",
+  "baselineArchiveSha256": "ff0042c0e5c83d15075f9e2fb722c15622f34ce176c095ff33d126fcc0e4fbda",
+  "testProgramsPassed": 77,
+  "syntaxChecksPassed": 27,
+  "newScenariosPassed": 15,
+  "physicalHomeyTested": false,
+  "prices": "synthetic; no historical market-price or customer-saving claim",
+  "cpu180Seconds": {
+    "current": {
+      "cpuMs": 81.178,
+      "fastCpuMs": 2.835,
+      "contextCpuMs": 5.798,
+      "contexts": 4,
+      "fast": 4,
+      "priceSorts": 0,
+      "selections": 0
+    },
+    "baseline": {
+      "cpuMs": 67.689,
+      "fastCpuMs": 2.179,
+      "contextCpuMs": 5.01,
+      "contexts": 3,
+      "fast": 4,
+      "priceSorts": 0,
+      "selections": 0
+    }
+  },
+  "actualSessions": {
+    "name": "Production replay: overnight goal met outside daily cheap hours",
+    "syntheticPrices": true,
+    "current": {
+      "energyKwh": 5.971416666666671,
+      "costEUR": 1.1942833333333336,
+      "finalSoc": 69.85708333333335,
+      "deadlineMet": true,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792792800000,
+          "on": true
+        },
+        {
+          "at": 1792805340000,
+          "on": false
+        }
+      ],
+      "contexts": 787,
+      "priceWindows": 1,
+      "selections": 1,
+      "cpuMs": 3506.916,
+      "wallMs": 3165.834819
+    },
+    "baseline": {
+      "energyKwh": 2.500000000000001,
+      "costEUR": 0.7466666666666671,
+      "finalSoc": 52.50000000000001,
+      "deadlineMet": false,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792788360000,
+          "on": true
+        },
+        {
+          "at": 1792792860000,
+          "on": false
+        }
+      ],
+      "contexts": 787,
+      "priceWindows": 0,
+      "selections": 0,
+      "cpuMs": 3175.332,
+      "wallMs": 2892.929149
+    }
+  },
+  "equalEnergyNormalizedCosts": {
+    "currentEUR": 1.2000000000000002,
+    "baselineEUR": 1.7988909700315459,
+    "note": "Normalization to equal energy; actual delivered amounts and deadline outcomes are reported separately."
+  },
+  "changes": [
+    "Battery-specific absolute price window until the existing morning deadline",
+    "Active forecast/SoC/available-power updates preserve price sorting cache",
+    "Shared public daily classifications, EV planner and fixed/TOU/day rules retained",
+    "Calendar-day forecast dating uses local day increments across DST"
+  ],
+  "behaviour": {
+    "cheapHours": "Preferred minimum economical charging duration, expanded to cover required feasible energy before the deadline.",
+    "normalCharging": "Separate permission and SoC cap retained within the battery window.",
+    "stabilityBudgetEUR": 0.02,
+    "preferredPowerFraction": 0.9,
+    "minimumPowerUpdate": "minute resolution; existing safety/meter checks remain live",
+    "unavailablePrices": "No extrapolated/free intervals. Existing source readiness/fallback remains authoritative."
+  },
+  "sourceSha256": {
+    "app.js": "bc5177a0f5bb1fb672fb70298c94e26c2cbc4389fbd4e7cbee871d47141842fe",
+    "lib/ems-engine.js": "b76f7f177d99c9f485c2b7fdd657a8754e04fb46de018a0c7e637b3339fda85b",
+    "lib/battery-night-planner.js": "b624329e2fdcdc6474a4e682a7e91c28b7ec8377ae4f4ae0f91adde862f615ca",
+    "lib/ev-deadline-planner.js": "b69ba76273d6d70e5e59d6775d494fde36b03d0d294dbfc80a3382ebd98a49b4",
+    "lib/flexible-loads.js": "d8553c9512d2ac998a5ce4c6cf34bef76f33f5bcb1eb0ed49ec1da68207f3d93",
+    "lib/homey-energy.js": "16cc7c2ea2bc0b29e1216703ef63c90753f21ab13608818f1cfc7c4fab7b8265"
+  },
+  "cpuCaveat": "Host process CPU median increased by 13.489 ms (19.9% relative); no physical Homey CPU regression conclusion."
+}

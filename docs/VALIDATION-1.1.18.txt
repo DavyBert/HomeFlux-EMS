@@ -1,0 +1,120 @@
+HomeFlux EMS 1.1.18 — Validatie doorlopende batterijprijsplanning
+Datum: 24 oktober 2026
+
+UITGANGSPUNT
+Gebouwd vanuit de exacte ZIP van HomeFlux EMS 1.1.17. Alle manifest- en
+packageversies staan op 1.1.18. Geen bestaande gebruikersinstelling toegevoegd,
+verwijderd of gemigreerd.
+
+WERKING EN GEWIJZIGDE INSTELLINGSBETEKENIS
+De dynamische batterijnachtplanning beoordeelt bekende absolute uur- of
+kwartierintervallen tussen nu en het bestaande ochtenddoel. Prijzen na het
+ochtenddoel veranderen die selectie niet. De algemene dagclassificaties blijven
+behouden voor status, EV, HVAC, boiler en prijsafhankelijke reserves.
+
+Goedkoopste uren blijft de voorkeursduur voor goedkoop laden. Tijdens een
+actief dynamisch nachtplan is dit voortaan een minimumvoorkeursduur, geen harde
+bovengrens: de planner voegt zo nodig de volgende goedkoopste beschikbare
+intervallen toe om de resterende energie vóór het doelmoment te kunnen laden.
+Er wordt niet boven het SoC-doel geladen om deze duur te vullen. Normaal laden
+behoudt zijn toestemming en eigen SoC-limiet. De instellingenpagina en NL/EN-
+releasebeschrijving lichten dit toe.
+
+Bij voldoende bekende laadruimte kiest de planner een duur die ongeveer 10%
+vermogensruimte overlaat voor correcties. Als dat niet past maar het doel met
+het volle beschikbare vermogen wel haalbaar is, vervalt die extra ruimte.
+Voor een aaneengesloten of reeds gekozen haalbare sessie mag de berekende
+laadkost maximaal EUR 0,02 hoger liggen. Grotere besparingen mogen herplannen.
+
+SoC en forecast blijven de resterende laadbehoefte bijwerken. De bestaande
+nachtmediaan blijft behouden; een nieuwe waarde voor resterend vandaag vervangt
+dus niet noodzakelijk onmiddellijk alle eerdere nachtwaarnemingen. Vanaf echte
+PV-productie blijft de bestaande dagplanning met actuele resterende PV leidend.
+De forecast voor morgen krijgt bij invoer en herstel de volgende lokale
+kalenderdag; een vaste sprong van 24 uur is rond winter-/zomertijd onjuist.
+
+De prijsrangschikking wordt alleen in de trage context opgebouwd. Ongewijzigde
+vooruitgang en middernacht hergebruiken de selectie. Het snelle P1-pad gebruikt
+een lichte tijdopzoeking. Het minimale geplande laadvermogen verandert op
+minuutresolutie, zodat iedere seconde dezelfde invoer geen klokgedreven
+herberekeningen of commandolus veroorzaakt. Veiligheden blijven live.
+
+CONTROLES
+77 testprogramma's geslaagd; 27 syntaxcontroles geslaagd.
+15 nieuwe productie-/plannerscenario's geslaagd. De volledige bestaande
+regressies omvatten vaste/TOU-contracten, dagplanning, EV, Peak Guard, PV-opvang,
+Safety SoC, fysieke feedback en publicatievergrendelingen.
+De EV-deadlineplanner, flexible-loads, gedeelde prijsnormalisatie en
+sun-chance-reserveregels zijn byte voor byte gelijk aan 1.1.17.
+
+Nieuwe scenario's:
+- Production replay: overnight goal met outside daily cheap hours
+- Cost per delivered kWh and normalized equal-energy comparison
+- Already charging across midnight keeps window and chosen intervals
+- CPU and calculation counts: 180 unchanged one-second meter inputs
+- Forecast promotion, live correction in both directions and plan/display agreement
+- Late forecast correction exposes infeasible target
+- Partial, missing and newly published prices
+- PV capture above planning cap and authoritative day transition
+- Hourly prices use the same deadline and do not change public classes
+- Normal-price permission keeps its own SoC cap
+- Restart reconstructs the same remaining window from persisted dated forecasts
+- DST absolute hours and local forecast tomorrow dates
+- Price hysteresis retains feasible sessions; material savings replan
+- Near-equal scattered quarters prefer one session; early PV end starts now
+- Shared Peak Guard and EV deadline plan remain independent
+
+CONCRETE PRODUCTIEPROEF — SYNTHETISCHE PRIJZEN
+20 kWh batterij; start 40%; berekend doel 70%; maximum laden 2 kW.
+Vrijdag 22:45–00:00 EUR 0,30/kWh; zaterdag 00:00–07:00 EUR 0,20/kWh;
+goedkopere zaterdagmiddag valt buiten de ochtenddeadline.
+
+1.1.17: 2.500 kWh geladen, eind-SoC 52.50%,
+werkelijke berekende laadkosten EUR 0.747; doel niet bereikt.
+1.1.18: 5.971 kWh geladen, eind-SoC 69.86%,
+werkelijke berekende laadkosten EUR 1.194; doel bereikt binnen de
+bestaande SoC-stopmarge. Eén start, één stop en geen tussentijdse onderbreking.
+Eén prijsrangschikking en één selectie voor deze volledige nacht.
+
+Deze kosten zijn geen directe besparingsvergelijking: de geleverde energie
+verschilt. Een afzonderlijke proef met meer beschikbaar vermogen rapporteert
+ook kosten per werkelijk geleverde kWh en normaliseert die naar 6 kWh:
+1.1.17 EUR 1.799; 1.1.18 EUR 1.200.
+Dit is een normalisatie voor gelijke energie, geen historische rekening of
+bewijs dat beide versies in die proef exact dezelfde energie leverden.
+Werkelijke energie, doelbereik en schakelingen staan apart in de JSON.
+
+CPU — 180 SECONDEN INVOER ELKE SECONDE, MEDIAAN VAN DRIE PROEVEN
+Gemeten proces-CPU op deze host: 1.1.17 67.689 ms;
+1.1.18 81.178 ms.
+Snelle evaluaties: 4 versus 4.
+Contextevaluaties: 3 versus 4.
+Nieuwe prijsrangschikkingen/selecties tijdens die 180 seconden: 0/0 in 1.1.18.
+Inclusieve CPU in snelle evaluaties: 2.179 versus 2.835 ms;
+in context: 5.010 versus 5.798 ms.
+De secties overlappen en mogen niet opgeteld worden. Het totale mediane verschil is 13.489 ms (+19.9% relatief) in deze
+versnelde proef. Dat is een klein absoluut verschil, maar geen bewijs van een
+ongewijzigd fysiek Homey-CPU-percentage; dat moet op Homey worden nagegaan.
+
+BEPERKINGEN
+Getest met echte app-, Flow-, planner- en motorfuncties; Homey-I/O, tijd,
+P1, batterij- en EV-feedback zijn gesimuleerd. Niet op fysieke Homey getest.
+Het vergelijkingsmodel in het eerdere onderzoek is niet gebruikt als vervanging
+voor deze productieproeven. Een aparte pure-plannerproef controleert de keuze
+bij gefragmenteerde prijzen en de twee tijdswisselingen.
+
+Onbekende prijzen worden niet als gratis laadruimte meegeteld. Een weggevallen
+prijsbron volgt de bestaande fallback. Een arbitrair grote forecastcorrectie,
+werkelijk lagere batterijlading, installatiebelasting of vermogensbegrenzing
+kan een doel onhaalbaar maken. De planning toont een tekort; beveiligingen
+worden niet omzeild. De 10% voorkeur is geen garantie tegen elke correctie.
+In de simulatie zijn geen laadverliezen, slijtage of onbekende toekomstige
+huis-/PV-belastingen uit een fysiek batterijmodel toegevoegd.
+
+REPRODUCEREN
+npm test
+Syntax: npm run check (bevat ook de volledige regressietests).
+Alleen nieuwe proeven: node test/battery-night-1.1.18.test.js
+Voor de vergelijking met 1.1.17: zet HEMS_BASELINE_ROOT op een uitgepakte
+ongewijzigde 1.1.17-bronmap en voer de nieuwe proeven uit.
+Ruwe resultaten: validation/battery-night-1.1.18.json.

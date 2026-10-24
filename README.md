@@ -32,6 +32,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.18
+
+Dynamic battery night planning compares known prices up to the morning target across midnight. The preferred cheap-hours duration expands when needed for the remaining energy; normal-price charging keeps its own SoC cap. SoC and solar forecasts keep updating the active plan. Day planning, fixed/TOU tariffs, EV deadline planning, solar capture and safety limits retain their existing rules.
+
+Dynamische batterijnachtplanning vergelijkt bekende prijzen tot het ochtenddoel over middernacht heen. De voorkeursduur voor goedkoop laden wordt indien nodig uitgebreid voor de resterende energie; normaal laden behoudt zijn SoC-limiet. SoC en PV-voorspellingen blijven het actieve plan bijwerken.
+
 ### 1.1.17
 
 Active EV SoC/kWh targets compare available dynamic prices up to their deadline across calendar days. For an active deadline, “Cheap” selects the cheapest required charging energy within that EV window rather than the battery's daily price ranking. Small price differences can retain a contiguous or existing plan; unknown prices are never treated as cheap. Existing PV charging, deadline guarantee permissions, import limits and Peak Guard remain active. Without an active deadline, the configured tariff preferences are unchanged. Battery targets and midnight PV-forecast updates keep their own planning.
