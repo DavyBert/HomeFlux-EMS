@@ -23,37 +23,12 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 36166.905,
-      "wallMs": 34867.739730999994
-    },
-    "baseline": {
-      "energyKwh": 2.500000000000001,
-      "costEUR": 0.7466666666666671,
-      "finalSoc": 52.50000000000001,
-      "deadlineMet": false,
-      "starts": 1,
-      "stops": 1,
-      "interruptions": 0,
-      "events": [
-        {
-          "at": 1792788360000,
-          "on": true
-        },
-        {
-          "at": 1792792860000,
-          "on": false
-        }
-      ],
-      "contexts": 787,
-      "priceWindows": 0,
-      "selections": 0,
-      "cpuMs": 7605.65,
-      "wallMs": 6802.844592000001
+      "cpuMs": 3288.278,
+      "wallMs": 2978.172597
     }
   },
   {
     "name": "Cost per delivered kWh and normalized equal-energy comparison",
-    "syntheticPrices": true,
     "current": {
       "energyKwh": 6.0000000000000036,
       "costEUR": 1.2000000000000008,
@@ -75,37 +50,8 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 7102.79,
-      "wallMs": 6687.888057999997
-    },
-    "baseline": {
-      "energyKwh": 5.4101333333333335,
-      "costEUR": 1.62204,
-      "finalSoc": 67.05066666666667,
-      "deadlineMet": false,
-      "starts": 1,
-      "stops": 1,
-      "interruptions": 0,
-      "events": [
-        {
-          "at": 1792788360000,
-          "on": true
-        },
-        {
-          "at": 1792792860000,
-          "on": false
-        }
-      ],
-      "contexts": 787,
-      "priceWindows": 0,
-      "selections": 0,
-      "cpuMs": 28085.24,
-      "wallMs": 24867.476215000002
-    },
-    "normalizedSixKwh": {
-      "currentEUR": 1.2000000000000002,
-      "baselineEUR": 1.7988909700315459,
-      "note": "Normalization to equal energy; actual delivered amounts and deadline outcomes are reported separately."
+      "cpuMs": 3157.135,
+      "wallMs": 2964.536894
     }
   },
   {
@@ -118,68 +64,37 @@
     "name": "CPU and calculation counts: 180 unchanged one-second meter inputs",
     "current": [
       {
-        "cpuMs": 164.775,
-        "wallMs": 141.59259499999462,
+        "cpuMs": 82.94,
+        "wallMs": 70.42522699999972,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 4.671,
-        "contextCpuMs": 9.119999999999997
+        "fastCpuMs": 2.24,
+        "contextCpuMs": 6.629000000000001
       },
       {
-        "cpuMs": 169.323,
-        "wallMs": 141.39062400000694,
+        "cpuMs": 79.757,
+        "wallMs": 70.89226099999996,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 4.323,
-        "contextCpuMs": 11.603
+        "fastCpuMs": 2.1,
+        "contextCpuMs": 4.851000000000001
       },
       {
-        "cpuMs": 169.182,
-        "wallMs": 152.49423599999864,
+        "cpuMs": 74.428,
+        "wallMs": 68.33173400000032,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 5.797000000000001,
-        "contextCpuMs": 9.733999999999995
+        "fastCpuMs": 2.234,
+        "contextCpuMs": 5.103999999999999
       }
     ],
-    "baseline": [
-      {
-        "cpuMs": 195.239,
-        "wallMs": 168.46993400000792,
-        "contexts": 3,
-        "fast": 4,
-        "priceSorts": 0,
-        "selections": 0,
-        "fastCpuMs": 7.2909999999999995,
-        "contextCpuMs": 14.322999999999993
-      },
-      {
-        "cpuMs": 174.863,
-        "wallMs": 146.9160899999988,
-        "contexts": 3,
-        "fast": 4,
-        "priceSorts": 0,
-        "selections": 0,
-        "fastCpuMs": 3.9290000000000003,
-        "contextCpuMs": 24.777
-      },
-      {
-        "cpuMs": 148.663,
-        "wallMs": 119.90137599999434,
-        "contexts": 3,
-        "fast": 4,
-        "priceSorts": 0,
-        "selections": 0,
-        "fastCpuMs": 5.4879999999999995,
-        "contextCpuMs": 7.393999999999998
-      }
-    ],
+    "baseline": [],
     "note": "Process CPU on this host, inclusive sections; not physical Homey CPU percentages."
   },
   {

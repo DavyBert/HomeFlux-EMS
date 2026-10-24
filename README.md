@@ -32,6 +32,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.20
+
+Persistent EV Flow planning: SoC and kWh targets retain their deadline time and guarantee across app/Homey restarts until Clear EV planning or replacement by a new Flow target. Recent kWh progress is saved on normal shutdown; a completed target is not refilled merely by restarting with the EV connected. Zero kWh remains a completed Flow target. Fresh positive current feedback takes precedence over house-load estimates for mode-controlled EVs, so Peak Guard correctly accounts for power already drawn by the EV. Planning diagnostics expose the shared Peak Guard calculation.
+
+Blijvende EV-Flow-planning: SoC- en kWh-doelen behouden hun tijd en garantie na een app-/Homey-herstart en verdwijnen alleen na Wis EV-planning of vervanging door een nieuw Flow-doel. Recente kWh-voortgang wordt bij normaal afsluiten opgeslagen; een voltooid doel wordt niet opnieuw gevuld door een herstart met aangesloten EV. Ook 0 kWh blijft een voltooid Flow-doel. Verse positieve laadstroomfeedback krijgt bij EV-modussturing voorrang op huislastschattingen, zodat Peak Guard werkelijk aanwezig EV-vermogen correct meerekent. De planningsdiagnostiek toont de gezamenlijke Peak Guard-berekening.
+
 ### 1.1.19
 
 An evening restart without an observed PV start/end now aligns the inferred night with the following morning and tomorrow’s solar forecast. Observed night plans, dark-morning continuation and the existing PV transition remain authoritative.

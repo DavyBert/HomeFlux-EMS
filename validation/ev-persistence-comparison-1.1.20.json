@@ -1,0 +1,46 @@
+[
+  {
+    "name": "Four EVs: SoC and kWh goals, time and guarantee survive repeated fresh app boots",
+    "types": 2,
+    "slots": 4,
+    "freshBootsPerType": 3
+  },
+  {
+    "name": "Completion, disconnect, settings changes and hidden EV slots do not delete Flow targets",
+    "preserved": true
+  },
+  {
+    "name": "Graceful restart checkpoints latest kWh progress rather than an older five-minute value",
+    "savedRemainingKwh": 12,
+    "previousVersionSavedKwh": 15
+  },
+  {
+    "name": "Completed kWh plan does not refill merely because the app restarts while cable stays connected",
+    "restartRemainingKwh": 0,
+    "newConnectionKwh": 15,
+    "previousVersionRestartKwh": 15
+  },
+  {
+    "name": "Reached SoC goal is retained through restart and requires fresh SoC feedback for decisions",
+    "targetSoc": 80,
+    "freshInputRequired": true
+  },
+  {
+    "name": "Completed kWh data from older versions stays completed until an observed new connection",
+    "legacyCompletionPreserved": true
+  },
+  {
+    "name": "Only explicit clear deletes a plan; zero kWh remains a completed Flow goal after restart",
+    "zeroGoalPreserved": true,
+    "explicitClearPersists": true
+  },
+  {
+    "name": "Newest Flow goal replaces the previous kind and remains the only active source after restart",
+    "oneActiveSource": true
+  },
+  {
+    "name": "Rolling deadlines across midnight/DST and repeated feedback do not remove the saved goal",
+    "deadlineRolled": true,
+    "targetRetained": true
+  }
+]

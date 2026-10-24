@@ -23,8 +23,8 @@
     "planBuilds": 1,
     "planReuses": 823,
     "portfolioCalculations": 861,
-    "cpuMs": 5118.306,
-    "wallMs": 4117.170116
+    "cpuMs": 2340.947,
+    "wallMs": 1975.593976
   },
   {
     "name": "Gerrit SoC: same production decisions",
@@ -50,8 +50,8 @@
     "planBuilds": 1,
     "planReuses": 818,
     "portfolioCalculations": 858,
-    "cpuMs": 5762.203,
-    "wallMs": 5311.70914
+    "cpuMs": 3006.035,
+    "wallMs": 2789.7754910000003
   },
   {
     "name": "Midnight and 1-second inputs reuse EV plan",
