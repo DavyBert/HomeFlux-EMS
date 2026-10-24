@@ -1,0 +1,49 @@
+[
+  {
+    "name": "Screenshot reproduction: inferred night targets tomorrow and correct PV after evening restart",
+    "syntheticPrices": true,
+    "reportedSettingsAndInputs": true,
+    "before": null,
+    "after": {
+      "forecastKwh": 12.3,
+      "targetSoc": 56.9,
+      "deadlineAt": 1792908000000,
+      "widget": "not_needed"
+    }
+  },
+  {
+    "name": "Low SoC still gets future windows with available overnight prices",
+    "targetSoc": 56.9,
+    "nextCharge": {
+      "state": "planned",
+      "startAt": 1792879200000,
+      "endAt": 1792893600000,
+      "powerW": 913,
+      "targetSoc": 56.9
+    }
+  },
+  {
+    "name": "Morning restart and explicit dark-night continuation stay on today",
+    "morningTargetDay": "today",
+    "observedDarkNightTargetDay": "today"
+  },
+  {
+    "name": "Actual PV start returns to existing day forecast and sunset debounce",
+    "pvOwnsDayPhase": true,
+    "originalSunsetTimerRetained": true
+  },
+  {
+    "name": "20:00 fallback and midnight preserve the corrected target and median",
+    "sameMedian": true,
+    "targetDate": "2026-10-25"
+  },
+  {
+    "name": "Custom target times, fixed/TOU and cache avoid per-P1 calendar rebuilding",
+    "customDeadline": "06:00",
+    "minuteConversions": 0,
+    "contracts": [
+      "fixed",
+      "tou"
+    ]
+  }
+]

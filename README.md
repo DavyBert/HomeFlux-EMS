@@ -32,6 +32,16 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.19
+
+An evening restart without an observed PV start/end now aligns the inferred night with the following morning and tomorrow’s solar forecast. Observed night plans, dark-morning continuation and the existing PV transition remain authoritative.
+
+Een herstart in de avond zonder waargenomen PV-start/-einde koppelt het afgeleide nachtplan aan de volgende ochtend en de PV-voorspelling van morgen.
+
+Dynamic battery night planning compares known prices up to the morning target across midnight. The preferred cheap-hours duration expands when needed for the remaining energy; normal-price charging keeps its own SoC cap. SoC and solar forecasts keep updating the active plan. Day planning, fixed/TOU tariffs, EV deadline planning, solar capture and safety limits retain their existing rules.
+
+Dynamische batterijnachtplanning vergelijkt bekende prijzen tot het ochtenddoel over middernacht heen. De voorkeursduur voor goedkoop laden wordt indien nodig uitgebreid voor de resterende energie; normaal laden behoudt zijn SoC-limiet. SoC en PV-voorspellingen blijven het actieve plan bijwerken.
+
 ### 1.1.18
 
 Dynamic battery night planning compares known prices up to the morning target across midnight. The preferred cheap-hours duration expands when needed for the remaining energy; normal-price charging keeps its own SoC cap. SoC and solar forecasts keep updating the active plan. Day planning, fixed/TOU tariffs, EV deadline planning, solar capture and safety limits retain their existing rules.

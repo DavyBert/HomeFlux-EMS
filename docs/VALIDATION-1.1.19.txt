@@ -1,0 +1,9 @@
+HomeFlux EMS 1.1.19
+
+Versie in app.json, .homeycompose/app.json, package.json en beide package-lock-versies: 1.1.19.
+NL/EN release notes voor de doorlopende batterijprijsplanning en de avondherstartcorrectie staan bij 1.1.19 in .homeychangelog.json en README.md. De bestaande 1.1.18-geschiedenis blijft behouden.
+
+Alle runtimebestanden in app.js, api.js en lib/ zijn byte voor byte gelijk aan de gecorrigeerde 1.1.18 waarvoor 78 testprogramma’s geslaagd zijn.
+Voor 1.1.19 zijn vijf gerichte testprogramma’s en 28 syntaxcontroles opnieuw geslaagd; de versie-, widget- en diagnostiekcontroles verwachten 1.1.19. De opstarttest omvat zes productiescenario’s. De volledige functionele suite is bij deze metadatawijziging niet herhaald.
+
+Niet op fysieke Homey getest.

@@ -1,0 +1,16 @@
+PASS Production replay: overnight goal met outside daily cheap hours
+PASS Cost per delivered kWh and normalized equal-energy comparison
+PASS Already charging across midnight keeps window and chosen intervals
+PASS CPU and calculation counts: 180 unchanged one-second meter inputs
+PASS Forecast promotion, live correction in both directions and plan/display agreement
+PASS Late forecast correction exposes infeasible target
+PASS Partial, missing and newly published prices
+PASS PV capture above planning cap and authoritative day transition
+PASS Hourly prices use the same deadline and do not change public classes
+PASS Normal-price permission keeps its own SoC cap
+PASS Restart reconstructs the same remaining window from persisted dated forecasts
+PASS DST absolute hours and local forecast tomorrow dates
+PASS Price hysteresis retains feasible sessions; material savings replan
+PASS Near-equal scattered quarters prefer one session; early PV end starts now
+PASS Shared Peak Guard and EV deadline plan remain independent
+1.1.18 battery night: 15 production/planner scenarios passed.

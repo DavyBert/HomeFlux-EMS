@@ -2,25 +2,25 @@
   "version": "1.1.18",
   "baseVersion": "1.1.17",
   "baselineArchiveSha256": "ff0042c0e5c83d15075f9e2fb722c15622f34ce176c095ff33d126fcc0e4fbda",
-  "testProgramsPassed": 77,
-  "syntaxChecksPassed": 27,
-  "newScenariosPassed": 15,
+  "testProgramsPassed": 78,
+  "syntaxChecksPassed": 28,
+  "newScenariosPassed": 21,
   "physicalHomeyTested": false,
   "prices": "synthetic; no historical market-price or customer-saving claim",
   "cpu180Seconds": {
     "current": {
-      "cpuMs": 81.178,
-      "fastCpuMs": 2.835,
-      "contextCpuMs": 5.798,
+      "cpuMs": 169.182,
+      "fastCpuMs": 4.671,
+      "contextCpuMs": 9.734,
       "contexts": 4,
       "fast": 4,
       "priceSorts": 0,
       "selections": 0
     },
     "baseline": {
-      "cpuMs": 67.689,
-      "fastCpuMs": 2.179,
-      "contextCpuMs": 5.01,
+      "cpuMs": 174.863,
+      "fastCpuMs": 5.488,
+      "contextCpuMs": 14.323,
       "contexts": 3,
       "fast": 4,
       "priceSorts": 0,
@@ -51,8 +51,8 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 3506.916,
-      "wallMs": 3165.834819
+      "cpuMs": 36166.905,
+      "wallMs": 34867.739730999994
     },
     "baseline": {
       "energyKwh": 2.500000000000001,
@@ -75,8 +75,8 @@
       "contexts": 787,
       "priceWindows": 0,
       "selections": 0,
-      "cpuMs": 3175.332,
-      "wallMs": 2892.929149
+      "cpuMs": 7605.65,
+      "wallMs": 6802.844592000001
     }
   },
   "equalEnergyNormalizedCosts": {
@@ -99,12 +99,67 @@
     "unavailablePrices": "No extrapolated/free intervals. Existing source readiness/fallback remains authoritative."
   },
   "sourceSha256": {
-    "app.js": "bc5177a0f5bb1fb672fb70298c94e26c2cbc4389fbd4e7cbee871d47141842fe",
+    "app.js": "f71197fad17ee552b2d3ecc1039e843acf008131a4e2ee11767a47143b694895",
     "lib/ems-engine.js": "b76f7f177d99c9f485c2b7fdd657a8754e04fb46de018a0c7e637b3339fda85b",
     "lib/battery-night-planner.js": "b624329e2fdcdc6474a4e682a7e91c28b7ec8377ae4f4ae0f91adde862f615ca",
     "lib/ev-deadline-planner.js": "b69ba76273d6d70e5e59d6775d494fde36b03d0d294dbfc80a3382ebd98a49b4",
     "lib/flexible-loads.js": "d8553c9512d2ac998a5ce4c6cf34bef76f33f5bcb1eb0ed49ec1da68207f3d93",
     "lib/homey-energy.js": "16cc7c2ea2bc0b29e1216703ef63c90753f21ab13608818f1cfc7c4fab7b8265"
   },
-  "cpuCaveat": "Host process CPU median increased by 13.489 ms (19.9% relative); no physical Homey CPU regression conclusion."
+  "cpuCaveat": "Host process CPU median difference -5.681 ms (-3.2% relative); no physical Homey CPU conclusion.",
+  "buildRevision": "evening-restart-fix",
+  "eveningRestartScenarios": [
+    {
+      "name": "Screenshot reproduction: inferred night targets tomorrow and correct PV after evening restart",
+      "syntheticPrices": true,
+      "reportedSettingsAndInputs": true,
+      "before": {
+        "forecastKwh": 0.2,
+        "targetSoc": 90,
+        "deadlineAt": 1792818000000,
+        "widget": "no_window"
+      },
+      "after": {
+        "forecastKwh": 12.3,
+        "targetSoc": 56.9,
+        "deadlineAt": 1792908000000,
+        "widget": "not_needed"
+      }
+    },
+    {
+      "name": "Low SoC still gets future windows with available overnight prices",
+      "targetSoc": 56.9,
+      "nextCharge": {
+        "state": "planned",
+        "startAt": 1792879200000,
+        "endAt": 1792893600000,
+        "powerW": 913,
+        "targetSoc": 56.9
+      }
+    },
+    {
+      "name": "Morning restart and explicit dark-night continuation stay on today",
+      "morningTargetDay": "today",
+      "observedDarkNightTargetDay": "today"
+    },
+    {
+      "name": "Actual PV start returns to existing day forecast and sunset debounce",
+      "pvOwnsDayPhase": true,
+      "originalSunsetTimerRetained": true
+    },
+    {
+      "name": "20:00 fallback and midnight preserve the corrected target and median",
+      "sameMedian": true,
+      "targetDate": "2026-10-25"
+    },
+    {
+      "name": "Custom target times, fixed/TOU and cache avoid per-P1 calendar rebuilding",
+      "customDeadline": "06:00",
+      "minuteConversions": 0,
+      "contracts": [
+        "fixed",
+        "tou"
+      ]
+    }
+  ]
 }

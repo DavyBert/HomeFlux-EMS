@@ -1,3 +1,6 @@
+GECORRIGEERDE BUILD 1.1.18 — AVONDHERSTART
+Zie EVENING-RESTART-FIX-1.1.18.txt voor de gevonden datumfout en correctie.
+
 HomeFlux EMS 1.1.18 — Validatie doorlopende batterijprijsplanning
 Datum: 24 oktober 2026
 
@@ -40,8 +43,8 @@ minuutresolutie, zodat iedere seconde dezelfde invoer geen klokgedreven
 herberekeningen of commandolus veroorzaakt. Veiligheden blijven live.
 
 CONTROLES
-77 testprogramma's geslaagd; 27 syntaxcontroles geslaagd.
-15 nieuwe productie-/plannerscenario's geslaagd. De volledige bestaande
+78 testprogramma's geslaagd; 28 syntaxcontroles geslaagd.
+21 nieuwe productie-/plannerscenario's geslaagd (15 nachtprijsproeven en zes avondherstartproeven). De volledige bestaande
 regressies omvatten vaste/TOU-contracten, dagplanning, EV, Peak Guard, PV-opvang,
 Safety SoC, fysieke feedback en publicatievergrendelingen.
 De EV-deadlineplanner, flexible-loads, gedeelde prijsnormalisatie en
@@ -85,16 +88,16 @@ bewijs dat beide versies in die proef exact dezelfde energie leverden.
 Werkelijke energie, doelbereik en schakelingen staan apart in de JSON.
 
 CPU — 180 SECONDEN INVOER ELKE SECONDE, MEDIAAN VAN DRIE PROEVEN
-Gemeten proces-CPU op deze host: 1.1.17 67.689 ms;
-1.1.18 81.178 ms.
+Gemeten proces-CPU op deze host: 1.1.17 174.863 ms;
+gecorrigeerde 1.1.18 169.182 ms.
 Snelle evaluaties: 4 versus 4.
 Contextevaluaties: 3 versus 4.
-Nieuwe prijsrangschikkingen/selecties tijdens die 180 seconden: 0/0 in 1.1.18.
-Inclusieve CPU in snelle evaluaties: 2.179 versus 2.835 ms;
-in context: 5.010 versus 5.798 ms.
-De secties overlappen en mogen niet opgeteld worden. Het totale mediane verschil is 13.489 ms (+19.9% relatief) in deze
-versnelde proef. Dat is een klein absoluut verschil, maar geen bewijs van een
-ongewijzigd fysiek Homey-CPU-percentage; dat moet op Homey worden nagegaan.
+Nieuwe prijsrangschikkingen/selecties tijdens 180 seconden: 0/0 in 1.1.18.
+Inclusieve CPU in snelle evaluaties: 5.488 versus 4.671 ms;
+in context: 14.323 versus 9.734 ms.
+Secties overlappen en mogen niet worden opgeteld. Totaal mediaan verschil
+-5.681 ms (-3.2% relatief). Dit zijn versnelde procesmetingen,
+geen bewijs van een ongewijzigd fysiek Homey-CPU-percentage.
 
 BEPERKINGEN
 Getest met echte app-, Flow-, planner- en motorfuncties; Homey-I/O, tijd,

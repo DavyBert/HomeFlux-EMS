@@ -1,0 +1,71 @@
+{
+  "version": "1.1.19",
+  "basis": "Corrected 1.1.18 with evening-restart fix",
+  "versionTests": [
+    {
+      "program": "test/settings-startup.test.js",
+      "exitCode": 0
+    },
+    {
+      "program": "test/widget.test.js",
+      "exitCode": 0
+    },
+    {
+      "program": "test/planning-monitor-1.1.16.test.js",
+      "exitCode": 0
+    },
+    {
+      "program": "test/settings-translations.test.js",
+      "exitCode": 0
+    },
+    {
+      "program": "test/night-restart-1.1.18.test.js",
+      "exitCode": 0
+    }
+  ],
+  "syntaxChecksPassed": 28,
+  "unchangedRuntimeFiles": [
+    "app.js",
+    "api.js",
+    "lib/price-normalization.js",
+    "lib/ev-deadline-planner.js",
+    "lib/display-language.js",
+    "lib/ems-engine.js",
+    "lib/battery-night-planner.js",
+    "lib/price-source-names.js",
+    "lib/ev-session.js",
+    "lib/configured-flow-cards.js",
+    "lib/savings.js",
+    "lib/flow-slot-cards.js",
+    "lib/price-formula.js",
+    "lib/external-prices.js",
+    "lib/compact-diagnostics.js",
+    "lib/savings-history.js",
+    "lib/homey-energy.js",
+    "lib/input-monitor.js",
+    "lib/flexible-loads.js"
+  ],
+  "runtimeSha256": {
+    "app.js": "f71197fad17ee552b2d3ecc1039e843acf008131a4e2ee11767a47143b694895",
+    "api.js": "a268cc8aa702f4f92eb660a22b3520e8bfe6a15804495924412d2111150a79b8",
+    "lib/price-normalization.js": "859248914f8607976f52e149c44dccccab42386687def359ae370ab1c3601a74",
+    "lib/ev-deadline-planner.js": "b69ba76273d6d70e5e59d6775d494fde36b03d0d294dbfc80a3382ebd98a49b4",
+    "lib/display-language.js": "4759445fd8850301fcbb3d9ab65b49bfe5c8e36bef33d73d10f78a39e0f7d565",
+    "lib/ems-engine.js": "b76f7f177d99c9f485c2b7fdd657a8754e04fb46de018a0c7e637b3339fda85b",
+    "lib/battery-night-planner.js": "b624329e2fdcdc6474a4e682a7e91c28b7ec8377ae4f4ae0f91adde862f615ca",
+    "lib/price-source-names.js": "d764097b77b09b1dffc7fce1e39314a463f2b0e295edd4c03c86ee98ded67215",
+    "lib/ev-session.js": "c69630fad412fc5c809db1b41e9ea10b8425ecb858250fb4c518d02e84101c85",
+    "lib/configured-flow-cards.js": "c76aef08903f4c07016902a963449157ce8d21455835b83356cfb2cfe380521a",
+    "lib/savings.js": "a923daf5122ca11d6fe0e87fee4927a9405b7be22125ee4d014970dc79d9e64a",
+    "lib/flow-slot-cards.js": "fab1c0c4402389f5fdf20333e5ce73b85b8ce9c452a878c7ad7e680302fcc197",
+    "lib/price-formula.js": "11f47284f698181b54170cbe5533e5a28c4be48a0e948f6304811b2652a9fafa",
+    "lib/external-prices.js": "d76ec85a82a3e9a2d0a93793a73be2a5e6048f8f77208929eccf5e66c20cb013",
+    "lib/compact-diagnostics.js": "11b9f0e4ebcf592df884ed2e2ed933d2db5e8f3912a36871585e0842ff55883b",
+    "lib/savings-history.js": "b6fac9e56c37eac4b884bc6faf445f5380f79b6bcd8a31118a5cb69818e4dcfe",
+    "lib/homey-energy.js": "16cc7c2ea2bc0b29e1216703ef63c90753f21ab13608818f1cfc7c4fab7b8265",
+    "lib/input-monitor.js": "3a9283bf7166cecabe67e97eb76a42c04e4b4332b1cadf326e897d26d7e5ed70",
+    "lib/flexible-loads.js": "d8553c9512d2ac998a5ce4c6cf34bef76f33f5bcb1eb0ed49ec1da68207f3d93"
+  },
+  "inheritedFunctionalValidation": "78 programs on corrected 1.1.18; runtime source unchanged",
+  "fullSuiteRerunForMetadataOnly": false
+}

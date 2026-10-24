@@ -1,5 +1,11 @@
 {
+  "passed": 28,
   "checks": [
+    [
+      "node",
+      "--check",
+      "test/night-restart-1.1.18.test.js"
+    ],
     [
       "node",
       "--check",
@@ -135,12 +141,5 @@
       "--check",
       "settings/ev-headroom.js"
     ]
-  ],
-  "passed": 27,
-  "versions": [
-    "1.1.18",
-    "1.1.18",
-    "1.1.18",
-    "1.1.18"
   ]
 }

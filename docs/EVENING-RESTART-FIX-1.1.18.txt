@@ -1,0 +1,52 @@
+HomeFlux EMS 1.1.18 — correctie avondherstart
+
+Probleem
+Na een herstart zonder waargenomen PV-start/-einde selecteerde de bestaande
+faseherkenning wel een nachtplan, terwijl de forecastkeuze nog op vandaag bleef.
+Na het dagdoelmoment kon de nieuwe nachtprijsplanner daardoor verwijzen naar
+een reeds verstreken ochtenddeadline en geen laadvenster vinden.
+
+Correctie
+Wanneer uitsluitend een afgeleide nachtfase bestaat en zowel het ingestelde
+dagdoelmoment als het ochtenddoelmoment van vandaag voorbij zijn, gebruikt
+HomeFlux de volgende ochtend en de forecast voor morgen. Een echte PV-start
+blijft de dagfase bepalen. Een expliciet begonnen nachtplan behoudt zijn eigen
+doeldag; dit verandert de donkere-ochtendregel en de 20:00-fallback niet.
+De forecastmediaan blijft dezelfde bij de latere fallback en bij middernacht.
+Lokale tijd wordt voor deze opstartkeuze maximaal eenmaal per minuut bepaald.
+Het opstartbericht gebruikt voortaan de werkelijke manifestversie.
+
+Reproductie met screenshotwaarden
+Batterij 84,5%, capaciteit 21,6 kWh, energievraag 22 kWh, minimale SoC 12%,
+nachtmaximum 90%, resterend vandaag 0,2 kWh, morgen 12,3 kWh, klok 18:12.
+Met de eerder geüploade instellingen en een synthetische beschikbare prijscurve:
+- Vóór correctie: doel 90%, nog 1,19 kWh nodig, deadline vandaag 07:00,
+  widget no_window.
+- Na correctie: doel 56,9%, geen extra energie nodig, deadline morgen 07:00,
+  widget not_needed.
+90% blijft het maximum voor geplande nachtlading, geen verplicht vast doel.
+Nieuwe SoC- en forecastwaarden blijven de laadbehoefte bijwerken.
+Bij een lagere SoC van 40% vindt de test wel een toekomstig laadvenster.
+
+Validatie
+78 unieke testprogramma's geslaagd, uitgevoerd in twee batches.
+28 syntaxcontroles geslaagd. De bestaande 15 nachtprijsproeven en zes nieuwe
+opstartproeven zijn geslaagd. De eerste 16 programmauitvoeren staan in het
+algemene testlog, de overige 62 met hun exitcodes in het aanvullende log en
+validation/restart-regressions-1.1.18.json.
+Getest met echte app-/API-functies en gesimuleerde Homey-I/O en prijzen;
+geen test op een fysieke Homey en geen claim over gemeten nieuwe livewaarden.
+
+Nieuwe opstartproeven
+- Screenshot reproduction: inferred night targets tomorrow and correct PV after evening restart
+- Low SoC still gets future windows with available overnight prices
+- Morning restart and explicit dark-night continuation stay on today
+- Actual PV start returns to existing day forecast and sunset debounce
+- 20:00 fallback and midnight preserve the corrected target and median
+- Custom target times, fixed/TOU and cache avoid per-P1 calendar rebuilding
+
+Reproduceren
+node test/night-restart-1.1.18.test.js
+Met HEMS_PREVIOUS_118_ROOT ingesteld op de eerdere 1.1.18-bronmap wordt ook
+de fout in die oude build automatisch gereproduceerd en vergeleken.
+Versienummer blijft 1.1.18; dit is de gecorrigeerde ZIP van dezelfde versie.

@@ -679,7 +679,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.17 initialized');
+    this.log(`HomeFlux EMS v${this.homey?.manifest?.version || require('./app.json').version} initialized`);
   }
 
   invalidateEvPhysicalConfig(key = '') {
@@ -7075,8 +7075,28 @@ class HomeFluxEmsApp extends Homey.App {
 
   getPlanningForecastDay(at = Date.now(), today = '') {
     if (!today) today = this.getLocalDateKey(new Date(at));
-    if (this.state.nightPlanningActive && String(this.state.nightPlanningStartedDate || '') === today) return 'tomorrow';
-    return 'today';
+    // An observed night keeps its original target day, including dark mornings
+    // after the charging deadline. Midnight only changes tomorrow -> today.
+    if (this.state.nightPlanningActive) return String(this.state.nightPlanningStartedDate || '') === today ? 'tomorrow' : 'today';
+    if (String(this.state.pvProducingDate || '') === today && this.state.pvSeenProducingToday) return 'today';
+
+    // After a restart no PV start/end may have been observed. The existing
+    // phase selector already calls this a night. After the daytime target and
+    // an elapsed morning target, that inferred night must refer to TOMORROW,
+    // rather than an expired 07:00 today. A real PV sample still owns the day
+    // transition; this does not invent an observed sunset or bypass its timer.
+    const settings = this.getSettings(), bucket = Math.floor(Number(at) / 60000);
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const cached = this.inferredNightForecastDay;
+    if (cached && cached.bucket === bucket && cached.today === today && cached.timezone === timezone
+      && cached.dayTarget === settings.solarTargetTime && cached.nightTarget === settings.nightTargetTime) return cached.day;
+    const minute = this.getLocalMinuteOfDay(at);
+    const dayTarget = this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60);
+    const nightTarget = this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60);
+    const day = minute >= dayTarget && minute >= nightTarget ? 'tomorrow' : 'today';
+    this.inferredNightForecastDay = { bucket, today, timezone, dayTarget: settings.solarTargetTime,
+      nightTarget: settings.nightTargetTime, day };
+    return day;
   }
 
   isNightPlanningPhase(at = Date.now(), today = '') {

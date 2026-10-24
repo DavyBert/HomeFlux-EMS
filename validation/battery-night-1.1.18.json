@@ -23,8 +23,8 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 3506.916,
-      "wallMs": 3165.834819
+      "cpuMs": 36166.905,
+      "wallMs": 34867.739730999994
     },
     "baseline": {
       "energyKwh": 2.500000000000001,
@@ -47,8 +47,8 @@
       "contexts": 787,
       "priceWindows": 0,
       "selections": 0,
-      "cpuMs": 3175.332,
-      "wallMs": 2892.929149
+      "cpuMs": 7605.65,
+      "wallMs": 6802.844592000001
     }
   },
   {
@@ -75,8 +75,8 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 3146.218,
-      "wallMs": 2957.8506860000007
+      "cpuMs": 7102.79,
+      "wallMs": 6687.888057999997
     },
     "baseline": {
       "energyKwh": 5.4101333333333335,
@@ -99,8 +99,8 @@
       "contexts": 787,
       "priceWindows": 0,
       "selections": 0,
-      "cpuMs": 3077.695,
-      "wallMs": 2918.124732
+      "cpuMs": 28085.24,
+      "wallMs": 24867.476215000002
     },
     "normalizedSixKwh": {
       "currentEUR": 1.2000000000000002,
@@ -118,66 +118,66 @@
     "name": "CPU and calculation counts: 180 unchanged one-second meter inputs",
     "current": [
       {
-        "cpuMs": 84.89,
-        "wallMs": 73.07826700000078,
+        "cpuMs": 164.775,
+        "wallMs": 141.59259499999462,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 3.536,
-        "contextCpuMs": 5.797999999999998
+        "fastCpuMs": 4.671,
+        "contextCpuMs": 9.119999999999997
       },
       {
-        "cpuMs": 75.465,
-        "wallMs": 68.03365499999927,
+        "cpuMs": 169.323,
+        "wallMs": 141.39062400000694,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 2.2769999999999997,
-        "contextCpuMs": 5.469999999999999
+        "fastCpuMs": 4.323,
+        "contextCpuMs": 11.603
       },
       {
-        "cpuMs": 81.178,
-        "wallMs": 74.7918179999997,
+        "cpuMs": 169.182,
+        "wallMs": 152.49423599999864,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 2.835,
-        "contextCpuMs": 8.932000000000002
+        "fastCpuMs": 5.797000000000001,
+        "contextCpuMs": 9.733999999999995
       }
     ],
     "baseline": [
       {
-        "cpuMs": 76.675,
-        "wallMs": 70.72107899999901,
+        "cpuMs": 195.239,
+        "wallMs": 168.46993400000792,
         "contexts": 3,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 3.857,
-        "contextCpuMs": 5.009999999999998
+        "fastCpuMs": 7.2909999999999995,
+        "contextCpuMs": 14.322999999999993
       },
       {
-        "cpuMs": 66.508,
-        "wallMs": 61.25754400000005,
+        "cpuMs": 174.863,
+        "wallMs": 146.9160899999988,
         "contexts": 3,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 2.02,
-        "contextCpuMs": 3.8309999999999995
+        "fastCpuMs": 3.9290000000000003,
+        "contextCpuMs": 24.777
       },
       {
-        "cpuMs": 67.689,
-        "wallMs": 60.19783600000119,
+        "cpuMs": 148.663,
+        "wallMs": 119.90137599999434,
         "contexts": 3,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 2.179,
-        "contextCpuMs": 5.582999999999999
+        "fastCpuMs": 5.4879999999999995,
+        "contextCpuMs": 7.393999999999998
       }
     ],
     "note": "Process CPU on this host, inclusive sections; not physical Homey CPU percentages."

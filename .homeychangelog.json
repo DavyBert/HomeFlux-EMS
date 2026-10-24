@@ -1,4 +1,8 @@
 {
+  "1.1.19": {
+    "nl": "Batterijnachtplanning vergelijkt beschikbare dynamische uur- en kwartierprijzen tot het ingestelde ochtenddoel, ook over middernacht. De resterende laadbehoefte blijft bijgewerkt met SoC en PV-voorspellingen. Goedkope laadvensters worden waar nodig uitgebreid, met behoud van PV-prioriteit, Peak Guard en de afzonderlijke EV-planning. Een herstart na het dagdoelmoment koppelt een afgeleide nachtfase aan de juiste volgende ochtend en PV-voorspelling.",
+    "en": "Battery night planning compares available dynamic hourly and quarter-hour prices up to the configured morning target, including across midnight. Remaining charging needs stay current with SoC and solar forecasts. Cheap charging windows expand when needed, while preserving solar priority, Peak Guard and independent EV planning. After a restart beyond the daytime target, an inferred night phase uses the correct following morning and solar forecast."
+  },
   "1.1.18": {
     "nl": "Batterijnachtplanning vergelijkt beschikbare dynamische uur- en kwartierprijzen tot het ingestelde ochtenddoel, ook over middernacht. De resterende laadbehoefte blijft bijgewerkt met SoC en PV-voorspellingen. Goedkope laadvensters worden waar nodig uitgebreid, met behoud van PV-prioriteit, Peak Guard en de afzonderlijke EV-planning.",
     "en": "Battery night planning compares available dynamic hourly and quarter-hour prices up to the configured morning target, including across midnight. Remaining charging needs stay current with SoC and solar forecasts. Cheap charging windows expand when needed, while preserving solar priority, Peak Guard and independent EV planning."
