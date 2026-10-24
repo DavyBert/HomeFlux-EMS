@@ -32,6 +32,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.1.17
+
+Active EV SoC/kWh targets compare available dynamic prices up to their deadline across calendar days. For an active deadline, “Cheap” selects the cheapest required charging energy within that EV window rather than the battery's daily price ranking. Small price differences can retain a contiguous or existing plan; unknown prices are never treated as cheap. Existing PV charging, deadline guarantee permissions, import limits and Peak Guard remain active. Without an active deadline, the configured tariff preferences are unchanged. Battery targets and midnight PV-forecast updates keep their own planning.
+
+Actieve EV-SoC/kWh-doelen vergelijken beschikbare dynamische prijzen tot de deadline over kalenderdagen heen. “Goedkoop” kiest bij een actief doel de goedkoopste benodigde laadenergie binnen dat EV-venster. Kleine prijsverschillen kunnen een aaneengesloten of bestaand plan behouden. Onbekende prijzen zijn niet automatisch goedkoop. De batterij behoudt haar eigen doelmomenten en verwerking van nieuwe PV-voorspellingen na middernacht.
+
 ### 1.1.16
 
 Physical EV control now reuses unchanged electrical configuration and tariff permissions between P1 measurements. Live power, tariff boundaries and safety checks remain current; relevant settings changes refresh the cached configuration.

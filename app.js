@@ -8,6 +8,8 @@ const { InputMonitor } = require('./lib/input-monitor');
 const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normalizeSecondary } = require('./lib/price-normalization');
 const { extractMathExpression } = require('./lib/price-formula');
 
+const { EvDeadlinePlanner, prepareEvPriceCurve } = require('./lib/ev-deadline-planner');
+
 const Homey = require('homey');
 const { performance } = require('perf_hooks');
 const { SlotFlowCards } = require('./lib/flow-slot-cards');
@@ -675,11 +677,15 @@ class HomeFluxEmsApp extends Homey.App {
     this.checkNightPlanningFallback();
     await this.runContextEvaluation(true);
     this.appInitializedAt = Date.now();
-    this.log('HomeFlux EMS v1.1.16 initialized');
+    this.log('HomeFlux EMS v1.1.17 initialized');
   }
 
   invalidateEvPhysicalConfig(key = '') {
     const name = String(key);
+    if (!name || (Object.prototype.hasOwnProperty.call(DEFAULTS, name)
+      && /^(ev|contractType|dynamic|cheapHours|expensiveHours|peak)/.test(name))) {
+      this.evDeadlineSettingsRevision = (this.evDeadlineSettingsRevision || 0) + 1;
+    }
     const evSetting = /^ev(?:[2-4])?([A-Z].*)$/.exec(name);
     if (name && name !== 'touRates' && name !== 'contractType'
       && name !== 'evCount' && !(evSetting && EV_PHYSICAL_CONFIG_SUFFIXES.has(evSetting[1]))
@@ -3497,6 +3503,12 @@ class HomeFluxEmsApp extends Homey.App {
     if (!Number.isInteger(index) || index < 0 || index >= 4) return;
     if (!Array.isArray(this.evPlanRevision)) this.evPlanRevision = [0, 0, 0, 0];
     this.evPlanRevision[index] = (this.evPlanRevision[index] || 0) + 1;
+    // Progress feedback invalidates a decision, not the chosen price window.
+    // Capacity/energy drift is checked by the EV planner itself.
+    if (!['soc_feedback', 'api_soc'].includes(reason)) {
+      if (!Array.isArray(this.evDeadlineGoalRevision)) this.evDeadlineGoalRevision = [0, 0, 0, 0];
+      this.evDeadlineGoalRevision[index] = (this.evDeadlineGoalRevision[index] || 0) + 1;
+    }
     if (!Array.isArray(this.evPlanRequestReasons)) this.evPlanRequestReasons = ['', '', '', ''];
     this.evPlanRequestReasons[index] = String(reason);
     if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('requested', index + 1);
@@ -5991,7 +6003,163 @@ class HomeFluxEmsApp extends Homey.App {
     }
   }
 
+  getEvDeadlinePriceCurve(settings, now) {
+    // Source readiness is checked in the slow EV path. Never called from P1.
+    const identity = [Math.floor(now / 60000), this.homeyEnergy?.slots,
+      this.homeyEnergy?.lastUpdatedAt, this.homeyEnergy?.available,
+      this.externalEnergy?.slots, this.externalEnergy2?.slots,
+      this.dynamicPriceCalibrations, this.evDeadlineSettingsRevision, this.evDeadlinePriceSelection?.selection.source];
+    const memo = this.evDeadlineCurveRead;
+    if (memo && identity.every((v, i) => v === memo.identity[i])) return memo.curve;
+    const snapshot = this.evDeadlinePriceSelection;
+    const selection = snapshot && snapshot.revision === this.evDeadlineSettingsRevision
+      && now >= snapshot.at && now - snapshot.at < 1000 ? snapshot.selection
+      : this.getDynamicPriceSelection(settings, new Date(now), { readOnly: true });
+    if (selection.source === 'none') {
+      this.evDeadlineCurveRead = { identity, curve: null };
+      return null;
+    }
+    const source = selection.source;
+    const state = source === 'homey' ? this.homeyEnergy : source === 'external2' ? this.externalEnergy2 : this.externalEnergy;
+    const calibration = selection.calibration;
+    const rawKey = [source, state?.slots, settings.timezone, this.getDynamicTargetInterval(settings),
+      calibration?.scale, calibration?.offset, calibration?.learnedAt];
+    const prepared = this.evDeadlinePreparedCurve;
+    let curve = prepared?.curve;
+    if (!prepared || !rawKey.every((v, i) => v === prepared.rawKey[i])) {
+      const next = prepareEvPriceCurve(selection.slots, settings.timezone, this.getDynamicTargetInterval(settings));
+      // Identical price publications do not invalidate an existing EV plan.
+      curve = curve?.fingerprint === next.fingerprint ? curve : next;
+      this.evDeadlinePreparedCurve = { rawKey, curve };
+      this.recordDiagnosticCounter('evDeadlinePriceCurveBuilds');
+    }
+    this.evDeadlineCurveRead = { identity, curve };
+    return curve;
+  }
+
+  planEvDeadline(index, input, target) {
+    const settings = input.settings, now = input.now.getTime();
+    if (!isDynamicContract(settings) || (!settings.evEnergyPlanActive && !settings.evSocPlanActive
+      && !settings.evGuaranteeTarget && settings.evMode !== 'soc_target')
+      || this.getEvSessionDetectionRuntime(index)?.endedLatched) return null;
+    const curve = this.getEvDeadlinePriceCurve(settings, now);
+    if (!curve?.intervals?.length) return null; // existing missing-price fallback
+    const stored = this.getSettings();
+    let evPowerW = 0, totalWeight = 0;
+    const weight = Math.max(1, Number(settings.evWeight) || 1);
+    for (let i = 0; i < this.getEvCount(stored); i++) {
+      const physical = this.getEvInputSnapshot(i);
+      if (!physical?.connected || !stored[this.getEvSettingKey(i, 'Enabled')]
+        || this.getEvSessionDetectionRuntime(i)?.endedLatched) continue;
+      evPowerW += this.getEvControlCurrentA(i, physical, stored) * evPowerPerAmp(this.getEvElectricalSettingsFor(i, stored));
+      totalWeight += Math.max(1, Number(stored[this.getEvSettingKey(i, 'Weight')]) || 1);
+    }
+    // Conservative physical house/battery demand; queued battery reductions
+    // never finance EV capacity. Multiple connected EVs share this estimate.
+    const baselineW = Math.max(0, Number(input.gridPowerW) + Math.max(0, Number(input.currentBatteryCommandW) || 0) - evPowerW);
+    const share = Math.min(1, weight / Math.max(weight, totalWeight));
+    const peakRoomW = stored.peakShaveEnabled
+      ? Math.max(0, Number(stored.peakLimitW) - (Number(stored.peakSoftMarginW) || 0) - baselineW) * share : Infinity;
+    const perAmp = evPowerPerAmp(settings);
+    const modeOnly = this.getEvControlType(settings) === 'mode';
+    const modeStandardW = this.getEvModeEstimatedCurrentA('standard', settings) * perAmp;
+    const modeSmartW = this.getEvModeEstimatedCurrentA('smart', settings) * perAmp;
+    const controllablePower = watts => modeOnly
+      ? watts + 0.001 >= modeStandardW ? modeStandardW : watts + 0.001 >= modeSmartW ? modeSmartW : 0
+      : Math.floor(Math.max(0, watts) / perAmp) * perAmp;
+    // A persistently slower vehicle must not finance a plan at commanded
+    // amperes. Ignore startup ramps; use only fresh positive measured feedback
+    // after one minute of underdelivery. This never changes physical setpoints.
+    this.evDeadlineDelivery ||= [];
+    const measured = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index), now);
+    const actualW = Math.max(0, Number(measured.currentA) || 0) * perAmp;
+    const outputState = index === 0 ? null : this.getExtraEv(index);
+    const publishedA = index === 0 ? this.lastPublishedEvCurrentA : outputState?.lastPublishedCurrentA;
+    const publishedMode = index === 0 ? this.lastPublishedEvChargeMode : outputState?.lastPublishedChargeMode;
+    const commandedW = this.isEvOutputPermittedFor(index)
+      ? (modeOnly ? this.getEvModeEstimatedCurrentA(publishedMode, settings) : Math.max(0, Number(publishedA) || 0)) * perAmp : 0;
+    const throttled = measured.fresh && actualW > 0 && commandedW > actualW * 1.1;
+    let delivery = this.evDeadlineDelivery[index];
+    const connectedAt = this.getEvSessionDetectionRuntime(index)?.connectedAt || 0;
+    if (delivery && (delivery.connectedAt !== connectedAt || delivery.settingsRevision !== this.evDeadlineSettingsRevision
+      || now < delivery.at)) delivery = null;
+    if (throttled) {
+      if (!delivery || (!delivery.capW && now - delivery.at > 90000)
+        || Math.abs(actualW - delivery.watts) > Math.max(perAmp * 0.5, delivery.watts * 0.1)) {
+        delivery = { since: now, at: now, watts: actualW, capW: delivery?.capW,
+          connectedAt, settingsRevision: this.evDeadlineSettingsRevision };
+      }
+      delivery.at = now;
+      delivery.watts = Math.min(delivery.watts, actualW);
+      if (now - delivery.since >= 60000) delivery.capW = delivery.watts;
+    } else if (delivery && (!delivery.capW || (measured.fresh && commandedW > 0
+      && actualW >= commandedW * 0.9 && actualW > delivery.capW * 1.1))) delivery = null;
+    // Keep a learned limit through planned pauses in the same connection.
+    this.evDeadlineDelivery[index] = delivery;
+    const observedCapW = delivery?.capW || Infinity;
+    const commandPowerW = controllablePower(Math.min(target.standardPowerW, peakRoomW));
+    const maxPowerW = Math.min(controllablePower(Math.min(target.maxPowerW, peakRoomW)), observedCapW);
+    const powerW = Math.min(commandPowerW, observedCapW);
+    const limitsW = {};
+    for (const className of ['cheap', 'normal', 'expensive']) {
+      const room = Math.max(0, this.getEvGridImportLimitW({ className }, stored) - baselineW) * share;
+      const watts = controllablePower(Math.min(commandPowerW, room));
+      limitsW[className] = watts >= target.minPowerW ? Math.min(watts, observedCapW) : 0;
+    }
+    this.evDeadlinePlanner ||= new EvDeadlinePlanner();
+    const before = this.evDeadlinePlanner.builds;
+    const plan = this.evDeadlinePlanner.evaluate({ index, now, curve,
+      observeBuild: calculate => this.measurePlanningCalculation('evDeadlinePlan', 'context', index + 1, calculate),
+      deadlineAt: target.deadlineAt, needKwh: target.energyNeedKwh,
+      powerW, maxPowerW, limitsW,
+      cheap: Boolean(settings.evDynamicCheapEnabled), normal: Boolean(settings.evDynamicNormalEnabled),
+      expensive: Boolean(settings.evDynamicExpensiveEnabled), cheapHours: Number(settings.cheapHours) || 3,
+      expensiveHours: Number(settings.expensiveHours) || 3, guarantee: target.guarantee,
+      signature: [this.evDeadlineGoalRevision?.[index] || 0, this.evDeadlineSettingsRevision || 0,
+        settings.evPlanningSource, settings.evTargetSoc, settings.evTargetTime, settings.timezone].join('|') });
+    this.recordDiagnosticCounter(this.evDeadlinePlanner.builds > before ? 'evDeadlinePlanBuilds' : 'evDeadlinePlanReuses');
+    return plan ? { ...plan, revision: this.evPlanRevision?.[index] || 0,
+      goalRevision: this.evDeadlineGoalRevision?.[index] || 0,
+      settingsRevision: this.evDeadlineSettingsRevision || 0, evaluatedAt: now } : null;
+  }
+
+  getEvDeadlinePolicy(index, decision, settings, now) {
+    if (!decision?.deadlinePlanning) return null;
+    const valid = now >= decision.deadlinePlanEvaluatedAt && now < decision.deadlinePlanNextAt
+      && decision.deadlinePlanGoalRevision === (this.evDeadlineGoalRevision?.[index] || 0)
+      && decision.deadlinePlanSettingsRevision === (this.evDeadlineSettingsRevision || 0);
+    const selected = valid && Boolean(decision.selectedTariff);
+    return { selected, limitW: selected
+      ? this.getEvGridImportLimitW({ className: decision.deadlinePlanClass }, settings) : 0 };
+  }
+
+  getEvDecisionGridImportLimitW(decision, tariff, settings) {
+    return decision?.deadlinePlanning && decision.selectedTariff
+      ? this.getEvGridImportLimitW({ className: decision.deadlinePlanClass }, settings)
+      : this.getEvGridImportLimitW(tariff, settings);
+  }
+
+  scheduleEvDeadlineWakeup(decisions) {
+    const now = Date.now();
+    const events = decisions.filter(d => d?.deadlinePlanning && d.enabled && d.connected
+      && !d.targetCompleted && !d.socTargetReached).map(d => Number(d.deadlinePlanNextAt)).filter(t => t > now);
+    const at = events.length ? Math.min(...events) : 0;
+    if (this.evDeadlineWakeup?.at === at) return;
+    if (this.evDeadlineWakeup?.timer) clearTimeout(this.evDeadlineWakeup.timer);
+    this.evDeadlineWakeup = null;
+    if (!at) return;
+    const timer = this.homey.setTimeout(() => {
+      if (this.evDeadlineWakeup?.timer !== timer) return;
+      this.evDeadlineWakeup = null;
+      this.refreshEvOnlyContext({ deadlineEvContext: true, heartbeatEv: true }).catch(err => this.error('EV deadline interval failed', err));
+    }, Math.max(1, at - now));
+    this.evDeadlineWakeup = { at, timer };
+  }
+
   measureEvPlanningDecision(instanceIndex, origin, input) {
+    if (origin !== 'simulation' && isDynamicContract(input.settings)) {
+      input = { ...input, planDeadline: target => this.planEvDeadline(instanceIndex, input, target) };
+    }
     const instance = instanceIndex + 1;
     if (!this.inputMonitor?.active) return calculateEvDecision(input);
     return this.measurePlanningCalculation('evDecision', origin, instance, () => calculateEvDecision({
@@ -7441,7 +7609,11 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEffectiveDynamicSlots(settings = this.getSettings(), now = new Date()) {
-    return this.getDynamicPriceSelection(settings, now).slots;
+    const selection = this.getDynamicPriceSelection(settings, now);
+    // The following EV pass reuses the already validated source selection.
+    // Battery consumers still receive precisely the same day/source data.
+    this.evDeadlinePriceSelection = { selection, at: now.getTime(), revision: this.evDeadlineSettingsRevision };
+    return selection.slots;
   }
 
   getRawHomeyEnergyStatus(settings = this.getSettings(), now = new Date()) {
@@ -9798,6 +9970,7 @@ class HomeFluxEmsApp extends Homey.App {
     const evCount = this.getEvCount(storedSettings);
     if (evCount <= 0) {
       this.clearEvContextRefresh(true);
+      this.scheduleEvDeadlineWakeup([]);
       if (this.evContextRefresh) this.evContextRefresh.reference = null;
       return [];
     }
@@ -10196,6 +10369,7 @@ class HomeFluxEmsApp extends Homey.App {
       const portfolioTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW));
       for (const decision of decisions) decision.portfolioGridImportTargetW = portfolioTargetW;
       this.completeEvContextRefresh(storedSettings);
+      this.scheduleEvDeadlineWakeup(decisions);
       return decisions;
     }
     const currentSmartPowerW = smartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
@@ -10255,8 +10429,10 @@ class HomeFluxEmsApp extends Homey.App {
       && Boolean(entry.decision.pvGridTopUpAllowed)
       && Math.max(0, Number(entry.decision.gridRequestPowerW) || 0) > 0.5
     ));
-    const gridPolicyEntries = [...tariffEntries, ...topUpEntries];
-    const gridImportLimitW = gridPolicyEntries.length ? this.getEvGridImportLimitW(tariff, runtimeSettings) : 0;
+    const gridPolicyEntries = [...tariffEntries, ...topUpEntries].filter(entry =>
+      this.getEvDecisionGridImportLimitW(entry.decision, tariff, runtimeSettings) > 0);
+    const gridImportLimitW = gridPolicyEntries.length ? Math.min(...gridPolicyEntries.map(entry =>
+      this.getEvDecisionGridImportLimitW(entry.decision, tariff, runtimeSettings))) : 0;
     // The configured value is the maximum P1/grid import while an EV grid policy
     // is active, not extra EV watts on top of unrelated household consumption.
     // Convert that meter ceiling into a maximum total Smart-EV setpoint using the
@@ -10463,6 +10639,7 @@ class HomeFluxEmsApp extends Homey.App {
         } else if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('unchanged_portfolio', index + 1);
       }
     }
+    this.scheduleEvDeadlineWakeup(decisions);
     return decisions;
   }
 
@@ -10740,23 +10917,26 @@ class HomeFluxEmsApp extends Homey.App {
       // Use current tariff eligibility as well as the latest EV decision, so a
       // tariff transition cannot leave a stale reservation behind.
       if (!tariff) tariff = findCurrentTariff(new Date(now), { ...settings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || settings.dynamicSlots });
-      if (!isEvTariffSelected(evSettings, tariff)
+      const deadlinePolicy = this.getEvDeadlinePolicy(index, decision, settings, now);
+      if (!(deadlinePolicy ? deadlinePolicy.selected : isEvTariffSelected(evSettings, tariff))
         && !(getEvPvTariffPolicy(evSettings, tariff).gridTopUpAllowed && decision.gridRequestPowerW > 0)) continue;
       if (this.getEffectiveEvModeFor(index, settings) !== 'smart') continue;
       const requestW = Math.max(0, Number(decision.requestedPowerW) || 0);
       const netRequestW = Math.max(0, requestW - (Number(decision.pvAllocatedW) || 0)
         - (Number(decision.batterySupportAllocatedW) || 0) - (Number(decision.nightSurplusAllocatedW) || 0));
       if (netRequestW <= 0) continue;
+      const evGridLimitW = deadlinePolicy ? deadlinePolicy.limitW : this.getEvGridImportLimitW(tariff, settings);
+      if (evGridLimitW <= 0) continue;
       activeEvPowerW += this.getEvCommandedPowerW(index, settings);
       requests.push({
-        index, settings: evSettings, weight: Math.max(1, Number(evSettings.evWeight) || 1),
+        index, gridLimitW: evGridLimitW, settings: evSettings, weight: Math.max(1, Number(evSettings.evWeight) || 1),
         priority: evSettings.evSmartGridPriority || 'battery_first',
         maxPowerW: requestW, basePowerW: requestW - netRequestW,
         modeExpectedCurrentA: Math.max(0, Number(decision.requestedCurrentA) || 0),
       });
     }
     if (!requests.some(r => r.priority === 'ev_first' || r.priority === 'share')) return null;
-    const gridLimitW = Math.max(0, Number(this.getEvGridImportLimitW(tariff, settings)) || 0);
+    const gridLimitW = Math.max(0, Math.min(...requests.map(request => request.gridLimitW)));
     const siteWithoutBatteryW = (Number(this.state.gridPowerW) || 0) + (Number(this.state.lastTotalCommandW) || 0);
     const nonEvImportW = Math.max(0, siteWithoutBatteryW - activeEvPowerW);
     const peakLimitW = settings.peakShaveEnabled
@@ -10886,11 +11066,12 @@ class HomeFluxEmsApp extends Homey.App {
       const tariff = storedSettings.contractType
         ? (currentTariff ||= findCurrentTariff(new Date(now), { ...storedSettings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || storedSettings.dynamicSlots })) : null;
       const modeOnly = this.getEvControlType(settings) === 'mode';
-      const tariffAllowed = !tariff || modeOnly || isEvTariffSelected(settings, tariff)
+      const deadlinePolicy = this.getEvDeadlinePolicy(index, decision, storedSettings, now);
+      const tariffAllowed = !tariff || modeOnly || (deadlinePolicy ? deadlinePolicy.selected : isEvTariffSelected(settings, tariff))
         || decision?.guaranteeActive
         || (decision?.source === 'pv+topup' && getEvPvTariffPolicy(settings, tariff).gridTopUpAllowed)
         || (this.getEffectiveEvModeFor(index, storedSettings) === 'emergency' && !decision?.emergencyTariffBlocked);
-      const budgetAllowed = !tariff || modeOnly || this.getEvGridImportLimitW(tariff, storedSettings) > 0
+      const budgetAllowed = !tariff || modeOnly || (deadlinePolicy ? deadlinePolicy.limitW : this.getEvGridImportLimitW(tariff, storedSettings)) > 0
         || decision?.guaranteeActive || this.getEffectiveEvModeFor(index, storedSettings) === 'emergency';
       const intentional = decision?.intentionalGridImport === undefined
         ? Boolean(decision?.selectedTariff || decision?.guaranteeActive) : Boolean(decision.intentionalGridImport);
@@ -12491,7 +12672,7 @@ class HomeFluxEmsApp extends Homey.App {
     const portfolio = this.calculateEvPortfolioDecisions(
       result, nextBatteryCommandW, currentBatteryCommandW, storedSettings,
       { physicalOnly, monitoringRoute: options.heartbeatEv ? 'heartbeat'
-        : (options.deferredEvContext ? 'deferred' : 'publication') },
+        : (options.deferredEvContext ? 'deferred' : options.deadlineEvContext ? 'deadline' : 'publication') },
     );
     if (options.deferredEvContext) this.recordDiagnosticCounter('evContextDeferredEvaluations');
     // P1 readiness belongs to EV control itself, independently of battery
@@ -12639,6 +12820,7 @@ class HomeFluxEmsApp extends Homey.App {
       if ((energy?.active && energy.deadlineAt > completed.startedAt && energy.deadlineAt <= now)
         || (soc?.active && soc.deadlineAt > completed.startedAt && soc.deadlineAt <= now)) return false;
       const decision = index === 0 ? this.latestEvDecision : runtime?.latestDecision;
+      if (decision?.deadlinePlanning && Number(decision.deadlinePlanNextAt) <= now) return false;
       if (decision && settings[this.getEvSettingKey(index, 'SocEnabled')] !== false) {
         const fresh = this.getEvSocFreshness(index, {
           evSocFreshnessMinutes: settings[this.getEvSettingKey(index, 'SocFreshnessMinutes')],

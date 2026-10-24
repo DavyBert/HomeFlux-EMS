@@ -94,6 +94,7 @@
         evSocDeadline: t('EV-SoC-deadline', 'EV SoC deadline resolution'),
         evDecision: t('EV-laadbeslissing', 'EV charging decision'),
         evTariffScan: t('EV-tariefvensterscan', 'EV tariff-window scan'),
+        evDeadlinePlan: t('EV-prijsplan tot deadline', 'EV price plan to deadline'),
       })[kind] || kind;
       const routeName = origin => ({
         context: t('Trage context', 'Slow context'),
