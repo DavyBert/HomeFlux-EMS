@@ -1,0 +1,79 @@
+{
+  "version": "1.2.1",
+  "sourceArchive": "HomeFlux-EMS-v1.1.20(1).zip",
+  "sourceArchiveSha256": "526074bf69dfc7174c2fe3b40ca16fa1da89b7f14f052bf69f26322e82faf4be",
+  "testFilesPassed": 82,
+  "testFilesFailed": 0,
+  "controlAbScenariosPassed": 12,
+  "postVersionChecks": [
+    "widget.test.js",
+    "settings-startup.test.js",
+    "planning-monitor-1.1.16.test.js",
+    "widget-insights-1.2.1.test.js",
+    "widget-insights-lifecycle-1.2.1.test.js"
+  ],
+  "wafExtraCalculationsFrom300P1And100StatusAnd10PortfolioCalls": 0,
+  "pvHorizonChoice": "Use existing remaining-today planner estimate; user confirmed",
+  "browserVisualValidation": "not performed; browser unavailable and download unsuccessful",
+  "physicalHomeyValidation": "not performed",
+  "unchangedControls": [
+    "lib/ems-engine.js",
+    "lib/flexible-loads.js"
+  ],
+  "modifiedOrAddedFiles": [
+    ".homeychangelog.json",
+    ".homeycompose/app.json",
+    "README.md",
+    "app.js",
+    "app.json",
+    "docs/smarter-energy-insights-1.2.1.md",
+    "lib/widget-energy-budget.js",
+    "locales/en.json",
+    "locales/nl.json",
+    "package-lock.json",
+    "package.json",
+    "test/ev-battery-protection-1.1.6.test.js",
+    "test/planning-monitor-1.1.16.test.js",
+    "test/settings-startup.test.js",
+    "test/widget-insights-1.2.1.test.js",
+    "test/widget-insights-control-1.2.1.cjs",
+    "test/widget-insights-lifecycle-1.2.1.test.js",
+    "test/widget.test.js",
+    "validation/battery-night-1.1.18.json",
+    "validation/ev-deadline-integration.json",
+    "validation/ev-peak-1.1.20.json",
+    "validation/widget-insights-1.2.1.json",
+    "validation/widget-insights-1.2.1.log",
+    "validation/widget-insights-control-1.2.1.json",
+    "validation/widget-release-suite-1.2.1.json",
+    "widgets/status/public/index.html",
+    "widgets/status/widget.compose.json"
+  ],
+  "wafDayTargetCorrection": {
+    "reserveTarget": "configured maxSoc, not planned grid target",
+    "nightReserve": "existing morning planning goal",
+    "plannedGridEnergyCounted": false,
+    "extraWafFromP1StatusPortfolio": 0,
+    "screenshotRegression": {
+      "capacityKwh": 21.6,
+      "socPercent": 37.5,
+      "gridPlanningTargetPercent": 60,
+      "maxSocPercent": 100,
+      "pvRemainingKwh": 20.65,
+      "batteryNeedKwh": 13.5,
+      "householdNeedKwh": 5.73,
+      "expectedSurplusKwh": 1.42,
+      "householdNeedIsExplicitTestInput": true
+    },
+    "additionalPvCreditedOnce": true,
+    "sourceAppControllerUnchangedFromDelivered121": true,
+    "all82TestFilesPassed": true
+  },
+  "intenseWidgetColors": {
+    "presentationOnly": true,
+    "targetedWidgetTestsPassed": 3,
+    "statusContrastMinimum": 4.51751709457636,
+    "wafContrastMinimum": 4.974103179990334,
+    "colorOffBehaviorTested": true
+  }
+}

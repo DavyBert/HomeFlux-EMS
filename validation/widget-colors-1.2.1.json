@@ -1,0 +1,94 @@
+{
+  "version": "1.2.1",
+  "statusPalette": [
+    {
+      "theme": "light",
+      "role": "positive",
+      "color": "#00822a",
+      "background": "#f4f4f4",
+      "contrast": 4.51751709457636
+    },
+    {
+      "theme": "light",
+      "role": "attention",
+      "color": "#b34b00",
+      "background": "#f4f4f4",
+      "contrast": 4.866782209598858
+    },
+    {
+      "theme": "light",
+      "role": "critical",
+      "color": "#db0025",
+      "background": "#f4f4f4",
+      "contrast": 4.727533732031404
+    },
+    {
+      "theme": "light",
+      "role": "activity",
+      "color": "#005ce6",
+      "background": "#f4f4f4",
+      "contrast": 5.197566755862923
+    },
+    {
+      "theme": "light",
+      "role": "solar",
+      "color": "#916300",
+      "background": "#f4f4f4",
+      "contrast": 4.786847237268524
+    },
+    {
+      "theme": "dark",
+      "role": "positive",
+      "color": "#00ef70",
+      "background": "#242424",
+      "contrast": 10.038570959686343
+    },
+    {
+      "theme": "dark",
+      "role": "attention",
+      "color": "#ff9d00",
+      "background": "#242424",
+      "contrast": 7.447144620415592
+    },
+    {
+      "theme": "dark",
+      "role": "critical",
+      "color": "#ff4a64",
+      "background": "#242424",
+      "contrast": 4.7422726032444045
+    },
+    {
+      "theme": "dark",
+      "role": "activity",
+      "color": "#42a5ff",
+      "background": "#242424",
+      "contrast": 5.956143345975398
+    },
+    {
+      "theme": "dark",
+      "role": "solar",
+      "color": "#ffdc00",
+      "background": "#242424",
+      "contrast": 11.449462059752147
+    }
+  ],
+  "wafSaturationPercent": 96,
+  "wafContrastSamples": 1201,
+  "wafMinimumWhiteTextContrast": 4.974103179990334,
+  "coloredValueFontWeight": 800,
+  "widgetTests": [
+    {
+      "script": "test/widget.test.js",
+      "passed": true
+    },
+    {
+      "script": "test/widget-insights-1.2.1.test.js",
+      "passed": true
+    },
+    {
+      "script": "test/widget-insights-lifecycle-1.2.1.test.js",
+      "passed": true
+    }
+  ],
+  "note": "Contrast measured against representative #f4f4f4 light and #242424 dark rows. Actual Homey background overrides still determine final visual contrast."
+}

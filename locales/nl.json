@@ -215,7 +215,12 @@
       "peakGuardFloor": "Ondergrens Peak Guard",
       "dischargeFloor": "Ondergrens ontladen",
       "batteryFloorIn": "Tot ontlaadondergrens",
-      "batteryAtFloor": "Ontlaadondergrens bereikt"
+      "batteryAtFloor": "Ontlaadondergrens bereikt",
+      "alertInput": "Waarschuwing: netmeting ontbreekt of is verouderd",
+      "alertSafetySoc": "Waarschuwing: veiligheidsreserve batterij wordt hersteld",
+      "alertBalance": "Waarschuwing: batterijen raken verder uit balans",
+      "energyBudget": "Geschatte extra huishoudelijke energie tot het planningsdoel",
+      "energyBudgetBatteryTarget": "Voor batterij gereserveerd tot {soc}%"
     }
   }
 }

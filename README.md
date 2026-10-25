@@ -32,6 +32,16 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.1 – Smarter Energy Insights
+
+- Added a household energy budget indicator showing estimated surplus after household demand and daytime battery charging to the configured maximum SoC.
+- Added critical EMS status alerts to the widget, alternating with the current decision.
+- Introduced intelligent status colors for easier interpretation of energy values.
+- Added independent widget settings for the energy indicator, critical alerts, and status colors.
+- All new widget options are enabled by default, including for existing widgets after updating.
+
+Implementation and validation: [Smarter Energy Insights](docs/smarter-energy-insights-1.2.1.md).
+
 ### 1.1.20
 
 Persistent EV Flow planning: SoC and kWh targets retain their deadline time and guarantee across app/Homey restarts until Clear EV planning or replacement by a new Flow target. Recent kWh progress is saved on normal shutdown; a completed target is not refilled merely by restarting with the EV connected. Zero kWh remains a completed Flow target. Fresh positive current feedback takes precedence over house-load estimates for mode-controlled EVs, so Peak Guard correctly accounts for power already drawn by the EV. Planning diagnostics expose the shared Peak Guard calculation.

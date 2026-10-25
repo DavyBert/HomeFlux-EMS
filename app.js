@@ -3,6 +3,7 @@
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
+const { calculateBudget } = require('./lib/widget-energy-budget');
 const { CompactDiagnostics } = require('./lib/compact-diagnostics');
 const { InputMonitor } = require('./lib/input-monitor');
 const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normalizeSecondary } = require('./lib/price-normalization');
@@ -14295,8 +14296,14 @@ class HomeFluxEmsApp extends Homey.App {
       const pvDeltaW = this.getRecentPvDelta(now);
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
       const settings = this.refreshControlContext(storedSettings, evaluationState, now);
+      // Reuse this pass's existing control calculation for the actual discharge
+      // floor. No second evaluation or parallel reserve policy for the widget.
+      const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
+      const calculated = paused ? null : evaluate(evaluationState, settings, new Date(now), this.controlContext,
+        this.inputMonitor?.active
+          ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'context', 0, compute) : null);
       try {
-        this.refreshPlanningInContext(storedSettings, settings, evaluationState, now);
+        this.refreshPlanningInContext(storedSettings, settings, evaluationState, now, calculated);
         if (this.isNightPlanningPhase(now)) {
           const forcePlanPublication = Boolean(this.forceChargePlanPublication);
           this.forceChargePlanPublication = false;
@@ -14310,11 +14317,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.markContextDirty('planning_retry');
         this.error('Charge plan calculation from slow context failed', err);
       }
-      const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
       if (paused) return paused;
-      const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext,
-        this.inputMonitor?.active
-          ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'context', 0, compute) : null);
       this.rememberBatteryChargeRestartState(calculated);
       this.lastControlEvalAt = now;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
@@ -15292,7 +15295,7 @@ class HomeFluxEmsApp extends Homey.App {
     return `${this.getLocalDateKey(new Date(now))}|${this.isNightPlanningPhase(now)}|${this.getPlanningForecastDay(now)}`;
   }
 
-  refreshPlanningInContext(storedSettings, settings, state, now = Date.now()) {
+  refreshPlanningInContext(storedSettings, settings, state, now = Date.now(), controlResult = null) {
     if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
     const cache = this.planningCache;
     const phaseKey = this.getPlanningPhaseKey(now);
@@ -15311,6 +15314,49 @@ class HomeFluxEmsApp extends Homey.App {
         ...this.measurePlanningCalculation('batterySocPlan', 'context', 0,
           () => buildSocPlan(state, settings, new Date(now))),
       };
+      // Presentation insight belongs to this ACTUAL battery plan, after the
+      // cache guard. No P1, status, EV or widget path calls this calculation.
+      const evs = [];
+      for (let i = 0; i < this.getEvCount(storedSettings); i += 1) {
+        const key = suffix => this.getEvSettingKey(i, suffix);
+        if (!storedSettings[key('Enabled')] || !this.getEvInputSnapshot(i)?.connected
+          || this.getEvSessionDetectionRuntime(i)?.endedLatched) continue;
+        const energy = this.evEnergyPlans?.[i];
+        const socPlan = this.evSocPlans?.[i];
+        const decision = i === 0 ? this.latestEvDecision : this.getExtraEv(i)?.latestDecision;
+        const reserved = energy?.active || socPlan?.active || storedSettings[key('GuaranteeTarget')]
+          || storedSettings[key('Mode')] === 'soc_target' || decision?.nightSurplusActive;
+        if (!reserved) continue;
+        const input = this.getEvInputSnapshot(i);
+        const target = socPlan?.active ? socPlan.targetSoc : storedSettings[key('TargetSoc')];
+        const socFresh = this.getEvSocFreshness(i, {
+          evSocEnabled: storedSettings[key('SocEnabled')],
+          evSocFreshnessMinutes: storedSettings[key('SocFreshnessMinutes')],
+        }, now).fresh;
+        const hasGoal = energy?.active || socPlan?.active || storedSettings[key('GuaranteeTarget')]
+          || storedSettings[key('Mode')] === 'soc_target';
+        const nightReservedKwh = decision?.nightSurplusActive
+          ? Math.min(Math.max(0, Number(decision.nightSurplusEnergyKwh) || 0),
+            Math.max(0, Number(decision.nightSurplusAllocatedW) || 0) / 1000
+              * Math.max(0, plan.planningChargeDeadlineAt - now) / 3600000) : 0;
+        const needKwh = !hasGoal ? 0 : energy?.active ? energy.remainingKwh
+          : socFresh && input?.seen?.soc && Number.isFinite(Number(input.soc))
+            ? Math.max(0, Number(storedSettings[key('BatteryCapacityKwh')]) * (Number(target) - Number(input.soc)) / 100)
+            : null;
+        if (needKwh === 0 && nightReservedKwh === 0) continue;
+        const deadlineAt = !hasGoal ? plan.planningChargeDeadlineAt : energy?.active ? energy.deadlineAt : socPlan?.active ? socPlan.deadlineAt : decision?.deadlineAt;
+        const scheduled = this.evDeadlinePlanner?.plans?.get(i);
+        // Ignore a previous goal's cached EV slots. Reading them never invokes
+        // the EV planner, settings builders, deadline finder or portfolio.
+        const currentGoal = decision?.deadlinePlanGoalRevision === (this.evDeadlineGoalRevision?.[i] || 0)
+          && decision?.deadlinePlanSettingsRevision === (this.evDeadlineSettingsRevision || 0);
+        evs.push({ reserved: true, needKwh, deadlineAt, nightReservedKwh, slots: currentGoal ? scheduled?.slots : null });
+      }
+      this.recordDiagnosticCounter('widgetEnergyBudgetCalculations');
+      plan.energyBudget = calculateBudget({ plan, settings, state, evs, now,
+        learning: this.autoTuneRuntime?.planning, reserveSoc: controlResult?.ordinaryDischargeFloorSoc,
+        batteryAvailable: Boolean(controlResult) && Boolean(settings.controlEnabled) && !this.hybridEmsRuntime?.delegated
+          && String(settings.forcedMode || 'auto') !== 'standby' });
     } finally {
       this.endDiagnosticCpuSection(diagnosticCpu);
     }
@@ -15450,6 +15496,17 @@ class HomeFluxEmsApp extends Homey.App {
     preview.lastControlEvaluationAt = Number(this.lastControlEvalAt) || 0;
     preview.nextCharge = this.getWidgetNextChargeStatus(statusNow);
     preview.planningSummary = this.getWidgetPlanningSummary(statusNow);
+    const budget = this.planningCache?.value?.plan?.energyBudget;
+    preview.energyBudget = budget?.ready && statusNow >= budget.calculatedAt && statusNow < budget.validUntil
+      ? budget : null;
+    // Select existing conditions only; do not infer communications failures
+    // from old SoC (SoC intentionally has no freshness expiry in HomeFlux).
+    preview.criticalAlert = !readiness.ready
+      ? { id: 'input', detail: (readiness.missing || []).join(', ') }
+      : preview.safetySocRecoveryActive
+        ? { id: 'safety_soc', detail: '' }
+        : this.balanceMonitor?.warningActive
+          ? { id: 'balance', detail: this.balanceMonitor.warningText || '' } : null;
 
     // Read-only battery timing for the status widget. Use the ACTUAL internal
     // battery output, not a theoretical/planned power, so the remaining time
@@ -15684,6 +15741,7 @@ class HomeFluxEmsApp extends Homey.App {
         dynamicNormalChargeMaxSoc: storedSettings.dynamicNormalChargeMaxSoc ?? 50,
         batterySaveDischargeAboveSoc: storedSettings.batterySaveDischargeAboveSoc,
         safetySoc: storedSettings.safetySoc,
+        minSoc: storedSettings.minSoc,
         lowForecastSelfConsumptionMinKwh: storedSettings.lowForecastSelfConsumptionMinKwh,
         lowForecastAutoSunnyEnabled: Boolean(storedSettings.lowForecastAutoSunnyEnabled),
         lowForecastAutoSunnySoc: storedSettings.lowForecastAutoSunnySoc,

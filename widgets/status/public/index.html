@@ -27,6 +27,27 @@
       border: 1px solid var(--hf-border);
     }
     .eyebrow { color: var(--hf-muted); font-size: 10px; line-height: 1.1; }
+    .decision { display: flex; align-items: center; gap: 10px; }
+    .decision-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .decision-messages { display: grid; }
+    .decision-messages .decision-value { grid-area: 1 / 1; }
+    .decision-reserve { visibility: hidden; }
+    .energy-budget { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: var(--hf-border); font-size: 12px; font-weight: 750; line-height: 1.1; }
+    .energy-budget small { font-size: 9px; margin-top: 2px; }
+    :root { --hf-positive: #00822a; --hf-attention: #b34b00; --hf-critical: #db0025;
+      --hf-activity: #005ce6; --hf-solar: #916300; }
+    @media (prefers-color-scheme: dark) {
+      :root { --hf-positive: #00ef70; --hf-attention: #ff9d00; --hf-critical: #ff4a64;
+        --hf-activity: #42a5ff; --hf-solar: #ffdc00; }
+    }
+    .metric-value[class*="tone-"], .item-state[class*="tone-"], .decision-value[class*="tone-"] { font-weight: 800; }
+    .tone-positive { color: var(--hf-positive); }
+    .tone-attention { color: var(--hf-attention); }
+    .tone-critical { color: var(--hf-critical); }
+    .tone-activity { color: var(--hf-activity); }
+    .tone-solar { color: var(--hf-solar); }
     .decision-value { margin-top: 3px; font-size: 15px; line-height: 1.2; font-weight: 750; }
     .decision-reason { margin-top: 4px; font-size: 11.5px; line-height: 1.25; font-weight: 650; }
     .section { display: grid; gap: 4px; }
@@ -65,6 +86,90 @@
       return settings[id] === undefined || settings[id] === null ? fallback : Boolean(settings[id]);
     }
 
+    function known(value) {
+      return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+    }
+
+    function budgetView(budget, colors, now = Date.now()) {
+      const valid = budget?.ready && known(budget.valueKwh)
+        && now >= budget.calculatedAt && now < budget.validUntil;
+      if (!valid) return { text: '--', background: '', valid: false };
+      const number = Number(budget.valueKwh);
+      const rounded = Math.round(number * 10) / 10;
+      // Continuous, saturated red (-4) -> orange (+1) -> green (+7).
+      // Keep yellow/green darker so white text retains sufficient contrast.
+      const hue = number <= 1 ? Math.max(0, Math.min(1, (number + 4) / 5)) * 30
+        : 30 + Math.max(0, Math.min(1, (number - 1) / 6)) * 90;
+      const lightness = hue <= 30 ? 42 - hue * 0.3
+        : hue <= 60 ? 33 - (hue - 30) / 3 : 23 + (hue - 60) / 20;
+      return { text: `${rounded >= 0 ? '+' : ''}${rounded.toLocaleString(undefined,
+        { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`,
+        background: colors ? `hsl(${hue}, 96%, ${lightness}%)` : '', valid: true };
+    }
+
+    function criticalAlertText(alert, Homey) {
+      const labels = {
+        input: ['alertInput', 'Warning: grid measurement missing or outdated'],
+        safety_soc: ['alertSafetySoc', 'Warning: battery safety reserve is being restored'],
+        balance: ['alertBalance', 'Warning: battery imbalance is worsening'],
+      };
+      const label = labels[alert?.id];
+      return label ? tr(Homey, `widget.status.${label[0]}`, label[1]) : '';
+    }
+
+    function metricTone(kind, status) {
+      if (kind === 'soc' && known(status.avgSoc)) {
+        if (known(status.settings?.minSoc) && status.avgSoc <= status.settings.minSoc) return 'critical';
+        if (known(status.settings?.safetySoc) && status.avgSoc <= status.settings.safetySoc) return 'attention';
+        if (known(status.planningChargeTargetSoc ?? status.targetSoc)
+          && status.avgSoc >= (status.planningChargeTargetSoc ?? status.targetSoc)) return 'positive';
+      }
+      if (kind === 'target' && known(status.avgSoc) && known(status.planningChargeTargetSoc ?? status.targetSoc)
+        && status.avgSoc >= (status.planningChargeTargetSoc ?? status.targetSoc)) return 'positive';
+      if (kind === 'output') {
+        // Use explicit internal direction; published watt signs can be inverted.
+        const modes = status.outputCommandModes || [];
+        if (modes.includes('charge') && !modes.includes('discharge')) return 'positive';
+        if (modes.includes('discharge')) return 'activity';
+      }
+      if (kind === 'forecast' && status.planningSummary?.ready && status.planningSummary.forecastKwh > 0) return 'solar';
+      if (kind === 'peak' && status.override === 'peak_shave') return 'attention';
+      return '';
+    }
+
+    // The 5-second presentation clock only updates existing DOM nodes.
+    // A status refresh never resets an active alert's alternation phase.
+    let alertIdentity = '', alertStartedAt = 0;
+    function updateDecisionDisplay(status, settings, Homey, now = Date.now()) {
+      const alert = enabled(settings, 'showCriticalAlerts') ? status.criticalAlert : null;
+      const text = criticalAlertText(alert, Homey);
+      const identity = text ? alert.id : '';
+      if (identity !== alertIdentity) { alertIdentity = identity; alertStartedAt = now; }
+      const warning = Boolean(text) && Math.floor(Math.max(0, now - alertStartedAt) / 5000) % 2 === 1;
+      const value = document.getElementById('decision-value');
+      if (value) {
+        value.textContent = warning ? text : emsDecision(status, Homey);
+        value.className = 'decision-value' + (warning && enabled(settings, 'statusColors') ? ' tone-critical' : '');
+        value.title = warning ? String(alert.detail || text) : '';
+      }
+      const reason = document.getElementById('decision-reason');
+      if (reason) reason.style.visibility = warning ? 'hidden' : '';
+      const circle = document.getElementById('energy-budget');
+      if (circle) {
+        const view = budgetView(status.energyBudget, enabled(settings, 'statusColors'), now);
+        circle.firstChild.textContent = view.text;
+        circle.style.background = view.background;
+        circle.style.color = view.background ? '#fff' : '';
+        const label = tr(Homey, 'widget.status.energyBudget', 'Estimated extra household energy until the planning target');
+        circle.title = `${label}: ${view.text} kWh` + (view.valid ? ` · ${formatTime(status.energyBudget.targetAt)}` : '');
+        if (view.valid && known(status.energyBudget.targetSoc)) {
+          circle.title += ' · ' + tr(Homey, 'widget.status.energyBudgetBatteryTarget', 'Battery reserve: {soc}%')
+            .replace('{soc}', Number(status.energyBudget.targetSoc).toLocaleString());
+        }
+        circle.setAttribute('aria-label', circle.title);
+      }
+    }
+
     function formatW(value) {
       const watts = Math.round(Number(value) || 0);
       return `${watts > 0 ? '+' : ''}${watts.toLocaleString()} W`;
@@ -77,7 +182,7 @@
 
     function formatSoc(value) {
       const number = Number(value);
-      return Number.isFinite(number) ? `${number.toFixed(1).replace('.0', '')}%` : '—';
+      return known(value) ? `${number.toFixed(1).replace('.0', '')}%` : '—';
     }
 
     function formatTime(value) {
@@ -650,14 +755,14 @@
       return tr(Homey, 'widget.status.boilerWaitingSun', 'Waiting for solar');
     }
 
-    function addMetric(grid, label, value) {
+    function addMetric(grid, label, value, tone = '') {
       const cell = document.createElement('div');
       cell.className = 'metric';
       const labelEl = document.createElement('div');
       labelEl.className = 'metric-label';
       labelEl.textContent = label;
       const valueEl = document.createElement('div');
-      valueEl.className = 'metric-value';
+      valueEl.className = 'metric-value' + (tone ? ` tone-${tone}` : '');
       valueEl.textContent = value;
       cell.append(labelEl, valueEl);
       grid.appendChild(cell);
@@ -673,7 +778,7 @@
       return root;
     }
 
-    function addItem(root, name, state, sub = '', reason = '') {
+    function addItem(root, name, state, sub = '', reason = '', tone = '') {
       const item = document.createElement('div');
       item.className = 'item';
       const head = document.createElement('div');
@@ -683,7 +788,7 @@
       nameEl.textContent = name;
       head.appendChild(nameEl);
       const stateEl = document.createElement('div');
-      stateEl.className = 'item-state';
+      stateEl.className = 'item-state' + (tone ? ` tone-${tone}` : '');
       stateEl.textContent = state;
       item.append(head, stateEl);
       if (reason) {
@@ -705,24 +810,52 @@
       const content = document.getElementById('content');
       content.innerHTML = '';
 
-      if (enabled(settings, 'showDecision')) {
+      const tone = kind => enabled(settings, 'statusColors') ? metricTone(kind, status) : '';
+      if (enabled(settings, 'showDecision') || enabled(settings, 'showEnergyBudget')) {
         const decision = document.createElement('div');
         decision.className = 'decision';
+        const copy = document.createElement('div');
+        copy.className = 'decision-copy';
+        copy.hidden = !enabled(settings, 'showDecision');
         const eyebrow = document.createElement('div');
         eyebrow.className = 'eyebrow';
         eyebrow.textContent = tr(Homey, 'widget.status.currentDecision', 'Current decision');
         const value = document.createElement('div');
         value.className = 'decision-value';
+        value.id = 'decision-value';
         value.textContent = emsDecision(status, Homey);
-        decision.append(eyebrow, value);
+        const messages = document.createElement('div');
+        messages.className = 'decision-messages';
+        const normalReserve = document.createElement('div');
+        normalReserve.className = 'decision-value decision-reserve';
+        normalReserve.setAttribute('aria-hidden', 'true');
+        normalReserve.textContent = emsDecision(status, Homey);
+        const alertReserve = document.createElement('div');
+        alertReserve.className = 'decision-value decision-reserve';
+        alertReserve.setAttribute('aria-hidden', 'true');
+        alertReserve.textContent = enabled(settings, 'showCriticalAlerts') ? criticalAlertText(status.criticalAlert, Homey) : '';
+        messages.append(normalReserve, alertReserve, value);
+        copy.append(eyebrow, messages);
         if (enabled(settings, 'showReasons')) {
           const reason = emsDecisionReason(status, Homey);
           if (reason) {
             const reasonEl = document.createElement('div');
             reasonEl.className = 'decision-reason';
+            reasonEl.id = 'decision-reason';
             reasonEl.textContent = reasonText(reason, Homey);
-            decision.appendChild(reasonEl);
+            copy.appendChild(reasonEl);
           }
+        }
+        decision.appendChild(copy);
+        if (enabled(settings, 'showEnergyBudget')) {
+          const circle = document.createElement('div');
+          circle.id = 'energy-budget';
+          circle.className = 'energy-budget';
+          const amount = document.createElement('span');
+          const unit = document.createElement('small');
+          unit.textContent = 'kWh';
+          circle.append(amount, unit);
+          decision.appendChild(circle);
         }
         content.appendChild(decision);
       }
@@ -738,10 +871,10 @@
       }
       if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
       if (enabled(settings, 'showControlOwner')) addMetric(generalGrid, tr(Homey, 'widget.status.controlOwner', 'Battery control'), hybridControlOwnerText(status, Homey));
-      if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW));
-      if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc));
+      if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW), tone('output'));
+      if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc), tone('soc'));
       if (enabled(settings, 'showBatteryTarget')) {
-        addMetric(generalGrid, tr(Homey, 'widget.status.planningTarget', 'Planning target'), batteryTargetText(status));
+        addMetric(generalGrid, tr(Homey, 'widget.status.planningTarget', 'Planning target'), batteryTargetText(status), tone('target'));
         const boundary = batteryBoundaryText(status, Homey);
         if (boundary) addMetric(generalGrid, tr(Homey, 'widget.status.activeSocBounds', 'Active SoC bounds'), boundary);
       }
@@ -756,13 +889,13 @@
           : peakActive
             ? `${tr(Homey, 'widget.status.active', 'Active')} · ${formatW(status.settings?.peakLimitW).replace('+', '')}`
             : `${tr(Homey, 'widget.status.monitoring', 'Monitoring')} · ${formatW(status.settings?.peakLimitW).replace('+', '')}`;
-        addMetric(generalGrid, tr(Homey, 'widget.status.peakGuard', 'Peak Guard'), peakValue);
+        addMetric(generalGrid, tr(Homey, 'widget.status.peakGuard', 'Peak Guard'), peakValue, tone('peak'));
       }
       if (enabled(settings, 'showPlanningPhase')) addMetric(generalGrid, tr(Homey, 'widget.status.activePlan', 'Active plan'), planningPhaseText(status, Homey));
-      if (enabled(settings, 'showPlanningForecast')) addMetric(generalGrid, tr(Homey, 'widget.status.pvInPlan', 'PV in plan'), planningForecastText(status, Homey));
+      if (enabled(settings, 'showPlanningForecast')) addMetric(generalGrid, tr(Homey, 'widget.status.pvInPlan', 'PV in plan'), planningForecastText(status, Homey), tone('forecast'));
       if (enabled(settings, 'showPlanningNeed')) addMetric(generalGrid, tr(Homey, 'widget.status.energyStillNeeded', 'Still needed to target'), status.planningSummary?.ready ? formatKwh(status.planningSummary.energyNeedKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
       if (enabled(settings, 'showPlanningGrid')) addMetric(generalGrid, tr(Homey, 'widget.status.gridPlanned', 'Planned from grid'), status.planningSummary?.ready ? formatKwh(status.planningSummary.gridPlannedKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
-      if (enabled(settings, 'showPlanningSolar')) addMetric(generalGrid, tr(Homey, 'widget.status.solarExpected', 'PV still expected'), status.planningSummary?.ready ? formatKwh(status.planningSummary.forecastKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
+      if (enabled(settings, 'showPlanningSolar')) addMetric(generalGrid, tr(Homey, 'widget.status.solarExpected', 'PV still expected'), status.planningSummary?.ready ? formatKwh(status.planningSummary.forecastKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'), tone('forecast'));
       if (generalGrid.children.length) content.appendChild(generalGrid);
 
       if (enabled(settings, 'showEvs')) {
@@ -791,7 +924,7 @@
               const nextDecision = evNextDecisionText(ev, Homey);
               if (nextDecision) reasons.push(nextDecision);
             }
-            addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), reasons.join(' · '));
+            addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), reasons.join(' · '), enabled(settings, 'statusColors') && ev.connected && ev.outputAllowed && Number(ev.outputCurrentA) > 0 ? 'positive' : '');
           });
           content.appendChild(root);
         }
@@ -843,6 +976,8 @@
 
     async function onHomeyReady(Homey) {
       const settings = Homey.getSettings() || {};
+      let latestStatus = null;
+      let refreshTimer = null, displayTimer = null;
       let hasRendered = false;
       let refreshBusy = false;
       let lastHeight = 0;
@@ -863,7 +998,11 @@
         refreshBusy = true;
         try {
           const status = await Homey.api('GET', '/status', {});
-          renderStatus(status || {}, settings, Homey);
+          latestStatus = status || {};
+          renderStatus(latestStatus, settings, Homey);
+          const previousAlert = alertIdentity;
+          updateDecisionDisplay(latestStatus, settings, Homey);
+          syncDisplayClock(previousAlert !== alertIdentity);
           document.getElementById('error').classList.add('hidden');
           document.getElementById('content').classList.remove('hidden');
           const height = await resize();
@@ -885,9 +1024,43 @@
       }
 
       await refresh(true);
-      setInterval(() => {
-        if (!document.hidden) refresh(false);
-      }, 10000);
+      function syncDisplayClock(reset = false) {
+        if (reset || document.hidden || !alertIdentity) {
+          clearInterval(displayTimer); displayTimer = null;
+        }
+        // No presentation clock is needed without an enabled critical alert.
+        if (!document.hidden && alertIdentity && displayTimer === null) {
+          displayTimer = setInterval(() => {
+            if (!document.hidden && latestStatus) updateDecisionDisplay(latestStatus, settings, Homey);
+          }, 5000);
+        }
+      }
+      function stopTimers() {
+        clearInterval(refreshTimer); clearInterval(displayTimer);
+        refreshTimer = displayTimer = null;
+      }
+      function startTimers() {
+        stopTimers();
+        if (document.hidden) return;
+        refreshTimer = setInterval(() => {
+          if (!document.hidden) refresh(false);
+        }, 10000);
+        syncDisplayClock(true);
+      }
+      function visibilityChanged() {
+        if (latestStatus) updateDecisionDisplay(latestStatus, settings, Homey);
+        startTimers();
+      }
+      document.addEventListener('visibilitychange', visibilityChanged);
+      window.addEventListener('pagehide', stopTimers);
+      window.addEventListener('pageshow', startTimers);
+      window.addEventListener('unload', () => {
+        stopTimers();
+        document.removeEventListener('visibilitychange', visibilityChanged);
+        window.removeEventListener('pagehide', stopTimers);
+        window.removeEventListener('pageshow', startTimers);
+      }, { once: true });
+      startTimers();
     }
   </script>
 </body>

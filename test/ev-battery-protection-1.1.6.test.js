@@ -180,7 +180,13 @@ async function replayProduction(root, contract, type, count) {
 // Real scheduler, controller, allocation and output gates; only Homey I/O,
 // physical feedback and time use the existing replay harness.
 async function run(root = path.join(__dirname, '..')) {
+  const OriginalDate = Date;
   const originalNow = Date.now;
+  // Both Date.now() and new Date() must use the replay clock. Otherwise
+  // timestamped price fixtures silently refer to the host's calendar date.
+  global.Date = class extends OriginalDate {
+    constructor(...args) { super(...(args.length ? args : [Date.now()])); }
+  };
   const restore = installVirtualClearTimeout();
   try {
     await verifyAttribution(root);
@@ -205,6 +211,7 @@ async function run(root = path.join(__dirname, '..')) {
     }
     return results;
   } finally {
+    global.Date = OriginalDate;
     Date.now = originalNow;
     restore();
   }

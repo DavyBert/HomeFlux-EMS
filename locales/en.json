@@ -215,7 +215,12 @@
       "peakGuardFloor": "Peak Guard minimum",
       "dischargeFloor": "Discharge minimum",
       "batteryFloorIn": "To discharge minimum",
-      "batteryAtFloor": "Discharge minimum reached"
+      "batteryAtFloor": "Discharge minimum reached",
+      "alertInput": "Warning: grid measurement missing or outdated",
+      "alertSafetySoc": "Warning: battery safety reserve is being restored",
+      "alertBalance": "Warning: battery imbalance is worsening",
+      "energyBudget": "Estimated extra household energy until the planning target",
+      "energyBudgetBatteryTarget": "Battery reserve: {soc}%"
     }
   }
 }

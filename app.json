@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "1.1.20",
+  "version": "1.2.1",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -9716,6 +9716,33 @@
           "title": {
             "en": "Current decision",
             "nl": "Huidige beslissing"
+          },
+          "value": true
+        },
+        {
+          "id": "showEnergyBudget",
+          "type": "checkbox",
+          "title": {
+            "en": "Show WAF energy indicator",
+            "nl": "WAF-energie-indicator tonen"
+          },
+          "value": true
+        },
+        {
+          "id": "showCriticalAlerts",
+          "type": "checkbox",
+          "title": {
+            "en": "Show critical EMS alerts",
+            "nl": "Kritieke EMS-waarschuwingen tonen"
+          },
+          "value": true
+        },
+        {
+          "id": "statusColors",
+          "type": "checkbox",
+          "title": {
+            "en": "Colors in widget",
+            "nl": "Kleuren in widget"
           },
           "value": true
         },
