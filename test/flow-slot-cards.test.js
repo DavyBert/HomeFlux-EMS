@@ -41,6 +41,13 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
       assert.deepEqual({ ...card, hint: expected.hint }, expected, `Legacy functional schema changed: ${card.id}`);
       assert.match(card.hint.en, card.id.includes('_soc_') ? /per-EV setting/ : /session stops/);
       assert.match(card.hint.nl, card.id.includes('_soc_') ? /instelling per EV/ : /sessie stopt/);
+    } else if (kind === 'actions' && previous.id === 'set_grid_power') {
+      // 1.2.2 permits larger P1 readings; all other legacy schema stays exact.
+      assert.deepEqual(card, {
+        ...expected,
+        args: expected.args.map((arg, index) => index === 0
+          ? { ...arg, min: -200000, max: 200000 } : arg),
+      }, 'P1 range may expand without changing the remaining Flow schema');
     } else if (displayMetadataChangeIds.has(previous.id)) {
       assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
         `Old functional schema changed: ${previous.id}`);

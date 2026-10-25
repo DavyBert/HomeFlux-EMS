@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.2
+
+Battery charging and discharging limits now support up to 100,000 W per battery and for the complete group, with single or split commands. Existing power settings and defaults remain unchanged.
+
 ### 1.2.1 – Smarter Energy Insights
 
 - Added a household energy budget indicator showing estimated surplus after household demand and daytime battery charging to the configured maximum SoC.

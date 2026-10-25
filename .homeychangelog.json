@@ -1,4 +1,8 @@
 {
+  "1.2.2": {
+    "en": "Battery charge and discharge limits can now be configured up to 100,000 W per battery and for the complete group, in both single and split command modes. Existing configured powers and defaults remain unchanged. P1 Flow input also supports larger measurements for high-power installations.",
+    "nl": "Laad- en ontlaadlimieten zijn nu instelbaar tot 100.000 W per batterij en voor de volledige batterijgroep, voor zowel single als Split Command. Bestaande vermogensinstellingen en standaardwaarden blijven behouden. De P1-invoerkaart ondersteunt ook grotere meetwaarden voor krachtige installaties."
+  },
   "1.2.1": {
     "en": "HomeFlux EMS 1.2.1 – Smarter Energy Insights\n\n- Added a household energy budget indicator showing estimated surplus after household demand and daytime battery charging to the configured maximum SoC.\n- Added critical EMS status alerts to the widget, alternating with the current decision.\n- Introduced intelligent status colors for easier interpretation of energy values.\n- Added independent widget settings for the energy indicator, critical alerts, and status colors.\n- All new widget options are enabled by default, including for existing widgets after updating.",
     "nl": "Een huishoudelijke energiebudgetindicator in kWh tot het volgende planningsdoel, kritieke bestaande EMS-waarschuwingen afgewisseld met de huidige beslissing en betekenisvolle statuskleuren. Drie onafhankelijke widgetopties staan standaard aan, ook voor bestaande widgets na de update."

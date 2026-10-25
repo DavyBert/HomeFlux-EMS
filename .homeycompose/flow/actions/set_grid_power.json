@@ -15,8 +15,8 @@
         "en": "Grid power (W)",
         "nl": "Netvermogen (W)"
       },
-      "min": -50000,
-      "max": 50000,
+      "min": -200000,
+      "max": 200000,
       "step": 1
     }
   ],
