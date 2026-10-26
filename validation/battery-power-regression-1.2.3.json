@@ -1,0 +1,565 @@
+{
+  "simulatedHomey": true,
+  "hardwareTested": false,
+  "legacyComparison": true,
+  "uiMaximumW": 100000,
+  "results": [
+    {
+      "name": "All 20 real UI fields: 0..100000 accepted; 100001/negative/NaN rejected by existing validator",
+      "passed": true
+    },
+    {
+      "name": "P1 Flow measurement range widened from +/-50000 to +/-200000; real handler preserves values above battery maximum plus other load",
+      "passed": true
+    },
+    {
+      "name": "single / shared / {\"count\":1,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 15000,
+      "charge": {
+        "expectedW": -15000,
+        "publishedW": -15000,
+        "perBatteryW": [
+          -15000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / shared / {\"count\":1,\"perCharge\":20000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 20000,
+      "charge": {
+        "expectedW": -20000,
+        "publishedW": -20000,
+        "perBatteryW": [
+          -20000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / shared / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 60000,
+      "charge": {
+        "expectedW": -60000,
+        "publishedW": -60000,
+        "perBatteryW": [
+          -15000,
+          -15000,
+          -15000,
+          -15000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 60000,
+        "publishedW": 60000,
+        "perBatteryW": [
+          15000,
+          15000,
+          15000,
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / shared / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000,\"totalCharge\":37000,\"totalDischarge\":31000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 37000,
+      "charge": {
+        "expectedW": -37000,
+        "publishedW": -37000,
+        "perBatteryW": [
+          -9250,
+          -9250,
+          -9250,
+          -9250
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 31000,
+        "publishedW": 31000,
+        "perBatteryW": [
+          7750,
+          7750,
+          7750,
+          7750
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / shared / {\"count\":1,\"perCharge\":100000,\"perDischarge\":100000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 100000,
+      "charge": {
+        "expectedW": -100000,
+        "publishedW": -100000,
+        "perBatteryW": [
+          -100000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 100000,
+        "publishedW": 100000,
+        "perBatteryW": [
+          100000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / individual / {\"count\":1,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 15000,
+      "charge": {
+        "expectedW": -15000,
+        "publishedW": -15000,
+        "perBatteryW": [
+          -15000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / individual / {\"count\":1,\"perCharge\":20000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 20000,
+      "charge": {
+        "expectedW": -20000,
+        "publishedW": -20000,
+        "perBatteryW": [
+          -20000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / individual / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 60000,
+      "charge": {
+        "expectedW": -60000,
+        "publishedW": -60000,
+        "perBatteryW": [
+          -15000,
+          -15000,
+          -15000,
+          -15000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 60000,
+        "publishedW": 60000,
+        "perBatteryW": [
+          15000,
+          15000,
+          15000,
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / individual / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000,\"totalCharge\":37000,\"totalDischarge\":31000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 37000,
+      "charge": {
+        "expectedW": -37000,
+        "publishedW": -37000,
+        "perBatteryW": [
+          -9250,
+          -9250,
+          -9250,
+          -9250
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 31000,
+        "publishedW": 31000,
+        "perBatteryW": [
+          7750,
+          7750,
+          7750,
+          7750
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "single / individual / {\"count\":1,\"perCharge\":100000,\"perDischarge\":100000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 100000,
+      "charge": {
+        "expectedW": -100000,
+        "publishedW": -100000,
+        "perBatteryW": [
+          -100000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 100000,
+        "publishedW": 100000,
+        "perBatteryW": [
+          100000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "dual / shared / {\"count\":1,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 15000,
+      "charge": {
+        "expectedW": -15000,
+        "publishedW": -15000,
+        "perBatteryW": [
+          -15000
+        ],
+        "splitPowerEvents": 1
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 1
+      }
+    },
+    {
+      "name": "dual / shared / {\"count\":1,\"perCharge\":20000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 20000,
+      "charge": {
+        "expectedW": -20000,
+        "publishedW": -20000,
+        "perBatteryW": [
+          -20000
+        ],
+        "splitPowerEvents": 1
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 1
+      }
+    },
+    {
+      "name": "dual / shared / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 60000,
+      "charge": {
+        "expectedW": -60000,
+        "publishedW": -60000,
+        "perBatteryW": [
+          -15000,
+          -15000,
+          -15000,
+          -15000
+        ],
+        "splitPowerEvents": 4
+      },
+      "discharge": {
+        "expectedW": 60000,
+        "publishedW": 60000,
+        "perBatteryW": [
+          15000,
+          15000,
+          15000,
+          15000
+        ],
+        "splitPowerEvents": 4
+      }
+    },
+    {
+      "name": "dual / shared / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000,\"totalCharge\":37000,\"totalDischarge\":31000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 37000,
+      "charge": {
+        "expectedW": -37000,
+        "publishedW": -37000,
+        "perBatteryW": [
+          -9250,
+          -9250,
+          -9250,
+          -9250
+        ],
+        "splitPowerEvents": 4
+      },
+      "discharge": {
+        "expectedW": 31000,
+        "publishedW": 31000,
+        "perBatteryW": [
+          7750,
+          7750,
+          7750,
+          7750
+        ],
+        "splitPowerEvents": 4
+      }
+    },
+    {
+      "name": "dual / shared / {\"count\":1,\"perCharge\":100000,\"perDischarge\":100000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 100000,
+      "charge": {
+        "expectedW": -100000,
+        "publishedW": -100000,
+        "perBatteryW": [
+          -100000
+        ],
+        "splitPowerEvents": 1
+      },
+      "discharge": {
+        "expectedW": 100000,
+        "publishedW": 100000,
+        "perBatteryW": [
+          100000
+        ],
+        "splitPowerEvents": 1
+      }
+    },
+    {
+      "name": "dual / individual / {\"count\":1,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 15000,
+      "charge": {
+        "expectedW": -15000,
+        "publishedW": -15000,
+        "perBatteryW": [
+          -15000
+        ],
+        "splitPowerEvents": 1
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 1
+      }
+    },
+    {
+      "name": "dual / individual / {\"count\":1,\"perCharge\":20000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 20000,
+      "charge": {
+        "expectedW": -20000,
+        "publishedW": -20000,
+        "perBatteryW": [
+          -20000
+        ],
+        "splitPowerEvents": 1
+      },
+      "discharge": {
+        "expectedW": 15000,
+        "publishedW": 15000,
+        "perBatteryW": [
+          15000
+        ],
+        "splitPowerEvents": 1
+      }
+    },
+    {
+      "name": "dual / individual / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 60000,
+      "charge": {
+        "expectedW": -60000,
+        "publishedW": -60000,
+        "perBatteryW": [
+          -15000,
+          -15000,
+          -15000,
+          -15000
+        ],
+        "splitPowerEvents": 4
+      },
+      "discharge": {
+        "expectedW": 60000,
+        "publishedW": 60000,
+        "perBatteryW": [
+          15000,
+          15000,
+          15000,
+          15000
+        ],
+        "splitPowerEvents": 4
+      }
+    },
+    {
+      "name": "dual / individual / {\"count\":4,\"perCharge\":15000,\"perDischarge\":15000,\"totalCharge\":37000,\"totalDischarge\":31000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 37000,
+      "charge": {
+        "expectedW": -37000,
+        "publishedW": -37000,
+        "perBatteryW": [
+          -9250,
+          -9250,
+          -9250,
+          -9250
+        ],
+        "splitPowerEvents": 4
+      },
+      "discharge": {
+        "expectedW": 31000,
+        "publishedW": 31000,
+        "perBatteryW": [
+          7750,
+          7750,
+          7750,
+          7750
+        ],
+        "splitPowerEvents": 4
+      }
+    },
+    {
+      "name": "dual / individual / {\"count\":1,\"perCharge\":100000,\"perDischarge\":100000}",
+      "passed": true,
+      "persistence": true,
+      "planMaxChargeW": 100000,
+      "charge": {
+        "expectedW": -100000,
+        "publishedW": -100000,
+        "perBatteryW": [
+          -100000
+        ],
+        "splitPowerEvents": 1
+      },
+      "discharge": {
+        "expectedW": 100000,
+        "publishedW": 100000,
+        "perBatteryW": [
+          100000
+        ],
+        "splitPowerEvents": 1
+      }
+    },
+    {
+      "name": "single efficiency target is not a 10000-W command cap",
+      "passed": true,
+      "charge": {
+        "expectedW": -60000,
+        "publishedW": -60000,
+        "perBatteryW": [
+          -15000,
+          -15000,
+          -15000,
+          -15000
+        ],
+        "splitPowerEvents": 0
+      },
+      "discharge": {
+        "expectedW": 60000,
+        "publishedW": 60000,
+        "perBatteryW": [
+          15000,
+          15000,
+          15000,
+          15000
+        ],
+        "splitPowerEvents": 0
+      }
+    },
+    {
+      "name": "dual efficiency target is not a 10000-W command cap",
+      "passed": true,
+      "charge": {
+        "expectedW": -60000,
+        "publishedW": -60000,
+        "perBatteryW": [
+          -15000,
+          -15000,
+          -15000,
+          -15000
+        ],
+        "splitPowerEvents": 4
+      },
+      "discharge": {
+        "expectedW": 60000,
+        "publishedW": 60000,
+        "perBatteryW": [
+          15000,
+          15000,
+          15000,
+          15000
+        ],
+        "splitPowerEvents": 4
+      }
+    },
+    {
+      "name": "Lower legacy powers and exact engine results unchanged; numeric zero stays valid and dual technical minimum behavior preserved",
+      "passed": true
+    },
+    {
+      "name": "SoC bounds, Peak Guard and PV capture above grid planning cap preserved at high power",
+      "passed": true
+    }
+  ],
+  "testedAppVersion": "1.2.3"
+}

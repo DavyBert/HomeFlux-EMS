@@ -1,0 +1,52 @@
+{
+  "version": "1.2.3",
+  "sourceArchive": "HomeFlux-EMS-v1.2.2.zip",
+  "sourceSha256": "2436fa3e14a9ce2d2b8e014b58204c30d6ad709dde6b97da35e0fc023bb5f640",
+  "wafRefreshMs": 300000,
+  "eveningHorizonConfirmedByUser": "next_morning_target_with_remaining_today_solar",
+  "singleWafCalculationCallSite": true,
+  "independentWafTimerAdded": false,
+  "criticalFilesByteIdentical": [
+    "lib/ems-engine.js",
+    "lib/battery-night-planner.js",
+    "lib/ev-deadline-planner.js",
+    "settings/index.html",
+    "widgets/status/public/index.html",
+    ".homeycompose/flow/actions/set_grid_power.json",
+    "README.txt",
+    "README.nl.txt"
+  ],
+  "changedFiles": [
+    ".homeychangelog.json",
+    ".homeycompose/app.json",
+    "README.md",
+    "app.js",
+    "app.json",
+    "lib/widget-energy-budget.js",
+    "package-lock.json",
+    "package.json",
+    "test/planning-monitor-1.1.16.test.js",
+    "test/settings-startup.test.js",
+    "test/widget.test.js"
+  ],
+  "addedFiles": [
+    "docs/waf-continuity-1.2.3.md",
+    "test/waf-continuity-1.2.3.test.js",
+    "validation/battery-power-regression-1.2.3.json",
+    "validation/release-1.2.3.json",
+    "validation/syntax-1.2.3.json",
+    "validation/tests-1.2.3.json",
+    "validation/waf-baseline-1.2.2.json",
+    "validation/waf-continuity-1.2.3.json",
+    "validation/widget-insights-regression-1.2.3.json"
+  ],
+  "testFilesPassed": 84,
+  "wafScenariosPassed": 14,
+  "batteryPowerRegressionScenariosPassed": 26,
+  "syntaxChecksPassed": 36,
+  "simulatedHomey": true,
+  "hardwareTested": false,
+  "visualBrowserTested": false,
+  "homeySdkInstallTested": false,
+  "homeyCpuPercentageMeasured": false
+}

@@ -32,6 +32,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.3
+
+The WAF energy balance refreshes every five minutes independently of battery charge planning. It stays available across morning and afternoon target times while preserving the real PV-based night transition.
+
 ### 1.2.2
 
 Battery charging and discharging limits now support up to 100,000 W per battery and for the complete group, with single or split commands. Existing power settings and defaults remain unchanged.

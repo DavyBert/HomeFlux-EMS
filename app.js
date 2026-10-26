@@ -3,7 +3,7 @@
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
-const { calculateBudget } = require('./lib/widget-energy-budget');
+const { calculateBudget, budgetHorizon } = require('./lib/widget-energy-budget');
 const { CompactDiagnostics } = require('./lib/compact-diagnostics');
 const { InputMonitor } = require('./lib/input-monitor');
 const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normalizeSecondary } = require('./lib/price-normalization');
@@ -3128,9 +3128,14 @@ class HomeFluxEmsApp extends Homey.App {
         : Math.max(targetAt, Number(requestedAt));
     }
 
+    this.scheduleContextEvaluationAt(targetAt, immediate);
+  }
+
+  scheduleContextEvaluationAt(targetAt, forceStatus = false) {
+    const now = Date.now();
     if (targetAt <= now) {
       this.clearContextTimer();
-      this.runContextEvaluation(immediate).catch(err => this.error('Slow EMS context evaluation failed', err));
+      this.runContextEvaluation(forceStatus).catch(err => this.error('Slow EMS context evaluation failed', err));
       return;
     }
 
@@ -3186,6 +3191,13 @@ class HomeFluxEmsApp extends Homey.App {
         this.requestContextEvaluate(false, reasons.length ? `pending:${reasons.join(',')}` : 'pending', 0, false, false);
       } else if (this.planningCache?.dirty && this.planningCache?.value) {
         this.requestContextEvaluate(false, 'planning_due', Number(this.planningCache.nextAllowedAt) || 0);
+      }
+      // Reuse the ONE context timer. Merely scheduling this deadline must not
+      // mark the context dirty and provoke an earlier heartbeat evaluation.
+      const budgetAt = Number(this.planningCache?.budgetNextAt) || 0;
+      const budgetSettings = this.getSettings();
+      if (budgetSettings.controlEnabled && this.getBatteryCount(budgetSettings) > 0 && budgetAt > Date.now()) {
+        this.scheduleContextEvaluationAt(budgetAt);
       }
     }
   }
@@ -4110,7 +4122,10 @@ class HomeFluxEmsApp extends Homey.App {
     this.markContextDirty('planning');
     // No independent timer or calculation here. Ordinary changes retain the
     // last valid plan and its deadline; structural changes may bypass the block.
-    if (force) this.planningCache.nextAllowedAt = 0;
+    if (force) {
+      this.planningCache.nextAllowedAt = 0;
+      this.planningCache.budgetNextAt = 0;
+    }
   }
 
   async migrateSettings() {
@@ -15302,61 +15317,90 @@ class HomeFluxEmsApp extends Homey.App {
     const phaseChanged = cache.phaseKey !== phaseKey;
     const hasValue = Boolean(cache.value?.plan);
     const firstSoc = hasValue && cache.value.plan.currentSoc == null && computeAverageSoc(state, settings) !== null;
-    if (hasValue && !phaseChanged && !firstSoc && (!cache.dirty || now < Number(cache.nextAllowedAt))) return cache.value.plan;
-    this.recordDiagnosticCounter('planningCalculations');
+    const planDue = !hasValue || phaseChanged || firstSoc || (cache.dirty && now >= Number(cache.nextAllowedAt));
+    const budgetDue = !cache.energyBudget || phaseChanged
+      || now >= Number(cache.budgetNextAt || 0) || firstSoc;
+    if (!planDue && !budgetDue) return cache.value.plan;
     const diagnosticCpu = this.startDiagnosticCpuSection('planning_calculation');
     let plan;
     try {
+      if (budgetDue) {
+        const horizon = budgetHorizon(state, settings, now);
+        // Reuse the already calculated control facts, not a second planner or
+        // forecast-target calculation. Raw remaining-today is intentional:
+        // the continuing night controller may have projected its night median
+        // into evaluationState on a dark morning, while WAF now looks to 17:00.
+        const budgetPlan = {
+          ready: Boolean(controlResult),
+          currentSoc: controlResult?.avgSoc,
+          targetSoc: controlResult?.planningChargeTargetSoc ?? controlResult?.targetSoc,
+          safetySoc: controlResult?.safetySoc,
+          peakReserveActive: controlResult?.peakReserveActive,
+          peakReserveTargetSoc: controlResult?.peakReserveTargetSoc,
+          planningPhase: horizon.phase,
+          planningChargeDeadlineAt: horizon.targetAt,
+          forecastReady: Boolean(settings.forecastDataReady),
+          forecastUsedSource: 'today_remaining',
+          forecastUsedKwh: this.state.forecastRemainingKwh,
+        };
+        const evs = [];
+        for (let i = 0; i < this.getEvCount(storedSettings); i += 1) {
+          const key = suffix => this.getEvSettingKey(i, suffix);
+          if (!storedSettings[key('Enabled')] || !this.getEvInputSnapshot(i)?.connected
+            || this.getEvSessionDetectionRuntime(i)?.endedLatched) continue;
+          const energy = this.evEnergyPlans?.[i];
+          const socPlan = this.evSocPlans?.[i];
+          const decision = i === 0 ? this.latestEvDecision : this.getExtraEv(i)?.latestDecision;
+          const reserved = energy?.active || socPlan?.active || storedSettings[key('GuaranteeTarget')]
+            || storedSettings[key('Mode')] === 'soc_target' || decision?.nightSurplusActive;
+          if (!reserved) continue;
+          const input = this.getEvInputSnapshot(i);
+          const target = socPlan?.active ? socPlan.targetSoc : storedSettings[key('TargetSoc')];
+          const socFresh = this.getEvSocFreshness(i, {
+            evSocEnabled: storedSettings[key('SocEnabled')],
+            evSocFreshnessMinutes: storedSettings[key('SocFreshnessMinutes')],
+          }, now).fresh;
+          const hasGoal = energy?.active || socPlan?.active || storedSettings[key('GuaranteeTarget')]
+            || storedSettings[key('Mode')] === 'soc_target';
+          const nightReservedKwh = decision?.nightSurplusActive
+            ? Math.min(Math.max(0, Number(decision.nightSurplusEnergyKwh) || 0),
+              Math.max(0, Number(decision.nightSurplusAllocatedW) || 0) / 1000
+                * Math.max(0, horizon.targetAt - now) / 3600000) : 0;
+          const needKwh = !hasGoal ? 0 : energy?.active ? energy.remainingKwh
+            : socFresh && input?.seen?.soc && Number.isFinite(Number(input.soc))
+              ? Math.max(0, Number(storedSettings[key('BatteryCapacityKwh')]) * (Number(target) - Number(input.soc)) / 100)
+              : null;
+          if (needKwh === 0 && nightReservedKwh === 0) continue;
+          const deadlineAt = !hasGoal ? horizon.targetAt : energy?.active ? energy.deadlineAt : socPlan?.active ? socPlan.deadlineAt : decision?.deadlineAt;
+          const scheduled = this.evDeadlinePlanner?.plans?.get(i);
+          // Ignore a previous goal's cached EV slots. Reading them never invokes
+          // the EV planner, settings builders, deadline finder or portfolio.
+          const currentGoal = decision?.deadlinePlanGoalRevision === (this.evDeadlineGoalRevision?.[i] || 0)
+            && decision?.deadlinePlanSettingsRevision === (this.evDeadlineSettingsRevision || 0);
+          evs.push({ reserved: true, needKwh, deadlineAt, nightReservedKwh, slots: currentGoal ? scheduled?.slots : null });
+        }
+        this.recordDiagnosticCounter('widgetEnergyBudgetCalculations');
+        cache.energyBudget = calculateBudget({ plan: budgetPlan, settings, state, evs, now,
+          learning: this.autoTuneRuntime?.planning, reserveSoc: controlResult?.ordinaryDischargeFloorSoc,
+          batteryAvailable: Boolean(controlResult) && Boolean(settings.controlEnabled) && !this.hybridEmsRuntime?.delegated
+            && String(settings.forcedMode || 'auto') !== 'standby' });
+        cache.energyBudget.horizon = horizon.horizon;
+        cache.budgetPhaseKey = horizon.key;
+        cache.budgetNextAt = horizon.nextRefreshAt;
+        if (hasValue) cache.value.plan.energyBudget = cache.energyBudget;
+      }
+      // WAF is refreshed independently BEFORE the optional battery plan. A
+      // fixed contract, reached SoC goal or clean plan cache cannot suppress it.
+      if (!planDue) return cache.value.plan;
+      this.recordDiagnosticCounter('planningCalculations');
       plan = {
         version: this.homey?.manifest?.version || require('./app.json').version,
         nightPlanningActive: this.isNightPlanningPhase(now),
         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
         ...this.measurePlanningCalculation('batterySocPlan', 'context', 0,
           () => buildSocPlan(state, settings, new Date(now))),
+        energyBudget: cache.energyBudget,
       };
-      // Presentation insight belongs to this ACTUAL battery plan, after the
-      // cache guard. No P1, status, EV or widget path calls this calculation.
-      const evs = [];
-      for (let i = 0; i < this.getEvCount(storedSettings); i += 1) {
-        const key = suffix => this.getEvSettingKey(i, suffix);
-        if (!storedSettings[key('Enabled')] || !this.getEvInputSnapshot(i)?.connected
-          || this.getEvSessionDetectionRuntime(i)?.endedLatched) continue;
-        const energy = this.evEnergyPlans?.[i];
-        const socPlan = this.evSocPlans?.[i];
-        const decision = i === 0 ? this.latestEvDecision : this.getExtraEv(i)?.latestDecision;
-        const reserved = energy?.active || socPlan?.active || storedSettings[key('GuaranteeTarget')]
-          || storedSettings[key('Mode')] === 'soc_target' || decision?.nightSurplusActive;
-        if (!reserved) continue;
-        const input = this.getEvInputSnapshot(i);
-        const target = socPlan?.active ? socPlan.targetSoc : storedSettings[key('TargetSoc')];
-        const socFresh = this.getEvSocFreshness(i, {
-          evSocEnabled: storedSettings[key('SocEnabled')],
-          evSocFreshnessMinutes: storedSettings[key('SocFreshnessMinutes')],
-        }, now).fresh;
-        const hasGoal = energy?.active || socPlan?.active || storedSettings[key('GuaranteeTarget')]
-          || storedSettings[key('Mode')] === 'soc_target';
-        const nightReservedKwh = decision?.nightSurplusActive
-          ? Math.min(Math.max(0, Number(decision.nightSurplusEnergyKwh) || 0),
-            Math.max(0, Number(decision.nightSurplusAllocatedW) || 0) / 1000
-              * Math.max(0, plan.planningChargeDeadlineAt - now) / 3600000) : 0;
-        const needKwh = !hasGoal ? 0 : energy?.active ? energy.remainingKwh
-          : socFresh && input?.seen?.soc && Number.isFinite(Number(input.soc))
-            ? Math.max(0, Number(storedSettings[key('BatteryCapacityKwh')]) * (Number(target) - Number(input.soc)) / 100)
-            : null;
-        if (needKwh === 0 && nightReservedKwh === 0) continue;
-        const deadlineAt = !hasGoal ? plan.planningChargeDeadlineAt : energy?.active ? energy.deadlineAt : socPlan?.active ? socPlan.deadlineAt : decision?.deadlineAt;
-        const scheduled = this.evDeadlinePlanner?.plans?.get(i);
-        // Ignore a previous goal's cached EV slots. Reading them never invokes
-        // the EV planner, settings builders, deadline finder or portfolio.
-        const currentGoal = decision?.deadlinePlanGoalRevision === (this.evDeadlineGoalRevision?.[i] || 0)
-          && decision?.deadlinePlanSettingsRevision === (this.evDeadlineSettingsRevision || 0);
-        evs.push({ reserved: true, needKwh, deadlineAt, nightReservedKwh, slots: currentGoal ? scheduled?.slots : null });
-      }
-      this.recordDiagnosticCounter('widgetEnergyBudgetCalculations');
-      plan.energyBudget = calculateBudget({ plan, settings, state, evs, now,
-        learning: this.autoTuneRuntime?.planning, reserveSoc: controlResult?.ordinaryDischargeFloorSoc,
-        batteryAvailable: Boolean(controlResult) && Boolean(settings.controlEnabled) && !this.hybridEmsRuntime?.delegated
-          && String(settings.forcedMode || 'auto') !== 'standby' });
     } finally {
       this.endDiagnosticCpuSection(diagnosticCpu);
     }
@@ -15496,7 +15540,7 @@ class HomeFluxEmsApp extends Homey.App {
     preview.lastControlEvaluationAt = Number(this.lastControlEvalAt) || 0;
     preview.nextCharge = this.getWidgetNextChargeStatus(statusNow);
     preview.planningSummary = this.getWidgetPlanningSummary(statusNow);
-    const budget = this.planningCache?.value?.plan?.energyBudget;
+    const budget = this.planningCache?.energyBudget;
     preview.energyBudget = budget?.ready && statusNow >= budget.calculatedAt && statusNow < budget.validUntil
       ? budget : null;
     // Select existing conditions only; do not infer communications failures

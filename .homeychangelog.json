@@ -1,4 +1,8 @@
 {
+  "1.2.3": {
+    "en": "The WAF energy balance now refreshes every five minutes independently of battery charge planning, with continuous horizons around the morning and afternoon targets.",
+    "nl": "De WAF-energiebalans ververst nu elke vijf minuten onafhankelijk van de batterijlaadplanning, met doorlopende doelperiodes rond het ochtend- en avonddoel."
+  },
   "1.2.2": {
     "en": "Battery charge and discharge limits can now be configured up to 100,000 W per battery and for the complete group, in both single and split command modes. Existing configured powers and defaults remain unchanged. P1 Flow input also supports larger measurements for high-power installations.",
     "nl": "Laad- en ontlaadlimieten zijn nu instelbaar tot 100.000 W per batterij en voor de volledige batterijgroep, voor zowel single als Split Command. Bestaande vermogensinstellingen en standaardwaarden blijven behouden. De P1-invoerkaart ondersteunt ook grotere meetwaarden voor krachtige installaties."
