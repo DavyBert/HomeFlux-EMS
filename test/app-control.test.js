@@ -1117,7 +1117,7 @@ function prepareBatteryAllocationFixture(app, settings) {
 {
   const app = bareApp();
   app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
-  app.inputUpdatedAt.ev = { soc: 0, connected: 2000, chargeCurrent: 2000 };
+  app.inputUpdatedAt.ev = { soc: 0, connected: Date.now(), chargeCurrent: Date.now() };
   app.state.evConnected = true;
   app.state.evChargeCurrentA = 2.9;
   app.state.gridPowerW = 122;
@@ -1157,7 +1157,7 @@ function prepareBatteryAllocationFixture(app, settings) {
 {
   const app = bareApp();
   app.inputSeen.ev = { soc: false, connected: true, chargeCurrent: true };
-  app.inputUpdatedAt.ev = { soc: 0, connected: 2000, chargeCurrent: 2000 };
+  app.inputUpdatedAt.ev = { soc: 0, connected: Date.now(), chargeCurrent: Date.now() };
   app.state.evConnected = true;
   app.state.evChargeCurrentA = 10;
   app.state.gridPowerW = 500;
@@ -3170,9 +3170,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(app.evEnergyPlans[0].guarantee, true);
 }
 
-// v0.6.1: mode-only EV power estimation follows the actually published Smart
-// or Standard charger mode, and becomes controller feedback when no current
-// telemetry is available yet.
+// Published Smart/Standard currents remain request limits. Without a real
+// HomeFlux P1 observation they must never become physical controller feedback.
 {
   const app = bareApp();
   const settings = {
@@ -3188,12 +3187,12 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   app.lastPublishedEvChargeMode = 'smart';
   app.lastPublishedEvCurrentA = 0;
   app.lastPublishedEvAllowed = true;
-  assert.equal(app.getEvCommandedPowerW(0, settings), 7 * 230);
-  assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 7);
+  assert.equal(app.getEvCommandedPowerW(0, settings), 0);
+  assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 0);
 
   app.lastPublishedEvChargeMode = 'standard';
-  assert.equal(app.getEvCommandedPowerW(0, settings), 16 * 230);
-  assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 16);
+  assert.equal(app.getEvCommandedPowerW(0, settings), 0);
+  assert.equal(app.getEvControlCurrentA(0, { seen: { chargeCurrent: false }, updatedAt: {}, chargeCurrentA: 0 }, settings), 0);
 }
 
 // v0.6.2 settings audit: the global EV/PV ratio is a priority split, not a

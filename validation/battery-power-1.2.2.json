@@ -1,7 +1,7 @@
 {
   "simulatedHomey": true,
   "hardwareTested": false,
-  "legacyComparison": true,
+  "legacyComparison": false,
   "uiMaximumW": 100000,
   "results": [
     {

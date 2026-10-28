@@ -4,8 +4,8 @@
     "nl": "EV-doel kan niet worden gehaald"
   },
   "hint": {
-    "en": "Fires once when HomeFlux determines that an EV deadline cannot be met with the currently available selected tariff windows, or cannot be met at all. The message token can be sent as a push notification.",
-    "nl": "Wordt één keer geactiveerd wanneer HomeFlux bepaalt dat een EV-deadline niet haalbaar is met de huidige geselecteerde tariefvensters, of helemaal niet haalbaar is. De teksttag kan rechtstreeks voor een pushmelding worden gebruikt."
+    "en": "Triggers at most once per EV connection session when a target cannot be reached within the selected tariffs or at all. A confirmed disconnect rearms the warning; app restarts retain the session warning latch.",
+    "nl": "Wordt maximaal één keer per EV-aansluitsessie geactiveerd als het doel niet haalbaar is binnen de gekozen tarieven of helemaal niet. Een bevestigde disconnect maakt de melding opnieuw vrij; een app-herstart bewaart de sessievergrendeling."
   },
   "tokens": [
     {

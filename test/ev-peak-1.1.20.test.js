@@ -45,11 +45,11 @@ async function replay({root=ROOT,type='mode',seconds=660,baseline=4000,houseW=70
 }
 async function check(name,run){const detail=await run();results.push({name,...detail});console.log('PASS',name);}
 async function main(){try{
- await check('False 300-second stop cycle removed with fresh 16A despite a high house reference',async()=>{
-  const r=await replay();assert.equal(r.report.stopCount,0);assert.equal(r.report.finalAmps[0],16);
-  assert(Math.abs(r.report.finalAccounting.currentEvPowerW-16*PER_AMP)<1);
+ await check('Mode cannot bypass an uncertain high house reference using Flow amperes',async()=>{
+  const r=await replay();assert.equal(r.report.stopCount,0);assert.equal(r.report.finalAmps[0],6);
+  assert.equal(r.report.finalAccounting.currentEvPowerW,0);
   assert.equal(r.report.finalAccounting.houseBaselineW,4000);
-  assert(r.report.finalAccounting.peakBudgetW>=16*PER_AMP-1);
+  assert(r.report.finalAccounting.peakBudgetW>=6*PER_AMP-1);
   let baseline=null;
   if(process.env.HEMS_BASELINE_ROOT){
    const old=await replay({root:process.env.HEMS_BASELINE_ROOT});baseline=old.report;
@@ -58,7 +58,7 @@ async function main(){try{
   return{current:r.report,baseline};
  });
  await check('Actual lower delivery stays authoritative and kWh progress counts measured current',async()=>{
-  const r=await replay({seconds:90,actualA:8});assert.equal(r.report.stopCount,0);assert.equal(r.report.finalAmps[0],16);
+  const r=await replay({seconds:90,actualA:8,baseline:700});assert.equal(r.report.stopCount,0);assert.equal(r.report.finalAmps[0],16);
   assert(Math.abs(r.app.getEvCommandedPowerW(0)-8*PER_AMP)<.01);
   assert.equal(r.app.getEvControlCurrentA(0),8);assert(!r.app.getEvSessionDetectionRuntime(0).loadAbsent);
   r.app.setEvEnergyPlan(0,10,'07:00','yes');
@@ -73,7 +73,7 @@ async function main(){try{
   return r.report;
  });
  await check('Stale positive telemetry falls back conservatively instead of financing false headroom',async()=>{
-  const r=await replay({feedback:'stale',seconds:125});assert(r.report.stopCount>=1);
+  const r=await replay({type:'current',feedback:'stale',seconds:125});assert(r.report.stopCount>=1);
   assert(!r.app.getEvMeasuredCurrent(0).fresh);return r.report;
  });
  await check('Mode-only integration without current measurement retains P1 inference',async()=>{
@@ -91,7 +91,7 @@ async function main(){try{
   assert(total<=14900+1);assert(r.report.finalAmps.every(amp=>amp>0));return{...r.report,predictedGridW:total};
  });
  await check('Full planning diagnostic exposes Emergency-only Peak Guard arithmetic',async()=>{
-  const r=await replay({seconds:20}),a=r.app;
+  const r=await replay({seconds:20,baseline:700}),a=r.app;
   const accounting=a.latestEvDecision.peakGuardAccounting;assert(accounting);
   assert.equal(accounting.peakLimitW,15000);assert.equal(accounting.peakSoftMarginW,100);
   const records=a.getCompactDiagnostics().events||[];

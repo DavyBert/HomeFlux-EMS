@@ -12,8 +12,10 @@ Module._load = originalLoad;
 const { calculateEvDecision, evPowerPerAmp } = require('../lib/flexible-loads');
 const { translate } = require('../lib/display-language');
 const start = Date.parse('2026-09-28T10:00:00Z');
+let clockNow=start;const NativeDate=Date;global.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[clockNow]));}static now(){return clockNow;}};
 
 function setup(mode = 'standard', count = 1) {
+  clockNow=start;
   const app = Object.create(App.prototype);
   const settings = {
     timezone: 'Europe/Brussels', contractType: 'tou', evCount: count, batteryCount: 0,
@@ -72,7 +74,7 @@ function setup(mode = 'standard', count = 1) {
   app.homey = { clock: { getTimezone: () => 'Europe/Brussels' }, i18n: { getLanguage: () => 'nl' } };
   const expectedW = evPowerPerAmp(settings) * (mode === 'smart' ? 6 : 16);
   function sample(seconds, evW, applianceW = 0, pvW = 0, batteryW = 0) {
-    const now = start + seconds * 1000;
+    const now = start + seconds * 1000;clockNow=now;
     app.state.pvPowerW = pvW;
     app.state.lastTotalCommandW = batteryW;
     app.state.gridPowerW = 1000 + evW + applianceW - pvW - batteryW;

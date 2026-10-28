@@ -1,0 +1,59 @@
+{
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "before": {
+    "planAfterDisconnect": null,
+    "waf": {
+      "ready": false,
+      "valueKwh": null,
+      "calculatedAt": 1793091600000,
+      "targetAt": 1793127600000,
+      "validUntil": 0,
+      "reason": "ev_horizon_unknown"
+    }
+  },
+  "after": {
+    "planAfterDisconnect": {
+      "type": "soc",
+      "value": 83,
+      "time": "07:00",
+      "deadlineAt": 1793167200000,
+      "guaranteed": true,
+      "deadlineLabel": {
+        "dateKey": "2026-10-28",
+        "time": "07:00",
+        "nl": "wo 28/10/2026 · 07:00",
+        "en": "Wed 28/10/2026 · 07:00"
+      },
+      "owner": "flow",
+      "days": 0,
+      "maxPv": false,
+      "completed": false,
+      "expired": false,
+      "provisional": false
+    },
+    "waf": {
+      "ready": true,
+      "valueKwh": 2.999999999999999,
+      "calculatedAt": 1793091600000,
+      "targetAt": 1793127600000,
+      "validUntil": 1793127600000,
+      "phase": "day",
+      "targetSoc": 100,
+      "dischargeFloorSoc": 100,
+      "remainingHours": 10,
+      "planningTargetSoc": 50,
+      "targetSource": "day_maximum_soc",
+      "solarKwh": 12,
+      "solarSource": "today_remaining",
+      "householdDailyKwh": 16.8,
+      "householdSource": "expectedEnergyNeedKwh",
+      "householdDays": 0,
+      "householdKwh": 7.000000000000001,
+      "batteryAvailableKwh": 0,
+      "batteryGoalNeedKwh": 2,
+      "batteryBalanceKwh": -2,
+      "evReservedKwh": 0
+    }
+  }
+}

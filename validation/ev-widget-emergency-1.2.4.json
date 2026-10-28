@@ -1,0 +1,13 @@
+{
+  "simulatedHomey": true,
+  "passed": 7,
+  "results": [
+    "Emergency without any goal invokes the exact registered mode listener; no fictional goal/deadline",
+    "Confirmed Emergency clears only the selected widget goal, then activates existing mode override",
+    "Switching Emergency off uses existing Smart mode input and does not recreate an ended widget goal",
+    "Existing Flow-created goal stays persistent when Emergency mode is chosen",
+    "Invalid action or missing listener cannot clear the previous valid widget goal",
+    "Duplicate confirmations with the same request ID execute the central mode action once",
+    "Controller double-confirmation works without a plan and without completing a target/time draft"
+  ]
+}

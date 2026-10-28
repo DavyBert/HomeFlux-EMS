@@ -3,13 +3,16 @@ const assert = require('node:assert/strict');
 const {boot,DEFAULTS}=require('./startup-harness');
 const {evaluate}=require('../lib/ems-engine');
 const now = new Date('2026-09-25T21:36:00Z');
+let clockNow=now.getTime();const NativeDate=Date;global.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[clockNow]));}static now(){return clockNow;}};
 const priorities=['battery_first','share','ev_first'];
 function settings(extra={}) {
  return {...DEFAULTS,timezone:'UTC',batteryCount:1,totalCapacityKwh:20,maxChargePerBatteryW:10000,maxDischargePerBatteryW:10000,maxTotalChargeW:10000,maxTotalDischargeW:10000,controlProfile:'exact',gridZeroMinW:-5,gridZeroMaxW:5,peakShaveEnabled:true,peakLimitW:17000,peakSoftMarginW:0,contractType:'tou',touRates:[{id:'dal',name:'Dal',importPrice:.2,weekdayChargeMode:'always',weekendChargeMode:'always',lowForecastBatterySave:true,lowForecastDischargeToTarget:true,evChargeAllowed:true,evPvChargeAllowed:true,evMaxGridImportW:16000}],touSchedule:[{rateId:'dal',start:'00:00',end:'00:00',days:[1,2,3,4,5,6,7]}],evCount:1,evEnabled:true,evSocEnabled:false,evMode:'smart',evControlType:'current',evPhases:3,evVoltage:380,evVoltageReference:'line',evMaxCurrentA:16,evStandardCurrentA:16,evModeStandardCurrentA:16,evCommandIntervalSeconds:1,evSkipFeedbackValidation:true,...extra};
 }
 async function setup(s) {
+ clockNow=now.getTime();
  const {app}=await boot();app.getSettings=()=>s;app.getRuntimeSettings=x=>x;app.getPvCurtailmentHeadroomW=()=>0;
  app.state={...app.state,gridPowerW:10181,pvPowerW:0,batterySoc:[84],lastTotalCommandW:-6000,targetSocOverride:77.8,forecastRemainingKwh:0,forecastTomorrowKwh:0,nightPlanningActive:true,planningForecastDay:'tomorrow',evConnected:true,evChargeCurrentA:16};
+ app.inputSeen.grid=true;app.inputSeen.pv=true;app.inputUpdatedAt.grid=clockNow;app.inputUpdatedAt.pv=clockNow;
  app.inputSeen.ev={soc:false,connected:true,chargeCurrent:true};app.inputUpdatedAt.ev={connected:now.getTime(),chargeCurrent:now.getTime()};
  app.lastPublishedEvAllowed=true;app.lastPublishedEvCurrentA=16;app.lastEvPublishedAt=now.getTime()-1000;app.lastPublishedEvChargeMode='standard';
  app.latestEvDecision={connected:true,intentionalGridImport:true,selectedTariff:true,portfolioGridImportTargetW:16000,desiredCurrentA:16,requestedPowerW:10531,effectiveChargeMode:'standard'};
@@ -24,15 +27,16 @@ async function stuckCharging() {
   for(let tick=0;tick<10;tick++) {
    app.state.lastTotalCommandW=output;app.state.gridPowerW=4181-output;
    const allowance=app.getEvGridImportControlStatus(s,now.getTime());
-   assert.equal(allowance.activeTargetW,4181,'Exclude charging for every priority/control type');
+   assert.equal(allowance.activeTargetW,type==='mode'?0:4181,'Mode without observed P1 load gets no nominal credit; Flow controls remain bounded by physical import');
    const r=evaluate({...app.state,controlGridPowerW:app.state.gridPowerW-allowance.activeTargetW},s,now);
    assert(r.totalCommandW>=output,'Old charging must monotonically decrease');
    if(r.totalCommandW< -25)assert.equal(r.action,'grid_charge','Residual grid charging is not solar');
    output=r.totalCommandW;
   }
-  assert(Math.abs(output)<=5);
+  if(type==='mode')assert(output>=-5,'Unobserved Mode load stays household demand; battery may support it but must stop charging');
+  else assert(Math.abs(output)<=5);
   app.state.gridPowerW=-200;app.state.lastTotalCommandW=1000;
-  assert.equal(app.getEvGridImportControlStatus(s,now.getTime()).activeTargetW,800,'Net export must also be subtracted');
+  assert.equal(app.getEvGridImportControlStatus(s,now.getTime()).activeTargetW,type==='mode'?0:800,'Net export must also be subtracted');
   app.latestEvDecision={...app.latestEvDecision,desiredCurrentA:0,intentionalGridImport:false};
   assert.equal(app.getEvGridImportControlStatus(s,now.getTime()).activeTargetW,0,'Stopped EV releases allowance');
  }
@@ -44,9 +48,12 @@ async function priorityCycles(type) {
   s.touRates[0].evMaxGridImportW=7000;
   const app=await setup(s);app.state.batterySoc=[20];app.state.targetSocOverride=80;
   app.latestEvDecision=null;app.lastPublishedEvCurrentA=0;app.lastPublishedEvChargeMode='stop';app.state.evChargeCurrentA=0;
+  app.evSessionDetection.portfolioBaselineW=400;
   let battery=-5000,evW=0;
   for(let tick=0;tick<30;tick++) {
+   clockNow=now.getTime()+tick*1000;app.inputUpdatedAt.grid=clockNow;app.inputUpdatedAt.pv=clockNow;
    app.state.lastTotalCommandW=battery;app.state.gridPowerW=400+evW-battery;
+   app.updateEvPortfolioLoadDetection(app.state.gridPowerW,clockNow,s);
    const limit=app.getPlannedBatteryGridLimitW(s,now.getTime());
    const control=app.getEvGridImportControlStatus(s,now.getTime());
    // Fixed target/horizon produces a 5 kW plan independently of coordination.

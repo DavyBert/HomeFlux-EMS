@@ -55,6 +55,7 @@ function modeOnlyApp({ mode = 'smart', smartA = 6, standardA = 16, gridAllowance
     evModeStandardCurrentA: standardA,
   };
   app.getSettings = () => settings;
+  app.updateEvPortfolioLoadDetection(app.state.gridPowerW, now, settings);
   return { app, settings, now };
 }
 

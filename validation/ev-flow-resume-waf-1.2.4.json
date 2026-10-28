@@ -1,0 +1,67 @@
+{
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "passed": 16,
+  "results": [
+    {
+      "name": "soc Flow goal returns after soc widget disconnect, including after edits"
+    },
+    {
+      "name": "soc Flow goal returns after kwh widget disconnect, including after edits"
+    },
+    {
+      "name": "kwh Flow goal returns after soc widget disconnect, including after edits"
+    },
+    {
+      "name": "kwh Flow goal returns after kwh widget disconnect, including after edits"
+    },
+    {
+      "name": "Restart preserves saved Flow input; first explicit false restores it; second restart retains restored Flow"
+    },
+    {
+      "name": "Manual widget clear stays empty, including after disconnect and restart"
+    },
+    {
+      "name": "Emergency clear does not restore Flow goal on later disconnect"
+    },
+    {
+      "name": "Latest explicit Flow goal wins; later widget restores that goal without changing another EV"
+    },
+    {
+      "name": "Pause/zero/unknown is not disconnect; ordinary Flow mode and underlying Flow goal both resume"
+    },
+    {
+      "name": "No remembered Flow goal invents no plan; zero kWh Flow remains a valid restored goal"
+    },
+    {
+      "name": "Completed widget goal still restores Flow goal on disconnect; next connection rearms full Flow kWh"
+    },
+    {
+      "name": "Explicit Flow clear while widget active remains clear across disconnect"
+    },
+    {
+      "name": "Widget created before first connection survives false; old widget without saved Flow invents no target"
+    },
+    {
+      "name": "fixed: real context refreshes WAF with unknown EV SoC/horizon every five minutes",
+      "firstAt": 1793091600000,
+      "nextAt": 1793091900000,
+      "extraWafCalculations": 1,
+      "extraBatteryPlans": 0
+    },
+    {
+      "name": "tou: real context refreshes WAF with unknown EV SoC/horizon every five minutes",
+      "firstAt": 1793091600000,
+      "nextAt": 1793091900000,
+      "extraWafCalculations": 1,
+      "extraBatteryPlans": 0
+    },
+    {
+      "name": "dynamic_quarter: real context refreshes WAF with unknown EV SoC/horizon every five minutes",
+      "firstAt": 1793091600000,
+      "nextAt": 1793091900000,
+      "extraWafCalculations": 1,
+      "extraBatteryPlans": 0
+    }
+  ]
+}

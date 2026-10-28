@@ -84,6 +84,7 @@ function modePortfolio(count) {
     settings[`${stem}ModeStandardCurrentA`] = 19;
   }
   app.getSettings = () => settings;
+  app.updateEvPortfolioLoadDetection(app.state.gridPowerW, now, settings);
   return { app, settings, now };
 }
 
@@ -98,15 +99,16 @@ for (const count of [1, 2, 3, 4]) {
   assert.equal(active.detectedEvLoadW, 9000);
 
   app.state.gridPowerW = 1200;
-  assert.equal(app.updateEvPortfolioLoadDetection(1200, now, settings), count === 1);
+  app.inputUpdatedAt.grid = now + 1;
+  assert.equal(app.updateEvPortfolioLoadDetection(1200, now + 1, settings), count === 1);
   const waiting = app.getEvGridImportControlStatus(settings, now);
   assert.equal(waiting.activeTargetW, 0, `count=${count} released ordinary house load`);
   assert.equal(app.evSessionDetection.gridReleaseBlocked, false);
 
   app.inputUpdatedAt.grid = now + 30000;
   app.updateEvPortfolioLoadDetection(1200, now + 30000, settings);
-  app.inputUpdatedAt.grid = now + 60000;
-  app.updateEvPortfolioLoadDetection(1200, now + 60000, settings);
+  app.inputUpdatedAt.grid = now + 60001;
+  app.updateEvPortfolioLoadDetection(1200, now + 60001, settings);
   if (count === 1) {
     assert.equal(app.evSessionDetection.sessions[0].endedLatched, false);
     assert.equal(app.evSessionDetection.sessions[0].state, 'paused');

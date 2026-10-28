@@ -1,0 +1,19 @@
+{
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "passed": 12,
+  "results": [
+    "Both global settings default OFF, persisted settings restore without changing power limits",
+    "Grid majority strictly above 50%; solar, unknown and missing initial energy never manufacture a majority",
+    "Always takes priority, no origin mutation or new energy integration; zero/stale/disconnected EV does not trigger restriction",
+    "Mode consumes only physical P1 observation, never configured or Flow amperes; multiple batteries use one existing origin pool",
+    "Actual battery engine and feedback preview block discharge, including Peak Guard, while PV charge and individual limits remain valid",
+    "Split discharge minimum cannot leak through zero or a direction lock; delayed publication rechecks active EV",
+    "Conditional support cannot finance an EV start with battery energy that will be protected once charging",
+    "Real fast/context battery loop, published output and Hybrid ownership honour restriction and resume PV charging",
+    "Unreachable target trigger sends once per cable session despite text changes, recovered feasibility, new goals and overlap",
+    "Unreachable warning latch survives app restart, confirmed first disconnect resets only selected EV",
+    "WAF tag reads exact existing cached value and validity, including negative/expired; active faults clear and runtime error works without diagnostics",
+    "Each visible general EMS tile has an independent declared switch; hiding timing preserves target and bounds"
+  ]
+}

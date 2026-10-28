@@ -1,4 +1,8 @@
 {
+  "1.2.4": {
+    "en": "Added new widget: EV scheduling & insights.",
+    "nl": "Nieuwe widget toegevoegd: EV-planning & inzichten."
+  },
   "1.2.3": {
     "en": "The WAF energy balance now refreshes every five minutes independently of battery charge planning, with continuous horizons around the morning and afternoon targets.",
     "nl": "De WAF-energiebalans ververst nu elke vijf minuten onafhankelijk van de batterijlaadplanning, met doorlopende doelperiodes rond het ochtend- en avonddoel."

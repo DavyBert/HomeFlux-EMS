@@ -1,0 +1,32 @@
+{
+  "cases": [
+    "One/multiple EVs use stable 1..4 IDs, configured names and explicit unknown feedback",
+    "Guaranteed without a plan, target only and deadline only never create a plan",
+    "SoC submission reuses EXACT registered Flow listener and persistence",
+    "A newer 90% Flow goal survives an outdated widget deadline-only action",
+    "Target patches keep latest deadline; Guaranteed changes keep target and deadline",
+    "kWh uses original targetKwh semantics, supports zero and exact validation",
+    "Invalid input preserves previous valid plan; wrong EV never falls back to EV1",
+    "Simultaneous Flow and widget updates use synchronous current read/commit",
+    "Stale complete drafts cannot override a Flow plan; active patches cannot carry stale full state",
+    "Request-ID deduplication gives one handler execution and rejects ID reuse with another payload",
+    "Restart restores widget-created SoC/kWh overrides via unchanged persistence",
+    "Widget reads never evaluate, submit commands, record energy or rebuild a planner",
+    "First tap only selects; second SAME tap confirms; busy suppresses rapid duplicates",
+    "Five-second expiry and another button require a new first tap",
+    "EV switch and page invalidation cancel confirmations and discard a delayed previous-EV response",
+    "No-plan Guaranteed, target and time are local drafts until complete and twice confirmed",
+    "Rejected requests never show success and leave central plan unchanged",
+    "Independent widget instances and configured SoC/kWh/time presets",
+    "Unavailable realtime transport cannot reject a committed goal or create an unhandled promise",
+    "Future slots and an allowed command never override the central session status",
+    "Four EVs read their own central session; missing status stays unknown and reads do not monitor",
+    "Existing charger-current input updates the central state copied by the widget",
+    "Mode-only BMW reproduction: existing P1 detection gives charging then paused without current feedback",
+    "Active schedule reads the central effective mode: Emergency hides fallback goals without altering saved Flow input",
+    "Active schedule displays current Flow SoC/kWh, fallback settings and completion using read-only fields",
+    "All 48 widget/reporting preferences stay outside EV planning revisions, battery memo and control requests"
+  ],
+  "passed": 26,
+  "simulatedHomey": true
+}

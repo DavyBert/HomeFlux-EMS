@@ -76,13 +76,17 @@ check('Minimum, safety, sun reserve and planning goal protect the largest reserv
   assert.equal(calc({ plan: { ...base.plan, planningPhase: 'night', peakReserveActive: true, peakReserveTargetSoc: 95 } }).targetSoc, 95);
   near(calc({ reserveSoc: 90, plan: { ...base.plan, planningPhase: 'night' } }).batteryBalanceKwh, 0);
 });
-check('EV reservation deducted once; later EV slots clipped to household horizon', () => {
-  near(calc({ evs: [{ reserved: true, needKwh: 3, deadlineAt: now + HOUR }] }).valueKwh, 0);
-  assert.equal(calc({ evs: [{ reserved: true, needKwh: 3, deadlineAt: now + 12 * HOUR,
-    slots: [{ startAt: now + 9 * HOUR, endAt: now + 11 * HOUR, powerW: 1000 }] }] }).evReservedKwh, 1);
-  assert.equal(calc({ evs: [{ reserved: true, needKwh: 3, deadlineAt: now + HOUR, nightReservedKwh: 2 }] }).evReservedKwh, 3);
-  assert.equal(calc({ evs: [{ reserved: true, needKwh: null, deadlineAt: now + HOUR }] }).ready, false);
-  assert.equal(calc({ evs: [{ reserved: true, needKwh: 3, deadlineAt: now + 12 * HOUR }] }).ready, false);
+check('WAF ignores known and unknown EV reservations and horizons', () => {
+  const expected = calc();
+  for (const ev of [
+    { reserved: true, needKwh: 3, deadlineAt: now + HOUR },
+    { reserved: true, needKwh: 3, deadlineAt: now + 12 * HOUR,
+      slots: [{ startAt: now + 9 * HOUR, endAt: now + 11 * HOUR, powerW: 1000 }] },
+    { reserved: true, needKwh: 3, deadlineAt: now + HOUR, nightReservedKwh: 2 },
+    { reserved: true, needKwh: null, deadlineAt: now + HOUR },
+    { reserved: true, needKwh: 3, deadlineAt: now + 12 * HOUR },
+  ]) assert.deepEqual(calc({ evs: [ev] }), expected);
+  assert.equal(expected.evReservedKwh, 0);
 });
 check('Night never credits a full next-day forecast before morning; target still uses night median', () => {
   const plan = { ...base.plan, planningPhase: 'night', forecastUsedSource: 'tomorrow', forecastUsedKwh: 50 };
@@ -260,13 +264,13 @@ async function integration() {
     e.app.setInput({ forecastRemainingKwh: 12 });
     e.app.invalidatePlanningCache(true); await e.start(); await e.flush();
     assert(e.app.getPlanningStatus().energyBudget.ready);
-    near(e.app.getPlanningStatus().energyBudget.evReservedKwh, 3);
+    near(e.app.getPlanningStatus().energyBudget.evReservedKwh, 0);
     await e.cards.get('set_ev1_soc_deadline').listener({ target_soc: 75, time: '16:00', guarantee: 'yes' });
     e.app.invalidatePlanningCache(true); await e.start(); await e.flush();
     const socBudget = e.app.getPlanningStatus().energyBudget;
-    assert(socBudget.ready); near(socBudget.evReservedKwh, 15);
+    assert(socBudget.ready); near(socBudget.evReservedKwh, 0);
     assert.deepEqual(e.errors, []);
-    cases.push('Real Flow kWh and SoC targets reserve 3 and 15 kWh; actual app reboot keeps unknown until normal planning');
+    cases.push('Real Flow kWh and SoC targets never reserve or gate the household WAF; actual app reboot keeps unknown until normal planning');
     console.log('PASS', cases.at(-1));
   } finally { Date.now = realNow; restoreClear(); }
 }

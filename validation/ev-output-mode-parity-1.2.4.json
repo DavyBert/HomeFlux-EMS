@@ -1,0 +1,8 @@
+{
+  "simulatedHomey": true,
+  "comparedActualProductionMethods": true,
+  "baselineLibraryVersion": 22,
+  "comparisons": 55296,
+  "differences": 0,
+  "note": "Mode output projection parity only; deliberate metering/house-source fixes tested separately."
+}

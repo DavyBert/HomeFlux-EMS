@@ -1,0 +1,28 @@
+{
+  "passed": 20,
+  "cases": [
+    "Reproduced frozen 12782 W; reliable stopped 60-second window selects 4670 W and clears only stale house hold",
+    "Mode-only resumed EV is recognised with zero-A placeholder; existing two-sample/five-second confirmation and correct Peak Guard add-back survive",
+    "Active Mode Flow amperes cannot independently establish its house reference",
+    "Irregular P1 sampling uses elapsed-time weighting instead of averaging sample values",
+    "Two active Mode EVs cannot manufacture a new independent house reference",
+    "STOP rejects delayed old positive EV feedback; fresh zero then a full quiet window permits a new reference",
+    "Delayed Mode Flow feedback cannot reduce the recent household estimate",
+    "A single snapshot, too few points, missing time coverage and a P1 gap all preserve fallback",
+    "PV changes are included once in physical site power and never added to Peak Guard headroom again",
+    "Charging/discharging battery commands reconstruct one non-EV household load with correct signs",
+    "Missing/stale PV, unknown EV connection and physically inconsistent EV power force fallback",
+    "A brief missing-PV interval remains uncertain after recovery instead of manufacturing covered time",
+    "Configuration changes and slow/failed START publication never apply a stale candidate",
+    "Peak Guard, stop hold and command interval still veto START before any reference is applied",
+    "Reconnect uses new quiet measurements without subtracting old EV current; long-term fallback still uses existing configured idle only when history is absent",
+    "Smart operating mode with Mode control uses the same STOP-to-START recent reference",
+    "A paused vehicle with an active mode output and zero feedback uses fallback, not an invented EV-free household",
+    "Mixed Mode-stopped plus Current/Hybrid: both independently reported EV powers are excluded from the recent house reference",
+    "Current/Hybrid-only installations allocate no new buffer and do not rebase their existing reference",
+    "Duplicate/high-rate samples cannot manufacture coverage; history remains bounded to 64 points"
+  ],
+  "productionFunctions": true,
+  "simulatedHomey": true,
+  "nativeHomeyTested": false
+}

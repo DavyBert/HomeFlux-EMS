@@ -1,0 +1,96 @@
+{
+  "version": "1.2.4",
+  "simulatedHomey": true,
+  "hardwareTested": false,
+  "total": 14,
+  "passed": 14,
+  "failed": 0,
+  "results": [
+    {
+      "name": "fixed: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache",
+      "passed": true,
+      "firstAt": 1793005200000,
+      "refreshedAt": 1793005500000,
+      "extraBatteryPlans": 0,
+      "extraContextEvaluations": 2
+    },
+    {
+      "name": "tou: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache",
+      "passed": true,
+      "firstAt": 1793005200000,
+      "refreshedAt": 1793005500000,
+      "extraBatteryPlans": 0,
+      "extraContextEvaluations": 2
+    },
+    {
+      "name": "dynamic: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache",
+      "passed": true,
+      "firstAt": 1793005200000,
+      "refreshedAt": 1793005500000,
+      "extraBatteryPlans": 0,
+      "extraContextEvaluations": 2
+    },
+    {
+      "name": "WAF is calculated once BEFORE an actual battery plan, using the existing control evaluation",
+      "passed": true,
+      "calculationOrder": [
+        "evaluate",
+        "waf",
+        "plan"
+      ]
+    },
+    {
+      "name": "07:00 before PV start: day WAF uses raw remaining-today, not the continuing night median",
+      "passed": true,
+      "targetAt": 1793030400000,
+      "solarKwh": 12,
+      "householdKwh": 7.000000000000001
+    },
+    {
+      "name": "17:00 with PV still active: remaining today and household demand extend to next morning",
+      "passed": true,
+      "horizon": "remaining_today_to_morning",
+      "householdKwh": 9.8,
+      "targetAt": 1793080800000
+    },
+    {
+      "name": "Real <5 W / 10-minute PV-stop debounce starts night WAF; remaining PV is kept until then",
+      "passed": true,
+      "phase": "night",
+      "solarKwh": 0,
+      "actualNightSource": "pv_below_5w_10m"
+    },
+    {
+      "name": "A real winter PV end before 17:00 starts night immediately",
+      "passed": true
+    },
+    {
+      "name": "A completely dark day stays day-WAF after 07:00 and rolls to night via the existing 20:00 fallback",
+      "passed": true
+    },
+    {
+      "name": "Brussels DST 2026-10-24: actual night-to-morning elapsed duration is 9h",
+      "passed": true,
+      "elapsedHours": 9,
+      "householdKwh": 6.300000000000001
+    },
+    {
+      "name": "Brussels DST 2026-03-28: actual night-to-morning elapsed duration is 7h",
+      "passed": true,
+      "elapsedHours": 7,
+      "householdKwh": 4.9
+    },
+    {
+      "name": "Configured 06:30 / 18:15 targets replace hardcoded 07:00 / 17:00, including midnight",
+      "passed": true
+    },
+    {
+      "name": "Missing data stays unknown; five-minute refresh recovers new data even while the battery-plan cache is blocked",
+      "passed": true
+    },
+    {
+      "name": "300 real P1 updates and 200 widget/status reads never calculate WAF or a battery plan",
+      "passed": true
+    }
+  ]
+}

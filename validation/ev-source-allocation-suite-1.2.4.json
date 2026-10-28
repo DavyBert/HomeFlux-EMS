@@ -1,0 +1,23 @@
+{
+  "files": 92,
+  "passed": 92,
+  "failed": [],
+  "simulatedHomey": true,
+  "complete": true,
+  "initialFailure": {
+    "test": "test/ev-savings-export-1.2.4.test.js",
+    "reason": "Existing assertion expected every battery-active EV kWh to be unknown. Updated for the explicitly changed source-allocation policy; added household-first CSV coverage.",
+    "rerunPassed": true,
+    "rerunCases": 9
+  },
+  "targetedCases": {
+    "energy": 34,
+    "dashboard": 26,
+    "widgetUi": 29,
+    "csv": 9,
+    "recordingAudit": 21,
+    "emergencyPresentation": 13
+  },
+  "nativeHomeyTested": false,
+  "finalWidgetUiRerunPassed": true
+}

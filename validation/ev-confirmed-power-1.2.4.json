@@ -1,0 +1,103 @@
+{
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "passed": 18,
+  "results": [
+    {
+      "name": "mode/emergency: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "mode/smart: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "mode/soc_target: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "current/emergency: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "current/smart: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "current/soc_target: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "hybrid/emergency: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "hybrid/smart: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "hybrid/soc_target: zero feedback never becomes physical command power after expiry",
+      "finalAmps": 6,
+      "creditedW": 0,
+      "p1W": 13000,
+      "availableGridW": 4400
+    },
+    {
+      "name": "Mode ignores positive Flow amps when P1 shows no EV load; a command is never proof"
+    },
+    {
+      "name": "Mode derives actual P1 delta even when Flow says zero or an unrelated current"
+    },
+    {
+      "name": "current: fresh reported 8A wins over a 10A command and stale report gives no credit"
+    },
+    {
+      "name": "hybrid: fresh reported 8A wins over a 10A command and stale report gives no credit"
+    },
+    {
+      "name": "Two Mode EVs with no observed load get zero credit instead of two nominal currents"
+    },
+    {
+      "name": "A common Mode P1 delta is shared once and never attributed twice",
+      "aggregateObservedW": 6928.203230275509,
+      "credits": [
+        3464.1016151377544,
+        3464.1016151377544
+      ],
+      "individualAttribution": "estimated shared P1 split"
+    },
+    {
+      "name": "Mixed Mode/current EVs subtract Flow load before sharing the P1 remainder"
+    },
+    {
+      "name": "Mode measurement accounts for PV and signed battery once, without adding PV to P1 headroom"
+    },
+    {
+      "name": "Missing P1/PV, config changes, restart and disconnect cannot preserve old Mode credit"
+    }
+  ]
+}

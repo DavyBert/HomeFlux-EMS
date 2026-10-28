@@ -1,3 +1,5 @@
+> **Experimental EV Peak Guard proof build, based on 1.2.4.** Separate from the frozen release. Production-function simulations passed; no physical Homey/charger validation. See `docs/EV-PEAK-GUARD-PROEF-1.2.4.md` and the follow-up `docs/EV-BATTERY-OPTIONS-1.2.4.md`.
+
 # HomeFlux EMS
 
 **Your energy, managed differently**
@@ -30,11 +32,27 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ---
 
+## HomeFlux EV Dashboard widget
+
+Add **HomeFlux EV** to an official Homey Dashboard. Enable **Switch Status / Planning / Insights with buttons** to select one view at a time; **Status** is first and shows the EV and its central charging target/deadline without planning controls. Enable only **compact EV Status** and disable Scheduler/Insights for a small read-only widget. Each instance retains its own EV and tab selection. Switching is off by default; existing combined layouts remain supported. Configure each EV's SoC/kWh mode, three goals, three times and consumption in the existing EV settings tab. Tap a preset twice within five seconds to confirm. Guaranteed uses the existing EV deadline Flow handler and may include expensive periods when necessary; without a goal and deadline it remains a local draft.
+
+Choose Standard or 1–7 days ahead and confirm twice within five seconds. The deadline is fixed in the local Homey time zone and survives midnight and restart. You can edit date and time within the chosen horizon. Max PV defaults to off and reserves only known solar after household demand and battery priority. Without an hourly forecast, a full day is not credited to a morning deadline. Guaranteed observes the latest safe start within physical limits. Only widget plans defer ordinary Flow mode overrides until clear or confirmed disconnect; the latest received override then resumes. On confirmed disconnect the Flow SoC/kWh goal that preceded the widget goal is also restored through the existing input handler. Manual clear still clears the goal. Existing Flow plans retain their behaviour. A completed widget goal stays visible and protected while the EV remains connected.
+
+Peak Guard uses only the HomeFlux household-meter estimate for Mode control, and only fresh Flow current feedback for Current and Hybrid control. A configured or commanded charging current is not measured consumption. The EV widget Emergency button requires two confirmations, ends an active widget plan and selects the existing Emergency mode to 100%. Switching it off selects Smart charging. Existing Flow goals remain stored.
+
+Insights subdivides the existing Savings daydata. Energy from current feedback and common-bus source attribution is estimated; shared meters, stale feedback and unmeasured battery flows can leave unknown or incomplete data. Solar kilometres use charger input and do not deduct unknown charging losses. Solar charging cost includes forgone export compensation. No data is backfilled into historical days. The Savings CSV appends stored EV totals and EV 1–4 breakdowns, including source, known cost and estimated savings; missing historical EV data stays blank. The original 14 columns retain their meaning.
+
 ## Release notes
+
+### 1.2.4
+
+Added new widget: EV scheduling & insights.
+
+Nieuwe widget toegevoegd: EV-planning & inzichten.
 
 ### 1.2.3
 
-The WAF energy balance refreshes every five minutes independently of battery charge planning. It stays available across morning and afternoon target times while preserving the real PV-based night transition.
+The WAF energy balance refreshes every five minutes independently of battery charge planning and EV goals or tariff horizons. It covers household demand, battery reserves and remaining solar; EV planning reservations are excluded. It stays available across morning and afternoon target times while preserving the real PV-based night transition.
 
 ### 1.2.2
 
@@ -429,3 +447,6 @@ Rework of schedules, better and more control.
 ### 0.3.9
 
 Better feature explanation.
+
+General EV settings offer two optional battery-discharge restrictions: protect a majority grid-charged inventory, or block discharge during any detected EV charging. Both default to off; solar-surplus charging remains available. The existing Savings inventory estimates the origin for the complete battery group. Missing initial energy remains unknown. EMS status tiles, including Full to target and Active SoC bounds, can be hidden independently. Global Flow tags expose current EMS issues, the last runtime error and the cached WAF balance with an availability flag; see Settings → Help for definitions.
+

@@ -1,0 +1,52 @@
+{
+  "appVersion": "1.2.4",
+  "baselineLibraryFileId": "libfile_65f8820b614c8191b142c8d216d76f7e",
+  "baselineLibraryVersion": 1,
+  "baselineZipSha256": "c8e7ccc190e0b918e3092bdb143a1febda6c71aed33db8146150f6e4709a32e8",
+  "passed": [
+    {
+      "command": "node test/ev-widget-ui-1.2.4.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/widget.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/settings-translations.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/help-catalog.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/ev-dashboard-1.2.4.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/ev-widget-handler-audit-1.2.4.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/ev-emergency-presentation-1.2.4.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "node test/ev-widget-emergency-1.2.4.test.js",
+      "exitCode": 0
+    },
+    {
+      "command": "HEMS_EV_BASELINE=/workspace/scratch/571ae27b9c9b/ev-status-baseline/HomeFlux-EMS node test/ev-widget-regression-1.2.4.test.js",
+      "exitCode": 0
+    }
+  ],
+  "failed": [],
+  "uiCases": 43,
+  "identicalFlowPlanSnapshots": 7,
+  "simulatedDOM": true,
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "fullSuiteRerun": false,
+  "note": "Targeted verification for a UI-only change. Previous validation files remain historical evidence for their own change rounds. No backend, EV controller or planning source changed."
+}

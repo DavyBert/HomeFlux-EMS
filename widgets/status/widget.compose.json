@@ -159,6 +159,24 @@
       "value": true
     },
     {
+      "id": "showBatteryBounds",
+      "type": "checkbox",
+      "title": {
+        "en": "Active SoC bounds",
+        "nl": "Actieve SoC-grenzen"
+      },
+      "value": true
+    },
+    {
+      "id": "showBatteryTiming",
+      "type": "checkbox",
+      "title": {
+        "en": "Full to target / discharge time",
+        "nl": "Vol tot doel / ontlaadtijd"
+      },
+      "value": true
+    },
+    {
       "id": "showNextCharge",
       "type": "checkbox",
       "title": {

@@ -1,0 +1,41 @@
+{
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "passed": 6,
+  "results": [
+    {
+      "name": "current: Max PV waits for known surplus, forecast drop reopens existing tariff plan",
+      "firstDeadline": 1792994400000,
+      "resumedCurrentA": 16,
+      "pvCreditAfterDrop": 0
+    },
+    {
+      "name": "hybrid: Max PV waits for known surplus, forecast drop reopens existing tariff plan",
+      "firstDeadline": 1792994400000,
+      "resumedCurrentA": 16,
+      "pvCreditAfterDrop": 0
+    },
+    {
+      "name": "mode: Max PV waits for known surplus, forecast drop reopens existing tariff plan",
+      "firstDeadline": 1792994400000,
+      "resumedCurrentA": 16,
+      "pvCreditAfterDrop": 0
+    },
+    {
+      "name": "Max PV off keeps full grid need, Max PV on preserves real PV start and no grid top-up",
+      "desiredPowerW": 4157,
+      "gridRequestPowerW": 0
+    },
+    {
+      "name": "Four EV widget goals preserve shared Peak Guard and hardware current limits",
+      "desiredTotalW": 12471,
+      "gridW": 500,
+      "peakLimitW": 17500,
+      "softMarginW": 300,
+      "buildsDuring120P1Events": 0
+    },
+    {
+      "name": "Future deadline supports fixed contract and chosen TOU rate limits without battery EMS"
+    }
+  ]
+}

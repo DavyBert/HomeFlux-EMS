@@ -1,0 +1,176 @@
+{
+  "sourceRoot": "/workspace/scratch/571ae27b9c9b/ev-options-work",
+  "passed": 21,
+  "scenarios": [
+    {
+      "name": "A: connected EV, repeated 0-W feedback for 60 minutes",
+      "energyKwh": 0,
+      "missingSeconds": 0
+    },
+    {
+      "name": "B/H: 3,600 W for 60 minutes, real Flow inputs without a goal or charging commands",
+      "energyKwh": 3.5999999999997145,
+      "csvEv1Kwh": "3.5999999999997145",
+      "planningActive": false
+    },
+    {
+      "name": "C: four 15-minute periods at 1/2/3/0 kW",
+      "energyKwh": 1.499999999999924
+    },
+    {
+      "name": "D: missing feedback expires at 60 seconds, without invented delivery",
+      "energyKwh": 0.060000000000000046,
+      "missingSeconds": 120
+    },
+    {
+      "name": "E: persistence and reboot during charging retain history and do not integrate downtime",
+      "energyKwh": 3.5999999999997145,
+      "downtimeSeconds": 120
+    },
+    {
+      "name": "F: 23:30–00:30 splits 3.6-kW charging across local midnight",
+      "previousDayKwh": 1.7999999999999126,
+      "newDayKwh": 1.7999999999999126
+    },
+    {
+      "name": "G: two independent EVs keep individual and central totals without double counting",
+      "totalKwh": 7.000000000000705,
+      "ev1Kwh": 3.000000000000062,
+      "ev2Kwh": 4.000000000000249
+    },
+    {
+      "name": "G shared: one declared joint meter is counted once, not once per EV",
+      "groupKwh": 1.1666666666666694,
+      "sharedKwh": 1.1666666666666694
+    },
+    {
+      "name": "Battery/EMS combinations do not gate EV recording",
+      "combinations": [
+        {
+          "batteryCount": 0,
+          "controlEnabled": false,
+          "energyKwh": 0.6000000000000004
+        },
+        {
+          "batteryCount": 0,
+          "controlEnabled": true,
+          "energyKwh": 0.6000000000000004
+        },
+        {
+          "batteryCount": 1,
+          "controlEnabled": false,
+          "energyKwh": 0.6000000000000004
+        },
+        {
+          "batteryCount": 1,
+          "controlEnabled": true,
+          "energyKwh": 0.6000000000000004
+        }
+      ]
+    },
+    {
+      "name": "Unknown, stopped and disconnected feedback have distinct coverage meanings",
+      "missingSeconds": 60,
+      "disconnectedAddsMissing": false
+    },
+    {
+      "name": "Unavailable feedback scope explicitly excludes even otherwise positive current",
+      "energyKwh": 0,
+      "missingSeconds": 120
+    },
+    {
+      "name": "Duplicate recorder calls and refreshes never integrate the same timestamp twice",
+      "energyKwh": 0.060000000000000046,
+      "repeatedReads": 100
+    },
+    {
+      "name": "Phase conversion uses configured electrical settings at each completed interval",
+      "energyKwh": 4.599999999999955
+    },
+    {
+      "name": "Source prerequisite characterization: valid EV current with missing PV measurement",
+      "energyKwh": 0.060000000000000046,
+      "unknownKwh": 0.060000000000000046,
+      "evDayPresent": true
+    },
+    {
+      "name": "Absent/stale P1 or PV preserves fresh EV energy as unknown without changing site Savings or battery inventory",
+      "conditions": [
+        {
+          "mode": "missing_grid",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "stale_grid",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "missing_pv",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "stale_pv",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "invalid_pv",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        }
+      ]
+    },
+    {
+      "name": "Unknown source does not invent energy or feedback coverage for an unmeasured EV",
+      "energyKwh": 0,
+      "missingSeconds": 120
+    },
+    {
+      "name": "Expired positive feedback and confirmed zero current still remain bounded when site meters are absent",
+      "energyKwh": 0.06,
+      "missingSeconds": 60
+    },
+    {
+      "name": "New unknown-source intervals obey midnight splitting in the same central ledger",
+      "previousDayKwh": 0.06,
+      "nextDayKwh": 0.06
+    },
+    {
+      "name": "Spring and autumn daylight-saving transitions integrate elapsed time only",
+      "days": [
+        {
+          "date": "2026-03-29",
+          "kwh": 3.5999999999997145
+        },
+        {
+          "date": "2026-10-25",
+          "kwh": 3.5999999999997145
+        }
+      ]
+    },
+    {
+      "name": "Site-meter recovery does not double-count EV energy or backfill site Savings",
+      "energyKwh": 0.18000000000000013,
+      "gridKwh": 0.12000000000000009,
+      "unknownKwh": 0.060000000000000046
+    },
+    {
+      "name": "Diagnostic BMW reproduction: house-load charging and a 10-A request do not fabricate delivered energy from stale 0 A",
+      "centralSession": "charging",
+      "detection": "house_load",
+      "receivedCurrentA": 0,
+      "energyKwh": 0,
+      "missingSeconds": 120
+    }
+  ],
+  "simulatedHomey": true,
+  "physicalHomeyTested": false
+}

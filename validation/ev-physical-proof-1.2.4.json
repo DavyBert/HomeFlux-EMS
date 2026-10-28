@@ -1,0 +1,121 @@
+{
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "passed": 22,
+  "results": [
+    {
+      "name": "mode 6/16 A smart: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "mode 6/16 A emergency: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "mode 16/16 A smart: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "mode 16/16 A emergency: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "current 6/16 A smart: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "current 6/16 A emergency: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "current 16/16 A smart: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "current 16/16 A emergency: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "hybrid 6/16 A smart: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "hybrid 6/16 A emergency: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "hybrid 16/16 A smart: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "hybrid 16/16 A emergency: 13 minutes full 16A, no false STOP",
+      "seconds": 780,
+      "stopSamples": 0,
+      "finalA": 16,
+      "gridW": 11785
+    },
+    {
+      "name": "Mode false/missing/large Flow amperes cannot change physical watts or teach a house reference"
+    },
+    {
+      "name": "mode: Smart PV -> Emergency -> Smart, delayed physical reply and both meter orders"
+    },
+    {
+      "name": "current: Smart PV -> Emergency -> Smart, delayed physical reply and both meter orders"
+    },
+    {
+      "name": "hybrid: Smart PV -> Emergency -> Smart, delayed physical reply and both meter orders"
+    },
+    {
+      "name": "Actual Peak Guard overload stops immediately; lower fallback fits when physically safe"
+    },
+    {
+      "name": "PV-only loss remains a valid non-Peak-Guard stop"
+    },
+    {
+      "name": "Mode STOP tail uses previous P1 observation, never Flow amperes or restart credit"
+    },
+    {
+      "name": "Two Mode EVs share one P1 pool; grid, PV and signed battery never create duplicate credit"
+    },
+    {
+      "name": "All slots use one output policy; explicit policy stops and restart holds retain their authority"
+    },
+    {
+      "name": "Unknown active Mode house data cannot turn its own inferred EV delta into fresh baseline evidence"
+    }
+  ]
+}

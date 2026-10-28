@@ -1,0 +1,17 @@
+{
+  "gate": "PASS",
+  "schedulerImplementationPermitted": true,
+  "simulatedHomey": true,
+  "inputFunctions": [
+    "setEvSocPlan",
+    "setEvEnergyPlan"
+  ],
+  "listenerMap": "slotFlowCards.actions",
+  "plannerLogicChangesRequired": false,
+  "results": [
+    "Numbered, selector and configured Flow cards share the registered SlotFlowCards listener and synchronous setEvSocPlan/setEvEnergyPlan input functions",
+    "Fresh central read plus listener invocation has no asynchronous gap; a deadline patch preserves a newer Flow target and Guaranteed",
+    "Original validation is shared, rejects before mutation, and stable numbered EV slots remain isolated",
+    "Original override persistence survives restart with batteryCount=0 and battery control disabled"
+  ]
+}

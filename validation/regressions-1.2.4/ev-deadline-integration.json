@@ -1,0 +1,97 @@
+[
+  {
+    "name": "Gerrit kWh: full production replay",
+    "soc": false,
+    "energyKwh": 11.500000000000048,
+    "costEUR": 2.3000000000000096,
+    "starts": 1,
+    "stops": 1,
+    "interruptions": 0,
+    "events": [
+      {
+        "at": 1792792800000,
+        "on": true,
+        "currentA": 20
+      },
+      {
+        "at": 1792801800000,
+        "on": false,
+        "currentA": 0
+      }
+    ],
+    "deadlineMet": true,
+    "planBuilds": 1,
+    "planReuses": 823,
+    "portfolioCalculations": 861,
+    "cpuMs": 2958.901,
+    "wallMs": 2508.906979
+  },
+  {
+    "name": "Gerrit SoC: same production decisions",
+    "soc": true,
+    "energyKwh": 11.500000000000048,
+    "costEUR": 2.3000000000000096,
+    "starts": 1,
+    "stops": 1,
+    "interruptions": 0,
+    "events": [
+      {
+        "at": 1792792800000,
+        "on": true,
+        "currentA": 20
+      },
+      {
+        "at": 1792801800000,
+        "on": false,
+        "currentA": 0
+      }
+    ],
+    "deadlineMet": true,
+    "planBuilds": 1,
+    "planReuses": 818,
+    "portfolioCalculations": 858,
+    "cpuMs": 3572.687,
+    "wallMs": 3329.3788160000004
+  },
+  {
+    "name": "Midnight and 1-second inputs reuse EV plan",
+    "planBuildsDuring180Seconds": 0,
+    "fastPathBuilds": 0,
+    "portfolios": 10
+  },
+  {
+    "name": "Battery midnight PV refresh independent of EV plan",
+    "nightTarget": "07:00",
+    "solarTarget": "17:00",
+    "forecastRemainingKwh": 6,
+    "promotedDailyForecastKwh": 9,
+    "initialPlanBuilds": 1,
+    "finalPlanBuilds": 1
+  },
+  {
+    "name": "New price JSON and invalid publication",
+    "identicalCurveReused": true,
+    "invalidCurveRetained": true,
+    "cheaperPublicationReplanned": true
+  },
+  {
+    "name": "Flow changes, repeats, disconnect and end latch",
+    "passed": true
+  },
+  {
+    "name": "Same-day and absolute two-boundary deadlines",
+    "sameDay": true,
+    "twoBoundaries": true
+  },
+  {
+    "name": "PV first and unavailable price source fallback",
+    "pvAvailableWhileWaiting": true,
+    "existingPriceFallback": true
+  },
+  {
+    "name": "Persistent lower measured current uses deliverable capacity",
+    "commandedA": 20,
+    "measuredA": 8,
+    "plannedPowerW": 1840
+  }
+]

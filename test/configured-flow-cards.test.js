@@ -38,6 +38,11 @@ for (const kind of Object.keys(getters)) {
       assert.deepEqual({ ...card, hint: expected.hint }, expected, `Legacy functional schema changed: ${card.id}`);
       assert.match(card.hint.en, card.id.includes('_soc_') ? /per-EV setting/ : /session stops/);
       assert.match(card.hint.nl, card.id.includes('_soc_') ? /instelling per EV/ : /sessie stopt/);
+    } else if (kind === 'triggers' && old.id === 'ev_target_cannot_be_reached') {
+      // Explicit 1.2.4 change: hint describes the session latch; public schema stays exact.
+      assert.deepEqual({ ...card, hint: expected.hint }, expected);
+      assert.match(card.hint.en, /once per EV connection session/);
+      assert.match(card.hint.nl, /één keer per EV-aansluitsessie/);
     } else if (kind === 'actions' && old.id === 'set_grid_power') {
       // 1.2.2 widens only the P1 measurement range for larger battery groups.
       assert.deepEqual(card, {
