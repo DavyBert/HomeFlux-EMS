@@ -255,7 +255,7 @@
     "chargingCost": "Laadkosten",
     "knownCost": "Bekende laadkosten",
     "savings": "Geschatte besparing",
-    "estimate": "Schatting uit laadstroom, spanning en fasen; AC-invoer vóór laadverliezen. Zonnekosten omvatten gemiste injectievergoeding.",
+    "estimate": "Modussturing gebruikt de geldige HomeFlux-schatting uit P1, PV, batterijvermogen en huisreferentie. Ampère- en hybridesturing gebruiken actuele stroomfeedback, spanning en fasen. Alle waarden zijn schattingen vóór laadverliezen; zonnekosten omvatten gemiste injectievergoeding.",
     "incomplete": "Onvolledige gegevens. Kosten betreffen alleen toewijsbare energie.",
     "shared": "Energie van een gedeelde meter kan niet aan één EV worden toegewezen.",
     "enableSection": "Schakel Status, Planning of Inzichten in via de widgetinstellingen.",

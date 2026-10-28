@@ -1,4 +1,8 @@
 {
+  "1.2.5": {
+    "en": "Fixed EV energy recording for Mode control using the existing HomeFlux P1 estimate. Verified grid charging permissions for Emergency and guaranteed plans under Peak Guard. Mode-control house learning now follows successful Start/Stop publications and retains its reference across restart.",
+    "nl": "EV-energieregistratie bij modussturing hersteld via de bestaande HomeFlux P1-schatting. Nettoelating voor Emergency en gegarandeerde plannen gecontroleerd onder Peak Guard. Huisleren bij modussturing volgt nu geslaagde Start/Stop-publicaties en behoudt de referentie na herstart."
+  },
   "1.2.4": {
     "en": "Added new widget: EV scheduling & insights.",
     "nl": "Nieuwe widget toegevoegd: EV-planning & inzichten."

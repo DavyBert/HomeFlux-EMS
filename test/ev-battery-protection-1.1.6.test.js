@@ -30,6 +30,13 @@ async function fixture(root, overrides = {}) {
 async function verifyAttribution(root) {
   const h = await fixture(root, { evCount: 2, ev2Enabled: true, ev2SocEnabled: false,
     ev2ControlType: 'mode', ev2Mode: 'smart', ev2Phases: 1, ev2Voltage: 230 });
+  // These are attribution-level snapshots, not a plant replay. Finish startup
+  // I/O before seeding them and do not let a queued old-tariff context replace
+  // their explicit decision during the freshness assertion below. The real
+  // scheduler/actuation cases remain in replayProduction/run.
+  await h.drain();
+  h.app.requestContextEvaluate = () => {};
+  h.app.requestEvaluate = () => {};
   const a = h.app, settings = a.getSettings(), perAmpW = Math.sqrt(3) * 400;
   Object.assign(a.state, { evConnected: true, evChargeCurrentA: 16,
     gridPowerW: 623 + 16 * perAmpW - 4700, lastTotalCommandW: 4700 });

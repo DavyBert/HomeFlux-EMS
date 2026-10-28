@@ -51,13 +51,17 @@ function bareApp() {
   app.pendingCommandBypassInterval = false;
   app.pendingResult = null;
   app.tokens = new Map();
+  app.evModeHouseCommands = Array.from({length:4},()=>({mode:null,at:0}));
+  app.evModeHousePending = Array(4).fill(false);
+  app.evModeHouseConfirmedThisRun = Array(4).fill(false);
+  app.evModeHouseSavedReferenceW = null;
   app.latestResult = null;
   app.commandTrigger = { trigger: async () => true };
   app.getSettings = () => ({ batteryCount: 4, commandIntervalSeconds: 10, minSoc: 10, maxSoc: 100 });
   app.homey = {
     setTimeout,
     clock: { getTimezone: () => 'Europe/Brussels' },
-    settings: { get: () => 10 },
+    settings: { get: () => 10, set: () => {} },
   };
   app.error = () => {};
   app.queueStatusUpdate = () => {};

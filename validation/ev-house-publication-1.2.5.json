@@ -1,0 +1,88 @@
+{
+  "productionFunctions": true,
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "passed": 26,
+  "results": [
+    {
+      "name": "START publishes then freezes both histories before charging detection",
+      "frozenW": 4000,
+      "physicalSimulatedSiteW": 11000
+    },
+    {
+      "name": "Missing, zero and false-positive Mode amperes never change the frozen reference"
+    },
+    {
+      "name": "Smart/Standard/Emergency switches and repeated START preserve one reference"
+    },
+    {
+      "name": "A computed STOP and publication mutex do not release the reference"
+    },
+    {
+      "name": "Failed STOP trigger retains lock, saved receipt and both references"
+    },
+    {
+      "name": "Successful STOP alone releases; learning needs a new complete post-STOP window"
+    },
+    {
+      "name": "waiting session status cannot release an active command"
+    },
+    {
+      "name": "paused session status cannot release an active command"
+    },
+    {
+      "name": "ended session status cannot release an active command"
+    },
+    {
+      "name": "Disconnect/reconnect retains the command reference until an actual STOP"
+    },
+    {
+      "name": "Second Mode EV and STOP of only one EV cannot replace the shared house reference"
+    },
+    {
+      "name": "EV2 failed STOP retains its receipt independently of EV1"
+    },
+    {
+      "name": "Concurrent STARTs preserve the pre-send candidate when EV2 publishes before EV1"
+    },
+    {
+      "name": "Permission failure after a successful STOP cannot undo that published STOP receipt"
+    },
+    {
+      "name": "Token-only STOP without Mode Flow publication cannot release the reference"
+    },
+    {
+      "name": "Token-only START does not manufacture a successfully sent command"
+    },
+    {
+      "name": "P1 during an unresolved START trigger is quarantined; success freezes the pre-send value"
+    },
+    {
+      "name": "A failed START retains the previous STOP receipt and no in-flight samples"
+    },
+    {
+      "name": "Restart restores active command and reference before any P1; only the real startup STOP releases it"
+    },
+    {
+      "name": "A saved old STOP is not physical evidence after restart until a new publication succeeds"
+    },
+    {
+      "name": "Persisted zero and unknown house references remain distinct during startup recovery"
+    },
+    {
+      "name": "Mode output tests use the same actual-publication accounting for START and STOP"
+    },
+    {
+      "name": "P1/refreshes do not persist per sample or request extra contexts from bookkeeping callbacks"
+    },
+    {
+      "name": "current keeps existing measured-current house learning and no Mode persistence"
+    },
+    {
+      "name": "hybrid keeps existing measured-current house learning and no Mode persistence"
+    },
+    {
+      "name": "Mixed fleet cannot update battery house reference through another EV while Mode is frozen"
+    }
+  ]
+}

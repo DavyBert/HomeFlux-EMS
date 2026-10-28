@@ -1,5 +1,5 @@
 {
-  "sourceRoot": "/workspace/scratch/571ae27b9c9b/ev-options-work",
+  "sourceRoot": "/workspace/scratch/571ae27b9c9b/ev125-freeze/work/HomeFlux-EMS",
   "passed": 21,
   "scenarios": [
     {
@@ -163,12 +163,13 @@
       "unknownKwh": 0.060000000000000046
     },
     {
-      "name": "Diagnostic BMW reproduction: house-load charging and a 10-A request do not fabricate delivered energy from stale 0 A",
+      "name": "BMW regression: valid P1 Mode observation records energy despite stale 0 A",
       "centralSession": "charging",
       "detection": "house_load",
       "receivedCurrentA": 0,
-      "energyKwh": 0,
-      "missingSeconds": 120
+      "observedPowerW": 6581.793068761734,
+      "energyKwh": 0.3272613775856531,
+      "missingSeconds": 1
     }
   ],
   "simulatedHomey": true,

@@ -255,7 +255,7 @@
     "chargingCost": "Charging cost",
     "knownCost": "Known charging cost",
     "savings": "Estimated savings",
-    "estimate": "Estimates from charger current, voltage and phases; AC input before charging losses. Solar cost includes forgone export compensation.",
+    "estimate": "Mode control uses the valid HomeFlux estimate from P1, solar, battery power and household baseline. Current and Hybrid control use fresh current feedback, voltage and phases. Values are estimates before charging losses; solar cost includes forgone export compensation.",
     "incomplete": "Partial data. Costs cover only attributable energy.",
     "shared": "Shared meter energy cannot be assigned to one EV.",
     "enableSection": "Enable Status, Planning or Insights in widget settings.",

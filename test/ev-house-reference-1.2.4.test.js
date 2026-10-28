@@ -38,10 +38,11 @@ async function fixture({count=1,type='mode',recordingOnly=true,root=path.join(__
   if(pvFeedback)await h.pv(pv);
   await h.grid(house+evs.reduce((s,x)=>s+x,0)-pv-battery);
  }
- function active(i,on=true){
+ async function active(i,on=true){
   const settings=a.getSettings(),tariff=findCurrentTariff(new Date(),settings);
   const decision=a.calculateEvPortfolioDecisions({tariff},a.state.lastTotalCommandW,a.state.lastTotalCommandW,settings)[i];
   if(i===0)a.latestEvDecision=decision;else a.getExtraEv(i).latestDecision=decision;
+  if(type==='mode')await a.testEvOutput({instance:i+1,output:'mode',mode:on?'standard':'stop'});
   if(i===0){a.lastPublishedEvChargeMode=on?'standard':'stop';a.lastPublishedEvAllowed=on;}
   else Object.assign(a.getExtraEv(i),{lastPublishedChargeMode:on?'standard':'stop',lastPublishedAllowed:on});}
  async function start(i=0){
@@ -77,7 +78,7 @@ async function check(name,fn){await fn();results.push(name);}
   assert.equal(a.getEvGridImportControlStatus().houseLoadHold,false);
  });
  await check('Active Mode Flow amperes cannot independently establish its house reference',async()=>{
-  const h=await fixture();h.active(0);
+  const h=await fixture();await h.active(0);
   for(let s=0;s<=65;s++)await h.frame(s,{house:5000,evs:[7000]});
   const r=h.a.getEvStartHouseReference();assert(r.houseReferenceFallback);assert.equal(r.houseReferenceFallbackReason,'mode_house_unobserved');near(h.a.evSessionDetection.portfolioBaselineW,12782);
  });
@@ -87,24 +88,24 @@ async function check(name,fn){await fn();results.push(name);}
   const r=h.a.getEvStartHouseReference();assert(!r.houseReferenceFallback,JSON.stringify(r));near(r.houseRecentAverageW,4000);
  });
  await check('Two active Mode EVs cannot manufacture a new independent house reference',async()=>{
-  const h=await fixture({count:2});h.active(0);h.active(1);
+  const h=await fixture({count:2});await h.active(0);await h.active(1);
   for(let s=0;s<=65;s++)await h.frame(s,{house:5000,evs:[3000,4000]});
   assert(h.a.getEvStartHouseReference().houseReferenceFallback);
-  h.active(1,false);
+  await h.active(1,false);
   for(let s=66;s<=131;s++)await h.frame(s,{house:5000,evs:[3000,0]});
   await h.start(1);assert(h.a.evSessionDetection.houseStartReference.houseReferenceFallback);near(h.a.evSessionDetection.portfolioBaselineW,12782);
  });
  await check('STOP rejects delayed old positive EV feedback; fresh zero then a full quiet window permits a new reference',async()=>{
-  const h=await fixture();h.active(0);
+  const h=await fixture();await h.active(0);
   for(let s=0;s<=65;s++)await h.frame(s,{house:5000,evs:[7000]});
-  h.active(0,false);h.a.lastEvPublishedAt=h.now();
+  await h.active(0,false);h.a.lastEvPublishedAt=h.now();
   for(let s=66;s<=75;s++)await h.frame(s,{house:5400,feedback:false});
   assert(h.a.getEvStartHouseReference().houseReferenceFallback);
   for(let s=76;s<=141;s++)await h.frame(s,{house:5400});
   await h.start();near(h.a.evSessionDetection.portfolioBaselineW,5400);
  });
  await check('Delayed Mode Flow feedback cannot reduce the recent household estimate',async()=>{
-  const h=await fixture();h.active(0);await h.frame(0,{house:5000,evs:[7000]});
+  const h=await fixture();await h.active(0);await h.frame(0,{house:5000,evs:[7000]});
   for(let s=1;s<=60;s++)await h.frame(s,{house:5000,evs:[7000],feedback:false});
   const r=h.a.getEvStartHouseReference();assert(r.houseReferenceFallback);assert.equal(r.houseReferenceFallbackReason,'mode_house_unobserved');
   near(h.a.evSessionDetection.portfolioBaselineW,12782);
@@ -131,7 +132,7 @@ async function check(name,fn){await fn();results.push(name);}
   h.a.inputSeen.pv=false;assert(h.a.getEvStartHouseReference().houseReferenceFallback);h.a.inputSeen.pv=true;
   for(let s=66;s<=130;s++)await h.frame(s,{pvFeedback:false});assert(h.a.getEvStartHouseReference().houseReferenceFallback);
   h.a.inputSeen.ev.connected=false;await h.frame(131,{feedback:false});assert(h.a.getEvStartHouseReference().houseReferenceFallback);
-  h.a.inputSeen.ev.connected=true;h.active(0);h.a.state.gridPowerW=0;h.a.state.pvPowerW=0;h.a.state.lastTotalCommandW=0;
+  h.a.inputSeen.ev.connected=true;await h.active(0);h.a.state.gridPowerW=0;h.a.state.pvPowerW=0;h.a.state.lastTotalCommandW=0;
   h.a.state.evChargeCurrentA=20;h.a.inputUpdatedAt.ev.chargeCurrent=h.now();
   h.a.recordRecentEvHouseLoadSample(0,h.now()+1000,h.a.getSettings());assert(h.a.getEvStartHouseReference(h.now()+1000).houseReferenceFallback);
  });
@@ -160,8 +161,8 @@ async function check(name,fn){await fn();results.push(name);}
   h.a.evPeakGuardStopHoldUntil=0;h.a.lastEvPublishedAt=h.now();await h.start();near(h.a.evSessionDetection.portfolioBaselineW,12782);
  });
  await check('Reconnect uses new quiet measurements without subtracting old EV current; long-term fallback still uses existing configured idle only when history is absent',async()=>{
-  const h=await fixture();h.active(0);for(let s=0;s<=65;s++)await h.frame(s,{house:5000,evs:[7000]});
-  await h.cards.get('set_ev1_status').listener({connected:'no',charge_current:20});h.active(0,false);
+  const h=await fixture();await h.active(0);for(let s=0;s<=65;s++)await h.frame(s,{house:5000,evs:[7000]});
+  await h.cards.get('set_ev1_status').listener({connected:'no',charge_current:20});await h.active(0,false);
   for(let s=66;s<=131;s++){
    h.setNow(h.begin+s*1000);h.a.state.lastTotalCommandW=-100;await h.pv(3073);await h.grid(5400-3073+100);
   }
@@ -177,7 +178,7 @@ async function check(name,fn){await fn();results.push(name);}
   near(h.a.evSessionDetection.portfolioBaselineW,4670);
  });
  await check('A paused vehicle with an active mode output and zero feedback uses fallback, not an invented EV-free household',async()=>{
-  const h=await fixture();h.active(0);
+  const h=await fixture();await h.active(0);
   for(let second=0;second<=65;second++)await h.frame(second,{house:5000,evs:[7000]});
   for(let second=66;second<=131;second++)await h.frame(second,{house:5000,evs:[0]});
   const reference=h.a.getEvStartHouseReference();assert(reference.houseReferenceFallback);
@@ -186,7 +187,7 @@ async function check(name,fn){await fn();results.push(name);}
  await check('Mixed Mode-stopped plus Current/Hybrid: both independently reported EV powers are excluded from the recent house reference',async()=>{
   const h=await fixture({count:3});
   await h.setExternalSetting('ev2ControlType','current');await h.setExternalSetting('ev3ControlType','hybrid');
-  for(const i of [1,2]){h.active(i);h.a.getExtraEv(i).lastPublishedCurrentA=10;}
+  for(const i of [1,2]){await h.active(i);h.a.getExtraEv(i).lastPublishedCurrentA=10;}
   for(let second=0;second<=65;second++)await h.frame(second,{house:5000,evs:[0,3000,4000]});
   const r=h.a.getEvStartHouseReference();assert(!r.houseReferenceFallback,JSON.stringify(r));near(r.houseRecentAverageW,5000);
   await h.start(0);near(h.a.evSessionDetection.houseStartReference.houseReferenceW,5000);

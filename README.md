@@ -1,5 +1,3 @@
-> **Experimental EV Peak Guard proof build, based on 1.2.4.** Separate from the frozen release. Production-function simulations passed; no physical Homey/charger validation. See `docs/EV-PEAK-GUARD-PROEF-1.2.4.md` and the follow-up `docs/EV-BATTERY-OPTIONS-1.2.4.md`.
-
 # HomeFlux EMS
 
 **Your energy, managed differently**
@@ -40,9 +38,15 @@ Choose Standard or 1–7 days ahead and confirm twice within five seconds. The d
 
 Peak Guard uses only the HomeFlux household-meter estimate for Mode control, and only fresh Flow current feedback for Current and Hybrid control. A configured or commanded charging current is not measured consumption. The EV widget Emergency button requires two confirmations, ends an active widget plan and selects the existing Emergency mode to 100%. Switching it off selects Smart charging. Existing Flow goals remain stored.
 
-Insights subdivides the existing Savings daydata. Energy from current feedback and common-bus source attribution is estimated; shared meters, stale feedback and unmeasured battery flows can leave unknown or incomplete data. Solar kilometres use charger input and do not deduct unknown charging losses. Solar charging cost includes forgone export compensation. No data is backfilled into historical days. The Savings CSV appends stored EV totals and EV 1–4 breakdowns, including source, known cost and estimated savings; missing historical EV data stays blank. The original 14 columns retain their meaning.
+For Mode control, the house reference freezes at a successfully published Smart/Standard command and is released only by a successfully published Stop command. Session status, a computed Stop and disconnect alone do not release it. Publication receipts and the reference survive restart. See [Mode house-reference correction](docs/EV-HOUSE-PUBLICATION-1.2.5.md) for tests and the remaining historical STOP case.
+
+Insights subdivides the existing Savings daydata. Mode control records the existing valid HomeFlux P1/PV/battery estimate; Current and Hybrid use fresh Flow current. Commands and placeholder currents are never delivered energy. Missing/stale observations do not backfill energy. Energy from current feedback and common-bus source attribution is estimated; shared meters, stale feedback and unmeasured battery flows can leave unknown or incomplete data. Solar kilometres use charger input and do not deduct unknown charging losses. Solar charging cost includes forgone export compensation. No data is backfilled into historical days. The Savings CSV appends stored EV totals and EV 1–4 breakdowns, including source, known cost and estimated savings; missing historical EV data stays blank. The original 14 columns retain their meaning.
 
 ## Release notes
+
+### 1.2.5
+
+Mode-control EV energy is now recorded from the existing valid P1 estimate into the same Savings daydata and CSV. Emergency and active guaranteed charging retain grid permission independently of PV, within physical Peak Guard limits. The three EV tabs remain Status, Planning and Insights. See [validation and scope](docs/EV-REGISTRATION-1.2.5.md).
 
 ### 1.2.4
 

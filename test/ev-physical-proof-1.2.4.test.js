@@ -111,7 +111,12 @@ async function start(h,mode='emergency'){
   assert.equal(resolveEvOutput({decision:{...d,allowed:false,peakLimited:true},settings:{...settings,peakShaveEnabled:true,peakLimitW:15000,peakSoftMarginW:100},gridW:700}).stopReason,'insufficient_safe_budget');
  });
  await check('Unknown active Mode house data cannot turn its own inferred EV delta into fresh baseline evidence',async()=>{
-  const h=await make();await start(h);h.app.evSessionDetection.portfolioBaselineW=4000;
+  const h=await make();await start(h);
+  // Attempt the real reference-update path; direct mutation of the frozen
+  // field bypasses the very publication invariant this test verifies.
+  h.app.applyEvStartHouseReference(0,{at:h.now(),revision:h.app.evPhysicalConfigRevision,
+   houseReferenceW:4000,houseReferenceFallback:false},h.now());
+  assert.equal(h.app.evSessionDetection.portfolioBaselineW,700);
   for(let s=0;s<10;s++)await frame(h);
   const r=h.app.getEvStartHouseReference();assert(r.houseReferenceFallback);assert.equal(r.houseReferenceFallbackReason,'mode_house_unobserved');
  });

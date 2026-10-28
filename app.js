@@ -444,6 +444,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.restoreEvEnergyPlanOverrides();
     this.restoreEvSocPlanOverrides();
     evPlanOptions.restore(this);
+    this.restoreEvModeHouseReference();
     this.evFlowPlansRestored = true;
     this.restoreBoilerRuntime();
 
@@ -486,6 +487,7 @@ class HomeFluxEmsApp extends Homey.App {
         // energy accounting. Goal changes request their own context; energy
         // completion stops immediately. A later settings callback must not
         // invalidate tariffs/planning or start a duplicate EMS pass.
+        if (key === '_evModeHouseReference') return;
         if (key === 'evSocDeadlineOverrides' || key === 'evEnergyDeadlineOverrides' || key === '_evWidgetPlanRuntime') {
           this.notifyEvDashboard();
           if (this.isDiagnosticEnabled('planning')) {
@@ -1046,6 +1048,26 @@ class HomeFluxEmsApp extends Homey.App {
       const scope = settings[this.getEvSettingKey(i, 'EnergyFeedbackScope')];
       const connected = input?.seen?.connected && input.connected;
       const knownOff = input?.seen?.connected && !input.connected;
+      if (this.getEvControlTypeFor(i, settings) === 'mode') {
+        // Use the SAME shared physical observation as Mode control. Flow
+        // amperes (including a repeated 0 A placeholder) are not this source.
+        // Integrate only its original time coverage, never backfill a gap or
+        // extend freshness on a widget/CSV read. A valid zero differs from an
+        // unavailable estimate. STOP can leave a last observed physical tail;
+        // no current command or session status is used to invent delivered W.
+        const reading = this.evSessionDetection?.modePowerSnapshot;
+        const usable = connected && reading?.usable && ['smart', 'standard'].includes(reading.modes?.[i])
+          && reading.revision === (this.evPhysicalConfigRevision || 0);
+        const seconds = knownOff ? (end - start) / 1000 : usable
+          ? Math.max(0, Math.min(end, reading.recordingValidUntil) - Math.max(start, reading.at)) / 1000 : 0;
+        const powerW = !knownOff && usable && seconds > 0
+          ? Math.max(0, Number(reading.watts[i]) || 0) * seconds / ((end - start) / 1000) : 0;
+        // Feedback scope describes a Flow meter, not the detector's already
+        // divided P1 pool. Multiple Mode EVs must not select that pool twice.
+        readings.push({ id: String(i + 1), powerW, coveredSeconds: seconds,
+          sourceUsable: seconds >= (end - start) / 1000, scope: 'individual' });
+        continue;
+      }
       const seconds = knownOff ? (end - start) / 1000 : scope !== 'unavailable' && connected && input?.seen?.chargeCurrent
         ? Math.max(0, Math.min(end, updated + 60000) - Math.max(start, updated)) / 1000 : 0;
       const powerW = connected && updated > 0 && seconds > 0
@@ -8313,12 +8335,112 @@ class HomeFluxEmsApp extends Homey.App {
     return Number.isFinite(configured) && configured > 0 ? configured : null;
   }
 
+  restoreEvModeHouseReference() {
+    // Publication receipts only: no charging status, planning or measured W.
+    const saved = this.homey.settings.get('_evModeHouseReference');
+    const valid = saved?.version === 1;
+    this.evModeHouseCommands = Array.from({ length: 4 }, (_, i) => {
+      const row = valid ? saved.commands?.[i] : null;
+      return { mode: ['stop', 'smart', 'standard'].includes(row?.mode) ? row.mode : null,
+        at: Math.max(0, Number(row?.at) || 0) };
+    });
+    this.evModeHousePending = Array(4).fill(false);
+    this.evModeHouseStartCandidate = null;
+    this.evModeHouseConfirmedThisRun = Array(4).fill(false);
+    const reference = valid ? parseFiniteInputNumber(saved.referenceW) : null;
+    if (reference !== null && reference >= 0 && this.evModeHouseCommands.some((row, i) =>
+      row.mode && this.getEvControlTypeFor(i) === 'mode')) {
+      this.evSessionDetection.portfolioBaselineW = reference;
+      this.evBatteryHouseReferenceW = reference;
+    }
+    this.evModeHouseSavedReferenceW = reference !== null && reference >= 0 ? reference : null;
+    this.evModeHouseSerialized = valid ? JSON.stringify({ version: 1,
+      commands: this.evModeHouseCommands, referenceW: this.evModeHouseSavedReferenceW }) : '';
+  }
+
+  hasEvModeHouseCommandLock(settings = this.getSettings(), includePending = true) {
+    for (let i = 0; i < 4; i++) {
+      if (this.getEvControlTypeFor(i, settings) !== 'mode') continue;
+      if (['smart', 'standard'].includes(this.evModeHouseCommands?.[i]?.mode)
+        || (includePending && this.evModeHousePending?.[i])) return true;
+    }
+    return false;
+  }
+
+  isEvModeHouseLearningFrozen(settings = this.getSettings()) {
+    if (this.hasEvModeHouseCommandLock(settings)) return true;
+    // On upgrade/cold startup a connected or not-yet-reported Mode EV may
+    // already be drawing. Do not learn it before the first real publication.
+    for (let i = 0; i < this.getEvCount(settings); i++) {
+      if (!settings[this.getEvSettingKey(i, 'Enabled')] || this.getEvControlTypeFor(i, settings) !== 'mode'
+        || this.evModeHouseConfirmedThisRun?.[i]) continue;
+      const input = this.getEvInputSnapshot(i);
+      if (!input?.seen?.connected || input.connected) return true;
+    }
+    return false;
+  }
+
+  noteEvModeHousePublished(index, mode, candidate = null, now = Date.now()) {
+    const wasLocked = this.hasEvModeHouseCommandLock(this.getSettings(), false);
+    const previous = this.evModeHouseCommands[index];
+    this.evModeHouseConfirmedThisRun[index] = true;
+    let reference = null;
+    const startCandidate = candidate || this.evModeHouseStartCandidate;
+    if (mode !== 'stop' && !wasLocked && startCandidate) reference = this.applyEvStartHouseReference(index, startCandidate, now);
+    if (previous.mode !== mode) {
+      this.evModeHouseCommands[index] = { mode, at: now };
+      // Every new learning period starts with post-STOP points only. Old
+      // pre-charge/uncertain points must not be reused as a fresh 60s window.
+      if (this.evSessionDetection) this.evSessionDetection.recentHouseSamples = [];
+    }
+    if (mode !== 'stop' && !wasLocked) {
+      const value = parseFiniteInputNumber(reference?.houseReferenceW ?? this.evSessionDetection?.portfolioBaselineW);
+      this.evModeHouseSavedReferenceW = value !== null && value >= 0 ? value : null;
+      this.evSessionDetection.portfolioBaselineW = this.evModeHouseSavedReferenceW;
+      this.evBatteryHouseReferenceW = this.evModeHouseSavedReferenceW;
+      for (let i = 0; i < this.evSessionDetection.sessions.length; i++) {
+        if (this.getEvInputSnapshot(i)?.connected) this.evSessionDetection.sessions[i].baselineW = this.evModeHouseSavedReferenceW;
+      }
+    }
+    const stored = { version: 1, commands: this.evModeHouseCommands,
+      referenceW: this.evModeHouseSavedReferenceW ?? null };
+    const serialized = JSON.stringify(stored);
+    if (serialized !== this.evModeHouseSerialized) {
+      this.setSetting('_evModeHouseReference', JSON.parse(serialized));
+      this.evModeHouseSerialized = serialized;
+    }
+    return { ...reference, publishedMode: mode, successfulFlowPublication: true,
+      houseLearningFrozen: this.isEvModeHouseLearningFrozen(),
+      houseReferenceW: this.evSessionDetection?.portfolioBaselineW ?? null };
+  }
+
+  async trackEvModeHousePublication(index, mode, candidate, publish) {
+    // Quarantine P1 received while the real START Flow is in flight. Commit
+    // the receipt only after that particular Flow trigger succeeds; a later
+    // permission/token failure must not erase a successfully sent STOP.
+    if (mode !== 'stop' && !this.hasEvModeHouseCommandLock()) this.evModeHouseStartCandidate = candidate;
+    this.evModeHousePending[index] = mode !== 'stop';
+    if (mode !== 'stop' && this.evSessionDetection) this.evSessionDetection.recentHouseSamples = [];
+    try {
+      await publish();
+      return this.noteEvModeHousePublished(index, mode, candidate);
+    } finally {
+      this.evModeHousePending[index] = false;
+      if (!this.evModeHousePending.some(Boolean)) this.evModeHouseStartCandidate = null;
+    }
+  }
+
   recordEvHouseLoadSample(gridPowerW = this.state.gridPowerW, now = Date.now(), settings = this.getSettings()) {
     if (!this.evSessionDetection) return;
-    this.recordRecentEvHouseLoadSample(gridPowerW, now, settings);
+    const modeFrozen = this.isEvModeHouseLearningFrozen(settings);
+    this.recordRecentEvHouseLoadSample(gridPowerW, now, settings, modeFrozen);
+    if (modeFrozen) return;
     if (!this.inputSeen.grid || !this.inputSeen.pv) return;
     const connected = this.getConnectedEvIndexes(settings);
     const uncertainSession = connected.some(index => {
+      // Mode learning is governed by the successful publication receipts
+      // above, even if session/permission or display-only fields disagree.
+      if (this.getEvControlTypeFor(index, settings) === 'mode') return false;
       const session = this.getEvSessionDetectionRuntime(index);
       const input = this.getEvInputSnapshot(index);
       const actualA = this.getEvControlTypeFor(index, settings) !== 'mode' && input?.seen?.chargeCurrent
@@ -8331,7 +8453,8 @@ class HomeFluxEmsApp extends Homey.App {
     recordMinuteSample(this.evSessionDetection.houseHistory, siteLoadW, now, DEFAULT_HISTORY_MINUTES);
   }
 
-  recordRecentEvHouseLoadSample(gridPowerW, now, settings) {
+  recordRecentEvHouseLoadSample(gridPowerW, now, settings, modeFrozen = this.isEvModeHouseLearningFrozen(settings)) {
+    if (modeFrozen) return;
     const count = this.getEvCount(settings);
     let modeConfigured = false;
     for (let i = 0; i < count; i++) if (settings[this.getEvSettingKey(i, 'Enabled')]
@@ -8354,7 +8477,9 @@ class HomeFluxEmsApp extends Homey.App {
         // house upper bound, never a subtraction based on an old command.
         // While active, P1 minus its own inferred EV delta would simply teach
         // the frozen baseline back to itself. Do not manufacture such evidence.
-        if (this.isEvOutputActiveFor(i, settings)) { reason = 'mode_house_unobserved'; break; }
+        // Successful Mode STOP is the permission to resume observation. The
+        // publication receipt was checked before this loop; UI fields alone
+        // are not another way to freeze/release it.
         continue;
       }
       const measured = this.getEvMeasuredCurrent(i, input, now);
@@ -8375,6 +8500,9 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvStartHouseReference(now = Date.now()) {
     const recent = evHouseReference.read(this.evSessionDetection, now, this.evPhysicalConfigRevision || 0);
+    if (this.isEvModeHouseLearningFrozen()) {
+      recent.usable = false; recent.fallbackReason = 'mode_house_unobserved';
+    }
     const gridAt = Number(this.inputUpdatedAt?.grid) || 0, pvAt = Number(this.inputUpdatedAt?.pv) || 0;
     if (!this.inputSeen?.grid || !this.inputSeen?.pv || !pvAt || pvAt > now || now - pvAt > 60000
       || !gridAt || gridAt > now || now - gridAt > 5000) {
@@ -8393,6 +8521,11 @@ class HomeFluxEmsApp extends Homey.App {
 
   applyEvStartHouseReference(index, candidate, now = Date.now()) {
     const reference = { ...candidate };
+    if (this.hasEvModeHouseCommandLock(this.getSettings(), false)) {
+      reference.houseReferenceFallback = true;
+      reference.houseReferenceSource = 'existing_reference';
+      reference.houseReferenceFallbackReason = 'mode_house_frozen';
+    }
     if (now - reference.at > 5000 || reference.revision !== (this.evPhysicalConfigRevision || 0)) {
       reference.houseReferenceFallback = true;
       reference.houseReferenceSource = 'existing_reference';
@@ -8436,7 +8569,7 @@ class HomeFluxEmsApp extends Homey.App {
       const existingBaseline = this.evSessionDetection.portfolioBaselineW;
       const hasExistingBaseline = existingBaseline !== null && existingBaseline !== undefined
         && Number.isFinite(Number(existingBaseline));
-      if (!otherConnected || !hasExistingBaseline) {
+      if ((!otherConnected || !hasExistingBaseline) && !this.hasEvModeHouseCommandLock(settings)) {
         this.evSessionDetection.portfolioBaselineW = this.getLearnedEvHouseBaselineW(now, settings);
         const learnedBaseline = this.evSessionDetection.portfolioBaselineW;
         this.evSessionDetection.baselineCapturedAt = learnedBaseline !== null && learnedBaseline !== undefined
@@ -8468,7 +8601,7 @@ class HomeFluxEmsApp extends Homey.App {
       endedLatched: false,
       zeroCurrentSince: 0,
     });
-    if (!this.getConnectedEvIndexes(settings).length) {
+    if (!this.getConnectedEvIndexes(settings).length && !this.hasEvModeHouseCommandLock(settings)) {
       this.evBatteryHouseReferenceW = null;
       this.evSessionDetection.portfolioBaselineW = null;
       this.evSessionDetection.baselineCapturedAt = 0;
@@ -8523,7 +8656,7 @@ class HomeFluxEmsApp extends Homey.App {
     const connectedIndexes = this.getConnectedEvIndexes(settings);
     let candidateSettings = null;
     const measuredModes = [], ampIndexes = [];
-    let flowPowerW = 0, unknownFlowPower = false;
+    let flowPowerW = 0, unknownFlowPower = false, flowValidUntil = Infinity;
     const candidates = connectedIndexes.filter(index => {
       const candidate = Boolean(settings[this.getEvSettingKey(index, 'Enabled')])
         && this.getEvControlTypeFor(index, settings) === 'mode'
@@ -8566,11 +8699,12 @@ class HomeFluxEmsApp extends Homey.App {
     const meterPower = candidates.length ? { at: sampleAt, revision: this.evPhysicalConfigRevision || 0,
       validUntil: Math.min(sampleAt + this.getGridFreshness(settings, now).timeoutMs, pvAt + 300000),
       watts: [0, 0, 0, 0], modes: [null, null, null, null], downshiftUntil: [0, 0, 0, 0],
-      totalW: 0, source: 'homeflux_p1_estimate' } : null;
+      totalW: 0, source: 'homeflux_p1_estimate', usable: false } : null;
     detection.modePowerSnapshot = meterPower;
     if (measuredModes.length) for (const index of ampIndexes) {
       const flow = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index), now);
       if (!flow.fresh) { unknownFlowPower = true; break; }
+      flowValidUntil = Math.min(flowValidUntil, flow.updatedAt + EV_CURRENT_FEEDBACK_MAX_MS);
       if (flow.currentA > 0) flowPowerW += flow.currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
     }
     // The common P1 delta is shared ONCE across mode-only EVs. Nominal mode
@@ -8578,6 +8712,10 @@ class HomeFluxEmsApp extends Homey.App {
     // actual amp-controlled loads before allocating the remaining measured
     // delta; an unknown competing Flow load cannot finance mode attribution.
     if (measuredModes.length && !unknownFlowPower && pvAt > 0 && pvAt <= now && now - pvAt <= 300000) {
+      meterPower.usable = true;
+      // Recording cannot outlive a competing Flow meter used to separate this
+      // P1 pool. This metadata does not change the control cache's validity.
+      meterPower.recordingValidUntil = Math.min(meterPower.validUntil, flowValidUntil);
       const ceilingW = measuredModes.reduce((sum, row) => sum + row.ceilingW, 0);
       const minimumW = Math.min(...measuredModes.map(row => row.minimumW));
       const residualW = Math.max(0, detectedW - flowPowerW);
@@ -11355,6 +11493,7 @@ class HomeFluxEmsApp extends Homey.App {
       + (Number(this.state.lastTotalCommandW) || 0);
     const previousGridAt = Number(this.evBatteryHouseLastGridAt) || 0;
     this.evBatteryHouseLastGridAt = gridAt;
+    if (this.isEvModeHouseLearningFrozen(settings)) return;
     // A P1 update ahead of its PV update must not teach the PV delta as a
     // household change. Keep the last coherent house reference until both
     // source streams have advanced, without adding a timer or polling.
@@ -11701,7 +11840,7 @@ class HomeFluxEmsApp extends Homey.App {
       return;
     }
 
-    const houseReferenceAtStart = controlType === 'mode' && !['smart', 'standard'].includes(previousChargeMode)
+    const houseReferenceAtStart = controlType === 'mode' && !this.hasEvModeHouseCommandLock(settings)
       && ['smart', 'standard'].includes(chargeMode) ? this.getEvStartHouseReference(now) : null;
     this.evPublishing = true;
     diagnosticOutput?.('publishing');
@@ -11723,16 +11862,18 @@ class HomeFluxEmsApp extends Homey.App {
         this.noteAutoTuneEvCurrentCommand(0, desiredA, Date.now());
       }
       if (modeChanged) {
+        let houseReference = null;
         const token = this.tokens.get('emsevmode');
         if (token) await token.setValue(chargeMode);
         if (this.evModeTrigger) {
-          await this.evModeTrigger.trigger(this.localizeDisplayTokens({
+          const publish = () => this.evModeTrigger.trigger(this.localizeDisplayTokens({
             charge_mode: chargeMode,
             reason: String(decision.reason || ''),
           }), { charge_mode: chargeMode });
+          if (controlType === 'mode') houseReference = await this.trackEvModeHousePublication(0, chargeMode, houseReferenceAtStart, publish);
+          else await publish();
         }
         this.lastPublishedEvChargeMode = chargeMode;
-        const houseReference = houseReferenceAtStart ? this.applyEvStartHouseReference(0, houseReferenceAtStart) : null;
         diagnosticOutput?.('component_published', { component: 'mode', value: chargeMode,
           ...(houseReference ? { houseReference } : {}) });
         this.noteAutoTuneEvModeCommand(0, chargeMode, Date.now());
@@ -11852,7 +11993,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.scheduleAdditionalEvPublish(index, Math.max(250, intervalMs));
       return;
     }
-    const houseReferenceAtStart = controlType === 'mode' && !['smart', 'standard'].includes(previousChargeMode)
+    const houseReferenceAtStart = controlType === 'mode' && !this.hasEvModeHouseCommandLock(this.getSettings())
       && ['smart', 'standard'].includes(chargeMode) ? this.getEvStartHouseReference(now) : null;
     runtime.publishing = true;
     diagnosticOutput?.('publishing');
@@ -11870,9 +12011,11 @@ class HomeFluxEmsApp extends Homey.App {
         this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
       }
       if (modeChanged && triggers.mode) {
-        await triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
+        const publish = () => triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
+        let houseReference = null;
+        if (controlType === 'mode') houseReference = await this.trackEvModeHousePublication(index, chargeMode, houseReferenceAtStart, publish);
+        else await publish();
         runtime.lastPublishedChargeMode = chargeMode;
-        const houseReference = houseReferenceAtStart ? this.applyEvStartHouseReference(index, houseReferenceAtStart) : null;
         diagnosticOutput?.('component_published', { component: 'mode', value: chargeMode,
           ...(houseReference ? { houseReference } : {}) });
         this.noteAutoTuneEvModeCommand(index, chargeMode, Date.now());
@@ -11939,7 +12082,12 @@ class HomeFluxEmsApp extends Homey.App {
       const mode = String(body.mode || '').trim().toLowerCase();
       if (!['stop', 'smart', 'standard'].includes(mode)) throw new Error('Ongeldige EV-testmodus.');
       if (!triggers.mode) throw new Error(`EV ${instance}-laadmodus Flow-trigger is niet beschikbaar.`);
-      await triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: mode, reason }), { charge_mode: mode });
+      const publish = () => triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: mode, reason }), { charge_mode: mode });
+      if (this.getEvControlType(settings) === 'mode') {
+        const reference = mode !== 'stop' && !this.hasEvModeHouseCommandLock()
+          ? this.getEvStartHouseReference() : null;
+        await this.trackEvModeHousePublication(index, mode, reference, publish);
+      } else await publish();
       return { ok: true, instance, output, value: mode, detail: mode };
     }
 

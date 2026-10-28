@@ -28,7 +28,7 @@
         "houseBaselineW": 4000,
         "observedModePowerW": 0
       },
-      "cpuMs": 4011.29
+      "cpuMs": 4354.649
     },
     "baseline": null
   },
@@ -89,7 +89,7 @@
       "houseBaselineW": 4000,
       "observedModePowerW": 0
     },
-    "cpuMs": 135.685
+    "cpuMs": 137.249
   },
   {
     "name": "Stale positive telemetry falls back conservatively instead of financing false headroom",
@@ -472,7 +472,7 @@
       "houseBaselineW": 4000,
       "observedModePowerW": null
     },
-    "cpuMs": 661.725
+    "cpuMs": 677.248
   },
   {
     "name": "Mode-only integration without current measurement retains P1 inference",
@@ -502,7 +502,7 @@
       "houseBaselineW": 700,
       "observedModePowerW": 11085.125168440814
     },
-    "cpuMs": 755.426
+    "cpuMs": 775.073
   },
   {
     "name": "Current and hybrid charger control retain safe physical accounting",
@@ -534,7 +534,7 @@
           "houseBaselineW": 4000,
           "observedModePowerW": null
         },
-        "cpuMs": 521.604
+        "cpuMs": 504.564
       },
       {
         "type": "hybrid",
@@ -563,7 +563,7 @@
           "houseBaselineW": 4000,
           "observedModePowerW": null
         },
-        "cpuMs": 524.566
+        "cpuMs": 564.343
       }
     ]
   },
@@ -619,7 +619,7 @@
       "houseBaselineW": 4000,
       "observedModePowerW": null
     },
-    "cpuMs": 551.545,
+    "cpuMs": 649.149,
     "predictedGridW": 9013.843876330611
   },
   {

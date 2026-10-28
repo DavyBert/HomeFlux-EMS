@@ -1,0 +1,1019 @@
+{
+  "version": "1.2.5",
+  "scope": "Mode house reference follows successful command publications; same-version correction",
+  "inputZipSha256": "3cf65de95d6d9378fa3d5eff0f088169077999f39a09bfa5da868995b1297599",
+  "testFilesPassed": 103,
+  "failed": 0,
+  "publicationCasesPassed": 26,
+  "modeEnergyGroups": 16,
+  "gridPermissionGroups": 20,
+  "physicalProofGroups": 22,
+  "financialComparisonScenarios": 12,
+  "financialFieldsAndCommandsIdentical": true,
+  "logEmergencySnapshotsReconstructed": 70,
+  "historicalActiveStopRemains": [
+    "27 October 2026 16:03:52 Europe/Brussels, evt-79"
+  ],
+  "newMethods": [
+    "restoreEvModeHouseReference",
+    "hasEvModeHouseCommandLock",
+    "isEvModeHouseLearningFrozen",
+    "noteEvModeHousePublished",
+    "trackEvModeHousePublication"
+  ],
+  "changedMethods": [
+    "onInit",
+    "recordEvHouseLoadSample",
+    "recordRecentEvHouseLoadSample",
+    "getEvStartHouseReference",
+    "applyEvStartHouseReference",
+    "handleEvDetectionConnectionTransition",
+    "recordEvBatteryHouseReference",
+    "publishEvDecision",
+    "publishAdditionalEvDecision",
+    "testEvOutput"
+  ],
+  "unchangedModules": [
+    "lib/flexible-loads.js",
+    "lib/ev-deadline-planner.js",
+    "lib/ev-output-policy.js",
+    "lib/ev-session.js",
+    "lib/ev-house-reference.js",
+    "lib/savings.js",
+    "lib/ev-energy-breakdown.js",
+    "lib/ev-dashboard.js",
+    "lib/battery-night-planner.js",
+    "lib/widget-energy-budget.js",
+    "lib/ems-engine.js"
+  ],
+  "allWidgetFilesByteIdentical": true,
+  "syntaxFilesChecked": [
+    "app.js",
+    "test/startup-harness.js",
+    "test/app-control.test.js",
+    "test/ev-house-reference-1.2.4.test.js",
+    "test/ev-battery-protection-1.1.6.test.js",
+    "test/ev-physical-proof-1.2.4.test.js",
+    "test/ev-recording-comparison-1.2.5.cjs",
+    "test/ev-house-publication-1.2.5.test.js",
+    "test/ev-house-log-reconstruction-1.2.5.cjs"
+  ],
+  "newPolling": false,
+  "newTimers": false,
+  "newPlanner": false,
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "homeyCliValidationRun": false,
+  "suite": [
+    {
+      "test": "test/engine.test.js",
+      "exitCode": 0,
+      "seconds": 0.243
+    },
+    {
+      "test": "test/homey-energy.test.js",
+      "exitCode": 0,
+      "seconds": 0.087
+    },
+    {
+      "test": "test/flexible-loads.test.js",
+      "exitCode": 0,
+      "seconds": 0.28
+    },
+    {
+      "test": "test/ev-headroom.test.js",
+      "exitCode": 0,
+      "seconds": 0.087
+    },
+    {
+      "test": "test/app-control.test.js",
+      "exitCode": 0,
+      "seconds": 1.257
+    },
+    {
+      "test": "test/performance-split-loop.test.js",
+      "exitCode": 0,
+      "seconds": 0.149
+    },
+    {
+      "test": "test/help-catalog.test.js",
+      "exitCode": 0,
+      "seconds": 0.087
+    },
+    {
+      "test": "test/autotune.test.js",
+      "exitCode": 0,
+      "seconds": 0.144
+    },
+    {
+      "test": "test/settings-startup.test.js",
+      "exitCode": 0,
+      "seconds": 0.099
+    },
+    {
+      "test": "test/settings-translations.test.js",
+      "exitCode": 0,
+      "seconds": 0.068
+    },
+    {
+      "test": "test/settings-runtime-audit.test.js",
+      "exitCode": 0,
+      "seconds": 0.121
+    },
+    {
+      "test": "test/output-tests.test.js",
+      "exitCode": 0,
+      "seconds": 0.115
+    },
+    {
+      "test": "test/multi-flexible-loads.test.js",
+      "exitCode": 0,
+      "seconds": 0.175
+    },
+    {
+      "test": "test/performance-architecture.test.js",
+      "exitCode": 0,
+      "seconds": 0.145
+    },
+    {
+      "test": "test/savings.test.js",
+      "exitCode": 0,
+      "seconds": 0.128
+    },
+    {
+      "test": "test/widget.test.js",
+      "exitCode": 0,
+      "seconds": 0.076
+    },
+    {
+      "test": "test/regressions-0.7.8.test.js",
+      "exitCode": 0,
+      "seconds": 0.151
+    },
+    {
+      "test": "test/regressions-0.7.9.test.js",
+      "exitCode": 0,
+      "seconds": 1.729
+    },
+    {
+      "test": "test/regressions-0.7.10.test.js",
+      "exitCode": 0,
+      "seconds": 0.168
+    },
+    {
+      "test": "test/regressions-0.7.11.test.js",
+      "exitCode": 0,
+      "seconds": 0.205
+    },
+    {
+      "test": "test/flow-slot-cards.test.js",
+      "exitCode": 0,
+      "seconds": 0.9
+    },
+    {
+      "test": "test/configured-flow-cards.test.js",
+      "exitCode": 0,
+      "seconds": 1.063
+    },
+    {
+      "test": "test/regressions-0.7.15.test.js",
+      "exitCode": 0,
+      "seconds": 0.108
+    },
+    {
+      "test": "test/regressions-0.7.16.test.js",
+      "exitCode": 0,
+      "seconds": 0.198
+    },
+    {
+      "test": "test/voltage-ui-0.7.16.test.js",
+      "exitCode": 0,
+      "seconds": 0.079
+    },
+    {
+      "test": "test/regressions-0.8.1.test.js",
+      "exitCode": 0,
+      "seconds": 0.12
+    },
+    {
+      "test": "test/regressions-0.8.2.test.js",
+      "exitCode": 0,
+      "seconds": 0.15
+    },
+    {
+      "test": "test/regressions-0.8.3.test.js",
+      "exitCode": 0,
+      "seconds": 0.227
+    },
+    {
+      "test": "test/regressions-0.8.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.333
+    },
+    {
+      "test": "test/regressions-0.8.7.test.js",
+      "exitCode": 0,
+      "seconds": 0.202
+    },
+    {
+      "test": "test/pv-plan-feedback.test.js",
+      "exitCode": 0,
+      "seconds": 0.242
+    },
+    {
+      "test": "test/regressions-0.9.1.test.js",
+      "exitCode": 0,
+      "seconds": 1.033
+    },
+    {
+      "test": "test/regressions-0.9.2.test.js",
+      "exitCode": 0,
+      "seconds": 0.226
+    },
+    {
+      "test": "test/regressions-0.9.3.test.js",
+      "exitCode": 0,
+      "seconds": 0.222
+    },
+    {
+      "test": "test/regressions-0.9.5.test.js",
+      "exitCode": 0,
+      "seconds": 0.205
+    },
+    {
+      "test": "test/regressions-0.9.7.test.js",
+      "exitCode": 0,
+      "seconds": 0.287
+    },
+    {
+      "test": "test/regressions-0.9.8.test.js",
+      "exitCode": 0,
+      "seconds": 0.365
+    },
+    {
+      "test": "test/regressions-0.9.9.test.js",
+      "exitCode": 0,
+      "seconds": 0.126
+    },
+    {
+      "test": "test/regressions-1.0.0.test.js",
+      "exitCode": 0,
+      "seconds": 0.214
+    },
+    {
+      "test": "test/efficiency.test.js",
+      "exitCode": 0,
+      "seconds": 0.172
+    },
+    {
+      "test": "test/price-sources-1.0.6.test.js",
+      "exitCode": 0,
+      "seconds": 0.339
+    },
+    {
+      "test": "test/price-ui-1.0.6.test.js",
+      "exitCode": 0,
+      "seconds": 0.082
+    },
+    {
+      "test": "test/price-alignment-names-1.0.6.test.js",
+      "exitCode": 0,
+      "seconds": 0.38
+    },
+    {
+      "test": "test/fast-control-audit-1.0.6.test.js",
+      "exitCode": 0,
+      "seconds": 0.668
+    },
+    {
+      "test": "test/planning-limits-1.0.7.test.js",
+      "exitCode": 0,
+      "seconds": 0.349
+    },
+    {
+      "test": "test/charge-feedback-1.0.8.test.js",
+      "exitCode": 0,
+      "seconds": 0.853
+    },
+    {
+      "test": "test/idle-guard-1.0.8.test.js",
+      "exitCode": 0,
+      "seconds": 0.834
+    },
+    {
+      "test": "test/context-refresh-1.0.10.test.js",
+      "exitCode": 0,
+      "seconds": 0.833
+    },
+    {
+      "test": "test/ev-feedback-1.0.11.test.js",
+      "exitCode": 0,
+      "seconds": 4.972
+    },
+    {
+      "test": "test/settings-cache-1.0.12.test.js",
+      "exitCode": 0,
+      "seconds": 0.382
+    },
+    {
+      "test": "test/pv-source-1.1.1.test.js",
+      "exitCode": 0,
+      "seconds": 0.381
+    },
+    {
+      "test": "test/active-charge-1.1.2.test.js",
+      "exitCode": 0,
+      "seconds": 2.519
+    },
+    {
+      "test": "test/source-switch-1.1.3.test.js",
+      "exitCode": 0,
+      "seconds": 0.377
+    },
+    {
+      "test": "test/night-forecast-1.1.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.785
+    },
+    {
+      "test": "test/independent-ev-1.1.5.test.js",
+      "exitCode": 0,
+      "seconds": 5.305
+    },
+    {
+      "test": "test/diagnostics-1.1.6.test.js",
+      "exitCode": 0,
+      "seconds": 2.165
+    },
+    {
+      "test": "test/ev-battery-protection-1.1.6.test.js",
+      "exitCode": 0,
+      "seconds": 2.422
+    },
+    {
+      "test": "test/soc-completion-1.1.9.test.js",
+      "exitCode": 0,
+      "seconds": 7.732
+    },
+    {
+      "test": "test/ev-battery-transition-1.1.9.test.js",
+      "exitCode": 0,
+      "seconds": 6.604
+    },
+    {
+      "test": "test/split-resend-seconds-1.1.10.test.js",
+      "exitCode": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/ev-pv-house-first-1.1.11.test.js",
+      "exitCode": 0,
+      "seconds": 10.876
+    },
+    {
+      "test": "test/ev-input-work-1.1.12.test.js",
+      "exitCode": 0,
+      "seconds": 15.749
+    },
+    {
+      "test": "test/ev-deadline-cache-1.1.12.test.js",
+      "exitCode": 0,
+      "seconds": 1.209
+    },
+    {
+      "test": "test/ev-duplicate-cpu-1.1.12.test.js",
+      "exitCode": 0,
+      "seconds": 0.664
+    },
+    {
+      "test": "test/ev-context-delay-1.1.13.test.js",
+      "exitCode": 0,
+      "seconds": 3.219
+    },
+    {
+      "test": "test/input-monitor-1.1.14.test.js",
+      "exitCode": 0,
+      "seconds": 0.185
+    },
+    {
+      "test": "test/input-monitor-ui-1.1.14.test.js",
+      "exitCode": 0,
+      "seconds": 0.103
+    },
+    {
+      "test": "test/ev-work-1.1.15.test.js",
+      "exitCode": 0,
+      "seconds": 1.615
+    },
+    {
+      "test": "test/ev-plan-1.1.15.test.js",
+      "exitCode": 0,
+      "seconds": 6.661
+    },
+    {
+      "test": "test/ev-work-1.1.16.test.js",
+      "exitCode": 0,
+      "seconds": 1.332
+    },
+    {
+      "test": "test/planning-monitor-1.1.16.test.js",
+      "exitCode": 0,
+      "seconds": 0.403
+    },
+    {
+      "test": "test/ev-plan-centralization-1.1.16.test.js",
+      "exitCode": 0,
+      "seconds": 0.376
+    },
+    {
+      "test": "test/ev-physical-settings-1.1.16.test.js",
+      "exitCode": 0,
+      "seconds": 2.456
+    },
+    {
+      "test": "test/ev-physical-config-cache-1.1.16.test.js",
+      "exitCode": 0,
+      "seconds": 0.579
+    },
+    {
+      "test": "test/ev-deadline-planner-1.1.17.test.js",
+      "exitCode": 0,
+      "seconds": 0.134
+    },
+    {
+      "test": "test/ev-deadline-integration-1.1.17.test.js",
+      "exitCode": 0,
+      "seconds": 9.004
+    },
+    {
+      "test": "test/battery-night-1.1.18.test.js",
+      "exitCode": 0,
+      "seconds": 8.477
+    },
+    {
+      "test": "test/night-restart-1.1.18.test.js",
+      "exitCode": 0,
+      "seconds": 0.381
+    },
+    {
+      "test": "test/ev-persistence-1.1.20.test.js",
+      "exitCode": 0,
+      "seconds": 0.566
+    },
+    {
+      "test": "test/ev-peak-1.1.20.test.js",
+      "exitCode": 0,
+      "seconds": 8.907
+    },
+    {
+      "test": "test/widget-insights-1.2.1.test.js",
+      "exitCode": 0,
+      "seconds": 0.509
+    },
+    {
+      "test": "test/widget-insights-lifecycle-1.2.1.test.js",
+      "exitCode": 0,
+      "seconds": 0.075
+    },
+    {
+      "test": "test/battery-power-1.2.2.test.js",
+      "exitCode": 0,
+      "seconds": 0.919
+    },
+    {
+      "test": "test/waf-continuity-1.2.3.test.js",
+      "exitCode": 0,
+      "seconds": 0.799
+    },
+    {
+      "test": "test/ev-widget-handler-audit-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.232
+    },
+    {
+      "test": "test/ev-dashboard-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.429
+    },
+    {
+      "test": "test/ev-energy-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.234
+    },
+    {
+      "test": "test/ev-widget-ui-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.224
+    },
+    {
+      "test": "test/ev-widget-regression-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 1.627
+    },
+    {
+      "test": "test/ev-savings-export-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.108
+    },
+    {
+      "test": "test/ev-emergency-presentation-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.118
+    },
+    {
+      "test": "test/ev-recording-audit-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 2.858
+    },
+    {
+      "test": "test/ev-house-reference-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.726
+    },
+    {
+      "test": "test/ev-multiday-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.359
+    },
+    {
+      "test": "test/ev-multiday-control-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.956
+    },
+    {
+      "test": "test/ev-confirmed-power-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 10.786
+    },
+    {
+      "test": "test/ev-widget-emergency-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.208
+    },
+    {
+      "test": "test/ev-flow-resume-waf-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.472
+    },
+    {
+      "test": "test/ev-physical-proof-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 77.66
+    },
+    {
+      "test": "test/ev-battery-options-1.2.4.test.js",
+      "exitCode": 0,
+      "seconds": 0.402
+    },
+    {
+      "test": "test/ev-mode-recording-1.2.5.test.js",
+      "exitCode": 0,
+      "seconds": 19.014
+    },
+    {
+      "test": "test/ev-grid-permission-1.2.5.test.js",
+      "exitCode": 0,
+      "seconds": 24.347
+    },
+    {
+      "test": "test/ev-house-publication-1.2.5.test.js",
+      "exitCode": 0,
+      "seconds": 0.829
+    }
+  ],
+  "note": "Complete release suite passed after final production changes: 103 test files and 26 targeted publication groups. Actual Homey I/O is simulated; the historical evt-79 STOP remains as documented.",
+  "performance": {
+    "runs": 5,
+    "simulatedSecondsPerReplay": 180,
+    "replays": 50,
+    "allPairedOutputsCallsCountersIdentical": true,
+    "summary": [
+      {
+        "profile": "disconnected",
+        "outputsIdentical": true,
+        "before": {
+          "medianCpuMs": 32.833,
+          "minCpuMs": 32.68,
+          "maxCpuMs": 45.483,
+          "medianWallMs": 28.370068000000174,
+          "medianHeapRetainedBytes": 11992,
+          "calls": {
+            "getEvGridImportControlStatus": 180
+          },
+          "counters": {
+            "evFeedbackInputs": 180,
+            "evFeedbackUnchanged": 180,
+            "gridInputs": 180,
+            "fastRequests": 180,
+            "fastIdleGuardBypassPendingCommand": 7,
+            "evPhysicalAccountingChecks": 180,
+            "evPhysicalAccountingInactiveSkipped": 180,
+            "evPhysicalAccountingReused": 178,
+            "fastFeedbackUnchangedSkipped": 174,
+            "fastSkipped": 174,
+            "fastCoalesced": 2,
+            "fastImmediate": 4,
+            "fastEvaluations": 4,
+            "fastNoCommandChange": 4,
+            "fastIdleGuardBypassActiveSetpoint": 173,
+            "fastReasonFeedback": 3,
+            "evHeartbeatQuietSkipped": 3
+          },
+          "received": 360
+        },
+        "after": {
+          "medianCpuMs": 38.09,
+          "minCpuMs": 37.361,
+          "maxCpuMs": 52.248,
+          "medianWallMs": 32.55822700000135,
+          "medianHeapRetainedBytes": 19720,
+          "calls": {
+            "getEvGridImportControlStatus": 180
+          },
+          "counters": {
+            "evFeedbackInputs": 180,
+            "evFeedbackUnchanged": 180,
+            "gridInputs": 180,
+            "fastRequests": 180,
+            "fastIdleGuardBypassPendingCommand": 7,
+            "evPhysicalAccountingChecks": 180,
+            "evPhysicalAccountingInactiveSkipped": 180,
+            "evPhysicalAccountingReused": 178,
+            "fastFeedbackUnchangedSkipped": 174,
+            "fastSkipped": 174,
+            "fastCoalesced": 2,
+            "fastImmediate": 4,
+            "fastEvaluations": 4,
+            "fastNoCommandChange": 4,
+            "fastIdleGuardBypassActiveSetpoint": 173,
+            "fastReasonFeedback": 3,
+            "evHeartbeatQuietSkipped": 3
+          },
+          "received": 360
+        }
+      },
+      {
+        "profile": "disconnected-status",
+        "outputsIdentical": true,
+        "before": {
+          "medianCpuMs": 120.528,
+          "minCpuMs": 103.76,
+          "maxCpuMs": 122.268,
+          "medianWallMs": 100.7361490000003,
+          "medianHeapRetainedBytes": 13096,
+          "calls": {
+            "getEvGridImportControlStatus": 270,
+            "getEvInstanceSettings": 90
+          },
+          "counters": {
+            "evFeedbackInputs": 180,
+            "evFeedbackUnchanged": 180,
+            "gridInputs": 180,
+            "fastRequests": 180,
+            "fastIdleGuardBypassPendingCommand": 7,
+            "evPhysicalAccountingChecks": 270,
+            "evPhysicalAccountingInactiveSkipped": 270,
+            "evPhysicalAccountingReused": 178,
+            "fastFeedbackUnchangedSkipped": 174,
+            "fastSkipped": 174,
+            "evInstanceSettingsBuilds": 90,
+            "fastCoalesced": 2,
+            "fastImmediate": 4,
+            "fastEvaluations": 4,
+            "fastNoCommandChange": 4,
+            "fastIdleGuardBypassActiveSetpoint": 173,
+            "fastReasonFeedback": 3,
+            "evHeartbeatQuietSkipped": 3
+          },
+          "received": 360
+        },
+        "after": {
+          "medianCpuMs": 122.32,
+          "minCpuMs": 109.75,
+          "maxCpuMs": 127.428,
+          "medianWallMs": 98.86542399999962,
+          "medianHeapRetainedBytes": 57992,
+          "calls": {
+            "getEvGridImportControlStatus": 270,
+            "getEvInstanceSettings": 90
+          },
+          "counters": {
+            "evFeedbackInputs": 180,
+            "evFeedbackUnchanged": 180,
+            "gridInputs": 180,
+            "fastRequests": 180,
+            "fastIdleGuardBypassPendingCommand": 7,
+            "evPhysicalAccountingChecks": 270,
+            "evPhysicalAccountingInactiveSkipped": 270,
+            "evPhysicalAccountingReused": 178,
+            "fastFeedbackUnchangedSkipped": 174,
+            "fastSkipped": 174,
+            "evInstanceSettingsBuilds": 90,
+            "fastCoalesced": 2,
+            "fastImmediate": 4,
+            "fastEvaluations": 4,
+            "fastNoCommandChange": 4,
+            "fastIdleGuardBypassActiveSetpoint": 173,
+            "fastReasonFeedback": 3,
+            "evHeartbeatQuietSkipped": 3
+          },
+          "received": 360
+        }
+      },
+      {
+        "profile": "two-current",
+        "outputsIdentical": true,
+        "before": {
+          "medianCpuMs": 274.04,
+          "minCpuMs": 216.651,
+          "maxCpuMs": 286.77,
+          "medianWallMs": 253.701145,
+          "medianHeapRetainedBytes": 40224,
+          "calls": {
+            "getEvGridImportControlStatus": 370,
+            "getEvInstanceSettings": 62
+          },
+          "counters": {
+            "pvInputs": 180,
+            "fastRequests": 360,
+            "fastIdleGuardBypassPendingCommand": 75,
+            "evPhysicalAccountingChecks": 370,
+            "evPhysicalConfigCacheHits": 720,
+            "fastSkipStableSignal": 273,
+            "fastSkipped": 273,
+            "contextRequestsCoalesced": 13,
+            "evFeedbackInputs": 360,
+            "evInputEvaluationRequests": 2,
+            "evContextRequests": 69,
+            "evContextTimersStarted": 7,
+            "evContextRequestsCoalesced": 62,
+            "gridInputs": 180,
+            "fastReasonEvTarget": 41,
+            "fastCoalesced": 68,
+            "evFeedbackUnchanged": 358,
+            "fastImmediate": 13,
+            "fastEvaluations": 13,
+            "evPhysicalAccountingReused": 13,
+            "evPhysicalSettingsReused": 26,
+            "fastNoCommandChange": 7,
+            "statusPublishes": 12,
+            "fastIdleGuardBypassActiveSetpoint": 285,
+            "evContextTimersExpired": 4,
+            "evPhysicalSettingsReads": 40,
+            "evPortfolioCalculations": 13,
+            "evInstanceSettingsBuilds": 62,
+            "evContextRequestsSatisfied": 7,
+            "evContextDeferredEvaluations": 4,
+            "fastReasonZone": 45,
+            "calculatedSetpointTriggers": 6,
+            "fastCommandChange": 6,
+            "batteryCommandPublishes": 6,
+            "fastScheduled": 6,
+            "contextEvaluations": 3,
+            "evContextFromMeter": 3,
+            "evContextFromBattery": 3,
+            "evHeartbeatEvaluations": 3
+          },
+          "received": 720
+        },
+        "after": {
+          "medianCpuMs": 209.88,
+          "minCpuMs": 200.724,
+          "maxCpuMs": 227.588,
+          "medianWallMs": 192.28414200000043,
+          "medianHeapRetainedBytes": 51872,
+          "calls": {
+            "getEvGridImportControlStatus": 370,
+            "getEvInstanceSettings": 62
+          },
+          "counters": {
+            "pvInputs": 180,
+            "fastRequests": 360,
+            "fastIdleGuardBypassPendingCommand": 75,
+            "evPhysicalAccountingChecks": 370,
+            "evPhysicalConfigCacheHits": 720,
+            "fastSkipStableSignal": 273,
+            "fastSkipped": 273,
+            "contextRequestsCoalesced": 13,
+            "evFeedbackInputs": 360,
+            "evInputEvaluationRequests": 2,
+            "evContextRequests": 69,
+            "evContextTimersStarted": 7,
+            "evContextRequestsCoalesced": 62,
+            "gridInputs": 180,
+            "fastReasonEvTarget": 41,
+            "fastCoalesced": 68,
+            "evFeedbackUnchanged": 358,
+            "fastImmediate": 13,
+            "fastEvaluations": 13,
+            "evPhysicalAccountingReused": 13,
+            "evPhysicalSettingsReused": 26,
+            "fastNoCommandChange": 7,
+            "statusPublishes": 12,
+            "fastIdleGuardBypassActiveSetpoint": 285,
+            "evContextTimersExpired": 4,
+            "evPhysicalSettingsReads": 40,
+            "evPortfolioCalculations": 13,
+            "evInstanceSettingsBuilds": 62,
+            "evContextRequestsSatisfied": 7,
+            "evContextDeferredEvaluations": 4,
+            "fastReasonZone": 45,
+            "calculatedSetpointTriggers": 6,
+            "fastCommandChange": 6,
+            "batteryCommandPublishes": 6,
+            "fastScheduled": 6,
+            "contextEvaluations": 3,
+            "evContextFromMeter": 3,
+            "evContextFromBattery": 3,
+            "evHeartbeatEvaluations": 3
+          },
+          "received": 720
+        }
+      },
+      {
+        "profile": "battery-disabled",
+        "outputsIdentical": true,
+        "before": {
+          "medianCpuMs": 195.171,
+          "minCpuMs": 183.703,
+          "maxCpuMs": 253.316,
+          "medianWallMs": 188.60436800000025,
+          "medianHeapRetainedBytes": 39848,
+          "calls": {
+            "getEvGridImportControlStatus": 187,
+            "getEvInstanceSettings": 20
+          },
+          "counters": {
+            "evFeedbackInputs": 180,
+            "evInputEvaluationRequests": 1,
+            "evContextRequests": 17,
+            "evContextTimersStarted": 1,
+            "gridInputs": 180,
+            "evContextRequestsCoalesced": 16,
+            "fastRequests": 180,
+            "fastIdleGuardBypassStateChange": 180,
+            "evPhysicalAccountingChecks": 187,
+            "evPhysicalConfigCacheHits": 180,
+            "fastReasonFeedback": 180,
+            "fastImmediate": 180,
+            "fastEvaluations": 180,
+            "evPhysicalAccountingReused": 180,
+            "evPhysicalSettingsReused": 180,
+            "calculatedSetpointTriggers": 1,
+            "fastNoCommandChange": 180,
+            "statusPublishes": 1,
+            "evFeedbackUnchanged": 179,
+            "evContextTimersExpired": 1,
+            "evPhysicalSettingsReads": 14,
+            "evPortfolioCalculations": 10,
+            "evInstanceSettingsBuilds": 20,
+            "evContextRequestsSatisfied": 1,
+            "evContextDeferredEvaluations": 1,
+            "evHeartbeatEvaluations": 3,
+            "contextEvaluations": 3,
+            "evContextFromMeter": 3
+          },
+          "received": 360
+        },
+        "after": {
+          "medianCpuMs": 213.136,
+          "minCpuMs": 201.384,
+          "maxCpuMs": 228.041,
+          "medianWallMs": 205.81790399999954,
+          "medianHeapRetainedBytes": 4176,
+          "calls": {
+            "getEvGridImportControlStatus": 187,
+            "getEvInstanceSettings": 20
+          },
+          "counters": {
+            "evFeedbackInputs": 180,
+            "evInputEvaluationRequests": 1,
+            "evContextRequests": 17,
+            "evContextTimersStarted": 1,
+            "gridInputs": 180,
+            "evContextRequestsCoalesced": 16,
+            "fastRequests": 180,
+            "fastIdleGuardBypassStateChange": 180,
+            "evPhysicalAccountingChecks": 187,
+            "evPhysicalConfigCacheHits": 180,
+            "fastReasonFeedback": 180,
+            "fastImmediate": 180,
+            "fastEvaluations": 180,
+            "evPhysicalAccountingReused": 180,
+            "evPhysicalSettingsReused": 180,
+            "calculatedSetpointTriggers": 1,
+            "fastNoCommandChange": 180,
+            "statusPublishes": 1,
+            "evFeedbackUnchanged": 179,
+            "evContextTimersExpired": 1,
+            "evPhysicalSettingsReads": 14,
+            "evPortfolioCalculations": 10,
+            "evInstanceSettingsBuilds": 20,
+            "evContextRequestsSatisfied": 1,
+            "evContextDeferredEvaluations": 1,
+            "evHeartbeatEvaluations": 3,
+            "contextEvaluations": 3,
+            "evContextFromMeter": 3
+          },
+          "received": 360
+        }
+      },
+      {
+        "profile": "pv-only",
+        "outputsIdentical": true,
+        "before": {
+          "medianCpuMs": 311.554,
+          "minCpuMs": 282.336,
+          "maxCpuMs": 327.94,
+          "medianWallMs": 287.6233909999992,
+          "medianHeapRetainedBytes": 63216,
+          "calls": {
+            "getEvGridImportControlStatus": 371,
+            "getEvInstanceSettings": 28
+          },
+          "counters": {
+            "pvInputs": 180,
+            "fastRequests": 360,
+            "fastIdleGuardBypassStateChange": 357,
+            "evPhysicalAccountingChecks": 371,
+            "evPhysicalConfigCacheHits": 360,
+            "fastReasonFeedback": 353,
+            "fastImmediate": 360,
+            "fastEvaluations": 360,
+            "evPhysicalAccountingReused": 360,
+            "evPhysicalSettingsReused": 360,
+            "fastNoCommandChange": 360,
+            "evFeedbackInputs": 180,
+            "evFeedbackUnchanged": 175,
+            "gridInputs": 180,
+            "contextRequestsCoalesced": 6,
+            "evContextRequests": 127,
+            "evContextTimersStarted": 8,
+            "fastReasonZone": 3,
+            "evContextRequestsCoalesced": 119,
+            "evContextTimersExpired": 5,
+            "evPhysicalSettingsReads": 22,
+            "evPortfolioCalculations": 14,
+            "evInstanceSettingsBuilds": 28,
+            "evContextRequestsSatisfied": 8,
+            "evContextDeferredEvaluations": 5,
+            "evInputEvaluationRequests": 5,
+            "statusPublishes": 8,
+            "contextEvaluations": 3,
+            "evContextFromMeter": 3,
+            "fastIdleGuardBypassPendingCommand": 3,
+            "evHeartbeatEvaluations": 3,
+            "fastReasonEvTarget": 2
+          },
+          "received": 540
+        },
+        "after": {
+          "medianCpuMs": 361.786,
+          "minCpuMs": 290.272,
+          "maxCpuMs": 415.175,
+          "medianWallMs": 342.4422340000001,
+          "medianHeapRetainedBytes": 82168,
+          "calls": {
+            "getEvGridImportControlStatus": 371,
+            "getEvInstanceSettings": 28
+          },
+          "counters": {
+            "pvInputs": 180,
+            "fastRequests": 360,
+            "fastIdleGuardBypassStateChange": 357,
+            "evPhysicalAccountingChecks": 371,
+            "evPhysicalConfigCacheHits": 360,
+            "fastReasonFeedback": 353,
+            "fastImmediate": 360,
+            "fastEvaluations": 360,
+            "evPhysicalAccountingReused": 360,
+            "evPhysicalSettingsReused": 360,
+            "fastNoCommandChange": 360,
+            "evFeedbackInputs": 180,
+            "evFeedbackUnchanged": 175,
+            "gridInputs": 180,
+            "contextRequestsCoalesced": 6,
+            "evContextRequests": 127,
+            "evContextTimersStarted": 8,
+            "fastReasonZone": 3,
+            "evContextRequestsCoalesced": 119,
+            "evContextTimersExpired": 5,
+            "evPhysicalSettingsReads": 22,
+            "evPortfolioCalculations": 14,
+            "evInstanceSettingsBuilds": 28,
+            "evContextRequestsSatisfied": 8,
+            "evContextDeferredEvaluations": 5,
+            "evInputEvaluationRequests": 5,
+            "statusPublishes": 8,
+            "contextEvaluations": 3,
+            "evContextFromMeter": 3,
+            "fastIdleGuardBypassPendingCommand": 3,
+            "evHeartbeatEvaluations": 3,
+            "fastReasonEvTarget": 2
+          },
+          "received": 540
+        }
+      }
+    ]
+  }
+}

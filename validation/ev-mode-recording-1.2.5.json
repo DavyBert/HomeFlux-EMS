@@ -1,0 +1,84 @@
+{
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "passed": 16,
+  "results": [
+    {
+      "name": "Mode uses P1 with missing Flow feedback",
+      "seconds": 600,
+      "observedW": 5542.562584220407,
+      "kwh": 0.9237604307033943
+    },
+    {
+      "name": "Mode uses P1 with 0 A Flow feedback",
+      "seconds": 600,
+      "observedW": 5542.562584220407,
+      "kwh": 0.9237604307033943
+    },
+    {
+      "name": "Mode uses P1 with 30 A Flow feedback",
+      "seconds": 600,
+      "observedW": 5542.562584220407,
+      "kwh": 0.9237604307033943
+    },
+    {
+      "name": "Positive Flow current cannot fabricate Mode energy when P1 confirms zero"
+    },
+    {
+      "name": "Mode reuses the divided P1 estimate with Flow scope unavailable",
+      "totalKwh": 0.3233161507461922,
+      "allocatedOnce": true
+    },
+    {
+      "name": "Mode reuses the divided P1 estimate with Flow scope shared",
+      "totalKwh": 0.3233161507461922,
+      "allocatedOnce": true
+    },
+    {
+      "name": "Site source allocation: PV 9000 W, signed battery 0 W",
+      "kwh": 0.18475208614068045,
+      "pvKwh": 0.16666666666666632,
+      "gridKwh": 0.018085419474013525,
+      "unknownKwh": 1.3010426069826053e-17
+    },
+    {
+      "name": "Site source allocation: PV 5000 W, signed battery -1000 W",
+      "kwh": 0.18475208614068045,
+      "pvKwh": 0.03333333333333326,
+      "gridKwh": 0.15141875280734657,
+      "unknownKwh": 0
+    },
+    {
+      "name": "Site source allocation: PV 0 W, signed battery 6000 W",
+      "kwh": 0.18475208614068045,
+      "pvKwh": 0,
+      "gridKwh": 0.11808541947401317,
+      "unknownKwh": 0.0666666666666669
+    },
+    {
+      "name": "Site source allocation: PV 12000 W, signed battery 0 W",
+      "kwh": 0.18475208614068045,
+      "pvKwh": 0.18475208614068045,
+      "gridKwh": 0,
+      "unknownKwh": 0
+    },
+    {
+      "name": "Expired P1/PV observation integrates its valid overlap only; no stale backfill"
+    },
+    {
+      "name": "Unknown competing Current EV cannot turn a zero-filled cache into valid Mode coverage"
+    },
+    {
+      "name": "Mixed Mode/Current source coverage expires with the competing Flow measurement"
+    },
+    {
+      "name": "No house baseline means unknown, not nominal charger energy"
+    },
+    {
+      "name": "Midnight splits the same observed interval; repeated widget/CSV reads add nothing"
+    },
+    {
+      "name": "Confirmed disconnect records zero; reboot preserves totals without resurrecting observations"
+    }
+  ]
+}
