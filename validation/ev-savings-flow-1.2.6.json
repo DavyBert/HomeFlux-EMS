@@ -1,0 +1,46 @@
+{
+  "version": "1.2.6",
+  "test_results": [
+    {
+      "command": "node --check app.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node --check lib/savings-flow.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node --check test/ev-savings-flow-1.2.6.test.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node test/ev-savings-flow-1.2.6.test.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node test/savings.test.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node test/ev-energy-1.2.4.test.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node test/ev-savings-export-1.2.4.test.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node test/help-catalog.test.js",
+      "exit_code": 0
+    },
+    {
+      "command": "node test/settings-runtime-audit.test.js",
+      "exit_code": 0
+    }
+  ],
+  "additional_inline_syntax_checks": 1,
+  "existing_category_parity_cases": 42,
+  "new_ev_flow_groups": 9,
+  "full_suite_run": false,
+  "physical_homey_tested": false
+}

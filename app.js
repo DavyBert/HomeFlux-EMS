@@ -521,7 +521,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_dynamicPriceCalibrations' || key === '_externalPriceCurves' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || String(key).startsWith('_autoTune')) return;
+        if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_dynamicPriceCalibrations' || key === '_externalPriceCurves' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || key === '_nightForecastHold' || String(key).startsWith('_autoTune')) return;
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache(true);
         this.markFlexibleLoadsDirty();
@@ -744,6 +744,9 @@ class HomeFluxEmsApp extends Homey.App {
     if (!widgetPreference) this.batteryFeedbackMemo = null;
     const value = this.homey.settings.get(key);
     const nextValue = value !== null && value !== undefined ? value : DEFAULTS[key];
+    if (key === 'nightForecastHoldEnabled' && !Object.is(this.settingsCache[key], nextValue)) {
+      this.nightForecastMedian = null; this.setSetting('_nightForecastHold', null);
+    }
     if (!widgetPreference && !Object.is(this.settingsCache[key], nextValue)) this.invalidateEvPhysicalConfig(key);
     this.settingsCache[key] = nextValue;
     this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
@@ -766,6 +769,9 @@ class HomeFluxEmsApp extends Homey.App {
       && this.getBatteryCount() >= 2) value = Math.max(2, Number(value) || 0);
     // An internal settings write is visible to the control loop immediately;
     // do not wait for Homey's asynchronous `set` event to invalidate the cache.
+    if (key === 'nightForecastHoldEnabled' && this.settingsCache && !Object.is(this.settingsCache[key], value)) {
+      this.nightForecastMedian = null; this.setSetting('_nightForecastHold', null);
+    }
     if (!widgetPreference && this.settingsCache && !Object.is(this.settingsCache[key], value)) this.invalidateEvPhysicalConfig(key);
     this.homey.settings.set(key, value);
     if (this.settingsCache && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
@@ -1177,6 +1183,33 @@ class HomeFluxEmsApp extends Homey.App {
       },
       trackedBatteryKwh: inventoryKwh(this.savings.inventory),
     };
+  }
+
+  getSavingsCategory(args = {}) {
+    this.recordSavingsSample(Date.now());
+    const today = this.getSavingsDateKey();
+    const { rollingRange, readCategory, formatResult, isEvCategory, hasEvData, evMetric } = require('./lib/savings-flow');
+    const range = rollingRange(today, args.count, args.unit);
+    this.savingsHistoryCache ||= savingsHistory.createHistoryCache();
+    const aggregate = this.savingsHistoryCache.sum(this.savings.history || {}, range, today);
+    const calibratedToday = calibrateEnergy(this.savings.today);
+    if (today >= range.startKey && today < range.endKey) addDays(aggregate, calibratedToday);
+    const settings = this.getSettings(), selectedEv = args.ev || 'all', evCategory = isEvCategory(args.category);
+    const result = readCategory(aggregate, args.category, { ev: selectedEv, settings });
+    const dates = new Set(Object.keys(this.savings.history || {}).concat(this.savings.today?.date || [])
+      .filter(date => savingsHistory.isDateKey(date) && date >= range.startKey && date < range.endKey)
+      .filter(date => !evCategory || hasEvData(date === today ? calibratedToday : this.savings.history[date], selectedEv)));
+    const metric = evCategory ? evMetric(aggregate, selectedEv) : null;
+    const expectedSeconds = evCategory ? Math.max(0, (Date.now()
+      - localDateTimeUtcMs(range.startKey, '00:00', settings.timezone || 'UTC')) / 1000) : 0;
+    const evDataComplete = Boolean(metric && dates.size === range.days && aggregate.ev.seconds + 5 >= expectedSeconds
+      && metric.missingSeconds === 0 && metric.unknownKwh < 1e-9 && metric.unpricedKwh < 1e-9
+      && aggregate.ev.sharedKwh < 1e-9);
+    return { ev_data_available: false, ev_data_complete: evDataComplete,
+      solar_km: 0, solar_km_available: false, solar_share_percent: 0,
+      ...result, result: formatResult(result, args.format || 'kwh', settings.currencySymbol, this.displayLanguage()),
+      start_date: range.startKey, end_date: savingsHistory.shiftKey(range.endKey, -1),
+      available_days: dates.size, requested_days: range.days, complete: dates.size === range.days };
   }
 
   hasNumericInputChanged(previous, next, wasSeen = true, tolerance = 0.01) {
@@ -2438,7 +2471,7 @@ class HomeFluxEmsApp extends Homey.App {
       gridControlWindowSeconds: { defaultMin: 0, defaultMax: 10, hardMin: 0, hardMax: 10 },
       adaptiveSetpointDeltaW: { defaultMin: 300, defaultMax: 3000, hardMin: 100, hardMax: 10000 },
       adaptiveSetpointWindowSeconds: { defaultMin: 8, defaultMax: 45, hardMin: 2, hardMax: 120 },
-      commandIntervalSeconds: { defaultMin: 3, defaultMax: 60, hardMin: 3, hardMax: 120 },
+      commandIntervalSeconds: { defaultMin: 4, defaultMax: 17, hardMin: 4, hardMax: 17 },
       pvDeltaThresholdW: { defaultMin: 50, defaultMax: 500, hardMin: 0, hardMax: 10000 },
       pvCommandIntervalSeconds: { defaultMin: 10, defaultMax: 120, hardMin: 1, hardMax: 300 },
       lowForecastSelfConsumptionMinKwh: { defaultMin: 0, defaultMax: planningUpperKwh, hardMin: 0, hardMax: 100 },
@@ -2453,14 +2486,10 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     if (key === 'gridZeroMinW' || key === 'gridZeroMaxW') {
-      const configuredMin = Number(settings.gridZeroMinW);
-      const configuredMax = Number(settings.gridZeroMaxW);
-      const validBand = Number.isFinite(configuredMin) && Number.isFinite(configuredMax) && configuredMin <= configuredMax;
-      const midpoint = validBand ? (configuredMin + configuredMax) / 2 : 0;
-      if (key === 'gridZeroMinW') {
-        return { defaultMin: Math.max(-1000, midpoint - 250), defaultMax: Math.min(1000, midpoint - 10), hardMin: -1000, hardMax: 1000 };
-      }
-      return { defaultMin: Math.max(-1000, midpoint + 10), defaultMax: Math.min(1000, midpoint + 250), hardMin: -1000, hardMax: 1000 };
+      const halfWidth = Math.max(75, Math.min(1000, 4 * Math.max(1, Number(settings.batteryCommandStepW) || 1)));
+      return key === 'gridZeroMinW'
+        ? { defaultMin: -1000, defaultMax: -halfWidth, hardMin: -1000, hardMax: -halfWidth }
+        : { defaultMin: halfWidth, defaultMax: 1000, hardMin: halfWidth, hardMax: 1000 };
     }
 
     if (fixed[key]) return fixed[key];
@@ -2576,32 +2605,30 @@ class HomeFluxEmsApp extends Homey.App {
           confidence(grid.samples), grid.samples);
       }
 
-      // Preserve the user's chosen import/export bias (the midpoint), but let
-      // Finetuning adjust the width of the neutral zone to measured P1 noise.
-      // This changes regulator calmness only; it never changes Peak Guard.
-      const currentZeroMin = Number(settings.gridZeroMinW);
-      const currentZeroMax = Number(settings.gridZeroMaxW);
-      if (Number.isFinite(currentZeroMin) && Number.isFinite(currentZeroMax) && currentZeroMin <= currentZeroMax) {
-        const midpoint = (currentZeroMin + currentZeroMax) / 2;
-        const currentHalfWidth = Math.max(0, (currentZeroMax - currentZeroMin) / 2);
-        const desiredHalfWidth = Math.max(10, Math.min(250, roundTo(Math.max(10, noise * 0.22), 5)));
-        if (Math.abs(desiredHalfWidth - currentHalfWidth) >= Math.max(10, currentHalfWidth * 0.45)) {
-          const desiredMin = Math.max(-1000, Math.min(1000, roundTo(midpoint - desiredHalfWidth, 1)));
-          const desiredMax = Math.max(-1000, Math.min(1000, roundTo(midpoint + desiredHalfWidth, 1)));
-          if (desiredMin <= desiredMax) {
-            if (Math.abs(desiredMin - currentZeroMin) >= 5) {
-              push('gridZeroMinW', 'Nulpunt ondergrens net', 'Grid zero-band lower limit', currentZeroMin, desiredMin, 'W',
-                `De P1-ruis is ongeveer ${Math.round(noise)} W. De middenwaarde van je huidige netdoel blijft ${midpoint.toFixed(0)} W; alleen de regelband wordt aangepast om pendelen te beperken.`,
-                `P1 noise is about ${Math.round(noise)} W. The midpoint of your current grid target remains ${midpoint.toFixed(0)} W; only the control band is adjusted to reduce hunting.`,
-                confidence(grid.samples), grid.samples);
-            }
-            if (Math.abs(desiredMax - currentZeroMax) >= 5) {
-              push('gridZeroMaxW', 'Nulpunt bovengrens net', 'Grid zero-band upper limit', currentZeroMax, desiredMax, 'W',
-                `De P1-ruis is ongeveer ${Math.round(noise)} W. De middenwaarde van je huidige netdoel blijft ${midpoint.toFixed(0)} W; alleen de regelband wordt aangepast om pendelen te beperken.`,
-                `P1 noise is about ${Math.round(noise)} W. The midpoint of your current grid target remains ${midpoint.toFixed(0)} W; only the control band is adjusted to reduce hunting.`,
-                confidence(grid.samples), grid.samples);
-            }
-          }
+      // Require sustained evidence before recommending a band. Coarse battery
+      // steps require wider margins; every proposed pair is centred on P1 zero.
+      const currentZeroMin = Number(settings.gridZeroMinW), currentZeroMax = Number(settings.gridZeroMaxW);
+      if (Number(grid.samples) >= 160 && Number.isFinite(currentZeroMin) && Number.isFinite(currentZeroMax)
+        && currentZeroMin <= currentZeroMax && !ignored.gridZeroMinW && !ignored.gridZeroMaxW) {
+        const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+        const minimum = Math.max(75, Math.min(1000, step * 4));
+        const desired = Math.max(minimum, Math.min(1000, roundTo(noise * 0.35, 25)));
+        const currentWidth = Math.max(Math.abs(currentZeroMin), Math.abs(currentZeroMax));
+        const biased = Math.abs((currentZeroMin + currentZeroMax) / 2) >= Math.max(25, minimum / 2);
+        const belowSuggestedMargin = currentZeroMin > -minimum || currentZeroMax < minimum;
+        const stepTooLarge = step >= 25 && (currentZeroMin > -step * 2 || currentZeroMax < step * 2);
+        const noiseExceedsBand = noise >= Math.max(25, currentWidth * 0.75);
+        const tooNarrow = belowSuggestedMargin && (stepTooLarge || noiseExceedsBand);
+        const noisy = noise >= 150 && desired > currentWidth * 1.5;
+        const excessive = Number(grid.samples) >= 400 && currentWidth > desired * 2 && noise < currentWidth / 2;
+        if (biased || tooNarrow || noisy || excessive) {
+          for (const [key, current, next, nl, en] of [
+            ['gridZeroMinW', currentZeroMin, -desired, 'ondergrens', 'lower limit'],
+            ['gridZeroMaxW', currentZeroMax, desired, 'bovengrens', 'upper limit'],
+          ]) push(key, `Nulpunt ${nl} net`, `Grid zero-band ${en}`, current, next, 'W',
+            `P1-variatie circa ${Math.round(noise)} W, batterijstap ${step} W. Advies: beide grenzen samen op −${desired}/+${desired} W, met 0 W als midden. Automatisch toepassen vereist toestemming voor beide grenzen.`,
+            `P1 variation about ${Math.round(noise)} W, battery step ${step} W. Recommendation: both limits together at −${desired}/+${desired} W, centred on 0 W. Automatic application requires permission for both limits.`,
+            confidence(grid.samples), grid.samples);
         }
       }
 
@@ -2621,9 +2648,9 @@ class HomeFluxEmsApp extends Homey.App {
       if (Number(grid.gapSamples || 0) >= 24) {
         const gapSeconds = Math.max(0.2, Number(grid.ewmaGapMs || 0) / 1000);
         const currentInterval = Math.max(1, Number(settings.commandIntervalSeconds) || 10);
-        const desiredInterval = Math.max(10, Math.min(60, Math.ceil(Math.max(10, gapSeconds * 3) / 5) * 5));
-        if (desiredInterval >= currentInterval + 5
-          || (Number(grid.gapSamples) >= 160 && currentInterval >= desiredInterval * 2 && currentInterval - desiredInterval >= 10)) {
+        const desiredInterval = Math.max(4, Math.min(17, Math.ceil(gapSeconds * 3)));
+        if (currentInterval < 4 || currentInterval > 17 || desiredInterval >= currentInterval + 3
+          || (Number(grid.gapSamples) >= 160 && currentInterval - desiredInterval >= 4)) {
           push('commandIntervalSeconds', "Minimum tijd tussen batterijcommando's", 'Minimum battery command interval', currentInterval, desiredInterval, 's',
             `P1 wordt gemiddeld elke ${gapSeconds.toFixed(1)} s bijgewerkt. Dit geeft de batterijregelkring voldoende verse feedback zonder vaker te sturen dan zinvol is.`,
             `P1 updates arrive about every ${gapSeconds.toFixed(1)} s. This gives the battery controller enough fresh feedback without sending commands more often than useful.`,
@@ -3021,6 +3048,32 @@ class HomeFluxEmsApp extends Homey.App {
     this.setSetting('_autoTuneHistory', history);
   }
 
+  applyAutoTuneGridBand(recommendation, { automatic = false, force = false } = {}) {
+    const width = Math.abs(recommendation.recommended), settings = this.getSettings();
+    const permissions = this.getAutoTunePermissions(), limits = this.getAutoTuneLimits();
+    const lastApplied = this.getAutoTuneLastApplied(), now = Date.now();
+    const entries = [['gridZeroMinW', -width], ['gridZeroMaxW', width]];
+    for (const [key, value] of entries) {
+      const range = this.getAutoTuneLimitFor(key, settings[key], limits);
+      if (automatic && (!permissions[key] || recommendation.confidence < range.minConfidencePercent
+        || !force && now - Number(lastApplied[key] || 0) < 6 * 60 * 60 * 1000)) return 0;
+      // Incompatible user ranges must never turn the pair asymmetric.
+      if (this.normalizeAutoTuneValue(key, value, automatic ? range : null) !== value) return 0;
+    }
+    let applied = 0;
+    for (const [key, next] of entries) {
+      const current = Number(settings[key]);
+      if (current === next) continue;
+      this.setSetting(key, next); lastApplied[key] = now; applied++;
+      const descriptor = this.getAutoTuneSettingDescriptor(key);
+      this.appendAutoTuneHistory({ at: now, settingKey: key, scope: descriptor.scope,
+        titleNl: descriptor.titleNl, titleEn: descriptor.titleEn, from: current, to: next,
+        unit: 'W', confidence: recommendation.confidence, source: automatic ? 'automatic' : 'manual-once' });
+    }
+    if (applied) this.setSetting('_autoTuneLastAppliedAt', lastApplied);
+    return applied;
+  }
+
   async applyAutoTuneRecommendations({ onlyKey = '', force = false } = {}) {
     const permissions = this.getAutoTunePermissions();
     const limits = this.getAutoTuneLimits();
@@ -3031,9 +3084,19 @@ class HomeFluxEmsApp extends Homey.App {
     const defaultMinConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
     let lastAppliedChanged = false;
     let applied = 0;
+    let bandHandled = false;
     for (const recommendation of recommendations) {
       const key = recommendation.settingKey;
       if (onlyKey && key !== onlyKey) continue;
+      if (key === 'gridZeroMinW' || key === 'gridZeroMaxW') {
+        if (!bandHandled) applied += this.applyAutoTuneGridBand(recommendation, { automatic: true, force });
+        bandHandled = true;
+        const bandTimes = this.getAutoTuneLastApplied();
+        for (const bandKey of ['gridZeroMinW', 'gridZeroMaxW']) {
+          if (bandTimes[bandKey] !== undefined) lastApplied[bandKey] = bandTimes[bandKey];
+        }
+        continue;
+      }
       const current = Number(this.getSettings()[key]);
       const allowedRange = this.getAutoTuneLimitFor(key, current, limits);
       const minConfidencePercent = Number(allowedRange?.minConfidencePercent ?? defaultMinConfidencePercent);
@@ -3099,9 +3162,10 @@ class HomeFluxEmsApp extends Homey.App {
     this.autoTuneRuntime.permissions = { ...permissions };
     if (allowed && settingKey === 'commandIntervalSeconds') {
       const currentInterval = Number(this.getSettings().commandIntervalSeconds);
-      if (Number.isFinite(currentInterval) && currentInterval < 3) {
-        this.setSetting('commandIntervalSeconds', 3);
-        this.appendAutoTuneHistory({ at: Date.now(), settingKey, scope: descriptor.scope, titleNl: descriptor.titleNl, titleEn: descriptor.titleEn, from: currentInterval, to: 3, unit: descriptor.unit, confidence: 100, source: 'automatic-safety-floor' });
+      if (Number.isFinite(currentInterval) && (currentInterval < 4 || currentInterval > 17)) {
+        const boundedInterval = Math.max(4, Math.min(17, currentInterval));
+        this.setSetting('commandIntervalSeconds', boundedInterval);
+        this.appendAutoTuneHistory({ at: Date.now(), settingKey, scope: descriptor.scope, titleNl: descriptor.titleNl, titleEn: descriptor.titleEn, from: currentInterval, to: boundedInterval, unit: descriptor.unit, confidence: 100, source: 'automatic-safety-floor' });
       }
     }
     if (allowed && recommendation?.canAutoManage) await this.applyAutoTuneRecommendations({ onlyKey: settingKey, force: true });
@@ -3115,6 +3179,10 @@ class HomeFluxEmsApp extends Homey.App {
     const recommendation = this.getAutoTuneRecommendations().find(item => item.settingKey === settingKey);
     if (!recommendation) throw new Error('Deze aanbeveling is intussen niet meer actief. Vernieuw Autotune en probeer opnieuw.');
 
+    if (settingKey === 'gridZeroMinW' || settingKey === 'gridZeroMaxW') {
+      this.applyAutoTuneGridBand(recommendation);
+      return this.getAutoTuneStatus();
+    }
     const current = Number(this.getSettings()[settingKey]);
     const next = this.normalizeAutoTuneValue(settingKey, recommendation.recommended);
     if (!Number.isFinite(current) || next === null) throw new Error('Deze Autotune-waarde kan niet veilig worden toegepast.');
@@ -6857,6 +6925,9 @@ class HomeFluxEmsApp extends Homey.App {
       return this.readExternalPrices(id, args.curve, { period: args.period || 'next_hours' });
     });
 
+    flow.getActionCard('get_savings_category').registerRunListener(async args =>
+      this.getSavingsCategory(args));
+
     flow.getActionCard('get_ems_status').registerRunListener(async () => {
       const result = this.latestResult || await this.runContextEvaluation(true);
       return this.localizeDisplayTokens({
@@ -7280,7 +7351,10 @@ class HomeFluxEmsApp extends Homey.App {
     const today = this.getLocalDateKey(new Date(at));
     const forecastDay = this.getPlanningForecastDay(at);
     const targetDate = forecastDay === 'tomorrow' ? shiftDateKey(today, 1) : today;
-    if (this.nightForecastMedian?.targetDate === targetDate) return this.nightForecastMedian;
+    if (this.nightForecastMedian?.targetDate === targetDate) {
+      this.updateNightForecastHold(this.nightForecastMedian, null, at);
+      return this.nightForecastMedian;
+    }
     const runtime = { targetDate, samples: [], value: null };
     this.nightForecastMedian = runtime;
     // Seed a new night with at most the one valid forecast already available.
@@ -7290,7 +7364,8 @@ class HomeFluxEmsApp extends Homey.App {
         ? this.state.forecastTomorrowKwh : null)
       : (this.state.forecastDailyMaxDate === targetDate
         ? (this.inputSeen.forecast ? this.state.forecastRemainingKwh : this.state.forecastDailyMaxKwh) : null);
-    this.addNightForecastSample(runtime, seed);
+    this.addNightForecastSample(runtime, seed, at, false);
+    this.updateNightForecastHold(runtime, null, at);
     return runtime;
   }
 
@@ -7299,10 +7374,47 @@ class HomeFluxEmsApp extends Homey.App {
       ? this.getNightForecastRuntime(at) : null;
   }
 
-  addNightForecastSample(runtime, value) {
+  updateNightForecastHold(runtime, observation = null, at = Date.now()) {
+    if (!runtime) return false;
+    if (!this.getSettings().nightForecastHoldEnabled) {
+      runtime.hold = null;
+      return false;
+    }
+    if (!runtime.hold) {
+      const stored = this.homey.settings.get('_nightForecastHold');
+      runtime.hold = stored?.targetDate === runtime.targetDate && stored.version === 1
+        ? { ...stored, samples: Array.isArray(stored.samples) ? stored.samples.slice(-120) : [] }
+        : { version: 1, targetDate: runtime.targetDate, samples: [], frozen: false, value: null };
+    }
+    const hold = runtime.hold;
+    const today = this.getLocalDateKey(new Date(at)), minute = this.getLocalMinuteOfDay(at);
+    let changed = false;
+    if (!hold.frozen && today === runtime.targetDate && minute < 120
+      && observation !== null && Number.isFinite(observation) && observation >= 0) {
+      // One latest forecast observation per local minute bounds storage and
+      // prevents a high-frequency Flow from dominating this two-hour median.
+      const last = hold.samples.findIndex(sample => sample.minute === minute);
+      if (last < 0) { hold.samples.push({ minute, value: observation }); changed = true; }
+      else if (hold.samples[last].value !== observation) { hold.samples[last] = { minute, value: observation }; changed = true; }
+    }
+    if (!hold.frozen && today === runtime.targetDate && minute >= 120 && hold.samples.length) {
+      const values = hold.samples.map(sample => sample.value).sort((a,b) => a-b), mid = values.length >>> 1;
+      hold.value = values.length % 2 ? values[mid] : (values[mid-1] + values[mid]) / 2;
+      hold.frozen = true;
+      this.invalidatePlanningCache(true);
+      this.requestContextEvaluate(true, 'night_forecast_frozen');
+      changed = true;
+    }
+    if (changed) this.setSetting('_nightForecastHold', hold);
+    if (hold.frozen && Number.isFinite(hold.value)) runtime.value = hold.value;
+    return hold.frozen;
+  }
+
+  addNightForecastSample(runtime, value, at = Date.now(), observation = true) {
     const numeric = parseFiniteInputNumber(value);
     if (!runtime || numeric === null || numeric < 0) return false;
     const previous = runtime.value;
+    if (this.updateNightForecastHold(runtime, observation ? numeric : null, at)) return previous !== runtime.value;
     // Maintain sorted observations only on actual forecast input. Reading P1,
     // status or planning neither adds a sample nor sorts the history again.
     const samples = runtime.samples;
@@ -8133,7 +8245,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.setSetting('_forecastDailyMaxDate', dateKey);
       this.setSetting('_forecastDailyMaxKwh', nextMax);
     }
-    const medianChanged = this.addNightForecastSample(nightForecast, normalized);
+    const medianChanged = this.addNightForecastSample(nightForecast, normalized, at);
     return changed || medianChanged;
   }
 
@@ -8158,7 +8270,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.setSetting('_forecastTomorrowDate', targetDate);
       this.setSetting('_forecastTomorrowKwh', normalized);
     }
-    const medianChanged = this.addNightForecastSample(nightForecast, normalized);
+    const medianChanged = this.addNightForecastSample(nightForecast, normalized, at);
     return changed || medianChanged;
   }
 
@@ -9033,6 +9145,10 @@ class HomeFluxEmsApp extends Homey.App {
       // restricted to forecast input and seeding a genuinely new night.
       nightForecast = this.nightForecastMedian?.targetDate === targetDate
         ? this.nightForecastMedian : this.getNightForecastRuntime(now);
+      if (settings.nightForecastHoldEnabled && !nightForecast.hold?.frozen
+        && targetDate === today && this.getLocalMinuteOfDay(now) >= 120) {
+        this.updateNightForecastHold(nightForecast, null, now);
+      }
     }
     // SoC is value-based, not freshness-based. Once a battery has supplied a
     // valid SoC value, keep using the last known value until a newer one arrives.

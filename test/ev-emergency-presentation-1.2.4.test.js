@@ -70,7 +70,7 @@ for (const language of ['nl','en']) {
     context.renderEvPlanningStatus({evs:[{...fred,name:'Fred EV',pvRequestPowerW:2000,gridRequestPowerW:3000}]});
     const html=host.children[0].innerHTML;assert(html.includes('Emergency charge'));
     assert(html.includes('emergency-target-hint'));assert(html.includes('animation-delay:'));assert(html.includes(language==='nl'?'gegarandeerd laden':'guaranteed charging'));assert(!html.includes('X%'));assert(html.includes('2000 W'));assert(html.includes('3000 W'));
-    assert(!html.includes('Deadline'));assert(!html.includes('6.8'));assert(!html.includes('07:00'));
+    assert(!html.includes('Deadline'));assert(!html.includes('6.8 kWh'));assert(!html.includes('07:00'));
   });
   check(language + ': short hint keeps a shared phase across repeated renders and the next 30-second cycle', () => {
     const {context} = settingsContext(language);

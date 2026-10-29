@@ -1,0 +1,15 @@
+{
+  "version": "1.2.6",
+  "source_archive": "HomeFlux-EMS-v1.2.5(3).zip",
+  "test_scripts_passed": 104,
+  "new_feature_groups_passed": 13,
+  "default_off_parity_cases": 1500,
+  "runtime": "Node.js v24.22.1",
+  "simulated_homey": true,
+  "physical_homey_tested": false,
+  "deprecated_cards_unchanged": 155,
+  "athom_texts_unchanged": true,
+  "scope": "Original 1.2.6 validation before the EV Insights Flow extension",
+  "ev_flow_followup": "ev-savings-flow-1.2.6.json",
+  "full_suite_rerun_after_ev_flow": false
+}

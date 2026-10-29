@@ -65,7 +65,7 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
     assert.deepEqual(card, { id: card.id, ...composed }, `Manifest/Compose mismatch: ${card.id}`);
   }
 }
-assert.equal(manifest.flow.actions.filter(c => !c.deprecated).length, 28);
+assert.equal(manifest.flow.actions.filter(c => !c.deprecated).length, 29);
 assert.equal(manifest.flow.triggers.filter(c => !c.deprecated).length, 26);
 assert.equal(manifest.flow.conditions.filter(c => !c.deprecated).length, 20);
 for (const [kind, items] of Object.entries(definitions)) {

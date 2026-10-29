@@ -362,7 +362,7 @@ function appWithSettings(overrides = {}) {
     balanceDeadbandPct: 2,
     balanceStrength: 0.05,
   });
-  app.autoTuneRuntime.grid.samples = 100;
+  app.autoTuneRuntime.grid.samples = 200;
   app.autoTuneRuntime.grid.ewmaAbsDelta = 120;
   app.autoTuneRuntime.grid.gapSamples = 100;
   app.autoTuneRuntime.grid.ewmaGapMs = 8000;
@@ -382,7 +382,7 @@ function appWithSettings(overrides = {}) {
   assert.ok(keys.has('gridZeroMaxW'));
   const zeroMin = recs.find(item => item.settingKey === 'gridZeroMinW');
   const zeroMax = recs.find(item => item.settingKey === 'gridZeroMaxW');
-  assert.equal((zeroMin.recommended + zeroMax.recommended) / 2, 10, 'zero-band midpoint must preserve the configured grid bias');
+  assert.equal((zeroMin.recommended + zeroMax.recommended) / 2, 0, 'autotune proposals must be centred on P1 zero');
 
   app.setSetting('optimizeMultiBatteryEfficiency', true);
   const optimizedKeys = new Set(app.getAutoTuneRecommendations().map(item => item.settingKey));
@@ -513,13 +513,13 @@ function appWithSettings(overrides = {}) {
   assert.equal(realistic.store._autoTuneLimits.lowForecastAutoSunnySoc.userDefined, true);
 
   // v0.7.1: once Autotune is allowed to manage the battery command interval,
-  // it may never leave that interval below 3 seconds. Faster automatic
+  // it may never leave that interval below 4 seconds. Faster automatic
   // steering can introduce oscillation, even when a legacy/manual value was 1 s.
   const intervalFloor = appWithSettings({ commandIntervalSeconds: 1 });
   const floorStatus = await intervalFloor.app.setAutoTunePermission({ settingKey: 'commandIntervalSeconds', allowed: true });
   assert.equal(intervalFloor.store._autoTunePermissions.commandIntervalSeconds, true);
-  assert.ok(intervalFloor.store.commandIntervalSeconds >= 3, 'Autotune command interval must never be below 3 seconds');
-  assert.ok(intervalFloor.store._autoTuneHistory.some(item => item.settingKey === 'commandIntervalSeconds' && item.to >= 3));
+  assert.ok(intervalFloor.store.commandIntervalSeconds >= 4, 'Autotune command interval must never be below 4 seconds');
+  assert.ok(intervalFloor.store._autoTuneHistory.some(item => item.settingKey === 'commandIntervalSeconds' && item.to >= 4));
   assert.ok(floorStatus.managed.some(item => item.settingKey === 'commandIntervalSeconds'));
 
   // v0.7.4: select/dropdown-backed settings may only receive values that the

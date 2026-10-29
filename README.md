@@ -2,47 +2,33 @@
 
 **Your energy, managed differently**
 
-HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consumption and grid limits. The hardware connection stays flexible through Homey Flow cards.
+HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consumption and grid limits. Connect your hardware through Homey Flow cards.
 
 ## Quick start
 
 1. **Configure HomeFlux**  
-   Add your battery count, capacity, battery limits, tariff periods and Peak Guard limit in Settings, then save the configuration. For a dynamic contract, select Homey, External Price 1 and/or External Price 2, then set their priority order and optional external-source names; fallback prices are aligned to the primary source including surcharges. For batteries with different power limits and/or capacities, enable the individual settings and enter each battery’s capacity in kWh and power limits in W.
+   Set your battery count, capacity, power limits, energy contract and Peak Guard limit in Settings. For dynamic prices, select the available price source(s).
 
-2. **Feed the basic inputs through Flow**  
-   Use **Set grid power**, **Set PV power** and **Set battery SoC**. For battery planning, also provide **Set remaining PV forecast** and **Set tomorrow PV forecast**. Grid power uses positive = import and negative = export. If you select an external price source, use **Read external prices JSON**, select the external source by its configured name (default **External Price 1** or **External Price 2**) and connect your provider’s JSON token. For arrays without timestamps, select the matching period; resolution follows your dynamic contract. Curves support up to 120 hours. Existing PBTH/external price Flows keep working as External Price 1; earlier generic source selections remain intact.
+2. **Supply the basic inputs through Flow**  
+   Connect **Set grid power**, **Set PV power** and **Set battery SoC**. For battery planning, also connect **Set remaining PV forecast** and **Set tomorrow PV forecast**. P1 uses positive = import, negative = export, always relative to 0 W. An external dynamic price source additionally needs **Read external prices JSON**.
 
-3. **Send the battery output to your battery integration**  
-   Use **Battery commands are updated** for batteries that accept a power setpoint. If your battery requires separate charge/discharge modes and power values, enable Split Command and use the corresponding **Battery: switch to charge/discharge mode** and **Battery: charge/discharge power is updated** cards.
+3. **Connect and enable battery output**  
+   Connect **Battery commands are updated** to your battery integration. For batteries needing separate modes and power values, enable Split Command and use **Battery: switch to charge/discharge mode** and **Battery: charge/discharge power is updated**. Run the **100 W charge test** in Settings, verify the battery response and confirm success, then enable **EMS output active**.
 
-Once these inputs and outputs are connected, HomeFlux can perform the core battery control and planning. After reaching the charging target, a 2-percentage-point restart margin avoids small grid top-ups. In automatic mode, charging can restore Safety SoC outside tariff windows, subject to Peak Guard and battery limits.
+The core battery control and planning can now run. Optional day/night planning maxima limit planned grid charging; PV capture and Safety SoC recovery remain available. Optional night hysteresis and a fixed 00:00–02:00 PV forecast median can stabilize night planning; both are off by default.
 
-Optional day and night planning maxima (default 100%) limit planned grid charging. Solar surplus can still charge above these planning limits within the battery safety limits.
-
-An optional sunshine reserve limits normal battery discharging based on dated forecasts. Select the applicable tariffs under Energy contract (expensive/peak excluded by default), enable it in Settings and supply **Set expected sunshine probability today and tomorrow** through Flow.
-
-Optional multi-battery efficiency optimization uses an individual optimal power target per battery and gradual SoC-based rotations. Enable it under Batteries when at least two batteries are configured.
-
-Optional features include EV charging with automatic pause/resume detection, HVAC, boiler control, Hybrid EMS integration, dynamic-price inputs, Autotune, Savings with historical views and CSV export, diagnostics and dashboard widgets.
+Optional features include EV charging and its dashboard widget, HVAC, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
 For the complete functionality, configuration and all Flow cards, see:  
 https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ---
 
-## HomeFlux EV Dashboard widget
-
-Add **HomeFlux EV** to an official Homey Dashboard. Enable **Switch Status / Planning / Insights with buttons** to select one view at a time; **Status** is first and shows the EV and its central charging target/deadline without planning controls. Enable only **compact EV Status** and disable Scheduler/Insights for a small read-only widget. Each instance retains its own EV and tab selection. Switching is off by default; existing combined layouts remain supported. Configure each EV's SoC/kWh mode, three goals, three times and consumption in the existing EV settings tab. Tap a preset twice within five seconds to confirm. Guaranteed uses the existing EV deadline Flow handler and may include expensive periods when necessary; without a goal and deadline it remains a local draft.
-
-Choose Standard or 1–7 days ahead and confirm twice within five seconds. The deadline is fixed in the local Homey time zone and survives midnight and restart. You can edit date and time within the chosen horizon. Max PV defaults to off and reserves only known solar after household demand and battery priority. Without an hourly forecast, a full day is not credited to a morning deadline. Guaranteed observes the latest safe start within physical limits. Only widget plans defer ordinary Flow mode overrides until clear or confirmed disconnect; the latest received override then resumes. On confirmed disconnect the Flow SoC/kWh goal that preceded the widget goal is also restored through the existing input handler. Manual clear still clears the goal. Existing Flow plans retain their behaviour. A completed widget goal stays visible and protected while the EV remains connected.
-
-Peak Guard uses only the HomeFlux household-meter estimate for Mode control, and only fresh Flow current feedback for Current and Hybrid control. A configured or commanded charging current is not measured consumption. The EV widget Emergency button requires two confirmations, ends an active widget plan and selects the existing Emergency mode to 100%. Switching it off selects Smart charging. Existing Flow goals remain stored.
-
-For Mode control, the house reference freezes at a successfully published Smart/Standard command and is released only by a successfully published Stop command. Session status, a computed Stop and disconnect alone do not release it. Publication receipts and the reference survive restart. See [Mode house-reference correction](docs/EV-HOUSE-PUBLICATION-1.2.5.md) for tests and the remaining historical STOP case.
-
-Insights subdivides the existing Savings daydata. Mode control records the existing valid HomeFlux P1/PV/battery estimate; Current and Hybrid use fresh Flow current. Commands and placeholder currents are never delivered energy. Missing/stale observations do not backfill energy. Energy from current feedback and common-bus source attribution is estimated; shared meters, stale feedback and unmeasured battery flows can leave unknown or incomplete data. Solar kilometres use charger input and do not deduct unknown charging losses. Solar charging cost includes forgone export compensation. No data is backfilled into historical days. The Savings CSV appends stored EV totals and EV 1–4 breakdowns, including source, known cost and estimated savings; missing historical EV data stays blank. The original 14 columns retain their meaning.
-
 ## Release notes
+
+### 1.2.6
+
+Added a Savings category Flow action with totals, rolling day/week/month/year periods and a choice of kWh, kWh with price or price only. Optional night SoC hysteresis and a restart-safe 00:00–02:00 PV forecast median hold reduce night charging changes. Autotune battery output intervals are limited to 4–17 seconds, with evidence-based grid-band recommendations centred on zero and sized for battery power steps. The same Flow action also reads EV Insights for all EVs or EV 1–4, including source energy, known costs, estimated solar savings and solar-kilometre tokens, with explicit data availability.
 
 ### 1.2.5
 

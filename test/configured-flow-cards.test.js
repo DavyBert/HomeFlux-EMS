@@ -65,7 +65,7 @@ for (const kind of Object.keys(getters)) {
     }
   }
   assert.equal(manifest.flow[kind].filter(c => !c.deprecated).length,
-    baseline[kind].filter(c => !c.deprecated).length + (kind === 'actions' ? -1 : 0), 'Sunshine and generic price actions added; three old price actions deprecated');
+    baseline[kind].filter(c => !c.deprecated).length, 'Visible cards include the savings reader and existing price/sunshine cards');
 }
 for (const d of CONFIGURED_CARDS) {
   const old = baseline[d.kind].find(c => c.id === d.legacy);
