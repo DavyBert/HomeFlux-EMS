@@ -70,7 +70,8 @@ async function check(name, run) { const evidence = await run(); rows.push({ name
     });
     await check(`${type}: PV-only -> ${name}, then clouds, retains grid permission`, async () => {
       const h = await make(type);
-      for (let n = 0; n < 25; n++) await frame(h, { pv: 5200 });
+      // PV starts now wait for the shared slow cadence, then the existing output gate.
+      for (let n = 0; n < Math.ceil(h.app.getSlowControlIntervalMs()/1000)+25; n++) await frame(h, { pv: 5200 });
       assert(actual(h) > 0); await policy(h, name);
       for (let n = 0; n < 20; n++) await frame(h, { pv: 5200 });
       for (let n = 0; n < 120; n++) {

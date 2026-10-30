@@ -1,6 +1,7 @@
 'use strict';
 
 module.exports = {
+  async recheckHvac({ homey, body }) { return homey.app.recheckHvac(body); },
   async getStatus({ homey }) {
     return homey.app.getPublicStatus();
   },

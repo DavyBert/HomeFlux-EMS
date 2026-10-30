@@ -33,6 +33,7 @@ async function timerRecovery() {
     if (route === 'flow' || route === 'api') assert.equal(a.evContextRefresh.timer, null);
     if (release) { a.evPortfolioPass = null; release(); await h.drain(); }
     await at(h, 16000); await h.drain(); await h.flush();
+    await at(h,60000);await h.drain();await h.flush();
     assert.equal(count(a, 'evContextDeferredEvaluations'), before, route);
     assert.equal(a.evContextRefresh.timer, null); assert.equal(a.evContextRefresh.requests.size, 0);
     assert.equal(a.lastPublishedEvChargeMode, 'stop'); assert.deepEqual(h.errors, []); cases++;
@@ -49,10 +50,10 @@ async function timerRecovery() {
   assert.equal(deferred.startedAt, h.origin);
   assert.equal(deferred.deadlineAt, h.origin + 15000);
   assert(deferred.reasons.includes('meter'));
-  await at(h, 15000); assert.equal(count(a, 'evContextDeferredEvaluations'), 1);
+  await at(h, 15000); assert.equal(count(a, 'evContextDeferredEvaluations'), 0);assert(a.contextTimer,'debounce requests shared context');
   for (let second = 16; second <= 45; second++) { await at(h, second * 1000); await h.grid(1123); }
   assert.equal(count(a, 'evContextTimersStarted'), 1); assert.equal(a.evContextRefresh.timer, null); cases++;
-  assert.equal(a.getDiagnosticsReport().ev.deferredContext.deadlineAt, 0);
+  await at(h,60000);assert.equal(a.getDiagnosticsReport().ev.deferredContext.deadlineAt, 0);
 }
 
 async function multipleReasons() {
@@ -66,7 +67,8 @@ async function multipleReasons() {
   assert(a.evContextRefresh.requests.has('feedback:1'));
   assert.equal(a.evContextRefresh.timer, first, 'resolving one reason cannot extend another');
   await at(h, 15000);
-  assert.equal(count(a, 'evContextDeferredEvaluations'), 1); assert.equal(a.evContextRefresh.requests.size, 0);
+  assert.equal(count(a, 'evContextDeferredEvaluations'),0);assert(a.evContextRefresh.requests.size>0);
+  await at(h,60000);assert.equal(a.evContextRefresh.requests.size,0);
   assert.deepEqual(h.errors, []); cases++;
   const q = await stopped({ evs: 2 }), b = q.app;
   await q.grid(1123); const timer = b.evContextRefresh.timer;
@@ -138,12 +140,14 @@ async function quietAndRestLoad() {
     const n = count(a, 'evPortfolioCalculations'); await a.runEvHeartbeat(); await h.drain(); await h.flush();
     assert.equal(count(a, 'evPortfolioCalculations'), n); assert(count(a, 'evHeartbeatQuietSkipped') > 0); cases++;
     a.forceEvOutput = true; assert(!a.isEvPortfolioQuiet(a.getSettings()));
-    await a.runEvHeartbeat(); await h.drain(); await h.flush(); assert(!a.forceEvOutput); cases++;
+    await a.runEvHeartbeat(); await h.drain(); await h.flush();
+    h.setNow(h.now()+a.getSlowControlIntervalMs());await h.flush();assert(!a.forceEvOutput); cases++;
   }
   const h = await stopped(), a = h.app;
   assert(!a.isEvPortfolioQuiet(a.getSettings()), 'connected waiting EV retains tariff/deadline heartbeat');
   const n = count(a, 'evPortfolioCalculations'); await a.runEvHeartbeat(); await h.drain();
-  assert(count(a, 'evPortfolioCalculations') > n); cases++;
+  assert.equal(count(a,'evPortfolioCalculations'),n,'heartbeat only schedules');
+  h.setNow(h.now()+a.getSlowControlIntervalMs());await h.flush();assert(count(a,'evPortfolioCalculations')>n);cases++;
   const q = await fixture({ connected:false }), b = q.app;
   let release; b.evPortfolioPass = new Promise(resolve=>{release=resolve;});
   const before = count(b, 'evPortfolioCalculations'), task = b.runEvHeartbeat();

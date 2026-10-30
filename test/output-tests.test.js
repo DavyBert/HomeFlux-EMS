@@ -56,6 +56,15 @@ function triggerSpy() {
   assert.equal(app.hvacModeTrigger.calls[0][0].mode, 'heat');
   await app.testHvacOutput({ output: 'setpoint', setpoint: 21.6 });
   assert.equal(app.hvacSetpointTrigger.calls[0][0].setpoint, 21.5);
+  for (const setpoint of [55, 98.5, 99]) {
+    await app.testHvacOutput({ output: 'setpoint', setpoint });
+    assert.equal(app.hvacSetpointTrigger.calls.at(-1)[0].setpoint, setpoint);
+  }
+  const published = app.hvacSetpointTrigger.calls.length;
+  for (const setpoint of [4, 99.5, 100, NaN, Infinity]) {
+    await assert.rejects(() => app.testHvacOutput({ output: 'setpoint', setpoint }), /Ongeldig HVAC-testsetpoint/);
+  }
+  assert.equal(app.hvacSetpointTrigger.calls.length, published);
   await app.testHvacOutput({ output: 'fan', currentSpeed: 200, targetSpeed: 300 });
   assert.equal(app.hvacFanTrigger.calls[0][0].action, 'higher');
   assert.equal(app.hvacFanTrigger.calls[0][0].target_speed, 300);

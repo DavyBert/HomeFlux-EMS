@@ -301,6 +301,15 @@
         "nl": "Boiler wachtdagen op zon"
       },
       "value": true
+    },
+    {
+      "id": "showHvacSummary",
+      "type": "checkbox",
+      "title": {
+        "en": "HVAC Summary",
+        "nl": "HVAC-overzicht"
+      },
+      "value": false
     }
   ],
   "api": {

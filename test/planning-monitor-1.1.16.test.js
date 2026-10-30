@@ -77,6 +77,9 @@ async function main() {
     assert(afterStatus.calculationSummary.total > countBefore,
       'settings expansion during Live status should now be visible separately');
     await a.refreshEvOnlyContext();
+    assert.equal(countedPlans(a.getInputMonitorReport()),countedPlans(afterStatus),'EV-only request cannot scan tariffs or calculate decisions');
+    await a.runContextEvaluation(true);
+    await h.flush();
     const report = a.stopInputMonitor();
     const evDecisions = report.calculations.filter(c => c.kind === 'evDecision');
     const scans = report.calculations.filter(c => c.kind === 'evTariffScan');
@@ -86,7 +89,7 @@ async function main() {
     assert(scans.some(c => c.instance === 2));
     assert(scans.every(c => c.executions >= 1));
     assert(report.calculationSummary.total >= 5);
-    assert.equal(report.homeFluxVersion, '1.2.6');
+    assert.equal(report.homeFluxVersion, '1.2.7');
     a.startInputMonitor();
     await h.cards.get('set_ev1_soc_deadline').listener({ target_soc: 80, time: '07:00', guarantee: 'no' });
     a.getEvInstanceSettings(0);

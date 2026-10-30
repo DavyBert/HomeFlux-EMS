@@ -129,7 +129,7 @@ async function main(){try{
   await h.cards.get('set_ev1_energy_deadline').listener({energy:4.6,time:'23:45',guarantee:'yes'});await h.flush();
   let slots=a.evDeadlinePlanner.plans.get(0).slots;assert(slots.every(s=>s.endAt<=at('2026-10-23','23:45')));
   a.evEnergyPlans[0].deadlineAt=at('2026-10-25','07:00');a.evEnergyPlans[0].targetOccurrenceAt=a.evEnergyPlans[0].deadlineAt;
-  a.markEvPlanChanged(0,'test_absolute_deadline');await a.refreshEvOnlyContext();await h.flush();
+  a.markEvPlanChanged(0,'test_absolute_deadline');await a.runContextEvaluation(true);await h.flush();
   assert(a.latestEvDecision.deadlinePlanning);assert.equal(a.latestEvDecision.deadlineAt,at('2026-10-25','07:00'));
   return {sameDay:true,twoBoundaries:true};
  });
@@ -147,13 +147,13 @@ async function main(){try{
   const h=await setup({begin:at('2026-10-24','00:00')}),a=h.app,begin=h.now();
   assert.equal(output(a),20);
   for(let second=1;second<=120;second++)await tick(h,begin+second*1000,{actualCurrentA:second<=30?2:8});
-  await a.refreshEvOnlyContext();await h.flush();
+  await a.runContextEvaluation(true);await h.flush();
   const plan=a.evDeadlinePlanner.plans.get(0);
   assert(plan.slots.every(s=>s.powerW<=1840.001),'plan capacity follows persistent actual 8A, not commanded 20A '+JSON.stringify({delivery:a.evDeadlineDelivery,measured:a.getEvMeasuredCurrent(0),slot:plan.slots[0]}));
   assert.equal(output(a),20,'capacity estimate must not replace allowed charger setpoint');
   assert(a.latestEvDecision.targetReachable);
   a.lastPublishedEvCurrentA=0;a.lastPublishedEvAllowed=false;
-  await tick(h,h.now()+1000,{actualCurrentA:0});await a.refreshEvOnlyContext();await h.flush();
+  await tick(h,h.now()+1000,{actualCurrentA:0});await a.runContextEvaluation(true);await h.flush();
   assert(a.evDeadlinePlanner.plans.get(0).slots.every(s=>s.powerW<=1840.001),'learned delivery limit survives a planned pause');
   return {commandedA:20,measuredA:8,plannedPowerW:plan.slots[0].powerW};
  });

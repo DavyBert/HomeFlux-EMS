@@ -61,7 +61,7 @@ for (const kind of Object.keys(getters)) {
     const composed = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.homeycompose/flow', kind, `${card.id}.json`), 'utf8'));
     assert.deepEqual(card, { id: card.id, ...composed }, `Compose mismatch: ${card.id}`);
     if (!card.deprecated) for (const arg of card.args || []) {
-      if (['battery', 'ev', 'hvac'].includes(arg.name)) assert.equal(arg.type, 'autocomplete', `Unfiltered visible card: ${card.id}`);
+      if (['battery', 'ev', 'hvac'].includes(arg.name) && card.id !== 'get_savings_category') assert.equal(arg.type, 'autocomplete', `Unfiltered visible card: ${card.id}`);
     }
   }
   assert.equal(manifest.flow[kind].filter(c => !c.deprecated).length,
@@ -75,7 +75,10 @@ for (const d of CONFIGURED_CARDS) {
   assert.deepEqual(card.tokens, old.tokens);
   assert.deepEqual(card.title, old.title);
   assert.deepEqual(card.titleFormatted, old.titleFormatted);
-  assert.deepEqual(card.args.filter(a => a.name !== d.argument), old.args.filter(a => a.name !== d.argument));
+  const expectedArgs = old.args.filter(a => a.name !== d.argument).map(a =>
+    ['set_hvac_room_temperature_for_configured', 'set_hvac_setpoint_for_configured'].includes(d.id)
+      ? { ...a, max: 99 } : a);
+  assert.deepEqual(card.args.filter(a => a.name !== d.argument), expectedArgs);
   const arg = card.args.find(a => a.name === d.argument);
   assert.equal(arg.type, 'autocomplete');
   assert.equal(arg.values, undefined);
@@ -144,7 +147,7 @@ for (const d of CONFIGURED_CARDS) {
     settings[`${kind}Count`] = '0';
     assert.deepEqual(app.getConfiguredFlowSlots(kind), []);
     settings[`${kind}Count`] = 99;
-    assert.equal(app.getConfiguredFlowSlots(kind).length, kind === 'battery' ? 8 : 4);
+    assert.equal(app.getConfiguredFlowSlots(kind).length, kind === 'battery' ? 8 : kind === 'hvac' ? 10 : 4);
     settings[`${kind}Count`] = -1;
     assert.deepEqual(app.getConfiguredFlowSlots(kind), []);
   }
@@ -154,7 +157,7 @@ for (const d of CONFIGURED_CARDS) {
     settings[`${d.argument}Count`] = d.count;
     const card = cardFor(flow, d);
     const invalid = [undefined, null, false, true, '', '1', 1, [], {}, { id: '1' },
-      selected('wrong', 1), selected(d.argument, 0), selected(d.argument, d.count + 1),
+      selected('wrong', 1), selected(d.argument, 0), selected(d.argument, (d.argument === 'hvac' ? 10 : d.count) + 1),
       selected(d.argument, '01'), selected(d.argument, '1.0'), selected(d.argument, '1x'),
       { id: NaN, kind: d.argument }, { id: 1.5, kind: d.argument }];
     for (const value of invalid) {
@@ -278,7 +281,7 @@ for (const d of CONFIGURED_CARDS) {
   }
   assert.equal(outputRoutes, 72);
   assert.equal(out.app.configuredFlowCards.cards.size, 31);
-  assert.equal(out.app.slotFlowCards.triggerWrappers.size, 72);
+  assert.equal(out.app.slotFlowCards.triggerWrappers.size, 96);
 
   // Count reductions hide future selections, but must NOT suppress a final
   // safety STOP routed to a saved output Flow. It never targets another slot.

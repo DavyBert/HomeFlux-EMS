@@ -17,7 +17,7 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 
 The core battery control and planning can now run. Optional day/night planning maxima limit planned grid charging; PV capture and Safety SoC recovery remain available. Optional night hysteresis and a fixed 00:00–02:00 PV forecast median can stabilize night planning; both are off by default.
 
-Optional features include EV charging and its dashboard widget, HVAC, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
+Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels and optional tariff/PV temperature control, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
 For the complete functionality, configuration and all Flow cards, see:  
 https://github.com/DavyBert/HomeFlux-EMS/discussions/3
@@ -25,6 +25,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.7
+
+Added up to 10 HVAC channels with optional permanent, tariff and solar temperature control, heat/cool direction, staggered activation and a shared extra grid budget. Separate heat/cool power learning supports re-evaluation. Added an optional compact HVAC summary to the EMS widget, with matching typography, coloured tariff/mode icons and aligned temperatures. New HVAC settings are grouped with activation; two-rate TOU contracts show only low and high temperature targets. Active permanent control shows only its relevant PV options and offers optional outdoor temperature limits with adjustable shutdown hysteresis. Upgrade initialization of additional HVAC channels is spread over time. Optional periodic heating runs during cheap tariff periods. HVAC control and learning assessment follow the slow context cadence. EV timer-driven planning also uses the shared slow context. HVAC temperature targets now support up to 99 °C, including periodic water heating. HVAC comfort and activation fields adapt to the selected control. Automatic heating/cooling can also use outdoor temperature. Optional COP-related cold-weather targets can adjust each HVAC tariff goal. Fixed-direction permanent control supports setpoint-only devices; HVAC status reflects permanent/COP control and its actual waiting reason.
 
 ### 1.2.6
 

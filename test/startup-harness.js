@@ -11,6 +11,8 @@ async function boot(store=new Map(),beforeInit=null) {
  flow:{getToken:k=>tokens.get(k),createToken:async(k)=>{const t={setValue:async()=>{},unregister:async()=>{}};tokens.set(k,t);return t},getTriggerCard:card,getActionCard:card,getConditionCard:card},
  setTimeout:(fn,ms)=>{timers.push({fn,ms,type:'timeout'});return timers.length},setInterval:(fn,ms)=>{timers.push({fn,ms,type:'interval'});return timers.length},clearTimeout:()=>{},clearInterval:()=>{},manifest:JSON.parse(fs.readFileSync(root+'/app.json'))};
  app.log=(...v)=>logs.push(v.join(' '));app.error=(...v)=>errors.push(v.map(x=>x.stack||x).join(' '));
+ // Model the migration-only pause without advancing unrelated control timers.
+ app.pauseHvacSettingsMigration=async()=>{timers.push({ms:2000,type:'hvac-settings-migration-pause'});};
  if(beforeInit)await beforeInit({app,store,errors,logs,timers,cards,tokens});
  await app.onInit();
  return {app,store,errors,logs,timers,cards,tokens,

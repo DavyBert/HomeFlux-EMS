@@ -12,6 +12,8 @@ const runtimeFiles = [
   'api.js',
   'lib/ems-engine.js',
   'lib/flexible-loads.js',
+  'lib/hvac-permanent.js',
+  'lib/hvac-periodic.js',
   'lib/homey-energy.js',
   'lib/savings.js',
   'widgets/savings/api.js',
@@ -34,8 +36,12 @@ const hvacSuffixes = literalArray('hvacSuffixes');
 for (let instance = 1; instance <= 4; instance += 1) {
   const evStem = instance === 1 ? 'ev' : `ev${instance}`;
   for (const suffix of evSuffixes) persisted.add(`${evStem}${suffix}`);
-  const hvacStem = instance === 1 ? 'hvac' : `hvac${instance}`;
-  for (const suffix of hvacSuffixes) persisted.add(`${hvacStem}${suffix}`);
+
+}
+
+for (let instance = 1; instance <= 10; instance += 1) {
+  const stem = instance === 1 ? 'hvac' : `hvac${instance}`;
+  for (const suffix of hvacSuffixes) persisted.add(stem + suffix);
 }
 
 const splitSuffixes = [

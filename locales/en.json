@@ -223,7 +223,15 @@
       "energyBudgetBatteryTarget": "Battery reserve: {soc}%",
       "evEmergencyTargetHint": "Hint: use a Flow with guaranteed charging if you do not want to charge to 100%.",
       "evEmergencyCharging": "Emergency charge to 100%",
-      "reasonEvDischargeBlocked": "Battery discharge is blocked during EV charging"
+      "reasonEvDischargeBlocked": "Battery discharge is blocked during EV charging",
+      "hvacSummary": "HVAC Overview",
+      "device": "Device",
+      "hvacTariffcheap": "Cheap",
+      "hvacTariffnormal": "Normal",
+      "hvacTariffexpensive": "Expensive",
+      "hvacCopTarget": "COP temperature target",
+      "hvacPermanentControl": "Permanent temperature control",
+      "hvacPeriodicHeating": "Periodic heating"
     }
   },
   "evWidget": {

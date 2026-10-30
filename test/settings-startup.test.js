@@ -16,7 +16,7 @@ const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'trans
 const flowActionIds = new Set(appJson.flow.actions.map(card => card.id));
 
 for (const manifest of [appJson, composeJson]) {
-  assert.equal(manifest.version, '1.2.6');
+  assert.equal(manifest.version, '1.2.7');
   assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
   assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
   assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
@@ -75,7 +75,7 @@ assert(html.includes('data-auto-tune-apply='));
 assert(html.includes('data-auto-tune-ignore='));
 assert(html.includes('id="autoTuneIgnoredCard"'));
 assert(appJs.includes('getSettingsSnapshot()'));
-assert(appJs.includes('return this.getSettings();'));
+assert(appJs.includes('return this.getHvacCount(settings) ?'), 'snapshot adds configured HVAC learning without running the engine');
 const importedEnergyCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'flow', 'actions', 'set_imported_energy_today.json'), 'utf8'));
 const importedEnergyManifest = appJson.flow.actions.find(card => card.id === 'set_imported_energy_today');
 assert.deepStrictEqual(importedEnergyManifest, { id: 'set_imported_energy_today', ...importedEnergyCompose }, 'generated imported-energy Flow card must match Compose');

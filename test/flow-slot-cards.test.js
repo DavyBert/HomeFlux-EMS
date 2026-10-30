@@ -215,8 +215,8 @@ const { makeFlow, makeApp, snapshot, tokensFor } = require('./helpers/flow-cards
   // Exercise the actual public output-test entry points, not just the router.
   {
     const { app, flow } = makeApp();
-    assert.equal(app.slotFlowCards.actions.size, 48);
-    assert.equal(app.slotFlowCards.triggerWrappers.size, 72);
+    assert.equal(app.slotFlowCards.actions.size, 78);
+    assert.equal(app.slotFlowCards.triggerWrappers.size, 96);
     for (let slot = 1; slot <= 4; slot += 1) {
       for (const body of [{ output: 'current', currentA: 6 }, { output: 'current', currentA: 0 },
         { output: 'allowed', allowed: true }, { output: 'allowed', allowed: false },

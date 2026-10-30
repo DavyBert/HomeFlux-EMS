@@ -19,7 +19,7 @@ async function overlap({ evs = 1, change = false, tariffBoundary = false, flowGo
     await pending;
   };
   const before = count(a, 'evPortfolioCalculations');
-  const first = a.refreshEvOnlyContext();
+  const first = a.publishEvPortfolio(null,0,0,{evOnly:true}); // Exercise the publication mutex directly; production timers use slow context.
   await started;
   assert(a.evPortfolioPass);
   const waiting = a.runEvHeartbeat();
@@ -39,10 +39,13 @@ async function overlap({ evs = 1, change = false, tariffBoundary = false, flowGo
   if (flowGoal) {
     assert(delta >= 2, 'a new Flow target during I/O needs fresh work');
     assert.equal(a.evSocPlans[0].targetSoc, 95);
-  } else if (change || tariffBoundary) assert.equal(delta, 2, 'new input/time requires a fresh portfolio');
+  } else if (change || tariffBoundary) {
+    assert.equal(delta,1,'heartbeat cannot run a second portfolio itself');
+    h.setNow(h.now()+a.getSlowControlIntervalMs());a.inputUpdatedAt.grid=h.now();await h.flush();assert(count(a,'evPortfolioCalculations')-before>=2,'slow context refreshes changed input/time');
+  }
   else {
     assert.equal(delta, 1, 'one shared portfolio handles a simultaneous heartbeat');
-    assert.equal(count(a, 'evHeartbeatAlreadyServiced'), 1);
+    assert(count(a,'evSlowContextRequests')>=1);
   }
   cases++;
 }
@@ -67,7 +70,8 @@ async function endedStillConnected() {
   a.inputUpdatedAt.ev.chargeCurrent = h.now();
   assert.equal(a.isEvPortfolioQuiet(a.getSettings()), false);
   await a.runEvHeartbeat();
-  assert(count(a, 'evPortfolioCalculations') > before);
+  assert.equal(count(a,'evPortfolioCalculations'),before,'physical feedback requests context, not a separate scan');
+  h.setNow(h.now()+a.getSlowControlIntervalMs());a.inputUpdatedAt.grid=h.now();await h.flush();assert(count(a,'evPortfolioCalculations')>before);
   assert.deepEqual(h.errors, []);
   cases++;
 }

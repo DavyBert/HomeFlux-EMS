@@ -223,7 +223,15 @@
       "energyBudgetBatteryTarget": "Voor batterij gereserveerd tot {soc}%",
       "evEmergencyTargetHint": "Hint: gebruik een Flow met gegarandeerd laden als je niet tot 100% wilt laden.",
       "evEmergencyCharging": "Emergency charge tot 100%",
-      "reasonEvDischargeBlocked": "Batterijontlading is geblokkeerd tijdens EV-laden"
+      "reasonEvDischargeBlocked": "Batterijontlading is geblokkeerd tijdens EV-laden",
+      "hvacSummary": "HVAC overzicht",
+      "device": "Toestel",
+      "hvacTariffcheap": "Goedkoop",
+      "hvacTariffnormal": "Normaal",
+      "hvacTariffexpensive": "Duur",
+      "hvacCopTarget": "COP-streefwaarde",
+      "hvacPermanentControl": "Permanente temperatuursturing",
+      "hvacPeriodicHeating": "Periodiek opwarmen"
     }
   },
   "evWidget": {

@@ -1,0 +1,22 @@
+{
+  "simulatedHomey": true,
+  "physicalHomeyMeasured": false,
+  "benchmark": [
+    {
+      "configured": 0,
+      "passes": 100,
+      "cpuMs": 172.821,
+      "wallMs": 160.77748199999996,
+      "retainedHeapDeltaBytes": -9912592,
+      "learningActive": false
+    },
+    {
+      "configured": 10,
+      "passes": 100,
+      "cpuMs": 620.684,
+      "wallMs": 573.2368070000002,
+      "retainedHeapDeltaBytes": 6064648,
+      "learningActive": false
+    }
+  ]
+}

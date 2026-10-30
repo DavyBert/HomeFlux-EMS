@@ -39,11 +39,12 @@ async function transientAndSustained() {
   for (let second = 31; second < 45; second++) { await at(h, second); await meter(h, 500); assert.equal(a.evContextRefresh.timer, timer); }
   assert.equal(count(a, 'evPortfolioCalculations'), before);
   await at(h, 45);
-  assert.equal(count(a, 'evPortfolioCalculations'), before + 1);
-  assert.equal(count(a, 'evContextDeferredEvaluations'), 1);
-  for (let second = 46; second <= 59; second++) { await at(h, second); await meter(h, 500); }
+  assert.equal(count(a, 'evPortfolioCalculations'), before, '15-second meter debounce only requests slow context');
+  await at(h, 60);
+  const afterSlow=count(a, 'evPortfolioCalculations');assert(afterSlow>before);assert.equal(a.evContextRefresh.requests.size,0);
+  for (let second = 61; second <= 65; second++) { await at(h, second); await meter(h, 500); }
   assert.equal(a.evContextRefresh.timer, null, 'same handled situation cannot start another timer');
-  assert.equal(count(a, 'evPortfolioCalculations'), before + 1);
+  assert.equal(count(a, 'evPortfolioCalculations'), afterSlow);
   assert.deepEqual(h.errors, []); cases++;
 }
 async function normalContextAndMulti() {
@@ -67,8 +68,8 @@ async function normalContextAndMulti() {
   assert(b.evContextRefresh.requests.has('feedback:1'));
   assert.equal(b.evContextRefresh.timer, timer);
   await at(m, 16);
-  assert.equal(count(b, 'evPortfolioCalculations'), before + 1);
-  assert.equal(count(b, 'evContextDeferredEvaluations'), 1);
+  assert.equal(count(b, 'evPortfolioCalculations'), before);
+  await at(m,60);assert(count(b, 'evPortfolioCalculations')>before);
   assert.equal(b.evContextRefresh.requests.size, 0);
   assert.equal(b.latestResult.evDecisions.length, 2);
   assert.deepEqual(m.errors, []); cases++;
@@ -105,7 +106,8 @@ async function outputAndQueuedCancellation() {
   a.scheduleEvPublish(1234); a.scheduleAdditionalEvPublish(1, 1234);
   await at(h, 1.234);
   assert.equal(h.contexts.length, full, 'output deadline does not run full EMS');
-  assert.equal(count(a, 'evPortfolioCalculations'), before + 1, 'one shared pass services both output timers');
+  assert.equal(count(a, 'evPortfolioCalculations'), before, 'output timers request slow context without scanning');
+  await at(h,60);assert(h.contexts.length>full);assert(count(a,'evPortfolioCalculations')>before);
   cases++;
   const q = await ready(), b = q.app; q.origin = q.now();
   let release;
@@ -123,8 +125,8 @@ async function outputAndQueuedCancellation() {
   assert.equal(count(b, 'evPortfolioCalculations'), initial);
   assert.equal(b.evContextRefresh.timer, newTimer, 'old completion cannot erase a newer generation');
   await at(q, 33);
-  assert.equal(count(b, 'evPortfolioCalculations'), initial + 1);
-  assert.equal(count(b, 'evContextDeferredEvaluations'), 1);
+  assert.equal(count(b, 'evPortfolioCalculations'), initial);
+  await at(q,60);assert(count(b,'evPortfolioCalculations')>initial);assert.equal(b.evContextRefresh.requests.size,0);
   cases++;
   const stop = await ready(), c = stop.app; stop.origin = stop.now();
   await at(stop, 1); await meter(stop, 500);
