@@ -1,0 +1,32 @@
+{
+  "simulatedHomey": true,
+  "passed": 4,
+  "results": [
+    {
+      "type": "current",
+      "desiredTotalW": 16628,
+      "peakLimitW": 17500,
+      "buildsDuring120P1Events": 0,
+      "peakStopPassed": true
+    },
+    {
+      "type": "hybrid",
+      "desiredTotalW": 16628,
+      "peakLimitW": 17500,
+      "buildsDuring120P1Events": 0,
+      "peakStopPassed": true
+    },
+    {
+      "type": "mode",
+      "desiredTotalW": 16628,
+      "peakLimitW": 17500,
+      "buildsDuring120P1Events": 0,
+      "peakStopPassed": true
+    },
+    {
+      "type": "soc_completion",
+      "freshFeedbackCompleted": true,
+      "newGoalAccepted": true
+    }
+  ]
+}

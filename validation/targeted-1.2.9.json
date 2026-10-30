@@ -1,0 +1,220 @@
+{
+  "version": "1.2.9",
+  "scope": "Targeted EV planning, lifecycle, restart, control output and Peak Guard; widget/global status, startup/configuration and preserved battery memory isolation. Independent full regression suite intentionally not run.",
+  "total": 30,
+  "passed": 28,
+  "results": [
+    {
+      "test": "features-1.2.9",
+      "passed": true,
+      "summary": "1.2.9: 16 scenario groups passed (56 EV extension combinations plus lifecycle, tags and compatibility)."
+    },
+    {
+      "test": "features-control-1.2.9",
+      "passed": true,
+      "summary": "1.2.9 control: 4 production-path groups passed; Current/Hybrid/Mode, four EVs, Peak Guard, P1 cache and SoC completion."
+    },
+    {
+      "test": "flow-slot-cards",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 1.3,
+      "failure": null
+    },
+    {
+      "test": "configured-flow-cards",
+      "passed": true,
+      "summary": "configured Flow selectors passed (31 dynamic cards, 716 queries, 364 input comparisons, 300 condition comparisons, 72 three-generation output routes)"
+    },
+    {
+      "test": "widget",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.09,
+      "failure": null
+    },
+    {
+      "test": "settings-startup",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.11,
+      "failure": null
+    },
+    {
+      "test": "settings-cache-1.0.12",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.43,
+      "failure": null
+    },
+    {
+      "test": "planning-monitor-1.1.16",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.44,
+      "failure": null
+    },
+    {
+      "test": "regressions-0.7.8",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.15,
+      "failure": null
+    },
+    {
+      "test": "regressions-0.9.9",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.15,
+      "failure": null
+    },
+    {
+      "test": "ev-plan-1.1.15",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 7.08,
+      "failure": null
+    },
+    {
+      "test": "ev-plan-centralization-1.1.16",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.4,
+      "failure": null
+    },
+    {
+      "test": "ev-deadline-planner-1.1.17",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.1,
+      "failure": null
+    },
+    {
+      "test": "ev-deadline-integration-1.1.17",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 9.54,
+      "failure": null
+    },
+    {
+      "test": "ev-deadline-cache-1.1.12",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 1.51,
+      "failure": null
+    },
+    {
+      "test": "ev-persistence-1.1.20",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.65,
+      "failure": null
+    },
+    {
+      "test": "ev-multiday-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.39,
+      "failure": null
+    },
+    {
+      "test": "ev-multiday-control-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 1.22,
+      "failure": null
+    },
+    {
+      "test": "ev-flow-resume-waf-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.68,
+      "failure": null
+    },
+    {
+      "test": "ev-energy-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.28,
+      "failure": null
+    },
+    {
+      "test": "ev-dashboard-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.56,
+      "failure": null
+    },
+    {
+      "test": "ev-widget-ui-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.31,
+      "failure": null
+    },
+    {
+      "test": "ev-widget-handler-audit-1.2.4",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.3,
+      "failure": null
+    },
+    {
+      "test": "ev-battery-options-1.2.4",
+      "passed": true,
+      "summary": "12 EV battery/options/session/widget/token groups passed"
+    },
+    {
+      "test": "ev-grid-permission-1.2.5",
+      "passed": true,
+      "summary": "Grid permission: 20 groups passed"
+    },
+    {
+      "test": "ev-peak-1.1.20",
+      "passed": false,
+      "exitCode": 1,
+      "seconds": 2.39,
+      "failure": "1792749609000,\"residualInstances\":[],\"pendingMeterInstances\":[],\"protectedPvW\":0,\"houseStartReference\":{\"at\":1792749608000,\"revision\":1,\"houseReferenceSource\":\"existing_reference\",\"houseReferenceW\":700,\"houseRecentAverageW\":null,\"housePreviousBaselineW\":700,\"houseRecentSampleCount\":1,\"houseRecentWindowSeconds\":60,\"houseRecentCoverageSeconds\":0,\"houseReferenceFallback\":true,\"houseReferenceFallbackReason\":\"insufficient_samples\",\"houseLoadHold\":false},\"heldEvPowerW\":0,\"inferredEvPowerW\":11085,\"houseReferenceW\":700,\"requestedTargetW\":11085,\"activeTargetW\":11085,\"batteryDischargeW\":0,\"state\":\"active\",\"remainingSeconds\":0,\"waitingInstances\":[],\"waitingCommandInstances\":[],\"waitingResponseInstances\":[],\"physicalImportBeforeBatteryW\":11785,\"confirmedEvPowerW\":0,\"confirmedEvGridPowerW\":0,\"configuredEvPowerCeilingW\":11085,\"modeConfiguredPowerCeilingW\":11085,\"houseBaselineW\":700,\"houseToleranceW\":500,\"physicalSiteLoadW\":11785,\"detectedEvLoadW\":11085,\"houseLoadProtectionAvailable\":true,\"houseLoadHold\":false,\"selectedGridW\":11785.125168440814,\"controlGridPowerW\":700.1251684408144,\"controlGridSource\":\"direct_ev_grid_target\"},\"gridPowerW\":11785.125168440814,\"pvPowerW\":0,\"battery\":{\"lastPublishedCommandsW\":[],\"lastPublishedTotalW\":0,\"pendingCommandsW\":null,\"inFlightCommandsW\":null,\"valuesAreCommands\":true},\"repeats\":38,\"lastObservedAt\":1792749628000}]\n    at /workspace/scratch/d01d4f20697b/work/HomeFlux-EMS-1.2.9/test/ev-peak-1.1.20.test.js:98:3\n    at async check (/workspace/scratch/d01d4f20697b/work/HomeFlux-EMS-1.2.9/test/ev-peak-1.1.20.test.js:46:45)\n    at async main (/workspace/scratch/d01d4f20697b/work/HomeFlux-EMS-1.2.9/test/ev-peak-1.1.20.test.js:93:2) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n"
+    },
+    {
+      "test": "ev-physical-proof-1.2.4",
+      "passed": false,
+      "exitCode": 1,
+      "seconds": 9.3,
+      "failure": "PASS mode 6/16 A smart: 13 minutes full 16A, no false STOP\nPASS mode 6/16 A emergency: 13 minutes full 16A, no false STOP\nPASS mode 16/16 A smart: 13 minutes full 16A, no false STOP\nPASS mode 16/16 A emergency: 13 minutes full 16A, no false STOP\nPASS current 6/16 A smart: 13 minutes full 16A, no false STOP\nPASS current 6/16 A emergency: 13 minutes full 16A, no false STOP\nPASS current 16/16 A smart: 13 minutes full 16A, no false STOP\nPASS current 16/16 A emergency: 13 minutes full 16A, no false STOP\nPASS hybrid 6/16 A smart: 13 minutes full 16A, no false STOP\nPASS hybrid 6/16 A emergency: 13 minutes full 16A, no false STOP\nPASS hybrid 16/16 A smart: 13 minutes full 16A, no false STOP\nPASS hybrid 16/16 A emergency: 13 minutes full 16A, no false STOP\nPASS Mode false/missing/large Flow amperes cannot change physical watts or teach a house reference\nFAILED after 13 {\n  name: 'Mode false/missing/large Flow amperes cannot change physical watts or teach a house reference'\n} AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n0 !== 6\n\n    at /workspace/scratch/d01d4f20697b/work/HomeFlux-EMS-1.2.9/test/ev-physical-proof-1.2.4.test.js:65:56\n    at async check (/workspace/scratch/d01d4f20697b/work/HomeFlux-EMS-1.2.9/test/ev-physical-proof-1.2.4.test.js:9:46)\n    at async /workspace/scratch/d01d4f20697b/work/HomeFlux-EMS-1.2.9/test/ev-physical-proof-1.2.4.test.js:63:48 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: 0,\n  expected: 6,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n"
+    },
+    {
+      "test": "performance-architecture",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.14,
+      "failure": null
+    },
+    {
+      "test": "battery-settings-isolation-1.2.8",
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.39,
+      "failure": null
+    },
+    {
+      "test": "ev-widget-regression-1.2.4",
+      "passed": true,
+      "summary": "EV source/Flow regression and performance comparison passed 7"
+    }
+  ],
+  "baselineFailureComparison": [
+    {
+      "test": "ev-peak-1.1.20",
+      "baselineExitCode": 1,
+      "exactNormalizedFailureMatch": true
+    },
+    {
+      "test": "ev-physical-proof-1.2.4",
+      "baselineExitCode": 1,
+      "exactNormalizedFailureMatch": true
+    }
+  ],
+  "skipped": "Full independent HVAC, boiler, Savings/CSV and battery strategy suites; their production algorithms are unchanged. Prior 1.2.8 validation remains included.",
+  "physicalHomeyTested": false
+}

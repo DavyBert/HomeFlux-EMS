@@ -4,8 +4,8 @@
     "nl": "Override EV-modus voor één laadbeurt"
   },
   "hint": {
-    "en": "Temporarily use the selected operating mode for the selected EV for one connection session. If the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured mode for the selected EV is never overwritten. Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Gebruik tijdelijk de gekozen werkingsmodus voor de geselecteerde EV gedurende één verbindingssessie. Is de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde modus van de geselecteerde EV wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "en": "Temporarily use the selected operating mode for the selected EV for one connection session. If the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured mode for the selected EV is never overwritten. Only slots within the saved device count are offered. At count 0 the list is empty. Extend shifts an existing SoC/kWh deadline by 1–7 local calendar days, keeping its target, time, guarantee and delivered energy. No active plan means no extension. The extended plan survives restarts and disconnects; other planning inputs are blocked until its goal is reached or Clear EV planning is used. Peak Guard remains absolute.",
+    "nl": "Gebruik tijdelijk de gekozen werkingsmodus voor de geselecteerde EV gedurende één verbindingssessie. Is de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde modus van de geselecteerde EV wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg. Verlengen verschuift een bestaande SoC-/kWh-deadline met 1–7 lokale kalenderdagen en behoudt doel, tijd, garantie en geleverde energie. Zonder actieve planning wordt niets aangemaakt. De verlengde planning overleeft herstarts en loskoppelen; andere planningsinvoer blijft geblokkeerd tot het doel bereikt is of Wis EV-planning wordt gebruikt. Peak Guard blijft absoluut."
   },
   "args": [
     {
@@ -47,6 +47,55 @@
           "title": {
             "en": "Emergency charge",
             "nl": "Emergency charge"
+          }
+        },
+        {
+          "id": "extend_plan_1_days",
+          "title": {
+            "en": "Extend current plan by 1 day",
+            "nl": "Verleng huidige planning met 1 dag"
+          }
+        },
+        {
+          "id": "extend_plan_2_days",
+          "title": {
+            "en": "Extend current plan by 2 days",
+            "nl": "Verleng huidige planning met 2 dagen"
+          }
+        },
+        {
+          "id": "extend_plan_3_days",
+          "title": {
+            "en": "Extend current plan by 3 days",
+            "nl": "Verleng huidige planning met 3 dagen"
+          }
+        },
+        {
+          "id": "extend_plan_4_days",
+          "title": {
+            "en": "Extend current plan by 4 days",
+            "nl": "Verleng huidige planning met 4 dagen"
+          }
+        },
+        {
+          "id": "extend_plan_5_days",
+          "title": {
+            "en": "Extend current plan by 5 days",
+            "nl": "Verleng huidige planning met 5 dagen"
+          }
+        },
+        {
+          "id": "extend_plan_6_days",
+          "title": {
+            "en": "Extend current plan by 6 days",
+            "nl": "Verleng huidige planning met 6 dagen"
+          }
+        },
+        {
+          "id": "extend_plan_7_days",
+          "title": {
+            "en": "Extend current plan by 7 days",
+            "nl": "Verleng huidige planning met 7 dagen"
           }
         }
       ]

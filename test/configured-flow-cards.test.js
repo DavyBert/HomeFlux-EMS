@@ -77,7 +77,17 @@ for (const d of CONFIGURED_CARDS) {
   assert.deepEqual(card.titleFormatted, old.titleFormatted);
   const expectedArgs = old.args.filter(a => a.name !== d.argument).map(a =>
     ['set_hvac_room_temperature_for_configured', 'set_hvac_setpoint_for_configured'].includes(d.id)
-      ? { ...a, max: 99 } : a);
+      ? { ...a, max: 99 } : { ...a });
+  if (d.id === 'set_ev_session_override_for_configured') {
+    // 1.2.9 adds extension choices to the active card; legacy choices stay exact.
+    const mode = expectedArgs.find(a => a.name === 'mode');
+    mode.values = [...mode.values, ...Array.from({ length: 7 }, (_, i) => ({
+      id: `extend_plan_${i + 1}_days`, title: {
+        en: `Extend current plan by ${i + 1} ${i === 0 ? 'day' : 'days'}`,
+        nl: `Verleng huidige planning met ${i + 1} ${i === 0 ? 'dag' : 'dagen'}`,
+      },
+    }))];
+  }
   assert.deepEqual(card.args.filter(a => a.name !== d.argument), expectedArgs);
   const arg = card.args.find(a => a.name === d.argument);
   assert.equal(arg.type, 'autocomplete');

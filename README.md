@@ -26,6 +26,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.9
+
+Extend an existing EV plan by 1–7 days through the session override card, preserving its goal and progress across restarts. Active multi-day plans are protected against replacement until completion or clear. EMS decision reasons, WAF color/status and additional control statuses are now available as change-only global Logic tags.
+
+Verleng een bestaande EV-planning met 1–7 dagen via de sessie-overridekaart, met behoud van doel en voortgang over herstarts. Actieve meerdaagse plannen zijn beschermd tegen overschrijven tot voltooiing of wissen. EMS-beslisredenen, WAF-kleur/status en extra regelstatussen zijn beschikbaar als globale Logic-tags die alleen bij wijzigingen worden gepubliceerd.
+
 ### 1.2.8
 
 Reduced temporary startup and battery-control memory allocations by separating HVAC-only settings from battery planning and control settings.

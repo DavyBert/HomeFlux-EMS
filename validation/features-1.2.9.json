@@ -1,0 +1,23 @@
+{
+  "version": "1.2.9",
+  "simulatedHomey": true,
+  "passed": 16,
+  "results": [
+    "All 1–7 day options, four EV slots and both goals preserve original deadline time, target, guarantee and kWh progress",
+    "Without an active plan, completed plan, invalid option or impossible DST time there is no new goal or mutation",
+    "Extension uses the saved deadline rather than today; repeated actions add to the current deadline",
+    "Every legacy, generic and configured SoC/kWh input is blocked while an extended plan is active",
+    "Existing widget multi-day plans also block competing Flow inputs while keeping their own editor available",
+    "Restart, midnight, expired deadline, disconnect/reconnect and pauses preserve fixed deadlines and remaining energy",
+    "Goal completion releases input protection and survives restart without rearming the completed goal",
+    "Existing Clear EV Plan cancels only selected EV and remains clear through restart",
+    "Local calendar extension preserves clock time across 23-hour and 25-hour DST days",
+    "Existing override modes remain available and legacy single-day Flow targets retain replacement semantics",
+    "Flow extensions retain configured and session mode ownership, including Emergency, without deferred or stale mode restoration",
+    "Completed extended goals remain stopped across restart but cannot block a later explicit Emergency override",
+    "Full decision reasons match widget selection in both languages, including all fallback branches and long explanations",
+    "WAF uses exact existing widget gradient and publishes red/orange/green plus empty unavailable state",
+    "Every extra tag is global, changed-only, clears when irrelevant and uses the same reason as the status API without new timers",
+    "Active card options are additive; all deprecated card manifests and existing arguments remain byte-for-byte compatible"
+  ]
+}

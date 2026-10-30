@@ -5,6 +5,7 @@ const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
 const evDashboard = require('./lib/ev-dashboard');
 const evPlanOptions = require('./lib/ev-plan-options');
+const emsStatusTags = require('./lib/ems-status-tags');
 const evPlanResources = require('./lib/ev-plan-resources');
 const evHouseReference = require('./lib/ev-house-reference');
 const { resolveEvOutput } = require('./lib/ev-output-policy');
@@ -3984,7 +3985,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (widgetMeta) {
       settings.evWidgetPlan = { ...widgetMeta };
       settings.evAfterSocTarget = 'stop';
-      settings.evMode = 'smart';
+      if (!widgetMeta.flowExtended) settings.evMode = 'smart';
     }
     const socUpdatedAt = index === 0 ? this.inputUpdatedAt?.ev?.soc : this.extraEvInstances?.[index - 1]?.updatedAt?.soc;
     settings.evSocTargetCompletionFresh = Number(socUpdatedAt || 0)
@@ -5293,9 +5294,13 @@ class HomeFluxEmsApp extends Homey.App {
       ['emshvacsetpoint', 'number', 'HomeFlux EMS - HVAC Setpoint (C)', 0],
       ['emshvacmode', 'string', 'HomeFlux EMS - HVAC Mode', ''],
     ];
+    fixedTokens.push(...emsStatusTags.definitions);
     for (const [id, type, title, value] of fixedTokens) {
       const token = await this.getOrCreateToken(id, { type, title });
-      if (!this.latestResult) await token.setValue(value);
+      if (!this.latestResult) {
+        await token.setValue(value);
+        if (emsStatusTags.ids.has(id)) this.lastStatusTokenValues.set(id, value);
+      }
     }
   }
 
@@ -6649,8 +6654,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.slotFlowCards.registerAction('set_ev1_session_override', async args => {
       if (this.getEvCount() < 1) return true;
-      this.setEvSessionOverride(args.mode, 'flow');
-      return true;
+      return this.setEvSessionOverride(args.mode, 'flow') !== false;
     });
     this.slotFlowCards.registerAction('set_ev1_energy_deadline', async args => {
       if (this.getEvCount() < 1) return true;
@@ -6799,8 +6803,7 @@ class HomeFluxEmsApp extends Homey.App {
 
       this.slotFlowCards.registerAction(`set_ev${instance}_session_override`, async args => {
         if (index >= this.getEvCount()) return true;
-        this.setEvSessionOverrideFor(index, args.mode, 'flow');
-        return true;
+        return this.setEvSessionOverrideFor(index, args.mode, 'flow') !== false;
       });
       this.slotFlowCards.registerAction(`set_ev${instance}_energy_deadline`, async args => {
         if (index >= this.getEvCount()) return true;
@@ -8314,7 +8317,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEffectiveEvMode(settings = this.getSettings()) {
-    if (evPlanOptions.widget(this, 0)) return 'smart';
+    if (evPlanOptions.widget(this, 0) && !evPlanOptions.widget(this, 0).flowExtended) return 'smart';
     if (settings.evAfterSocTarget === 'preferences' && !this.evEnergyPlans?.[0]?.active
       && this.getEvSessionDetectionRuntime(0)?.socTargetReached) return 'smart';
     const overrideMode = this.normalizeEvOperatingMode(this.evSessionOverride?.mode || '');
@@ -8325,6 +8328,12 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   setEvSessionOverride(mode, source = 'flow') {
+    if (String(mode).startsWith('extend_plan_')) {
+      const match = /^extend_plan_([1-7])_days$/.exec(mode);
+      return match ? evPlanOptions.extend(this, 0, Number(match[1])) : false;
+    }
+    const completedPlan = evPlanOptions.widget(this, 0);
+    if (completedPlan?.flowExtended && completedPlan.completed) this.clearEvSocPlan(0, 'goal_completed');
     if (evPlanOptions.deferMode(this, 0, mode, source)) return this.normalizeEvOperatingMode(mode);
     this.rearmEvCompletedTarget(0);
     const normalized = this.normalizeEvOperatingMode(mode);
@@ -8383,7 +8392,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEffectiveEvModeFor(index, settings = this.getSettings()) {
-    if (evPlanOptions.widget(this, index)) return 'smart';
+    if (evPlanOptions.widget(this, index) && !evPlanOptions.widget(this, index).flowExtended) return 'smart';
     if (settings[this.getEvSettingKey(index, 'AfterSocTarget')] === 'preferences'
       && !this.evEnergyPlans?.[index]?.active && this.getEvSessionDetectionRuntime(index)?.socTargetReached) return 'smart';
     const override = this.getEvSessionOverrideFor(index);
@@ -8397,6 +8406,12 @@ class HomeFluxEmsApp extends Homey.App {
 
   setEvSessionOverrideFor(index, mode, source = 'flow') {
     if (index === 0) return this.setEvSessionOverride(mode, source);
+    if (String(mode).startsWith('extend_plan_')) {
+      const match = /^extend_plan_([1-7])_days$/.exec(mode);
+      return match ? evPlanOptions.extend(this, index, Number(match[1])) : false;
+    }
+    const completedPlan = evPlanOptions.widget(this, index);
+    if (completedPlan?.flowExtended && completedPlan.completed) this.clearEvSocPlan(index, 'goal_completed');
     if (evPlanOptions.deferMode(this, index, mode, source)) return this.normalizeEvOperatingMode(mode);
     const runtime = this.getExtraEv(index);
     if (!runtime) return this.normalizeEvOperatingMode(mode);
@@ -9814,7 +9829,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.rearmEvCompletedTarget(index);
     // A disconnect may restore a saved Flow goal through the central setter,
     // which already persists both goal types and requests one context refresh.
-    if (wasWidget && evPlanOptions.resume(this, index, endReason)) return true;
+    if (wasWidget && !wasWidget.flowExtended && evPlanOptions.resume(this, index, endReason)) return true;
     this.persistEvSocPlanOverrides();
     this.persistEvEnergyPlanOverrides(true);
     if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
@@ -9914,6 +9929,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   setEvEnergyPlan(index, energyKwh, targetTime, guaranteeInput = 'no', widgetInput = null) {
+    if (evPlanOptions.protectedPlan(this, index)
+      && (!widgetInput || evPlanOptions.widget(this, index)?.flowExtended)) return false;
     this.recordDiagnosticCounter('evEnergyTargetInputs');
     const parsedKwh = parseFiniteInputNumber(energyKwh);
     if (parsedKwh === null || parsedKwh < 0 || parsedKwh > 250) return false;
@@ -9975,6 +9992,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   setEvSocPlan(index, targetSocInput, targetTime, guaranteeInput = 'no', widgetInput = null) {
+    if (evPlanOptions.protectedPlan(this, index)
+      && (!widgetInput || evPlanOptions.widget(this, index)?.flowExtended)) return false;
     this.recordDiagnosticCounter('evSocTargetInputs');
     const targetSoc = Number(targetSocInput);
     const time = String(targetTime || '').trim();
@@ -15046,6 +15065,11 @@ class HomeFluxEmsApp extends Homey.App {
       emswaf: available ? budget.valueKwh : 0, emswafavailable: available };
   }
 
+  getEmsWidgetTokens(result = this.latestResult, now = Date.now()) {
+    return emsStatusTags.values(result || {}, this.planningCache?.energyBudget,
+      this.displayLanguage(), now, this.balanceMonitor);
+  }
+
   getStatusResultSignature(result) {
     if (!result) return '';
     const evSessions = Array.from({ length: this.getEvCount() }, (_, index) => {
@@ -15068,6 +15092,7 @@ class HomeFluxEmsApp extends Homey.App {
       outputTotalCommandW: result.outputTotalCommandW ?? null,
       warningText: result.warningText || '',
       health: this.getEmsHealthTokens(result),
+      details: this.getEmsWidgetTokens(result),
       pvLimitPercent: result.pvLimitPercent ?? null,
       controlEnabled: Boolean(result.controlEnabled),
       inputReady: Boolean(result.inputReady),
@@ -15140,6 +15165,7 @@ class HomeFluxEmsApp extends Homey.App {
         emsgridchargeassist: result.gridChargeAssistW,
         emswarning: result.warningText || '',
         ...this.getEmsHealthTokens(result),
+        ...this.getEmsWidgetTokens(result),
         emsaction: result.actionLabel || 'Rust',
         emspvcharge: result.pvChargeW || 0,
         emspvlimit: this.lastPublishedPvLimitPercent ?? 100,
@@ -16089,6 +16115,9 @@ class HomeFluxEmsApp extends Homey.App {
       return switchAt > statusNow ? Math.max(1, Math.ceil((switchAt - statusNow) / 1000)) : 0;
     });
     preview.warningText = this.latestResult?.warningText || '';
+    const widgetTokens = this.getEmsWidgetTokens(preview, statusNow);
+    preview.decisionText = widgetTokens.emsdecision;
+    preview.decisionReason = widgetTokens.emsdecisionreasons;
     preview.homeyEnergy = this.getHomeyEnergyStatus(storedSettings, new Date(statusNow));
     preview.homeyEnergySource = this.getRawHomeyEnergyStatus(storedSettings, new Date(statusNow));
     preview.externalEnergy = this.getExternalEnergyStatus(storedSettings, new Date(statusNow));

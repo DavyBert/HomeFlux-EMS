@@ -59,9 +59,14 @@ function expectFlow(a, type, value, time = '07:00', guarantee = true, id = 1) {
     await change(h.app, { mode: 'emergency' }); assert.equal(options.current(h.app, 0), null);
     h.app.updateEvStatusInput(0, false, 0, Date.now()); assert.equal(options.current(h.app, 0), null);
   });
-  await check('Latest explicit Flow goal wins; later widget restores that goal without changing another EV', async () => {
+  await check('Multi-day widget rejects Flow replacement until clear; a later widget restores the new explicit Flow goal without changing another EV', async () => {
     const h = await fixture(), a = h.app;
-    await flow(h, 'soc', 80); await widget(a, 'kwh', 20); await flow(h, 'kwh', 17, '12:00', 'no');
+    await flow(h, 'soc', 80); await widget(a, 'kwh', 20);
+    assert.equal(await flow(h, 'kwh', 17, '12:00', 'no'), false);
+    assert.equal(a.getEvDashboard().evs[0].plan.owner, 'widget');
+    assert.equal(a.getEvDashboard().evs[0].plan.value, 20);
+    assert.equal(await h.cards.get('clear_ev1_soc_deadline_override').listener({}), true);
+    assert.equal(await flow(h, 'kwh', 17, '12:00', 'no'), true);
     expectFlow(a, 'kwh', 17, '12:00', false); await widget(a, 'soc', 99);
     await flow(h, 'soc', 65, '17:00', 'yes', 2); const other = JSON.stringify(a.getEvDashboard().evs[1].plan);
     assert.equal(await flow(h, 'soc', 120), false);

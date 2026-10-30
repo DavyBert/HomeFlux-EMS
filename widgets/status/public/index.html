@@ -458,6 +458,7 @@
     }
 
     function emsDecision(status, Homey) {
+      if (typeof status.decisionText === 'string') return status.decisionText;
       const action = String(status.action || 'idle');
       const actionLabels = {
         peak_shave: tr(Homey, 'widget.status.decisionPeakShave', 'Peak Guard support'),
@@ -480,6 +481,7 @@
     }
 
     function emsDecisionReason(status, Homey) {
+      if (typeof status.decisionReason === 'string') return status.decisionReason;
       const mode = String(status.modeLabel || '').trim();
       const separator = mode.indexOf('·');
       if (separator >= 0) return mode.slice(separator + 1).trim();

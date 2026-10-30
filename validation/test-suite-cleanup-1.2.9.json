@@ -1,0 +1,30 @@
+{
+  "version": "1.2.9",
+  "reason": "User explicitly retired these two tests because their assumptions belong to earlier control behavior.",
+  "removedCommands": {
+    "test": [
+      "node test/ev-peak-1.1.20.test.js",
+      "node test/ev-physical-proof-1.2.4.test.js"
+    ],
+    "check": [
+      "node --check test/ev-peak-1.1.20.test.js",
+      "node test/ev-peak-1.1.20.test.js",
+      "node test/ev-physical-proof-1.2.4.test.js"
+    ]
+  },
+  "archivedTests": {
+    "test/ev-peak-1.1.20.test.js": "test/ev-peak-1.1.20.test.js.disabled",
+    "test/ev-physical-proof-1.2.4.test.js": "test/ev-physical-proof-1.2.4.test.js.disabled"
+  },
+  "checks": {
+    "jsonParsed": true,
+    "allOtherCommandsPreserved": true,
+    "allRemainingReferencedFilesExist": true,
+    "retiredTestsNotInScripts": true,
+    "allProductionFilesByteIdenticalToPrevious129": true,
+    "archivedTestSourcesByteIdentical": true
+  },
+  "regressionSuitesRerun": false,
+  "reasonNotRerun": "Only suite wiring and validation documentation changed; production code and the remaining test expectations are unchanged.",
+  "previousTargetedResults": "validation/targeted-1.2.9.json is historical, not a new 28/28 execution."
+}
