@@ -26,6 +26,10 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.8
+
+Reduced temporary startup and battery-control memory allocations by separating HVAC-only settings from battery planning and control settings.
+
 ### 1.2.7
 
 Added up to 10 HVAC channels with optional permanent, tariff and solar temperature control, heat/cool direction, staggered activation and a shared extra grid budget. Separate heat/cool power learning supports re-evaluation. Added an optional compact HVAC summary to the EMS widget, with matching typography, coloured tariff/mode icons and aligned temperatures. New HVAC settings are grouped with activation; two-rate TOU contracts show only low and high temperature targets. Active permanent control shows only its relevant PV options and offers optional outdoor temperature limits with adjustable shutdown hysteresis. Upgrade initialization of additional HVAC channels is spread over time. Optional periodic heating runs during cheap tariff periods. HVAC control and learning assessment follow the slow context cadence. EV timer-driven planning also uses the shared slow context. HVAC temperature targets now support up to 99 °C, including periodic water heating. HVAC comfort and activation fields adapt to the selected control. Automatic heating/cooling can also use outdoor temperature. Optional COP-related cold-weather targets can adjust each HVAC tariff goal. Fixed-direction permanent control supports setpoint-only devices; HVAC status reflects permanent/COP control and its actual waiting reason.
