@@ -1,0 +1,63 @@
+{
+  "version": "1.2.11",
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "passed": 18,
+  "results": [
+    {
+      "name": "auto: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "self_consumption: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "avoid_import: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "solar_capture: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "charge: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "manual_charge: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "standby: enabled Peak Guard takes priority over the normal strategy within power limits"
+    },
+    {
+      "name": "auto: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "self_consumption: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "avoid_import: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "solar_capture: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "charge: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "manual_charge: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "standby: Peak Guard never discharges a battery below its hard minimum"
+    },
+    {
+      "name": "Standby ignores ordinary import and PV export, while respecting the explicit Peak Guard enable setting"
+    },
+    {
+      "name": "Standby: real P1 input triggers Peak Guard immediately, then restores zero and does not capture export"
+    },
+    {
+      "name": "Peak Guard remains available after switching an active charging command into Standby"
+    },
+    {
+      "name": "All engine modes, including Standby, match the original 1.2.9 controller across tariffs/SoC/grid",
+      "combinations": 448
+    }
+  ]
+}

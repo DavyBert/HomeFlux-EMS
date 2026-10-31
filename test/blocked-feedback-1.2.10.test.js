@@ -88,13 +88,16 @@ const modes=['self_consumption','avoid_import','solar_capture'];
   assert.equal(a.canSkipBatteryIdle(a.getSettings(),h.now()),false);await h.grid(3500);await h.flush();assert(a.batteryFeedbackMemo.idlePeakBlocked);
   h.setNow(h.now()+8000);await h.grid(1200);await h.flush();assert.equal(a.latestResult.override,null);
  });
- await check('Standby keeps real battery output zero for both export and high import',async()=>{
-  for(const grid of [-4000,4000]){
-   const h=await fixture({mode:'standby',soc:80}),a=h.app;h.setNow(h.now()+1000);await h.grid(grid);await h.flush();await h.start();await h.flush();
-   assert.equal(a.state.lastTotalCommandW,0);assert.equal(a.latestResult.override,null);assert.deepEqual(a.lastEmittedCommands,[0,0,0,0]);assert.deepEqual(h.errors,[]);
-  }
+ await check('Standby ignores ordinary PV export but allows Peak Guard takeover and returns to zero',async()=>{
+  const h=await fixture({mode:'standby',soc:80}),a=h.app;
+  h.setNow(h.now()+1000);await h.grid(-4000);await h.flush();await h.start();await h.flush();
+  assert.equal(a.state.lastTotalCommandW,0);assert.equal(a.latestResult.override,null);
+  h.setNow(h.now()+8000);await h.grid(4000);await h.flush();
+  assert(a.state.lastTotalCommandW>0);assert.equal(a.latestResult.override,'peak_shave');
+  h.setNow(h.now()+8000);await h.grid(500);await h.flush();
+  assert.equal(a.state.lastTotalCommandW,0);assert.equal(a.latestResult.override,null);assert.deepEqual(h.errors,[]);
  });
- await check('All active engine modes retain baseline results across contracts, SoC and import/export; standby is explicitly zero',()=>{
+ await check('All active engine modes retain baseline results across contracts, SoC and import/export; standby retains Peak Guard',()=>{
   const reference=baseline?require(path.join(baseline,'lib/ems-engine')):engine;let combinations=0;
   for(const contractType of ['fixed','tou','dynamic_hour','dynamic_quarter'])for(const forcedMode of ['auto',...modes,'charge','manual_charge'])for(const soc of [10,14,45,90])for(const gridPowerW of [-3500,0,1200,4000]){
    const settings={...engine.DEFAULTS,timezone:'Europe/Brussels',contractType,forcedMode,batteryCount:4,minSoc:12,safetySoc:14,peakLimitW:2650};

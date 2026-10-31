@@ -26,6 +26,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.11
+
+Peak Guard can take over battery control in every operating mode, including Standby. Standby otherwise remains idle without ordinary PV capture.
+
+Peak Guard kan de batterijsturing in elke werkingsmodus overnemen, ook in Stand-by. Stand-by blijft verder in rust zonder gewone PV-opvang.
+
 ### 1.2.10
 
 Reduced repeated battery calculations while discharge is blocked by a SoC limit or selected operating mode. Stable zero output is reused with immediate checks for new PV export and Peak Guard availability. Standby does not request battery support for Peak Guard or PV capture.

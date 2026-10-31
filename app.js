@@ -14023,7 +14023,7 @@ class HomeFluxEmsApp extends Homey.App {
     const configuredPeakLimitW = Number(settings.peakLimitW);
     const softPeakW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500)
       - Math.max(0, Number(settings.peakSoftMarginW) || 0);
-    const peak = settings.forcedMode !== 'standby' && Boolean(settings.peakShaveEnabled) && rawGridW >= softPeakW;
+    const peak = Boolean(settings.peakShaveEnabled) && rawGridW >= softPeakW;
     const pvDeltaW = this.getRecentPvDelta(now);
     return { at: now, rawGridW, controlGridW, pvW, pvDeltaW, evTargetW,
       adaptiveLive: this.isAdaptiveLiveControlActive(settings, now), zone, peak };
