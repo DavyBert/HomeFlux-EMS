@@ -1,0 +1,403 @@
+{
+  "version": "1.2.10",
+  "baselineVersion": "1.2.9",
+  "baseline": {
+    "version": "1.2.9",
+    "node": "v24.22.1",
+    "simulatedHomey": true,
+    "physicalHomeyCpuMeasured": false,
+    "reports": [
+      {
+        "name": "normal_auto_discharge",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          1208,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 4,
+        "previews": 0,
+        "fullEvaluations": 4,
+        "measuredFastEvaluations": 0,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 61.856,
+        "retainedHeapDeltaBytes": 371112,
+        "memoJsonBytes": 42144
+      },
+      {
+        "name": "auto_soc_floor_pv_zero",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 80,
+        "previews": 72,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 69.059,
+        "retainedHeapDeltaBytes": 317144,
+        "memoJsonBytes": 44905
+      },
+      {
+        "name": "auto_soc_floor_pv_200W",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 244,
+        "previews": 236,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 79.315,
+        "retainedHeapDeltaBytes": 176688,
+        "memoJsonBytes": 44907
+      },
+      {
+        "name": "manual_self_consumption_at_floor",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 244,
+        "previews": 236,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 76.525,
+        "retainedHeapDeltaBytes": 57688,
+        "memoJsonBytes": 44955
+      },
+      {
+        "name": "manual_avoid_import_at_floor",
+        "p1": 240,
+        "mode": "avoid_import",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 244,
+        "previews": 236,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 70.299,
+        "retainedHeapDeltaBytes": 39192,
+        "memoJsonBytes": 44958
+      },
+      {
+        "name": "manual_solar_capture_at_floor",
+        "p1": 240,
+        "mode": "solar_capture",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 244,
+        "previews": 236,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 54.489,
+        "retainedHeapDeltaBytes": 35512,
+        "memoJsonBytes": 44953
+      },
+      {
+        "name": "manual_standby",
+        "p1": 240,
+        "mode": "standby",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 4,
+        "previews": 0,
+        "fullEvaluations": 4,
+        "measuredFastEvaluations": 0,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 80.48,
+        "retainedHeapDeltaBytes": 488,
+        "memoJsonBytes": 4
+      },
+      {
+        "name": "auto_soc_floor_ev_disconnected",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 245,
+        "previews": 236,
+        "fullEvaluations": 9,
+        "measuredFastEvaluations": 4,
+        "contexts": 5,
+        "publishes": 0,
+        "scheduledTimers": 5,
+        "cpuMs": 109.709,
+        "retainedHeapDeltaBytes": 209112,
+        "memoJsonBytes": 48176
+      },
+      {
+        "name": "auto_soc_hard_floor_above_peak",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 244,
+        "previews": 0,
+        "fullEvaluations": 244,
+        "measuredFastEvaluations": 240,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 140.155,
+        "retainedHeapDeltaBytes": -1696,
+        "memoJsonBytes": 4
+      }
+    ],
+    "note": "Independent process per version, 4-minute control replay per case. GC/JIT/process noise affects CPU and heap; counts and real output vectors are the primary evidence."
+  },
+  "updated": {
+    "version": "1.2.10",
+    "node": "v24.22.1",
+    "simulatedHomey": true,
+    "physicalHomeyCpuMeasured": false,
+    "reports": [
+      {
+        "name": "normal_auto_discharge",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          1208,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 4,
+        "previews": 0,
+        "fullEvaluations": 4,
+        "measuredFastEvaluations": 0,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 57.344,
+        "retainedHeapDeltaBytes": 374224,
+        "memoJsonBytes": 42212
+      },
+      {
+        "name": "auto_soc_floor_pv_zero",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 58.519,
+        "retainedHeapDeltaBytes": 285200,
+        "memoJsonBytes": 43655
+      },
+      {
+        "name": "auto_soc_floor_pv_200W",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 57.573,
+        "retainedHeapDeltaBytes": 126600,
+        "memoJsonBytes": 43657
+      },
+      {
+        "name": "manual_self_consumption_at_floor",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 45.29,
+        "retainedHeapDeltaBytes": 41696,
+        "memoJsonBytes": 43717
+      },
+      {
+        "name": "manual_avoid_import_at_floor",
+        "p1": 240,
+        "mode": "avoid_import",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 53.19,
+        "retainedHeapDeltaBytes": 55736,
+        "memoJsonBytes": 43716
+      },
+      {
+        "name": "manual_solar_capture_at_floor",
+        "p1": 240,
+        "mode": "solar_capture",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 47.505,
+        "retainedHeapDeltaBytes": 19504,
+        "memoJsonBytes": 43712
+      },
+      {
+        "name": "manual_standby",
+        "p1": 240,
+        "mode": "standby",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 4,
+        "previews": 0,
+        "fullEvaluations": 4,
+        "measuredFastEvaluations": 0,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 49.139,
+        "retainedHeapDeltaBytes": -21344,
+        "memoJsonBytes": 4
+      },
+      {
+        "name": "auto_soc_floor_ev_disconnected",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 3,
+        "contexts": 5,
+        "publishes": 0,
+        "scheduledTimers": 5,
+        "cpuMs": 111.471,
+        "retainedHeapDeltaBytes": 187120,
+        "memoJsonBytes": 46926
+      },
+      {
+        "name": "auto_soc_hard_floor_above_peak",
+        "p1": 240,
+        "mode": "self_consumption",
+        "output": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "stateBuilds": 8,
+        "previews": 0,
+        "fullEvaluations": 8,
+        "measuredFastEvaluations": 4,
+        "contexts": 4,
+        "publishes": 0,
+        "scheduledTimers": 4,
+        "cpuMs": 55.947,
+        "retainedHeapDeltaBytes": -29080,
+        "memoJsonBytes": 43657
+      }
+    ],
+    "note": "Independent process per version, 4-minute control replay per case. GC/JIT/process noise affects CPU and heap; counts and real output vectors are the primary evidence."
+  },
+  "unchangedCommandVectors": true,
+  "noExtraBatteryCommandsInStableReplay": true,
+  "note": "Counters are measured at actual app method entry, independently of optional diagnostics. Heap/CPU are container measurements, not physical Homey percentages; clock-bound periodic checks remain."
+}

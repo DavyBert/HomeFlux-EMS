@@ -1,4 +1,8 @@
 {
+  "1.2.10": {
+    "en": "Reduced repeated battery calculations while discharge is blocked by a SoC limit or selected operating mode. Stable zero output is reused with immediate checks for new PV export and Peak Guard availability. Standby does not request battery support for Peak Guard or PV capture.",
+    "nl": "Minder herhaalde batterijberekeningen wanneer ontladen door een SoC-grens of gekozen modus wordt geblokkeerd. Stabiele nuluitvoer wordt hergebruikt met directe controle op nieuwe PV-export en beschikbare Peak Guard-ondersteuning. Stand-by vraagt geen batterijsturing voor Peak Guard of PV-opvang."
+  },
   "1.2.9": {
     "en": "Extend an existing EV plan by 1–7 days through the session override card, preserving its goal and progress across restarts. Active multi-day plans are protected against replacement until completion or clear. EMS decision reasons, WAF color/status and additional control statuses are now available as change-only global Logic tags.",
     "nl": "Verleng een bestaande EV-planning met 1–7 dagen via de sessie-overridekaart, met behoud van doel en voortgang over herstarts. Actieve meerdaagse plannen zijn beschermd tegen overschrijven tot voltooiing of wissen. EMS-beslisredenen, WAF-kleur/status en extra regelstatussen zijn beschikbaar als globale Logic-tags die alleen bij wijzigingen worden gepubliceerd."

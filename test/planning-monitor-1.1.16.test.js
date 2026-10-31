@@ -89,7 +89,7 @@ async function main() {
     assert(scans.some(c => c.instance === 2));
     assert(scans.every(c => c.executions >= 1));
     assert(report.calculationSummary.total >= 5);
-    assert.equal(report.homeFluxVersion, '1.2.9');
+    assert.equal(report.homeFluxVersion, '1.2.10');
     a.startInputMonitor();
     await h.cards.get('set_ev1_soc_deadline').listener({ target_soc: 80, time: '07:00', guarantee: 'no' });
     a.getEvInstanceSettings(0);

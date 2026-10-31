@@ -1,0 +1,92 @@
+{
+  "version": "1.2.10",
+  "baselineVersion": "1.2.9",
+  "baselineZipSha256": "2600b813591cf3624735957566e579f6b0c302baac6c62cfe10da70f2011edc6",
+  "changedFiles": [
+    {
+      "file": ".homeychangelog.json",
+      "before": "69ae9def37538b04cb4316ed4e95f88971b47a9b7ab27b9b46fa868391880431",
+      "after": "c9ab6bbca2872619db00dabcf5018e13c89c0f2a3e13bac98be4f84b487e9874"
+    },
+    {
+      "file": ".homeycompose/app.json",
+      "before": "b4a4e9bafc3614bb1d2370e3de9a717c43f6c05d12f231022551aa4fbd17db71",
+      "after": "a1841cf222f6d58ac09e3bbfe933ec456601c93294933ec163ca173771f0b0e3"
+    },
+    {
+      "file": "README.md",
+      "before": "a7f5ac2d1dfc7fadcb75bcbfed7dd9c9012087e6e2be12657eab9b11b0304ab9",
+      "after": "fcb3ff724514ecf7bc53967b1823562bab043fb8a7766caed1f8b4eaa59590a8"
+    },
+    {
+      "file": "app.js",
+      "before": "23ccc4b5c74a4f37501f3957c6acfa5d988d700d28d5b494ba92acc018231669",
+      "after": "c12cbdf4accb59347adbd8bcfbd7e63472b36c870a6f92efa888464b7cfd3fa0"
+    },
+    {
+      "file": "app.json",
+      "before": "48a4370bba87e128275749c1d5dc2dc7bcae73d12f57dd14c7df0c1b69669f96",
+      "after": "96f950b7cec8756e23865713844b57bb00b220421c382350941368416a7d4702"
+    },
+    {
+      "file": "lib/ems-engine.js",
+      "before": "5321a828e403af0360ef38573f2f8f968e4f7ed9dbb51fd7d29717c7d52e7547",
+      "after": "18eadd540b70d8e141e4fad44053f5d6741e54bdd3783cd63084294a08bdad9a"
+    },
+    {
+      "file": "package-lock.json",
+      "before": "270c422d54d559bc4d781105691069a1946c4d50b7bf11b79068fe77394666a5",
+      "after": "32be95f417b3d714f290a69b54330b1f927b819f93eb5795b1d93c679dc6275a"
+    },
+    {
+      "file": "package.json",
+      "before": "ae18cc632b6389fac1f2d50e235d70a9e77be00daf44aacbad91c79218eff8b7",
+      "after": "f880be9a52c370f4c97b5d9256b79a7efade19d56c1e0e4808ee7ee242d24850"
+    },
+    {
+      "file": "test/planning-monitor-1.1.16.test.js",
+      "before": "6dd23f2a1a5d86e5af75220ad425e7e93f5309f3b8e7c293c72250f73b530a02",
+      "after": "fcf7578d1468f3f5cfb75f549bf535cd9bd5263e3d8068b4b43be5d5d8e439b0"
+    },
+    {
+      "file": "test/settings-startup.test.js",
+      "before": "eb90dbedd2c599d3fe97efc85ebe46dfe6a5736b9dab8d3a6ede817827e6dc27",
+      "after": "2289525864335fbed0c53efdae0c80df4c84dd29594dd75f5e6d6fe84db28936"
+    },
+    {
+      "file": "test/widget.test.js",
+      "before": "bc2db57d51c8787d0b99c066e3ab81223dba51ae9f28c48dfa0cb2b4ca1675a6",
+      "after": "d874a1762d53bea9b938c21be3e28cb600110780acd8982c00e0af41373bd0b2"
+    }
+  ],
+  "newFiles": [
+    "test/blocked-feedback-1.2.10.test.js",
+    "test/blocked-feedback-benchmark-1.2.10.cjs",
+    "validation/blocked-feedback-1.2.10.json",
+    "validation/targeted-1.2.10.json",
+    "validation/blocked-feedback-performance-1.2.10.json",
+    "docs/UPDATE-1.2.10.md",
+    "docs/VALIDATION-1.2.10.md",
+    "validation/source-audit-1.2.10.json"
+  ],
+  "syntaxCheckedFiles": [
+    "app.js",
+    "lib/ems-engine.js",
+    "test/planning-monitor-1.1.16.test.js",
+    "test/settings-startup.test.js",
+    "test/widget.test.js",
+    "test/blocked-feedback-1.2.10.test.js",
+    "test/blocked-feedback-benchmark-1.2.10.cjs"
+  ],
+  "allOriginalFilesPresent": true,
+  "flowDefinitionsByteCompatible": true,
+  "allDeprecatedCardsUnchanged": true,
+  "athomTextsUnchanged": true,
+  "readmeBodyUnchanged": true,
+  "retiredTestsRemainDisabled": true,
+  "runtimeScope": [
+    "app.js: existing battery memo, idle dependencies, preflight gates",
+    "lib/ems-engine.js: explicit standby exclusion from battery Peak Guard"
+  ],
+  "testScope": "45 targeted test files, 24 new production-path groups and 384 active engine baseline combinations. Full independent regression suite omitted."
+}

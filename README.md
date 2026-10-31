@@ -26,6 +26,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.10
+
+Reduced repeated battery calculations while discharge is blocked by a SoC limit or selected operating mode. Stable zero output is reused with immediate checks for new PV export and Peak Guard availability. Standby does not request battery support for Peak Guard or PV capture.
+
+Minder herhaalde batterijberekeningen wanneer ontladen door een SoC-grens of gekozen modus wordt geblokkeerd. Stabiele nuluitvoer wordt hergebruikt met directe controle op nieuwe PV-export en beschikbare Peak Guard-ondersteuning. Stand-by vraagt geen batterijsturing voor Peak Guard of PV-opvang.
+
 ### 1.2.9
 
 Extend an existing EV plan by 1–7 days through the session override card, preserving its goal and progress across restarts. Active multi-day plans are protected against replacement until completion or clear. EMS decision reasons, WAF color/status and additional control statuses are now available as change-only global Logic tags.
