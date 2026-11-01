@@ -5,6 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <script data-origin="settings" src="/homey.js" type="text/javascript"></script>
+<script src="charge-strategy.js" type="text/javascript"></script>
 <script src="sun-chance.js" type="text/javascript"></script>
 <script src="display-language.js" type="text/javascript"></script>
 <script src="ev-headroom.js" type="text/javascript"></script>
@@ -824,6 +825,7 @@
 <button class="tab" data-tab="boiler" type="button">Boiler</button>
 <button class="tab" data-tab="priority" type="button">Prioriteiten</button>
 <button class="tab" data-tab="finetuning" type="button">Autotune</button>
+<button class="tab" data-tab="charge-strategy" type="button">Laadstrategie</button>
 <button class="tab" data-tab="planning" type="button">Planning</button>
 <button class="tab" data-tab="planning-simulation" type="button">Planning simulatie</button>
 <button class="tab" data-tab="status" type="button">Live status</button>
@@ -1972,6 +1974,12 @@
 <div class="card hidden" id="autoTuneIgnoredCard"><div class="statusline">Niet meer controleren</div><div class="muted">Deze parameters worden niet meer geëvalueerd of aanbevolen. Je kunt controle hier opnieuw inschakelen.</div><div id="autoTuneIgnored"></div></div>
 <p class="muted">Automatische controle van goedgekeurde parameters wordt samengevoegd met de trage contextregelkring en maximaal één keer per 30 minuten geëvalueerd. P1-, PV- en EV-metingen blijven direct in de lichte leerstatistiek opgenomen, maar starten zelf geen Autotune-beslissing. Technische regelparameters worden normaal maximaal één keer per 6 uur aangepast; wanneer je Autotune toestemming geeft om het stuurtempo te beheren, blijft de minimumtijd tussen batterijcommando’s altijd tussen 4 en 17 seconden. Netbandadviezen liggen symmetrisch rond 0 W en worden alleen onderbouwd aanbevolen; automatisch toepassen vereist toestemming voor beide grenzen; geleerde planningsparameters zoals lage-PV-drempel, energiebehoefte en Battery Save-ontlaadgrens maximaal één keer per 24 uur.</p>
 </section>
+<section class="panel" id="panel-charge-strategy">
+<fieldset class="homey-form-fieldset"><legend class="homey-form-legend">Laadstrategie</legend>
+<p class="muted">Kies hoe het noodzakelijke netladen over de bestaande dag- en nachtvensters wordt verdeeld. Doel-SoC, PV-voorrang en Peak Guard blijven leidend. Bij 0% blijft de standaardplanning behouden. Maximaal laden gebruikt het werkelijk beschikbare vermogen; de trage context herberekent het laadblok. Een lager laadbudget kan de eindtijd of tijdreserve onhaalbaar maken.</p>
+<p class="muted">Bij variabele en dynamische tarieven wordt alleen gecentreerd als het volledige laadblok goedkoper is dan de standaardspreiding; anders blijft die spreiding actief.</p>
+<input id="chargeStrategy" type="hidden"/><div id="chargeStrategyEditor"></div></fieldset>
+</section>
 <section class="panel" id="panel-planning">
 <div class="card">
 <div class="statusline">Laadplanning</div>
@@ -2410,7 +2418,7 @@ async function onHomeyReady(Homey) {
     uiObserver.observe(document.body, {childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['title','placeholder','aria-label']});
   }
 
-  const ids = ['hvacExtraGridBudgetEnabled','hvacExtraGridBudgetW',
+  const ids = ['chargeStrategy','hvacExtraGridBudgetEnabled','hvacExtraGridBudgetW',
     'sunChanceFixedEnabled','sunChanceDynamicCheapEnabled','sunChanceDynamicNormalEnabled','sunChanceDynamicExpensiveEnabled',
     'sunChanceReserveEnabled','sunChanceBand1Start','sunChanceBand1End','sunChanceBand1MinSoc','sunChanceBand2Start','sunChanceBand2End','sunChanceBand2MinSoc','sunChanceBand3Start','sunChanceBand3End','sunChanceBand3MinSoc','sunChanceBand4Start','sunChanceBand4End','sunChanceBand4MinSoc',
     'batteryCount','optimizeMultiBatteryEfficiency','optimalBatteryPowerW','battery1OptimalPowerW','battery2OptimalPowerW','battery3OptimalPowerW','battery4OptimalPowerW','battery5OptimalPowerW','battery6OptimalPowerW','battery7OptimalPowerW','battery8OptimalPowerW','autoTuneMinConfidencePercent','hybridEmsEnabled','hybridWatchdogMinW','hybridWatchdogMaxW','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnyEnabled','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandStepW',
@@ -2691,7 +2699,10 @@ async function onHomeyReady(Homey) {
   }
   organizeEmsSettingsPanels();
 
+  window.HomeFluxChargeStrategy.mount(q('chargeStrategyEditor'));
+
   function currentSettingValue(id) {
+    if (id === 'chargeStrategy') return window.HomeFluxChargeStrategy.read();
     const field = q(id);
     if (!field) return undefined;
     const directionStem=/^(hvac(?:[2-9]|10)?)DirectionTemperature$/.exec(id)?.[1];
@@ -4269,6 +4280,7 @@ async function onHomeyReady(Homey) {
       const storedTariffs = snapshot.touSchedule;
       ids.forEach((id) => {
         const value = snapshot[id];
+        if (id === 'chargeStrategy') { window.HomeFluxChargeStrategy.load(value); return; }
         const directionStem=/^(hvac(?:[2-9]|10)?)DirectionTemperature$/.exec(id)?.[1];
         if(directionStem) {
           const config=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
@@ -4561,6 +4573,8 @@ async function onHomeyReady(Homey) {
   }));
 
   function validateNumericSettings() {
+    const strategyField = window.HomeFluxChargeStrategy.validate();
+    if (strategyField) return { field: strategyField, message: uiLanguage === 'nl' ? 'Extra laadvermogen: kies een percentage tussen 0 en 100.' : 'Extra charging power: choose a percentage from 0 to 100.' };
     for (let instance = 1; instance <= 4; instance++) for (let preset = 1; preset <= 3; preset++) {
       const id = `${instance === 1 ? 'ev' : 'ev' + instance}WidgetTime${preset}`;
       const field = q(id);

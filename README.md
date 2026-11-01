@@ -17,6 +17,8 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 
 The core battery control and planning can now run. Optional day/night planning maxima limit planned grid charging; PV capture and Safety SoC recovery remain available. Optional night hysteresis and a fixed 00:00–02:00 PV forecast median can stabilize night planning; both are off by default.
 
+The optional Charging strategy tab offers spread charging with a power correction, or maximum safe charging from the start, as late as possible with a 15-minute reserve, or centred on the cheapest interval. For variable prices, centring is used only if the full block is cheaper than the standard spread plan. Day/night and annual/seasonal settings are independent.
+
 Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels and optional tariff/PV temperature control, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
 For the complete functionality, configuration and all Flow cards, see:  
@@ -25,6 +27,16 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.12
+
+Orange warnings below the EMS decision reason identify relevant missing or unrefreshed inputs and explain how to restore updates.
+
+Oranje meldingen onder de EMS-beslissingsreden tonen ontbrekende of niet-vernieuwde relevante inputs met hersteladvies.
+
+New Charging strategy tab: spread charging with an optional power correction, or maximum safe charging with early, latest or centred positioning. Separate day/night and optional summer/winter profiles reuse the existing month selection. With variable prices, centring is used only when the full block is cheaper than the standard spread plan. Charging adapts to remaining energy and available grid capacity while retaining PV priority and Peak Guard.
+
+Nieuw tabblad Laadstrategie: gespreid laden met optionele vermogenscorrectie, of maximaal veilig laden vanaf het begin, zo laat mogelijk of gecentreerd. Aparte dag-/nacht- en optionele zomer-/winterprofielen hergebruiken de bestaande maandselectie. Bij variabele prijzen wordt alleen gecentreerd als het volledige blok goedkoper is dan de standaardspreiding. Het laden past zich aan de resterende energiebehoefte en beschikbare netcapaciteit aan, met behoud van PV-voorrang en Peak Guard.
 
 ### 1.2.11
 

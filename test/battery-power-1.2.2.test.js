@@ -37,7 +37,7 @@ const rangeEnd = html.indexOf('  applyBatteryPowerInputRanges();',rangeStart) + 
 const validateStart = html.indexOf('  function validateNumericSettings()');
 const validateEnd = html.indexOf("  q('save').addEventListener",validateStart);
 const ui = vm.createContext({ q: element, numeric: new Set(), uiLanguage: 'en',
-  document: { querySelector: () => null }, window: { HomeFluxSunChance: sunChance },
+  document: { querySelector: () => null }, window: { HomeFluxSunChance: sunChance, HomeFluxChargeStrategy: { validate: () => null } },
   configuredBatteryCount: () => 1, MAX_FLEX_INSTANCES: 4,
   instanceStem: (kind,i) => i===1 ? kind : kind+i });
 vm.runInContext(html.slice(rangeStart,rangeEnd)+html.slice(validateStart,validateEnd),ui);

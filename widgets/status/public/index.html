@@ -49,6 +49,9 @@
     .tone-activity { color: var(--hf-activity); }
     .tone-solar { color: var(--hf-solar); }
     .decision-value { margin-top: 3px; font-size: 15px; line-height: 1.2; font-weight: 750; }
+    .input-warnings { margin-top: 5px; color: var(--hf-attention); font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+    .input-warning + .input-warning { margin-top: 3px; }
+    .input-warnings summary { cursor: pointer; margin-top: 3px; }
     .decision-reason { margin-top: 4px; font-size: 11.5px; line-height: 1.25; font-weight: 650; }
     .section { display: grid; gap: 4px; }
     .section-title { font-size: 11px; font-weight: 750; line-height: 1.15; }
@@ -857,8 +860,35 @@
       root.appendChild(item);
     }
 
+    function renderInputWarnings(warnings, Homey, expanded = false) {
+      if (!Array.isArray(warnings) || !warnings.length) return null;
+      const root = document.createElement('div');
+      root.className = 'input-warnings'; root.id = 'input-warnings';
+      root.setAttribute('role', 'status'); root.setAttribute('aria-live', 'polite');
+      let details = null;
+      warnings.forEach((warning, index) => {
+        const line = document.createElement('div'); line.className = 'input-warning';
+        const key = 'widget.status.inputWarnings.' + warning.key;
+        let message = tr(Homey, key, tr(Homey, 'widget.status.inputWarnings.generic', 'Input updates are missing — check the Flow.'));
+        for (const [name, value] of Object.entries(warning.params || {})) message = message.replaceAll('{' + name + '}', String(value));
+        line.textContent = '⚠ ' + message;
+        if (index < 3) root.appendChild(line);
+        else {
+          if (!details) {
+            details = document.createElement('details'); details.id = 'input-warning-details'; details.open = expanded;
+            const summary = document.createElement('summary');
+            summary.textContent = tr(Homey, 'widget.status.inputWarnings.more', '{count} more input warnings').replace('{count}', String(warnings.length - 3));
+            details.appendChild(summary); root.appendChild(details);
+          }
+          details.appendChild(line);
+        }
+      });
+      return root;
+    }
+
     function renderStatus(status, settings, Homey) {
       const content = document.getElementById('content');
+      const inputWarningsExpanded = Boolean(document.getElementById('input-warning-details')?.open);
       content.innerHTML = '';
 
       const tone = kind => enabled(settings, 'statusColors') ? metricTone(kind, status) : '';
@@ -897,6 +927,10 @@
             copy.appendChild(reasonEl);
           }
         }
+        const diagnosticWarnings = (status.inputWarnings || []).filter(item => !(item.id === 'grid'
+          && status.criticalAlert?.id === 'input' && enabled(settings, 'showCriticalAlerts')));
+        const inputWarnings = renderInputWarnings(diagnosticWarnings, Homey, inputWarningsExpanded);
+        if (inputWarnings) copy.appendChild(inputWarnings);
         decision.appendChild(copy);
         if (enabled(settings, 'showEnergyBudget')) {
           const circle = document.createElement('div');

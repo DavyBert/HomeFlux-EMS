@@ -1902,7 +1902,20 @@
     "Elke (dagen)": "Every (days)",
     "Op temperatuur houden (uren)": "Hold at temperature (hours)",
     "Opwarmtemperatuur (°C)": "Heating target (°C)",
-    "De duur telt pas vanaf het bereiken van de doeltemperatuur, uitsluitend tijdens goedkope tariefmomenten. Buiten dalmomenten wordt de gewone regeling hervat. Temperatuurfeedback minstens elke 5 minuten vereist.": "Duration counts only after reaching the target, during cheap tariff periods. Normal control resumes outside these periods. Temperature feedback is required at least every 5 minutes."
+    "De duur telt pas vanaf het bereiken van de doeltemperatuur, uitsluitend tijdens goedkope tariefmomenten. Buiten dalmomenten wordt de gewone regeling hervat. Temperatuurfeedback minstens elke 5 minuten vereist.": "Duration counts only after reaching the target, during cheap tariff periods. Normal control resumes outside these periods. Temperature feedback is required at least every 5 minutes.",
+    "Dezelfde laadstrategie het hele jaar door": "Use the same charging strategy all year",
+    "Afzonderlijke laadstrategie voor zomer- en wintermaanden": "Separate charging strategies for summer and winter months",
+    "Het hele jaar": "All year",
+    "Standaard laadstrategie": "Standard charging strategy",
+    "Extra laadvermogen boven standaardplanning (%)": "Extra charging power above the standard plan (%)",
+    "Laden met maximaal toegestaan vermogen": "Charge at the maximum permitted power",
+    "Vanaf begin laadvenster": "From the beginning of the charging window",
+    "Zo laat mogelijk — 15 minuten tijdreserve": "As late as possible — 15-minute reserve",
+    "Laadblok centreren rond goedkoopste kwartier / midden goedkoopste tariefperiode": "Centre the charging block on the cheapest quarter / middle of the cheapest tariff period",
+    "Bestaande maandselectie openen": "Open the existing month selection",
+    "Winter gebruikt de geselecteerde maanden bij het seizoensminimum-SoC in EMS; de overige maanden zijn zomer. Deze indeling blijft gelden als het minimum-SoC uit staat.": "Winter uses the months selected for the seasonal minimum SoC in EMS; the other months are summer. This selection also applies when minimum SoC is disabled.",
+    "Kies hoe het noodzakelijke netladen over de bestaande dag- en nachtvensters wordt verdeeld. Doel-SoC, PV-voorrang en Peak Guard blijven leidend. Bij 0% blijft de standaardplanning behouden. Maximaal laden gebruikt het werkelijk beschikbare vermogen; de trage context herberekent het laadblok. Een lager laadbudget kan de eindtijd of tijdreserve onhaalbaar maken.": "Choose how necessary grid charging is distributed within the existing day and night windows. Target SoC, PV priority and Peak Guard remain authoritative. At 0%, the standard plan is unchanged. Maximum charging uses the actually available power; the slow context recalculates the block. Reduced capacity can make the deadline or time reserve unreachable.",
+    "Bij variabele en dynamische tarieven wordt alleen gecentreerd als het volledige laadblok goedkoper is dan de standaardspreiding; anders blijft die spreiding actief.": "For variable and dynamic tariffs, centring is used only when the complete charging block costs less than the standard spread plan; otherwise the spread plan remains active."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

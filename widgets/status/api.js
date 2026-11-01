@@ -1,5 +1,6 @@
 'use strict';
 const { localDateTimeUtcMs, inferIntervalMinutes } = require('../../lib/homey-energy');
+const inputWarnings = require('../../lib/input-warnings');
 
 module.exports = {
   async getStatus({ homey }) {
@@ -18,6 +19,7 @@ module.exports = {
         .filter(row => row.startMs != null && Number(row.startMs) + intervalMinutes * 60000 > now && Number(row.startMs) < now + 120 * 3600000)
         .map(row => [Number(row.startMs), Number(row.price)]) };
     }).filter(curve => curve.points.length);
+    status.inputWarnings = inputWarnings.collect(app, status, settings, now);
     return status;
   },
 };
