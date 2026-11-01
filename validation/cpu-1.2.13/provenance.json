@@ -1,0 +1,14 @@
+{
+  "sourceZip": "HomeFlux-EMS-v1.2.12 (1)(2).zip",
+  "sourceSha256": "86207dd72bd69ef71019befe1fa31deec3034c7ae33ace16c765676b93d4d018",
+  "node": "v24.22.1",
+  "homeyMeasured": false,
+  "AAppSha256": "fabcf445b9d2df55f27be541b3ca824fee764cd7ffd857d5cd9225f1b0e25ece",
+  "BAppSha256": "a0ad38827d020f68d25d5b1ae677e3202cc92e2246760469556f2072442217e0",
+  "CAppSha256": "9ced91c549cf95413152ab3946f2a6d24c6b6f7755e8838a552c872cf3195b4b",
+  "CUsesBenchFile": "bench-C2.json",
+  "note": "bench-C2 is the accepted boiler-cache + timer variant; its app.js is byte-identical to final C. bench-C is the discarded combined runtime-sharing experiment. C1 is runtime-sharing only on B. Historical profiler files use wall-time sections and include profiler overhead; context-breakdown files measure inclusive synchronous process CPU.",
+  "historicalMeasurement": true,
+  "followupAppSha256": "b245f3db21220934e40ba96b07ca1b2ea84613b9b466f53c4f47c4846688fc26",
+  "followupReport": "../followup-1.2.13/REPORT.md"
+}

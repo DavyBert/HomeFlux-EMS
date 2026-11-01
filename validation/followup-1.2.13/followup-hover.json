@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "inlineScripts": 1,
+  "hoverSelectors": [
+    "#chargeStrategyEditor label:hover",
+    "#chargeStrategyEditor button:hover"
+  ],
+  "color": "#7fc13b",
+  "important": true,
+  "visualHomeyCheck": false,
+  "note": "Static style/selector/color checks and syntax checks of actual inline settings scripts. A rendered browser check was unavailable because no browser binary is installed."
+}

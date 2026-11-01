@@ -28,7 +28,17 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.13
+
+Reduced duplicate preflight work while a battery control interval is pending. Boiler solar-day fallback calculations are reused until their next relevant time or settings boundary. Fresh measured EV consumption remains included in battery grid protection while a charger is temporarily commanded to 0 A, including EV4. Charging strategy option text turns green on hover.
+
+Minder dubbele preflightberekeningen tijdens een lopend batterij-stuurinterval. Berekeningen voor de zonnedag-terugvalstatus van de boiler worden hergebruikt tot de volgende relevante tijdgrens of instellingenwijziging. Vers gemeten EV-verbruik blijft meetellen in de netbescherming van de batterij wanneer een laadpaal tijdelijk 0 A krijgt, ook bij EV4. Optietekst in Laadstrategie wordt groen bij aanwijzen.
+
 ### 1.2.12
+
+Settings tabs now use green hover text.
+
+Instellingentabbladen tonen groene tekst bij aanwijzen.
 
 Orange warnings below the EMS decision reason identify relevant missing or unrefreshed inputs and explain how to restore updates.
 

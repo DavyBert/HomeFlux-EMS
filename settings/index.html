@@ -805,6 +805,13 @@
   0% { max-height: 0; visibility: hidden; margin-top: 0; }
   83.33333333333333%, 100% { max-height: 16em; visibility: visible; margin-top: .3em; }
 }
+
+    /* Keep settings navigation readable when Homey injects hover colours. */
+    .tab-toggle:hover,
+    .tab:hover,
+    .instance-tab:hover { color: var(--hf-accent-2) !important; }
+    #chargeStrategyEditor label:hover,
+    #chargeStrategyEditor button:hover { color: var(--hf-accent-2) !important; }
 </style>
 </head>
 <body>

@@ -1,0 +1,48 @@
+{
+  "version": "1.2.13",
+  "productionChanges": [
+    "EV4 fresh physical consumption remains in battery grid accounting even while desired current is 0 A; other EV slots benefit from the same correction.",
+    "Green hover text for Charging strategy option/correction labels and month-selection button."
+  ],
+  "executedTestFiles": 16,
+  "syntaxAndStaticChecksPassed": true,
+  "schedulerScenariosInReplacement": 14,
+  "additionalEv4Cases": [
+    "Current and Hybrid zero-command physical protection",
+    "No permission or command is granted by accounting",
+    "Stale feedback, fresh zero current, ended session, disconnect, denied tariff and zero grid allowance"
+  ],
+  "allTargetedTestsPassed": true,
+  "skipped": [
+    "Full regression suite",
+    "Independent battery-planning, HVAC/boiler, UI/dashboard and savings/export suites already tested or unrelated to this change",
+    "CPU benchmarks from previous iteration were not repeated",
+    "Visual Homey/device validation"
+  ],
+  "remainingLimits": [
+    "No physical Homey or charger test",
+    "Hover CSS checked statically; no rendered browser available",
+    "Retired suites are historical failures, not reclassified as successful tests"
+  ],
+  "changedFiles": [
+    "package.json",
+    ".homeychangelog.json",
+    "README.md",
+    "app.js",
+    "test/diagnostics-1.1.6.test.js.disabled",
+    "test/ev-grid-budget-1.2.13.test.js",
+    "test/soc-completion-1.1.9.test.js.disabled",
+    "test/ev-battery-protection-1.1.6.test.js.disabled",
+    "settings/index.html",
+    "validation/followup-1.2.13/followup-ev-budget.log",
+    "validation/followup-1.2.13/followup-hover.json",
+    "validation/followup-1.2.13/followup-tests.json",
+    "validation/followup-1.2.13/EV4-accounting.patch",
+    "validation/followup-1.2.13/followup-budget-before-fix.log",
+    "validation/followup-1.2.13/test-retirement.json",
+    "validation/followup-1.2.13/regression-artifacts/ev-recording-audit-1.2.4.json",
+    "validation/followup-1.2.13/regression-artifacts/ev-grid-permission-1.2.5.json"
+  ],
+  "appSha256": "b245f3db21220934e40ba96b07ca1b2ea84613b9b466f53c4f47c4846688fc26",
+  "previousAppSha256": "9ced91c549cf95413152ab3946f2a6d24c6b6f7755e8838a552c872cf3195b4b"
+}

@@ -1,0 +1,58 @@
+--- a/app.js
++++ b/app.js
+@@ -4206,6 +4206,22 @@
+       ? this.getBoilerWarmUntil(settings)
+       : Math.max(0, Number(this.boilerState?.trackingStartedAt || now));
+ 
++    // The full solar-day scan changes only at a window end, a local date
++    // boundary or a relevant boiler setting/completion change. Cache its small
++    // result, not the 71 calendar windows; runtime accounting still runs above
++    // every decision, including disabled modules and pending stop commands.
++    const startValue = String(settings.boilerDayStartTime || this.getBoilerColdResetTime(settings) || '07:00');
++    const endValue = String(settings.boilerDayEndTime || '23:00');
++    const cached = this.boilerState?.solarFallbackCache;
++    if (cached && cached.dateKey === currentDateKey && cached.timezone === timezone
++      && cached.startValue === startValue && cached.endValue === endValue
++      && cached.eligibleFrom === eligibleFrom && cached.fallbackDays === fallbackDays
++      && now >= cached.at && now < cached.validUntil) {
++      this.recordDiagnosticCounter('boilerSolarFallbackReuses');
++      return { ...cached.value };
++    }
++    this.recordDiagnosticCounter('boilerSolarFallbackBuilds');
++    let validUntil = Infinity;
+     let missedSolarDays = 0;
+     const futureWindows = [];
+     // Fallback is capped at 30 days. A small margin on either side is enough to
+@@ -4215,7 +4231,10 @@
+       const window = this.getBoilerSolarDayWindow(dateKey, settings);
+       if (!window || window.startAt < eligibleFrom) continue;
+       if (window.endAt <= now) missedSolarDays += 1;
+-      else futureWindows.push(window);
++      else {
++        futureWindows.push(window);
++        validUntil = Math.min(validUntil, window.endAt);
++      }
+     }
+ 
+     const fallbackDue = fallbackDays > 0 && missedSolarDays >= fallbackDays;
+@@ -4225,7 +4244,7 @@
+       futureWindows.sort((a, b) => a.endAt - b.endAt);
+       nextFallbackAt = Number(futureWindows[remainingSolarDays - 1]?.endAt) || 0;
+     }
+-    return {
++    const value = {
+       fallbackDays,
+       missedSolarDays,
+       remainingSolarDays,
+@@ -4233,6 +4252,11 @@
+       nextFallbackAt,
+       eligibleFrom,
+     };
++    if (this.boilerState) this.boilerState.solarFallbackCache = {
++      dateKey: currentDateKey, timezone, startValue, endValue, eligibleFrom,
++      fallbackDays, at: now, validUntil, value,
++    };
++    return { ...value };
+   }
+ 
+   getBoilerDaysWithoutCycle(now = Date.now(), settings = this.getSettings()) {

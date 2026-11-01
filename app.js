@@ -4206,6 +4206,22 @@ class HomeFluxEmsApp extends Homey.App {
       ? this.getBoilerWarmUntil(settings)
       : Math.max(0, Number(this.boilerState?.trackingStartedAt || now));
 
+    // The full solar-day scan changes only at a window end, a local date
+    // boundary or a relevant boiler setting/completion change. Cache its small
+    // result, not the 71 calendar windows; runtime accounting still runs above
+    // every decision, including disabled modules and pending stop commands.
+    const startValue = String(settings.boilerDayStartTime || this.getBoilerColdResetTime(settings) || '07:00');
+    const endValue = String(settings.boilerDayEndTime || '23:00');
+    const cached = this.boilerState?.solarFallbackCache;
+    if (cached && cached.dateKey === currentDateKey && cached.timezone === timezone
+      && cached.startValue === startValue && cached.endValue === endValue
+      && cached.eligibleFrom === eligibleFrom && cached.fallbackDays === fallbackDays
+      && now >= cached.at && now < cached.validUntil) {
+      this.recordDiagnosticCounter('boilerSolarFallbackReuses');
+      return { ...cached.value };
+    }
+    this.recordDiagnosticCounter('boilerSolarFallbackBuilds');
+    let validUntil = Infinity;
     let missedSolarDays = 0;
     const futureWindows = [];
     // Fallback is capped at 30 days. A small margin on either side is enough to
@@ -4215,7 +4231,10 @@ class HomeFluxEmsApp extends Homey.App {
       const window = this.getBoilerSolarDayWindow(dateKey, settings);
       if (!window || window.startAt < eligibleFrom) continue;
       if (window.endAt <= now) missedSolarDays += 1;
-      else futureWindows.push(window);
+      else {
+        futureWindows.push(window);
+        validUntil = Math.min(validUntil, window.endAt);
+      }
     }
 
     const fallbackDue = fallbackDays > 0 && missedSolarDays >= fallbackDays;
@@ -4225,7 +4244,7 @@ class HomeFluxEmsApp extends Homey.App {
       futureWindows.sort((a, b) => a.endAt - b.endAt);
       nextFallbackAt = Number(futureWindows[remainingSolarDays - 1]?.endAt) || 0;
     }
-    return {
+    const value = {
       fallbackDays,
       missedSolarDays,
       remainingSolarDays,
@@ -4233,6 +4252,11 @@ class HomeFluxEmsApp extends Homey.App {
       nextFallbackAt,
       eligibleFrom,
     };
+    if (this.boilerState) this.boilerState.solarFallbackCache = {
+      dateKey: currentDateKey, timezone, startValue, endValue, eligibleFrom,
+      fallbackDays, at: now, validUntil, value,
+    };
+    return { ...value };
   }
 
   getBoilerDaysWithoutCycle(now = Date.now(), settings = this.getSettings()) {
@@ -11765,8 +11789,13 @@ class HomeFluxEmsApp extends Homey.App {
         || decision?.guaranteeActive || this.getEffectiveEvModeFor(index, storedSettings) === 'emergency';
       const intentional = decision?.intentionalGridImport === undefined
         ? Boolean(decision?.selectedTariff || decision?.guaranteeActive) : Boolean(decision.intentionalGridImport);
+      // A charger can still draw power while the shared allocator holds its
+      // next start at 0 A (including EV4). Fresh physical Current/Hybrid load
+      // remains grid-funded; this accounting never grants charger permission.
       const active = input?.connected && decision?.connected && !session?.endedLatched && tariffAllowed && budgetAllowed && intentional
-        && Number(decision.desiredCurrentA) > 0 && Number(decision.portfolioGridImportTargetW) > 0;
+        && Number(decision.portfolioGridImportTargetW) > 0
+        && (Number(decision.desiredCurrentA) > 0
+          || (!modeOnly && this.getEvMeasuredCurrent(index, input, now).currentA > 0));
       if (active) {
         requestedTargetW = Math.max(requestedTargetW, Number(decision.portfolioGridImportTargetW));
         relevant.push({ index, decision, settings, residual: false });
@@ -14505,6 +14534,15 @@ class HomeFluxEmsApp extends Homey.App {
     const earliest = Math.max(this.nextCommandAllowedAt || 0,
       this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
     const wait = Math.max(0, earliest - now);
+    // A queued battery pass already owns this interval. Input bookkeeping and
+    // urgent flexible-load safety run before this scheduler; keep its deadline
+    // and force flag without repeating a preflight whose result cannot run yet.
+    // At the deadline requestEvaluate rechecks settings and actual publications.
+    if (wait > 0 && this.controlTimer) {
+      this.controlTimerForce = Boolean(this.controlTimerForce || immediate);
+      this.recordDiagnosticCounter('fastCoalesced');
+      return true;
+    }
     // Keep the cheap signal/safety gates, but do not build a charging feedback
     // state while the existing command interval prevents its use. This object
     // lives only in this synchronous request, never in the timer or on the app.

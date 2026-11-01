@@ -1,0 +1,138 @@
+[
+  {
+    "kind": "syntax",
+    "file": "app.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "syntax",
+    "file": "test/ev-grid-budget-1.2.13.test.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "syntax",
+    "file": "settings/charge-strategy.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "regression",
+    "file": "test/app-control.test.js",
+    "passed": true,
+    "seconds": 0.995,
+    "output": "HomeFlux EMS app control tests: OK\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-feedback-1.0.11.test.js",
+    "passed": true,
+    "seconds": 3.083,
+    "output": "1.0.11 measured EV feedback: 28 real-scheduler scenarios passed.\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 (index) \u2502 scenario                             \u2502 measuredA \u2502 EVgridW \u2502 batteryW \u2502 batteryPublishes \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 0       \u2502 'three-phase-16A'                    \u2502 16        \u2502 11085   \u2502 631      \u2502 1                \u2502\n\u2502 1       \u2502 'three-phase-14A'                    \u2502 14        \u2502 9699    \u2502 631      \u2502 1                \u2502\n\u2502 2       \u2502 'three-phase-8A'                     \u2502 8         \u2502 5543    \u2502 631      \u2502 1                \u2502\n\u2502 3       \u2502 'three-phase-6A'                     \u2502 6         \u2502 4157    \u2502 631      \u2502 1                \u2502\n\u2502 4       \u2502 'single-phase-8A'                    \u2502 8         \u2502 1840    \u2502 631      \u2502 1                \u2502\n\u2502 5       \u2502 'hybrid-8A'                          \u2502 8         \u2502 5543    \u2502 630      \u2502 5                \u2502\n\u2502 6       \u2502 'above-command-20A'                  \u2502 20        \u2502 13856   \u2502 631      \u2502 1                \u2502\n\u2502 7       \u2502 'above-grid-budget'                  \u2502 16        \u2502 11085   \u2502 631      \u2502 9                \u2502\n\u2502 8       \u2502 'new-command-with-existing-feedback' \u2502 8         \u2502 5543    \u2502 631      \u2502 1                \u2502\n\u2502 9       \u2502 'zero-current'                       \u2502 0         \u2502 0       \u2502 631      \u2502 3                \u2502\n\u2502 10      \u2502 'disconnect'                         \u2502 0         \u2502 0       \u2502 631      \u2502 3                \u2502\n\u2502 11      \u2502 'session-end'                        \u2502 0         \u2502 0       \u2502 631      \u2502 3                \u2502\n\u2502 12      \u2502 'missing-feedback'                   \u2502 8         \u2502 0       \u2502 6000     \u2502 2                \u2502\n\u2502 13      \u2502 'expired-and-restored-feedback'      \u2502 8         \u2502 5543    \u2502 630      \u2502 5                \u2502\n\u2502 14      \u2502 'tariff-disabled'                    \u2502 0         \u2502 0       \u2502 631      \u2502 1                \u2502\n\u2502 15      \u2502 'tariff-permission-change'           \u2502 0         \u2502 0       \u2502 631      \u2502 3                \u2502\n\u2502 16      \u2502 'scheduled-tariff-boundary'          \u2502 0         \u2502 0       \u2502 631      \u2502 3                \u2502\n\u2502 17      \u2502 'grid-budget-change'                 \u2502 0         \u2502 0       \u2502 631      \u2502 3                \u2502\n\u2502 18      \u2502 'pv-and-house-variation'             \u2502 8         \u2502 3143    \u2502 7        \u2502 9                \u2502\n\u2502 19      \u2502 'planned-battery-charge'             \u2502 8         \u2502 5543    \u2502 -1151    \u2502 5                \u2502\n\u2502 20      \u2502 'peak-guard'                         \u2502 0         \u2502 0       \u2502 6000     \u2502 2                \u2502\n\u2502 21      \u2502 'explicit-battery-support'           \u2502 6         \u2502 0       \u2502 4787     \u2502 8                \u2502\n\u2502 22      \u2502 'legacy-bypass-ignored'              \u2502 8         \u2502 5543    \u2502 631      \u2502 1                \u2502\n\u2502 23      \u2502 'mode-only-detection'                \u2502 16        \u2502 11085   \u2502 631      \u2502 5                \u2502\n\u2502 24      \u2502 'split-battery-outputs'              \u2502 8         \u2502 5543    \u2502 730      \u2502 2                \u2502\n\u2502 25      \u2502 'hybrid-battery-control'             \u2502 8         \u2502 5543    \u2502 631      \u2502 1                \u2502\n\u2502 26      \u2502 'two-EVs-partial-feedback'           \u2502 8         \u2502 5543    \u2502 2010     \u2502 3                \u2502\n\u2502 27      \u2502 'pending-ev-publication'             \u2502 8         \u2502 5543    \u2502 631      \u2502 1                \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-confirmed-power-1.2.4.test.js",
+    "passed": true,
+    "seconds": 2.88,
+    "output": "Confirmed EV power: 18 production-path groups passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-battery-options-1.2.4.test.js",
+    "passed": true,
+    "seconds": 0.385,
+    "output": "PASS Both global settings default OFF, persisted settings restore without changing power limits\nPASS Grid majority strictly above 50%; solar, unknown and missing initial energy never manufacture a majority\nPASS Always takes priority, no origin mutation or new energy integration; zero/stale/disconnected EV does not trigger restriction\nPASS Mode consumes only physical P1 observation, never configured or Flow amperes; multiple batteries use one existing origin pool\nPASS Actual battery engine and feedback preview block discharge, including Peak Guard, while PV charge and individual limits remain valid\nPASS Split discharge minimum cannot leak through zero or a direction lock; delayed publication rechecks active EV\nPASS Conditional support cannot finance an EV start with battery energy that will be protected once charging\nPASS Real fast/context battery loop, published output and Hybrid ownership honour restriction and resume PV charging\nPASS Unreachable target trigger sends once per cable session despite text changes, recovered feasibility, new goals and overlap\nPASS Unreachable warning latch survives app restart, confirmed first disconnect resets only selected EV\nPASS WAF tag reads exact existing cached value and validity, including negative/expired; active faults clear and runtime error works without diagnostics\nPASS Each visible general EMS tile has an independent declared switch; hiding timing preserves target and bounds\n12 EV battery/options/session/widget/token groups passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-battery-transition-1.1.9.test.js",
+    "passed": true,
+    "seconds": 4.354,
+    "output": "1.1.9 EV battery transitions: 33 scenarios passed.\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-pv-house-first-1.1.11.test.js",
+    "passed": true,
+    "seconds": 7.177,
+    "output": "1.1.11 PV first for household: 72 cloud/STOP scenarios passed (production scheduler and Flow outputs).\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-grid-permission-1.2.5.test.js",
+    "passed": true,
+    "seconds": 5.0,
+    "output": "PASS mode: emergency uses P1 room with 0 W tariff allowance and no PV\nPASS mode: PV-only -> emergency, then clouds, retains grid permission\nPASS mode: guarantee uses P1 room with 0 W tariff allowance and no PV\nPASS mode: PV-only -> guarantee, then clouds, retains grid permission\nPASS current: emergency uses P1 room with 0 W tariff allowance and no PV\nPASS current: PV-only -> emergency, then clouds, retains grid permission\nPASS current: guarantee uses P1 room with 0 W tariff allowance and no PV\nPASS current: PV-only -> guarantee, then clouds, retains grid permission\nPASS hybrid: emergency uses P1 room with 0 W tariff allowance and no PV\nPASS hybrid: PV-only -> emergency, then clouds, retains grid permission\nPASS hybrid: guarantee uses P1 room with 0 W tariff allowance and no PV\nPASS hybrid: PV-only -> guarantee, then clouds, retains grid permission\nPASS Fixed contract emergency is not constrained by the 0 W regular tariff cap\nPASS Fixed contract guarantee is not constrained by the 0 W regular tariff cap\nPASS mode: actual P1 overload still stops/reduces EV safely\nPASS current: actual P1 overload still stops/reduces EV safely\nPASS hybrid: actual P1 overload still stops/reduces EV safely\nPASS Reported example: P1 8,287 W + existing EV 4,416 W gives 13,529 W after the 100-W margin, without adding PV twice\nPASS All four Mode slots share Peak Guard once; guaranteed and Emergency coexist\nPASS Plain PV-only Smart still stops when solar disappears\nGrid permission: 20 groups passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-work-1.1.16.test.js",
+    "passed": true,
+    "seconds": 1.127,
+    "output": "1.1.16 EV work: 9 concurrent, safety and status scenarios passed.\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-house-reference-1.2.4.test.js",
+    "passed": true,
+    "seconds": 0.743,
+    "output": "EV recent household reference: 20 cases passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-house-publication-1.2.5.test.js",
+    "passed": true,
+    "seconds": 0.785,
+    "output": "PASS START publishes then freezes both histories before charging detection\nPASS Missing, zero and false-positive Mode amperes never change the frozen reference\nPASS Smart/Standard/Emergency switches and repeated START preserve one reference\nPASS A computed STOP and publication mutex do not release the reference\nPASS Failed STOP trigger retains lock, saved receipt and both references\nPASS Successful STOP alone releases; learning needs a new complete post-STOP window\nPASS waiting session status cannot release an active command\nPASS paused session status cannot release an active command\nPASS ended session status cannot release an active command\nPASS Disconnect/reconnect retains the command reference until an actual STOP\nPASS Second Mode EV and STOP of only one EV cannot replace the shared house reference\nPASS EV2 failed STOP retains its receipt independently of EV1\nPASS Concurrent STARTs preserve the pre-send candidate when EV2 publishes before EV1\nPASS Permission failure after a successful STOP cannot undo that published STOP receipt\nPASS Token-only STOP without Mode Flow publication cannot release the reference\nPASS Token-only START does not manufacture a successfully sent command\nPASS P1 during an unresolved START trigger is quarantined; success freezes the pre-send value\nPASS A failed START retains the previous STOP receipt and no in-flight samples\nPASS Restart restores active command and reference before any P1; only the real startup STOP releases it\nPASS A saved old STOP is not physical evidence after restart until a new publication succeeds\nPASS Persisted zero and unknown house references remain distinct during startup recovery\nPASS Mode output tests use the same actual-publication accounting for START and STOP\nPASS P1/refreshes do not persist per sample or request extra contexts from bookkeeping callbacks\nPASS current keeps existing measured-current house learning and no Mode persistence\nPASS hybrid keeps existing measured-current house learning and no Mode persistence\nPASS Mixed fleet cannot update battery house reference through another EV while Mode is frozen\nPublished Mode house reference: 26 groups passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-multiday-control-1.2.4.test.js",
+    "passed": true,
+    "seconds": 0.839,
+    "output": "EV multi-day control: 6 full production-path scenario groups passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-recording-audit-1.2.4.test.js",
+    "passed": true,
+    "seconds": 3.166,
+    "output": "PASS A: connected EV, repeated 0-W feedback for 60 minutes\nPASS B/H: 3,600 W for 60 minutes, real Flow inputs without a goal or charging commands\nPASS C: four 15-minute periods at 1/2/3/0 kW\nPASS D: missing feedback expires at 60 seconds, without invented delivery\nPASS E: persistence and reboot during charging retain history and do not integrate downtime\nPASS F: 23:30\u201300:30 splits 3.6-kW charging across local midnight\nPASS G: two independent EVs keep individual and central totals without double counting\nPASS G shared: one declared joint meter is counted once, not once per EV\nPASS Battery/EMS combinations do not gate EV recording\nPASS Unknown, stopped and disconnected feedback have distinct coverage meanings\nPASS Unavailable feedback scope explicitly excludes even otherwise positive current\nPASS Duplicate recorder calls and refreshes never integrate the same timestamp twice\nPASS Phase conversion uses configured electrical settings at each completed interval\nPASS Source prerequisite characterization: valid EV current with missing PV measurement\nPASS Absent/stale P1 or PV preserves fresh EV energy as unknown without changing site Savings or battery inventory\nPASS Unknown source does not invent energy or feedback coverage for an unmeasured EV\nPASS Expired positive feedback and confirmed zero current still remain bounded when site meters are absent\nPASS New unknown-source intervals obey midnight splitting in the same central ledger\nPASS Spring and autumn daylight-saving transitions integrate elapsed time only\nPASS Site-meter recovery does not double-count EV energy or backfill site Savings\nPASS BMW regression: valid P1 Mode observation records energy despite stale 0 A\n{\n  \"sourceRoot\": \"/workspace/scratch/a74231326a67/final/HomeFlux-EMS\",\n  \"passed\": 21,\n  \"scenarios\": [\n    {\n      \"name\": \"A: connected EV, repeated 0-W feedback for 60 minutes\",\n      \"energyKwh\": 0,\n      \"missingSeconds\": 0\n    },\n    {\n      \"name\": \"B/H: 3,600 W for 60 minutes, real Flow inputs without a goal or charging commands\",\n      \"energyKwh\": 3.5999999999997145,\n      \"csvEv1Kwh\": \"3.5999999999997145\",\n      \"planningActive\": false\n    },\n    {\n      \"name\": \"C: four 15-minute periods at 1/2/3/0 kW\",\n      \"energyKwh\": 1.499999999999924\n    },\n    {\n      \"name\": \"D: missing feedback expires at 60 seconds, without invented delivery\",\n      \"energyKwh\": 0.060000000000000046,\n      \"missingSeconds\": 120\n    },\n    {\n      \"name\": \"E: persistence and reboot during charging retain history and do not integrate downtime\",\n      \"energyKwh\": 3.5999999999997145,\n      \"downtimeSeconds\": 120\n    },\n    {\n      \"name\": \"F: 23:30\u201300:30 splits 3.6-kW charging across local midnight\",\n      \"previousDayKwh\": 1.7999999999999126,\n      \"newDayKwh\": 1.7999999999999126\n    },\n    {\n      \"name\": \"G: two independent EVs keep individual and central totals without double counting\",\n      \"totalKwh\": 7.000000000000705,\n      \"ev1Kwh\": 3.000000000000062,\n      \"ev2Kwh\": 4.000000000000249\n    },\n    {\n      \"name\": \"G shared: one declared joint meter is counted once, not once per EV\",\n      \"groupKwh\": 1.1666666666666694,\n      \"sharedKwh\": 1.1666666666666694\n    },\n    {\n      \"name\": \"Battery/EMS combinations do not gate EV recording\",\n      \"combinations\": [\n        {\n          \"batteryCount\": 0,\n          \"controlEnabled\": false,\n          \"energyKwh\": 0.6000000000000004\n        },\n        {\n          \"batteryCount\": 0,\n          \"controlEnabled\": true,\n          \"energyKwh\": 0.6000000000000004\n        },\n        {\n          \"batteryCount\": 1,\n          \"controlEnabled\": false,\n          \"energyKwh\": 0.6000000000000004\n        },\n        {\n          \"batteryCount\": 1,\n          \"controlEnabled\": true,\n          \"energyKwh\": 0.6000000000000004\n        }\n      ]\n    },\n    {\n      \"name\": \"Unknown, stopped and disconnected feedback have distinct coverage meanings\",\n      \"missingSeconds\": 60,\n      \"disconnectedAddsMissing\": false\n    },\n    {\n      \"name\": \"Unavailable feedback scope explicitly excludes even otherwise positive current\",\n      \"energyKwh\": 0,\n      \"missingSeconds\": 120\n    },\n    {\n      \"name\": \"Duplicate recorder calls and refreshes never integrate the same timestamp twice\",\n      \"energyKwh\": 0.060000000000000046,\n      \"repeatedReads\": 100\n    },\n    {\n      \"name\": \"Phase conversion uses configured electrical settings at each completed interval\",\n      \"energyKwh\": 4.599999999999955\n    },\n    {\n      \"name\": \"Source prerequisite characterization: valid EV current with missing PV measurement\",\n      \"energyKwh\": 0.060000000000000046,\n      \"unknownKwh\": 0.060000000000000046,\n      \"evDayPresent\": true\n    },\n    {\n      \"name\": \"Absent/stale P1 or PV preserves fresh EV energy as unknown without changing site Savings or battery inventory\",\n      \"conditions\": [\n        {\n          \"mode\": \"missing_grid\",\n          \"energyKwh\": 0.12000000000000009,\n          \"unknownKwh\": 0.12000000000000009,\n          \"siteSavingsUnchanged\": true\n        },\n        {\n          \"mode\": \"stale_grid\",\n          \"energyKwh\": 0.12000000000000009,\n          \"unknownKwh\": 0.12000000000000009,\n          \"siteSavingsUnchanged\": true\n        },\n        {\n          \"mode\": \"missing_pv\",\n          \"energyKwh\": 0.12000000000000009,\n          \"unknownKwh\": 0.12000000000000009,\n          \"siteSavingsUnchanged\": true\n        },\n        {\n          \"mode\": \"stale_pv\",\n          \"energyKwh\": 0.12000000000000009,\n          \"unknownKwh\": 0.12000000000000009,\n          \"siteSavingsUnchanged\": true\n        },\n        {\n          \"mode\": \"invalid_pv\",\n          \"energyKwh\": 0.12000000000000009,\n          \"unknownKwh\": 0.12000000000000009,\n          \"siteSavingsUnchanged\": true\n        }\n      ]\n    },\n    {\n      \"name\": \"Unknown source does not invent energy or feedback coverage for an unmeasured EV\",\n      \"energyKwh\": 0,\n      \"missingSeconds\": 120\n    },\n    {\n      \"name\": \"Expired positive feedback and confirmed zero current still remain bounded when site meters are absent\",\n      \"energyKwh\": 0.06,\n      \"missingSeconds\": 60\n    },\n    {\n      \"name\": \"New unknown-source intervals obey midnight splitting in the same central ledger\",\n      \"previousDayKwh\": 0.06,\n      \"nextDayKwh\": 0.06\n    },\n    {\n      \"name\": \"Spring and autumn daylight-saving transitions integrate elapsed time only\",\n      \"days\": [\n        {\n          \"date\": \"2026-03-29\",\n          \"kwh\": 3.5999999999997145\n        },\n        {\n          \"date\": \"2026-10-25\",\n          \"kwh\": 3.5999999999997145\n        }\n      ]\n    },\n    {\n      \"name\": \"Site-meter recovery does not double-count EV energy or backfill site Savings\",\n      \"energyKwh\": 0.18000000000000013,\n      \"gridKwh\": 0.12000000000000009,\n      \"unknownKwh\": 0.060000000000000046\n    },\n    {\n      \"name\": \"BMW regression: valid P1 Mode observation records energy despite stale 0 A\",\n      \"centralSession\": \"charging\",\n      \"detection\": \"house_load\",\n      \"receivedCurrentA\": 0,\n      \"observedPowerW\": 6581.793068761734,\n      \"energyKwh\": 0.3272613775856531,\n      \"missingSeconds\": 1\n    }\n  ],\n  \"simulatedHomey\": true,\n  \"physicalHomeyTested\": false\n}\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-physical-config-cache-1.1.16.test.js",
+    "passed": true,
+    "seconds": 0.35,
+    "output": "1.1.16 EV physical config cache: stable reuse, internal/external invalidation, TOU change invalidation, override isolation, plan independence and passive monitoring passed.\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/charge-strategy-control-1.2.12.test.js",
+    "passed": true,
+    "seconds": 0.293,
+    "output": "PASS charge strategy control: slow-only planning, fast/heartbeat reuse, changing load, restart, migration and single month selector\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/settings-startup.test.js",
+    "passed": true,
+    "seconds": 0.08,
+    "output": "settings startup tests passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-grid-budget-1.2.13.test.js",
+    "passed": true,
+    "output": "1.2.13 EV grid budget and battery protection: 14 scheduler scenarios passed.\n",
+    "detail": "14 scheduler scenarios plus explicit Current/Hybrid EV4 physical-feedback/permission guards."
+  },
+  {
+    "kind": "syntax-static",
+    "file": "settings/index.html",
+    "passed": true,
+    "output": "Inline JavaScript syntax and scoped green hover rules verified."
+  }
+]
