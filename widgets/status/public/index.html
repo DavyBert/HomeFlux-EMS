@@ -462,6 +462,14 @@
 
     function emsDecision(status, Homey) {
       if (typeof status.decisionText === 'string') return status.decisionText;
+      const state = emsDecisionState(status);
+      if (state === 'input') return tr(Homey, 'widget.status.decisionWaitingInput', 'Waiting for data');
+      if (state === 'stop') return tr(Homey, 'widget.status.decisionSafetyStop', 'Safety stop');
+      if (state === 'off') return tr(Homey, 'widget.status.decisionBatteryOff', 'Battery control off');
+      if (state === 'pause') return tr(Homey, 'widget.status.decisionPaused', 'Battery control paused');
+      if (state === 'external') return tr(Homey, 'widget.status.decisionExternal', 'External EMS control');
+      if (state === 'pending') return tr(Homey, 'widget.status.decisionPending', 'Waiting for battery output');
+      if (state === 'peak_limited') return tr(Homey, 'widget.status.decisionPeakLimited', 'Peak Guard limited');
       const action = String(status.action || 'idle');
       const actionLabels = {
         peak_shave: tr(Homey, 'widget.status.decisionPeakShave', 'Peak Guard support'),
@@ -473,26 +481,27 @@
       };
       if (actionLabels[action]) return actionLabels[action];
       const base = String(status.baseMode || '');
-      const baseLabels = {
-        solar_capture: tr(Homey, 'widget.status.decisionSaveBattery', 'Saving battery'),
-        charge: tr(Homey, 'widget.status.decisionGridCharge', 'Charging from grid'),
-        manual_charge: tr(Homey, 'widget.status.decisionManualCharge', 'Manual charging'),
-        avoid_import: tr(Homey, 'widget.status.decisionAvoidImport', 'Avoiding grid import'),
-        standby: tr(Homey, 'widget.status.decisionStandby', 'Standby'),
-      };
-      return baseLabels[base] || tr(Homey, 'widget.status.decisionSelfConsumption', 'Self-consumption');
+      if (base === 'charge' && status.safetySocRecoveryActive) return tr(Homey, 'widget.status.decisionWaitingCharge', 'Waiting to charge');
+      if (base === 'standby') return tr(Homey, 'widget.status.decisionStandby', 'Standby');
+      if (base === 'charge' || base === 'solar_capture' || status.batteryPauseCode || status.batteryDischargeBlockedByEv)
+        return tr(Homey, 'widget.status.decisionSaveBattery', 'Saving battery');
+      if (base === 'manual_charge') return tr(Homey, 'widget.status.decisionWaitingCharge', 'Waiting to charge');
+      if (base === 'avoid_import') return tr(Homey, 'widget.status.decisionAvoidImport', 'Avoiding grid import');
+      return tr(Homey, 'widget.status.decisionSelfConsumption', 'Self-consumption');
     }
 
     function emsDecisionReason(status, Homey) {
       if (typeof status.decisionReason === 'string') return status.decisionReason;
-      const mode = String(status.modeLabel || '').trim();
-      const separator = mode.indexOf('·');
-      if (separator >= 0) return mode.slice(separator + 1).trim();
-
-      const warning = String(status.warningText || '').trim();
-      if (warning) return warning;
-
+      const state = emsDecisionState(status);
+      if (state === 'input') return tr(Homey, 'widget.status.alertInput', 'Warning: grid measurement missing or outdated');
+      if (state === 'stop') return tr(Homey, 'widget.status.reasonSafetyStop', 'Battery output is held at zero by the active safety stop');
+      if (state === 'off') return tr(Homey, 'widget.status.reasonBatteryOff', 'HomeFlux battery output is disabled');
+      if (state === 'pause') return tr(Homey, 'widget.status.reasonPaused', 'Battery control is paused; the last published setpoint is retained');
+      if (state === 'external') return tr(Homey, 'widget.status.reasonExternal', 'Battery control has been handed over to the external EMS');
+      if (state === 'pending') return tr(Homey, 'widget.status.reasonPending', 'The new battery command has not been published yet; the existing output still applies');
+      if (state === 'peak_limited') return tr(Homey, 'widget.status.reasonPeakLimited', 'Peak Guard cannot request more battery support within the active limits');
       const action = String(status.action || 'idle');
+      // Actual actions take precedence over reasons from a future charging plan.
       if (action === 'peak_shave') return tr(Homey, 'widget.status.reasonPeakGuard', 'Peak Guard is intervening above the configured grid limit');
       if (action === 'grid_charge' || action === 'grid_and_pv_charge') return tr(Homey, 'widget.status.reasonGridCharge', 'The battery needs charging to reach its target within the active charging window');
       if (action === 'pv_charge') return tr(Homey, 'widget.status.reasonPvCharge', 'Solar surplus is available to charge the battery');
@@ -500,22 +509,42 @@
       if (action === 'discharge') return tr(Homey, 'widget.status.reasonDischarge', 'The battery is supplying the current shortfall between consumption and solar');
 
       if (status.batteryDischargeBlockedByEv) return tr(Homey, 'widget.status.reasonEvDischargeBlocked', 'Battery discharge is blocked during EV charging');
-      const base = String(status.baseMode || '');
-      if (base === 'solar_capture') return tr(Homey, 'widget.status.reasonSaveBattery', 'Battery energy is being preserved for later use');
-      if (base === 'charge') return tr(Homey, 'widget.status.reasonGridCharge', 'The battery needs charging to reach its target within the active charging window');
-      if (base === 'manual_charge') return tr(Homey, 'widget.status.reasonManualCharge', 'Manual charging mode is active');
-      if (base === 'avoid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
-      if (base === 'standby') return tr(Homey, 'widget.status.reasonStandby', 'Standby mode is active');
-
       const pauseReason = String(status.batteryPauseReason || '').trim();
+      if (pauseReason) return pauseReason;
       const pauseCode = String(status.batteryPauseCode || '');
-      const pauseSoc = Number(status.batteryDischargeFloorSoc);
-      const pauseSocText = Number.isFinite(pauseSoc) ? `${pauseSoc.toFixed(1)}%` : '';
+      const rawSoc = status.batteryDischargeFloorSoc ?? status.ordinaryDischargeFloorSoc;
+      const pauseSocText = rawSoc !== null && rawSoc !== undefined && Number.isFinite(Number(rawSoc)) ? `${Number(rawSoc).toFixed(1)}%` : '';
       if (pauseCode === 'planning_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedPlanning', 'Discharge paused at protected planning target')} ${pauseSocText}`.trim();
       if (pauseCode === 'discharge_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedFloor', 'Discharge paused at configured discharge SoC')} ${pauseSocText}`.trim();
       if (pauseCode === 'minimum_soc') return `${tr(Homey, 'widget.status.reasonDischargePausedMinimum', 'Discharge paused at minimum SoC')} ${pauseSocText}`.trim();
-      if (pauseReason) return pauseReason;
+      const strategy = status.tariff?.chargeStrategy;
+      if (status.baseMode === 'charge' && !status.safetySocRecoveryActive
+        && strategy?.mode === 'maximum' && !strategy.active
+        && !(strategy.missingKwh > 0.000001) && !strategy.reserveMissed)
+        return tr(Homey, 'widget.status.reasonChargeDeferred', 'No grid charging is requested now; battery energy is being preserved until charging is needed');
+      const mode = String(status.modeLabel || '').trim();
+      const separator = mode.indexOf('·');
+      if (separator >= 0) return mode.slice(separator + 1).trim();
+      const warning = String(status.warningText || '').trim();
+      if (warning) return warning;
+      const base = String(status.baseMode || '');
+      if (base === 'solar_capture') return tr(Homey, 'widget.status.reasonSaveBattery', 'Battery energy is being preserved for later use');
+      if (base === 'charge') return tr(Homey, 'widget.status.reasonChargeDeferred', 'No grid charging is requested now; battery energy is being preserved until charging is needed');
+      if (base === 'manual_charge') return tr(Homey, 'widget.status.reasonManualCharge', 'Manual charging mode is active');
+      if (base === 'avoid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
+      if (base === 'standby') return tr(Homey, 'widget.status.reasonStandby', 'Standby mode is active');
       return tr(Homey, 'widget.status.reasonBalanced', 'Grid balance is around the configured target');
+    }
+
+    function emsDecisionState(status) {
+      if (status.inputReady === false || status.baseMode === 'waiting_input') return 'input';
+      if (status.baseMode === 'safety_stop') return 'stop';
+      if (status.controlEnabled === false) return 'off';
+      if (status.batteryCommandPauseActive) return 'pause';
+      if (status.decisionExternalControl || status.hybridEms?.owner === 'external' || status.hybridEms?.delegated && !status.hybridEms?.takeover) return 'external';
+      if (status.decisionOutputPending) return 'pending';
+      if ((status.action || 'idle') === 'idle' && status.override === 'peak_shave') return 'peak_limited';
+      return '';
     }
 
     function batteryTargetText(status) {
@@ -741,8 +770,17 @@
       if (ev.emergencyTariffBlocked) return tr(Homey, 'widget.status.evEmergencyTariffWait', 'Emergency charge waiting for selected tariff');
       if (sessionState === 'paused') return tr(Homey, 'widget.status.evChargingPaused', 'Charging paused');
       if (sessionState === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
-      if (ev.peakLimited) return tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
-      const active = Number(ev.desiredCurrentA || ev.outputCurrentA || ev.actualCurrentA || 0) > 0 && (ev.allowed || ev.outputAllowed || Number(ev.actualCurrentA) > 0);
+      // Explicit published zero/false wins over a future planned setpoint.
+      // Mode-only actual power comes from P1, never optional ampere feedback.
+      const measured = ev.controlType === 'mode' ? Number(ev.measuredPowerW) > 0
+        : ev.actualCurrentFresh !== false && Number(ev.actualCurrentA) > 0;
+      const published = Boolean(ev.outputAllowed ?? ev.allowed)
+        && Number(ev.outputCurrentA ?? ev.desiredCurrentA ?? 0) > 0
+        && (ev.controlType !== 'hybrid' || (ev.outputChargeMode ?? 'standard') !== 'stop');
+      const active = measured || published;
+      if (ev.peakLimited) return active
+        ? tr(Homey, 'widget.status.evPeakGuardLimited', 'Charging limited by Peak Guard')
+        : tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
       const source = String(ev.source || 'off');
       if (active) {
         if (isEmergencyCharge(ev)) return tr(Homey, 'widget.status.evEmergencyCharging', 'Emergency charge to 100%');
@@ -787,7 +825,7 @@
       const reason = String(boiler.reason || '').toLowerCase();
       // Running state wins over a textual Peak Guard mention: the reason can
       // describe successful battery support rather than a shutdown.
-      if (boiler.outputOn || boiler.running) {
+      if (boiler.outputOn ?? boiler.running) {
         return String(boiler.activeSource || '') === 'tariff'
           ? tr(Homey, 'widget.status.boilerTariff', 'Heating on tariff')
           : tr(Homey, 'widget.status.boilerPv', 'Heating from solar');
@@ -997,7 +1035,7 @@
               if(ev.controlType==='mode') {
                 if(ev.measuredPowerW>0) details.push(`${tr(Homey,'evWidget.homefluxPower','House measurement')}: ${Math.round(ev.measuredPowerW)} W`);
               } else if(ev.actualCurrentFresh) details.push(`${tr(Homey,'evWidget.reportedCurrent','Reported')}: ${Math.round(Math.max(0,Number(ev.actualCurrentA)||0)*10)/10} A`);
-              const amps = Math.max(0, Number(ev.outputCurrentA || ev.desiredCurrentA) || 0);
+              const amps = Math.max(0, Number(ev.outputCurrentA ?? ev.desiredCurrentA) || 0);
               if (amps > 0) details.push(`${tr(Homey,'evWidget.commandCurrent','Command')}: ${Math.round(amps * 10) / 10} A`);
               const session = evSessionText(ev, Homey);
               if (session) details.push(session);

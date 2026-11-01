@@ -217,7 +217,7 @@
       "batteryFloorIn": "To discharge minimum",
       "batteryAtFloor": "Discharge minimum reached",
       "alertInput": "Warning: grid measurement missing or outdated",
-      "alertSafetySoc": "Warning: battery safety reserve is being restored",
+      "alertSafetySoc": "Warning: battery safety reserve needs restoring",
       "alertBalance": "Warning: battery imbalance is worsening",
       "energyBudget": "Estimated extra household energy until the planning target",
       "energyBudgetBatteryTarget": "Battery reserve: {soc}%",
@@ -276,7 +276,23 @@
         "generic": "Input updates are missing — check the Flow.",
         "more": "{count} more input warnings",
         "pricesOld": "Dynamic prices are unusable (last update {minutes} min ago) — check the price source and current price slots."
-      }
+      },
+      "decisionWaitingInput": "Waiting for data",
+      "decisionSafetyStop": "Safety stop",
+      "decisionBatteryOff": "Battery control off",
+      "decisionPaused": "Battery control paused",
+      "decisionExternal": "External EMS control",
+      "decisionPending": "Waiting for battery output",
+      "decisionPeakLimited": "Peak Guard limited",
+      "decisionWaitingCharge": "Waiting to charge",
+      "reasonSafetyStop": "Battery output is held at zero by the active safety stop",
+      "reasonBatteryOff": "HomeFlux battery output is disabled",
+      "reasonPaused": "Battery control is paused; the last published setpoint is retained",
+      "reasonExternal": "Battery control has been handed over to the external EMS",
+      "reasonPending": "The new battery command has not been published yet; the existing output still applies",
+      "reasonPeakLimited": "Peak Guard cannot request more battery support within the active limits",
+      "reasonChargeDeferred": "No grid charging is requested now; battery energy is being preserved until charging is needed",
+      "evPeakGuardLimited": "Charging limited by Peak Guard"
     }
   },
   "evWidget": {

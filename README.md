@@ -28,6 +28,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.14
+
+The EMS widget shows Saving battery while grid charging is deferred. Decision titles and reasons now distinguish actual solar/grid charging, Peak Guard limits, paused or disabled battery control, missing inputs and pending output changes. Matching Logic tags use the same status selection. EV output keeps published zero values visible and distinguishes Peak Guard throttling from stopping; boiler status follows its published on/off state.
+
+De EMS-widget toont Batterij sparen wanneer netladen is uitgesteld. Beslissing en reden onderscheiden actief laden uit zon/net, Peak Guard-begrenzing, gepauzeerde of uitgeschakelde batterijsturing, ontbrekende invoer en wachtende uitsturing. Bijbehorende Logic-tags gebruiken dezelfde statuskeuze. EV-uitvoer behoudt uitgestuurde nulwaarden en onderscheidt Peak Guard-terugregeling van stoppen; de boilerstatus volgt de uitgestuurde aan/uit-status.
+
 ### 1.2.13
 
 Reduced duplicate preflight work while a battery control interval is pending. Boiler solar-day fallback calculations are reused until their next relevant time or settings boundary. Fresh measured EV consumption remains included in battery grid protection while a charger is temporarily commanded to 0 A, including EV4. Charging strategy option text turns green on hover.

@@ -15146,8 +15146,20 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEmsWidgetTokens(result = this.latestResult, now = Date.now()) {
-    return emsStatusTags.values(result || {}, this.planningCache?.energyBudget,
-      this.displayLanguage(), now, this.balanceMonitor);
+    const view = result || {};
+    const candidate = Number(view.candidateTotalCommandW);
+    const actual = Number(this.state?.lastTotalCommandW) || 0;
+    const threshold = Math.max(25, Number(this.settingsCache?.commandDeadbandW) || 25);
+    const direction = watts => Math.abs(watts) > threshold ? Math.sign(watts) : 0;
+    return emsStatusTags.values({ ...view,
+      batteryCommandPauseActive: view.batteryCommandPauseActive
+        ?? (this.settingsCache?.batteryCommandPauseEnabled
+          ? this.getBatteryCommandPauseInfo(now, this.settingsCache).active : false),
+      decisionOutputPending: view.controlEnabled === true && view.canPublishCommands !== false
+        && view.candidateTotalCommandW != null && Number.isFinite(candidate)
+        && direction(candidate) !== direction(actual),
+      decisionExternalControl: Boolean(this.hybridEmsRuntime?.delegated && !this.hybridEmsRuntime?.takeover),
+    }, this.planningCache?.energyBudget, this.displayLanguage(), now, this.balanceMonitor);
   }
 
   getStatusResultSignature(result) {
@@ -16198,6 +16210,14 @@ class HomeFluxEmsApp extends Homey.App {
       return switchAt > statusNow ? Math.max(1, Math.ceil((switchAt - statusNow) / 1000)) : 0;
     });
     preview.warningText = this.latestResult?.warningText || '';
+    if (pauseInfo.active) {
+      preview.batteryCommandPauseActive = true;
+      preview.batteryCommandPauseStart = pauseInfo.start;
+      preview.batteryCommandPauseEnd = pauseInfo.end;
+      preview.statusText = `Batterijsturing gepauzeerd · ${pauseInfo.start}–${pauseInfo.end} · laatste setpoint behouden`;
+    } else {
+      preview.batteryCommandPauseActive = false;
+    }
     const widgetTokens = this.getEmsWidgetTokens(preview, statusNow);
     preview.decisionText = widgetTokens.emsdecision;
     preview.decisionReason = widgetTokens.emsdecisionreasons;
@@ -16297,14 +16317,6 @@ class HomeFluxEmsApp extends Homey.App {
       refreshing: dynamicPriceRequired ? Boolean(this.homeyEnergy?.refreshing) : false,
     };
 
-    if (pauseInfo.active) {
-      preview.batteryCommandPauseActive = true;
-      preview.batteryCommandPauseStart = pauseInfo.start;
-      preview.batteryCommandPauseEnd = pauseInfo.end;
-      preview.statusText = `Batterijsturing gepauzeerd · ${pauseInfo.start}–${pauseInfo.end} · laatste setpoint behouden`;
-    } else {
-      preview.batteryCommandPauseActive = false;
-    }
 
     // One read-only observation belongs to THIS status request only. A later
     // status call must observe changed P1, battery commands and EV feedback.

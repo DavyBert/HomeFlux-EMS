@@ -163,15 +163,18 @@ const extend = (h,i,d) => h.cards.get('set_ev_session_override_for_configured').
     for(const valueKwh of [null,undefined,'',NaN])assert.equal(tags.waf({ready:true,valueKwh,calculatedAt:clock-1,validUntil:clock+1000},clock).status,'');
   });
   await check('Every extra tag is global, changed-only, clears when irrelevant and uses the same reason as the status API without new timers',async()=>{
-    const x=await fixture(),b=x.app,writes=new Map(),timerCount=x.timers.length;
+    // Match the live public-status readiness/enable state to the seeded result.
+    const x=await fixture(new Map(Object.entries({evCount:0,batteryCount:0,controlEnabled:true}))),b=x.app,writes=new Map(),timerCount=x.timers.length;
+    b.state.gridPowerW=0;b.inputSeen.grid=true;b.inputUpdatedAt.grid=clock;
+    b.setSetting('controlEnabled',true);b.controlRuntimeSettings=b.getRuntimeSettings();
     for(const [id] of tags.definitions){assert(b.tokens.has(id));b.lastStatusTokenValues.delete(id);b.tokens.get(id).setValue=async v=>{const row=writes.get(id)||[];row.push(v);writes.set(id,row);};}
-    const r={...(b.latestResult||{}),inputReady:true,controlEnabled:true,modeLabel:'Test · Full explanation',statusText:'Stable',tariff:{label:'Low'},planningPhase:'night',batteryPauseReason:'Pause',batteryPauseCode:'planning_floor'};
+    const r={...(b.latestResult||{}),baseMode:'self_consumption',action:'idle',inputReady:true,missingInputs:[],controlEnabled:true,modeLabel:'Test · Full explanation',statusText:'Stable',tariff:{label:'Low'},planningPhase:'night',batteryPauseReason:'Pause',batteryPauseCode:'planning_floor'};
     b.planningCache={energyBudget:{ready:true,valueKwh:7,calculatedAt:clock,validUntil:clock+1000}};
     const signature=b.getStatusResultSignature(r);
     for(let n=0;n<30;n++){b.pendingStatusResult=r;await b.publishPendingStatus();}
     for(const [id] of tags.definitions)assert.equal((writes.get(id)||[]).length,1,id);
     b.latestResult=r;assert.equal(b.getPublicStatus().decisionReason,writes.get('emsdecisionreasons')[0]);
-    const changed={...r,modeLabel:'Test · A different full explanation'};
+    const changed={...r,modeLabel:'Test · A different full explanation',batteryPauseReason:'A different full explanation'};
     assert.notEqual(b.getStatusResultSignature(changed),signature);
     b.pendingStatusResult=changed;await b.publishPendingStatus();assert.equal(writes.get('emsdecisionreasons').length,2);
     assert.equal(writes.get('emswafstatus').length,1);

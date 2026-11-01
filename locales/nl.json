@@ -217,7 +217,7 @@
       "batteryFloorIn": "Tot ontlaadondergrens",
       "batteryAtFloor": "Ontlaadondergrens bereikt",
       "alertInput": "Waarschuwing: netmeting ontbreekt of is verouderd",
-      "alertSafetySoc": "Waarschuwing: veiligheidsreserve batterij wordt hersteld",
+      "alertSafetySoc": "Waarschuwing: veiligheidsreserve batterij moet worden hersteld",
       "alertBalance": "Waarschuwing: batterijen raken verder uit balans",
       "energyBudget": "Geschatte extra huishoudelijke energie tot het planningsdoel",
       "energyBudgetBatteryTarget": "Voor batterij gereserveerd tot {soc}%",
@@ -276,7 +276,23 @@
         "generic": "Input-updates ontbreken — controleer de Flow.",
         "more": "Nog {count} inputwaarschuwingen",
         "pricesOld": "Dynamische tarieven niet bruikbaar (laatste update {minutes} min geleden) — controleer prijsbron en actuele prijsslots."
-      }
+      },
+      "decisionWaitingInput": "Wachten op data",
+      "decisionSafetyStop": "Veilige stop",
+      "decisionBatteryOff": "Batterijsturing uit",
+      "decisionPaused": "Batterijsturing gepauzeerd",
+      "decisionExternal": "Externe EMS stuurt",
+      "decisionPending": "Wachten op batterij-uitsturing",
+      "decisionPeakLimited": "Peak Guard begrensd",
+      "decisionWaitingCharge": "Wachten op laden",
+      "reasonSafetyStop": "De actieve veilige stop houdt de batterij-uitvoer op nul",
+      "reasonBatteryOff": "Batterij-uitvoer door HomeFlux is uitgeschakeld",
+      "reasonPaused": "Batterijsturing is gepauzeerd; het laatst uitgestuurde setpoint blijft behouden",
+      "reasonExternal": "De batterijsturing is overgedragen aan de externe EMS",
+      "reasonPending": "Het nieuwe batterijcommando is nog niet uitgestuurd; de bestaande uitsturing blijft gelden",
+      "reasonPeakLimited": "Peak Guard kan binnen de actieve grenzen geen extra batterijondersteuning vragen",
+      "reasonChargeDeferred": "Nu wordt geen netladen gevraagd; batterij-energie blijft bewaard tot laden nodig is",
+      "evPeakGuardLimited": "Laden begrensd door Peak Guard"
     }
   },
   "evWidget": {
