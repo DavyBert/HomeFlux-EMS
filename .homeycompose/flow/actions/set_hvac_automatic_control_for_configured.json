@@ -62,7 +62,7 @@
     "nl": "Stel [[hvac]] automatische sturing in op [[enabled]] (stand-by [[standby_temperature]] °C)"
   },
   "hint": {
-    "en": "When disabled, sends the standby temperature if specified and setpoint control is allowed. Also sends OFF when power control is allowed. Empty retains the saved standby setting. Only configured HVACs are offered.",
-    "nl": "Bij Nee wordt de gekozen stand-bytemperatuur gestuurd als setpointsturing toegestaan is. Bij toegestane aan/uit-sturing wordt ook Uit gestuurd. Leeg behoudt de opgeslagen stand-byinstelling. Alleen geconfigureerde HVAC’s worden aangeboden."
+    "en": "Enables or disables automatic HVAC control. Disabling immediately repeats the action chosen in this HVAC’s settings: send the standby setpoint or send OFF. The optional Flow temperature overrides the saved standby temperature. Only permitted outputs are used; re-enabling resumes normal safe control.",
+    "nl": "Schakelt automatische HVAC-sturing aan of uit. Uitschakelen stuurt direct opnieuw de gekozen actie uit de HVAC-instellingen: het stand-bysetpoint of Uit. De optionele Flow-temperatuur vervangt de opgeslagen stand-bytemperatuur. Alleen toegestane uitgangen worden gebruikt; inschakelen hervat de normale veilige regeling."
   }
 }

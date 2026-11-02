@@ -3377,6 +3377,12 @@ class HomeFluxEmsApp extends Homey.App {
       if (budgetSettings.controlEnabled && this.getBatteryCount(budgetSettings) > 0 && budgetAt > Date.now()) {
         this.scheduleContextEvaluationAt(budgetAt);
       }
+      const chargingPlan=this.controlRuntimeSettings?.batteryChargeStrategyPlan;
+      if(budgetSettings.controlEnabled&&this.getBatteryCount(budgetSettings)>0&&chargingPlan?.mode==='maximum'&&chargingPlan.position==='latest') {
+        const now=Date.now();let next=Infinity;
+        for(const block of chargingPlan.blocks)for(const at of [block.startAt,block.endAt])if(at>now&&at<next)next=at;
+        if(Number.isFinite(next))this.scheduleContextEvaluationAt(next);
+      }
     }
   }
 
@@ -4020,10 +4026,27 @@ class HomeFluxEmsApp extends Homey.App {
 
   async setHvacAutomaticControlFor(index, args = {}) {
     if (index >= this.getHvacCount()) return true;
+    // Serialize only explicit Flow calls, including their settings changes.
+    // Promise completion is event driven; no polling, timer or retry loop.
+    const slot=this.getHvacPublishSlot(index),previous=slot.automaticFlow;
+    const operation=(async()=>{
+      if(previous)await previous.catch(()=>{});
+      return this.applyHvacAutomaticControlFor(index,args);
+    })();
+    slot.automaticFlow=operation;
+    try{return await operation;}finally{if(slot.automaticFlow===operation)slot.automaticFlow=null;}
+  }
+
+  async applyHvacAutomaticControlFor(index, args) {
     const enabled = String(args.enabled || 'yes') === 'yes';
     const temperature = args.standby_temperature;
     const hasTemperature = temperature !== undefined && temperature !== null && temperature !== '';
     if (hasTemperature && (!Number.isFinite(Number(temperature)) || Number(temperature) < 5 || Number(temperature) > 99)) throw new Error('Stand-bytemperatuur moet tussen 5 en 99 °C liggen.');
+    const offSettings=this.getHvacInstanceSettings(index);
+    if(!enabled&&offSettings.hvacCoordination?.AutomaticOffAction==='standby') {
+      const standby=hasTemperature?temperature:offSettings.hvacCoordination?.StandbyTemperatureC;
+      if(standby==null||standby===''||!Number.isFinite(Number(standby))||Number(standby)<5||Number(standby)>99)throw new Error('Stel een stand-bytemperatuur in bij de HVAC of geef deze mee via de Flow.');
+    }
     const key = this.getHvacSettingKey(index, 'AutomaticControlEnabled');
     const standbyKey = 'hvacCoordination';
     // Missing optional arguments preserve saved settings and old Flows.
@@ -4034,7 +4057,9 @@ class HomeFluxEmsApp extends Homey.App {
     if ((this.getSettings()[key] !== false) !== enabled) this.setSetting(key, enabled);
     if (!enabled) {
       hvacPermanent.cancel(this);
-      const d = this.calculateHvacControlFor(index, this.latestResult, this.latestEvDecision, this.state.lastTotalCommandW, this.state.lastTotalCommandW, { allowStart: false });
+      const d = this.calculateHvacControlFor(index, this.latestResult, this.latestEvDecision, this.state.lastTotalCommandW, this.state.lastTotalCommandW, { allowStart: false, automaticOffFromFlow: true });
+      d.forceAutomaticOff=true;
+      if(index===0)this.latestHvacDecision=d;else this.getExtraHvac(index).latestDecision=d;
       await this.publishHvacDecisionFor(index, d);
     } else this.requestContextEvaluate(true, 'hvac_automatic_control');
     return true;
@@ -12521,17 +12546,25 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     if (!automaticControlEnabled) {
-      const restored = restoreImmediately('Automatische HVAC-sturing uit');
-      // A permanent thermostat need not have a legacy boost baseline or an
-      // earlier ON receipt. The explicit permission is sufficient for OFF.
-      if (settings.hvacAllowPowerControl) restored.powerCommand = false;
-      if (settings.hvacCoordination?.StandbyTemperatureC !== null && settings.hvacCoordination?.StandbyTemperatureC !== undefined
-        && settings.hvacCoordination?.StandbyTemperatureC !== '' && Number.isFinite(Number(settings.hvacCoordination?.StandbyTemperatureC)) && settings.hvacAllowSetpointControl) {
-        restored.setpointCommand = Math.round(Math.max(5, Math.min(99, Number(settings.hvacCoordination?.StandbyTemperatureC))) * 2) / 2;
+      const action=settings.hvacCoordination?.AutomaticOffAction==='standby'?'standby':'off';
+      resetBoostState();this.hvacManagedPowerOn=false;
+      decision.automaticOffAction=action;
+      decision.reason='Automatische HVAC-sturing uit';
+      if(!options.automaticOffFromFlow){
+        decision.automaticControlOff=true;decision.automaticOffSignature=hvacPermanent.offSignature(settings);return decision;
       }
-      restored.automaticControlOff = true;
-      restored.hvacRevision = this.hvacConfigRevision || 0;
-      return restored;
+      if(action==='off') {
+        if(settings.hvacAllowPowerControl)decision.powerCommand=false;
+        else decision.reason+=' · aan/uit-sturing niet toegestaan';
+      } else {
+        const temperature=settings.hvacCoordination?.StandbyTemperatureC;
+        if(temperature!==null&&temperature!==undefined&&temperature!==''&&Number.isFinite(Number(temperature))&&settings.hvacAllowSetpointControl) {
+          decision.setpointCommand=Math.round(Math.max(5,Math.min(99,Number(temperature)))*2)/2;
+          decision.reason+=' · stand-bytemperatuur';
+        } else decision.reason+=settings.hvacAllowSetpointControl?' · stand-bytemperatuur ontbreekt':' · setpointsturing niet toegestaan';
+      }
+      decision.automaticControlOff=true;decision.automaticOffSignature=hvacPermanent.offSignature(settings);
+      return decision;
     }
 
     if (!enabled) {
@@ -12859,6 +12892,13 @@ class HomeFluxEmsApp extends Homey.App {
     if (!decision) return;
     const safeIndex = Math.max(0, Math.min(9, Number(index) || 0));
     const slot = this.getHvacPublishSlot(safeIndex);
+    // Explicit stop/setpoint commands must not be overwritten by ordinary
+    // context coalescing while a previous Flow trigger is still in flight.
+    if(decision.forceAutomaticOff&&slot.publishing) {
+      if(!slot.completion)slot.completion=new Promise(resolve=>{slot.completed=resolve;});
+      await slot.completion;
+      return this.publishHvacDecisionFor(safeIndex,decision);
+    }
     // Latest-wins coalescing keeps the queue strictly bounded: while one Flow
     // trigger is awaiting downstream actions, any number of recalculations can
     // replace this single pending object but cannot create more open requests.
@@ -12871,7 +12911,6 @@ class HomeFluxEmsApp extends Homey.App {
         const next = slot.pending;
         slot.pending = null;
         if(next.moduleControlOff&&safeIndex<this.getHvacCount()&&this.getHvacInstanceSettings(safeIndex).hvacEnabled)continue;
-        if (next.automaticControlOff && this.getHvacInstanceSettings(safeIndex).hvacAutomaticControlEnabled !== false) continue;
         const learningCandidate = hvacPermanent.legacyCandidate(this, safeIndex, next);
         if (!hvacPermanent.beforePublish(this, safeIndex, next)) continue;
         if(next.permanent&&next.outputChanged===false){
@@ -12883,7 +12922,8 @@ class HomeFluxEmsApp extends Homey.App {
           await this._publishHvacDecisionNowFor(safeIndex, next);
           if (next.permanent) hvacPermanent.published(this, safeIndex, next);
           else if ((next.automaticControlOff || next.moduleControlOff) && next.outputChanged!==false) {
-            const u=hvacPermanent.unit(this,safeIndex);u.powerOff=next.moduleControlOff||next.powerCommand===false;
+            const receipt=safeIndex===0?this.lastPublishedHvacPower:this.getExtraHvac(safeIndex).lastPublishedPower;
+            const u=hvacPermanent.unit(this,safeIndex);u.powerOff=Boolean(next.moduleControlOff||next.powerCommand===false||receipt===false||receipt==null&&next.currentMode==='off');
             if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
             hvacPermanent.persist(this);
           } else if (next.legacyCoordinated) {
@@ -12900,6 +12940,7 @@ class HomeFluxEmsApp extends Homey.App {
       }
     } finally {
       slot.publishing = false;
+      if(slot.completed){const completed=slot.completed;slot.completed=null;slot.completion=null;completed();}
       // If the active trigger failed while a newer decision arrived, preserve
       // that newest decision and retry it in a fresh single-flight worker.
       if (slot.pending) {
@@ -12923,7 +12964,7 @@ class HomeFluxEmsApp extends Homey.App {
     const triggers = this.extraHvacTriggers[index - 1] || {};
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
-      if (runtime.lastPublishedPower !== on) {
+      if (runtime.lastPublishedPower !== on || decision.forceAutomaticOff) {
         if (triggers.power) await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         runtime.lastPublishedPower = on;
         runtime.managedPowerOn = on;
@@ -12935,7 +12976,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
-      if (runtime.lastPublishedSetpoint === null || !Number.isFinite(Number(runtime.lastPublishedSetpoint)) || Math.abs(setpoint - Number(runtime.lastPublishedSetpoint)) >= 0.1) {
+      if (decision.forceAutomaticOff || runtime.lastPublishedSetpoint === null || !Number.isFinite(Number(runtime.lastPublishedSetpoint)) || Math.abs(setpoint - Number(runtime.lastPublishedSetpoint)) >= 0.1) {
         if (triggers.setpoint) await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         runtime.lastPublishedSetpoint = setpoint;
         if (runtime.baselineSetpoint !== null && Math.abs(setpoint - Number(runtime.baselineSetpoint)) < 0.1) runtime.lastControlAt = 0;
@@ -12972,7 +13013,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
-      if (this.lastPublishedHvacPower !== on) {
+      if (this.lastPublishedHvacPower !== on || decision.forceAutomaticOff) {
         if (this.hvacPowerTrigger) await this.hvacPowerTrigger.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         this.lastPublishedHvacPower = on;
         if (on) this.hvacManagedPowerOn = true;
@@ -12987,7 +13028,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
-      if (this.lastPublishedHvacSetpoint === null || this.lastPublishedHvacSetpoint === undefined || !Number.isFinite(Number(this.lastPublishedHvacSetpoint)) || Math.abs(setpoint - Number(this.lastPublishedHvacSetpoint)) >= 0.1) {
+      if (decision.forceAutomaticOff || this.lastPublishedHvacSetpoint === null || this.lastPublishedHvacSetpoint === undefined || !Number.isFinite(Number(this.lastPublishedHvacSetpoint)) || Math.abs(setpoint - Number(this.lastPublishedHvacSetpoint)) >= 0.1) {
         if (this.hvacSetpointTrigger) await this.hvacSetpointTrigger.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         this.lastPublishedHvacSetpoint = setpoint;
         const token = this.tokens.get('emshvacsetpoint');
@@ -13364,6 +13405,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   isHvacManagedActiveFor(index) {
+    if(this.settingsCache?.[this.getHvacSettingKey(index,'AutomaticControlEnabled')]===false)return false;
     const u = this.hvacPermanentRuntime?.units?.[index];
     if (u && !u.legacyCoordinated && u.setpoint !== null && u.setpoint !== undefined && !u.powerOff && !u.outdoorStopped) return true;
     if (index === 0) return this.hvacBaselineSetpoint !== null || Boolean(this.hvacManagedPowerOn);

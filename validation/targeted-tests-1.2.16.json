@@ -1,0 +1,143 @@
+{
+  "version": "1.2.16",
+  "environment": "Node v24.22.1 host; Homey I/O mocked; no Homey installation",
+  "syntax": {
+    "changedJavascript": 13,
+    "changedJson": 15,
+    "inlineScripts": 2,
+    "passed": true
+  },
+  "suites": [
+    {
+      "suite": "engine",
+      "passed": true,
+      "seconds": 0.301
+    },
+    {
+      "suite": "planning-limits-1.0.7",
+      "passed": true,
+      "seconds": 0.508
+    },
+    {
+      "suite": "battery-settings-isolation-1.2.8",
+      "passed": true,
+      "seconds": 1.169
+    },
+    {
+      "suite": "peak-guard-all-modes-1.2.11",
+      "passed": true,
+      "seconds": 1.716
+    },
+    {
+      "suite": "charge-strategy-1.2.12",
+      "passed": true,
+      "seconds": 0.646
+    },
+    {
+      "suite": "hvac-ui-1.2.7",
+      "passed": true,
+      "seconds": 1.828
+    },
+    {
+      "suite": "hvac-migration-1.2.7",
+      "passed": true,
+      "seconds": 2.653
+    },
+    {
+      "suite": "settings-startup",
+      "passed": true,
+      "seconds": 0.163
+    },
+    {
+      "suite": "settings-runtime-audit",
+      "passed": true,
+      "seconds": 0.442
+    },
+    {
+      "suite": "settings-translations",
+      "passed": true,
+      "seconds": 0.223
+    },
+    {
+      "suite": "configured-flow-cards",
+      "passed": true,
+      "seconds": 4.048
+    },
+    {
+      "suite": "flow-slot-cards",
+      "passed": true,
+      "seconds": 2.101
+    },
+    {
+      "suite": "help-catalog",
+      "passed": true,
+      "seconds": 0.178
+    },
+    {
+      "suite": "widget-decision-1.2.14",
+      "passed": true,
+      "seconds": 0.904
+    },
+    {
+      "suite": "widget",
+      "passed": true,
+      "seconds": 0.139
+    },
+    {
+      "suite": "performance-split-loop",
+      "passed": true,
+      "seconds": 0.289
+    },
+    {
+      "suite": "features-1.2.16",
+      "passed": true,
+      "seconds": 2.106
+    },
+    {
+      "suite": "hvac-coordination-1.2.15",
+      "passed": true,
+      "seconds": 1.862
+    },
+    {
+      "suite": "hvac-permanent-1.2.7",
+      "passed": true,
+      "seconds": 3.04
+    },
+    {
+      "suite": "app-control",
+      "passed": true,
+      "seconds": 2.613
+    },
+    {
+      "suite": "output-tests",
+      "passed": true,
+      "seconds": 0.197
+    },
+    {
+      "suite": "multi-flexible-loads",
+      "passed": true,
+      "seconds": 0.3
+    },
+    {
+      "suite": "features-control-1.2.9",
+      "passed": true,
+      "seconds": 3.408
+    },
+    {
+      "suite": "cpu-coalescing-1.2.13",
+      "passed": true,
+      "seconds": 11.177
+    },
+    {
+      "suite": "charge-strategy-control-1.2.12",
+      "passed": true,
+      "seconds": 0.772
+    }
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent Savings, Autotune, price-source import and EV planning suites",
+    "Homey CLI debug validation (CLI unavailable)",
+    "Physical Homey tests and performance measurement"
+  ]
+}

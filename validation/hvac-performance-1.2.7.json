@@ -5,17 +5,17 @@
     {
       "configured": 0,
       "passes": 100,
-      "cpuMs": 172.821,
-      "wallMs": 160.77748199999996,
-      "retainedHeapDeltaBytes": -9912592,
+      "cpuMs": 11.022,
+      "wallMs": 6.931598000000122,
+      "retainedHeapDeltaBytes": 5269128,
       "learningActive": false
     },
     {
       "configured": 10,
       "passes": 100,
-      "cpuMs": 620.684,
-      "wallMs": 573.2368070000002,
-      "retainedHeapDeltaBytes": 6064648,
+      "cpuMs": 276.48,
+      "wallMs": 196.0749450000003,
+      "retainedHeapDeltaBytes": 15212720,
       "learningActive": false
     }
   ]

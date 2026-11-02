@@ -291,7 +291,7 @@
       "reasonExternal": "Battery control has been handed over to the external EMS",
       "reasonPending": "The new battery command has not been published yet; the existing output still applies",
       "reasonPeakLimited": "Peak Guard cannot request more battery support within the active limits",
-      "reasonChargeDeferred": "No grid charging is requested now; battery energy is being preserved until charging is needed",
+      "reasonChargeDeferred": "Battery reserve preserved; charging scheduled for later.",
       "evPeakGuardLimited": "Charging limited by Peak Guard"
     }
   },

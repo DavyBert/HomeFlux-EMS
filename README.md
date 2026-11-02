@@ -28,6 +28,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.16
+
+Latest battery charging keeps its end anchored 15 minutes before the selected charge window closes, including active replanning and unequal battery SoC. Per-HVAC automatic-control OFF Flows immediately send either the configured standby setpoint or OFF, once per explicit call, respecting output permissions. A Flow temperature can override the saved standby temperature. Shortened the battery-saving message while charging is scheduled for later.
+
+Bij zo laat mogelijk laden blijft de eindtijd vast op 15 minuten vóór het einde van het gekozen laadvenster, ook bij actieve herplanning en ongelijke batterij-SoC. Per HVAC stuurt de Flow voor automatische sturing uit direct de gekozen stand-bytemperatuur of Uit, eenmaal per expliciete aanroep en met respect voor de uitgangstoelatingen. Een Flow-temperatuur kan de opgeslagen stand-bytemperatuur vervangen. De wachtmelding bij Batterij sparen met later gepland laden is verkort.
+
 ### 1.2.15
 
 Per-HVAC direct tariff/PV switching and parallel dispatch of known loads share available power with a modulation margin, HVAC budget and Peak Guard. Linked thermostats reserve their shared heat source once. Manual learning waits for an isolated reliable measurement; direct and shared control disable separate automatic learning. The automatic-control Flow accepts an optional standby temperature and sends OFF when power control is permitted. Corrected the formatted automatic HVAC control Flow titles so the optional standby temperature passes app validation. Unknown HVAC power now uses a 300 W start estimate (360 W including the modulation margin), allowing initial tariff/PV control within limited grid headroom.
@@ -497,6 +503,3 @@ Rework of schedules, better and more control.
 ### 0.3.9
 
 Better feature explanation.
-
-General EV settings offer two optional battery-discharge restrictions: protect a majority grid-charged inventory, or block discharge during any detected EV charging. Both default to off; solar-surplus charging remains available. The existing Savings inventory estimates the origin for the complete battery group. Missing initial energy remains unknown. EMS status tiles, including Full to target and Active SoC bounds, can be hidden independently. Global Flow tags expose current EMS issues, the last runtime error and the cached WAF balance with an availability flag; see Settings → Help for definitions.
-

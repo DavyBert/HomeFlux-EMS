@@ -202,9 +202,10 @@ check('local midnight and both DST transitions', () => {
     assert.equal(h.plan.blocks[0].endAt - h.plan.blocks[0].startAt, 1.5 * H);
   }
 });
-check('five-minute rounding and active setting changes preserve PV and limits', () => {
+check('fixed latest end and active setting changes preserve PV and limits', () => {
   const h = prepare({}, { batterySoc: [50.7, 50.7] });
-  assert.equal((h.plan.blocks[0].startAt - at('11:00')) % 300000, 0);
+  assert.equal(h.plan.blocks[0].endAt,at('16:45'));
+  assert(Math.abs(h.plan.blocks[0].endAt-h.plan.blocks[0].startAt-h.plan.requiredHours*H)<2);
   assert(h.plan.blocks[0].endAt <= at('16:45'));
   const active = prepare({ chargeStrategy: config('day', 'maximum', 'early') });
   const switched = prepare({}, { lastTotalCommandW: -2000, gridPowerW: 2600, controlGridPowerW: 2600 }, at('11:05'), null, active.plan);

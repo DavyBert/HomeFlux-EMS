@@ -48,6 +48,47 @@ async function main() {
     await h.start(); await h.flush();
     assert(calls > before);
     assert.equal(a.controlRuntimeSettings.batteryChargeStrategyPlan.gridPowerW, 1000);
+    // Exact latest boundaries reuse the existing single context timer. There
+    // is no battery-strategy polling in the fast loop or heartbeat.
+    const boundaryHarness = await setup(undefined, { chargeStrategy: c,
+      totalCapacityKwh: 10, maxTotalChargeW: 4000, maxChargePerBatteryW: 1000,
+      peakLimitW: 2600, peakSoftMarginW: 0, minSoc: 10, safetySoc: 10,
+      slowControlIntervalSeconds: 300, commandDeadbandW: 0, batteryCommandStepW: 1,
+      gridZeroMinW: 0, gridZeroMaxW: 0 }, NativeDate.parse('2026-11-02T11:00:00Z'), 0);
+    const ba = boundaryHarness.app;
+    const boundaryTrigger=ba.commandTrigger.trigger;
+    ba.commandTrigger.trigger=async tokens=>{
+      await boundaryTrigger(tokens);
+      // P1 includes the newly commanded battery power. Without feedback an
+      // unchanged meter would falsely look like a lower household demand.
+      ba.state.gridPowerW=1600-Number(tokens.total_command);ba.gridSamples=[];
+    };
+    Object.assign(ba.state, { batterySoc: [67,67,67,67], targetSocOverride: 80,
+      lastTotalCommandW: 0, lastBatteryCommands: [0,0,0,0], nightPlanningActive: false,
+      forecastRemainingKwh: 0, pvProducingDate: '2026-11-02' });
+    await boundaryHarness.grid(1600); await boundaryHarness.start(); await boundaryHarness.flush();
+    const boundaryPlan = ba.controlRuntimeSettings.batteryChargeStrategyPlan;
+    assert.equal(boundaryPlan.blocks[0].startAt, NativeDate.parse('2026-11-02T14:27:00Z'));
+    assert.equal(boundaryPlan.blocks.at(-1).endAt, NativeDate.parse('2026-11-02T15:45:00Z'));
+    assert(ba.contextTimerAt > boundaryHarness.now() && ba.contextTimerAt <= boundaryPlan.blocks[0].startAt);
+    assert.equal(boundaryHarness.timers.filter(t=>!t.done && t===ba.contextTimer).length, 1);
+    boundaryHarness.setNow(boundaryPlan.blocks[0].startAt);
+    ba.inputUpdatedAt.grid=boundaryHarness.now(); ba.inputUpdatedAt.pv=boundaryHarness.now();
+    ba.inputUpdatedAt.batterySoc.fill(boundaryHarness.now());
+    await boundaryHarness.flush();
+    assert(boundaryHarness.contexts.some(x=>x.at===boundaryPlan.blocks[0].startAt));
+    assert(ba.latestResult.plannedChargeW>0, 'scheduled boundary activates charging');
+    assert(ba.contextTimerAt>boundaryHarness.now() && ba.contextTimerAt<=boundaryPlan.blocks.at(-1).endAt);
+    boundaryHarness.setNow(boundaryPlan.blocks.at(-1).endAt);
+    ba.state.batterySoc.fill(80); ba.state.lastTotalCommandW=-1000;
+    ba.state.gridPowerW=2600; ba.gridSamples=[];
+    ba.inputUpdatedAt.grid=boundaryHarness.now(); ba.inputUpdatedAt.pv=boundaryHarness.now();
+    ba.inputUpdatedAt.batterySoc.fill(boundaryHarness.now());
+    await boundaryHarness.flush();
+    assert.equal(ba.latestResult.plannedChargeW,0, 'the completed latest window stops charging');
+    assert.deepEqual(boundaryHarness.errors, []);
+    h.setNow(now + 300000);
+    Date.now=()=>h.now();
     // Production dynamic source selection also reaches the new day planner.
     await h.setExternalSetting('dynamicPriceSources', ['external']);
     await h.setExternalSetting('dynamicPriceSource', 'external');

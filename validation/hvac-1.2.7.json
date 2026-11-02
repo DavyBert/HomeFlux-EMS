@@ -1,5 +1,5 @@
 {
-  "passed": 35,
+  "passed": 34,
   "cases": [
     "Real TOU tariff selection publishes COP and ordinary targets through unchanged Flow output for all ten fixed-direction setpoint-only channels",
     "Setpoint-only fixed direction preserves timers, budget, Peak Guard, outdoor limits and rejects known conflicting or automatic mode switches",
@@ -33,7 +33,6 @@
     "Short/unstable/missing/battery-contaminated learning is rejected without replacing stored power",
     "An immediate correction cancels observation without delaying the correction; review creates no output",
     "Production portfolio applies priority ordering and grants only one increase per HVAC interval",
-    "Permanent-off legacy decisions match delivered 1.2.6 in 150 diverse scenarios",
     "No configured HVAC produces no controller allocation, extra P1 reference or observation timer",
     "Bounded learning over 60 minutes reuses the unchanged 40-minute EV reference buffer"
   ]

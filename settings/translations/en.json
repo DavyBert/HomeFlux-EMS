@@ -1928,7 +1928,13 @@
     "Stand-bytemperatuur bij automatische sturing uit (°C, optioneel)": "Standby temperature when automatic control is off (°C, optional)",
     "De Flow-kaart kan deze temperatuur instellen. Leeg behoudt het bestaande herstelsetpoint. Bij toegestane aan/uit-sturing wordt ook de uit-Flow gestuurd.": "The Flow card can set this temperature. Leave empty to retain the existing restore setpoint. When power control is allowed, the OFF Flow is also triggered.",
     "Nu leren": "Learn now",
-    "Wachten op betrouwbare meetomstandigheden": "Waiting for reliable measurement conditions"
+    "Wachten op betrouwbare meetomstandigheden": "Waiting for reliable measurement conditions",
+    "Actie bij automatische sturing uit": "Action when automatic control is disabled",
+    "Toestel uitschakelen": "Switch device off",
+    "Stand-bytemperatuur instellen": "Set standby temperature",
+    "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow automatische sturing uitzet. Alleen toegestane uitgangen worden gebruikt.": "The OFF Flow or standby setpoint is sent immediately when a Flow disables automatic control. Only permitted outputs are used.",
+    "Stand-bytemperatuur bij automatische sturing uit (°C)": "Standby temperature when automatic control is disabled (°C)",
+    "Bij de actie Stand-bytemperatuur is een temperatuur nodig: hier instellen of meegeven via de Flow. Stand-by stuurt alleen het setpoint; Uitschakelen stuurt alleen de uit-Flow.": "The standby action needs a temperature: set it here or supply it in the Flow. Standby sends only the setpoint; Switch off sends only the OFF Flow."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

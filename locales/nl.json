@@ -291,7 +291,7 @@
       "reasonExternal": "De batterijsturing is overgedragen aan de externe EMS",
       "reasonPending": "Het nieuwe batterijcommando is nog niet uitgestuurd; de bestaande uitsturing blijft gelden",
       "reasonPeakLimited": "Peak Guard kan binnen de actieve grenzen geen extra batterijondersteuning vragen",
-      "reasonChargeDeferred": "Nu wordt geen netladen gevraagd; batterij-energie blijft bewaard tot laden nodig is",
+      "reasonChargeDeferred": "Batterij reserve behouden, laden later gepland.",
       "evPeakGuardLimited": "Laden begrensd door Peak Guard"
     }
   },

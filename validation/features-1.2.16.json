@@ -1,0 +1,17 @@
+{
+  "version": "1.2.16",
+  "environment": "Node host; real planner/application functions with mocked Homey transport",
+  "passed": [
+    "Latest plans retain 16:45 across active replanning for fixed, TOU and hourly/quarter-hour dynamic prices",
+    "Latest boundaries remain exact before charging starts and follow edited window ends without cumulative reserve shifts",
+    "The reserve remains bounded by valid price windows, shortages stay explicit, and reaching the goal cancels charging",
+    "Nighttime latest plans finish at local 06:45 across both Brussels DST transitions",
+    "The planned display uses the anchored end for heterogeneous batteries whose remaining power tapers",
+    "Each explicit OFF Flow emits exactly one power command on all ten slots, with no baseline mode or fan restoration",
+    "Standby sends exactly one saved/Flow-overridden setpoint, never OFF, on all ten slots; no periodic repeat follows",
+    "The selected action respects its output permission and missing standby configuration fails before disabling automatic control",
+    "Explicit Flow calls survive a busy publication and ordinary contexts; concurrent standby overrides each publish once without timers",
+    "Queued stale OFF/standby decisions are rejected after the action changes, and the new choice survives restart",
+    "The exact shorter Dutch battery-saving waiting text is shared by the widget and Logic tags"
+  ]
+}

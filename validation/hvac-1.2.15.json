@@ -12,7 +12,7 @@
     "Peak Guard and stale P1 reduce permanent HVAC immediately, even inside the start interval",
     "Direct PV requires sustained surplus, shares available watts and respects stop hysteresis",
     "Settings/grid/battery/tariff changes during awaited Flow publication invalidate remaining batch increases",
-    "Automatic-control Flow supports optional standby on all ten slots and emits actual OFF, respecting both permissions",
+    "Default OFF action preserves the optional standby temperature without sending a setpoint and respects permissions",
     "Old numbered and deprecated selector Flows keep missing-argument semantics and preserve standby after restart",
     "Manual learning queues one reliable independent step; connected EV, active boiler, short intervals and unstable baselines block it",
     "Learning accepts a stable manual plateau, retains prior watts on interference and restores the ordinary target",

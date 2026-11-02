@@ -12,10 +12,10 @@ async function setup(count=5,extra={}) {
  for(let i=0;i<count;i++)for(const [suffix,value]of Object.entries({Enabled:true,AutomaticControlEnabled:true,PermanentEnabled:true,TariffEnabled:true,Direction:'heat',AllowSetpointControl:true,AllowModeControl:true,AllowPowerControl:true,CheapTargetC:23,NormalTargetC:21,ExpensiveTargetC:19,ControlIntervalMinutes:5,ComfortMinC:20,ComfortMaxC:24})) {
   const key=`hvac${i?i+1:''}${suffix}`;if(!Object.hasOwn(extra,key))settings[key]=value;
  }
- const optionNames=['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','StandbyTemperatureC'];
+ const optionNames=['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','StandbyTemperatureC','AutomaticOffAction'];
  settings.hvacCoordination=structuredClone(settings.hvacCoordination);for(let i=0;i<count;i++){const stem='hvac'+(i?i+1:'');for(const name of optionNames)if(Object.hasOwn(settings,stem+name)){settings.hvacCoordination[i][name]=settings[stem+name];delete settings[stem+name];}}
  const h=await boot(new Map(Object.entries(settings))),a=h.app;
- const set=a.setSetting.bind(a);a.setSetting=(key,value)=>{const match=/^(hvac(?:[2-9]|10)?)(DirectTariffEnabled|DirectPvEnabled|SharedPowerEnabled|SharedPowerWith|StandbyTemperatureC)$/.exec(key);if(!match)return set(key,value);const index=Number(match[1].slice(4)||1)-1;const saved=a.getSettings().hvacCoordination;return set('hvacCoordination',saved.map((c,i)=>i===index?{...c,[match[2]]:value}:c));};
+ const set=a.setSetting.bind(a);a.setSetting=(key,value)=>{const match=/^(hvac(?:[2-9]|10)?)(DirectTariffEnabled|DirectPvEnabled|SharedPowerEnabled|SharedPowerWith|StandbyTemperatureC|AutomaticOffAction)$/.exec(key);if(!match)return set(key,value);const index=Number(match[1].slice(4)||1)-1;const saved=a.getSettings().hvacCoordination;return set('hvacCoordination',saved.map((c,i)=>i===index?{...c,[match[2]]:value}:c));};
  a.requestContextEvaluate=()=>{};a.requestEvaluate=()=>{};for(let n=0;n<250;n++)await Promise.resolve();
  Object.assign(a.state,{gridPowerW:400,pvPowerW:0,lastTotalCommandW:0});Object.assign(a.inputSeen,{grid:true,pv:true});a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;
  a.hvacPermanentRuntime=undefined;a.flexiblePriorityState.nextEvaluationAt=0;
@@ -105,14 +105,14 @@ async function main(){
    await cycle(h);assert.equal(h.events.length,1,change+JSON.stringify(h.events));
   }
  });
- await check('Automatic-control Flow supports optional standby on all ten slots and emits actual OFF, respecting both permissions',async()=>{
+ await check('Default OFF action preserves the optional standby temperature without sending a setpoint and respects permissions',async()=>{
   const h=await setup(10),a=h.app;
   for(let i=0;i<10;i++)await h.cards.get('set_hvac_automatic_control_for_configured').listener({hvac:{kind:'hvac',id:String(i+1),name:'HVAC'},enabled:'no',standby_temperature:16.5});
   assert.equal(h.events.filter(e=>e.kind==='power'&&e.state_value===0).length,10);
-  assert.equal(h.events.filter(e=>e.kind==='setpoint'&&e.setpoint===16.5).length,10);
-  const before=h.events.length;await a.setHvacAutomaticControlFor(0,{enabled:'no'});assert.equal(h.events.length,before);
+  assert.equal(h.events.filter(e=>e.kind==='setpoint').length,0);
+  await a.setHvacAutomaticControlFor(0,{enabled:'no'});assert.equal(h.events.filter(e=>e.kind==='power').length,11);const before=h.events.length;
   assert.equal(a.getHvacInstanceSettings(0).hvacCoordination.StandbyTemperatureC,16.5);
-  assert.match(a.getHvacInstanceDeviceStatus(0),/Uit.*16.5/);
+  assert.match(a.getHvacInstanceDeviceStatus(0),/Uit/);assert.equal(a.lastPublishedHvacSetpoint,20);
   await assert.rejects(()=>a.setHvacAutomaticControlFor(0,{enabled:'no',standby_temperature:0}),/5 en 99/);
   a.setSetting('hvac2AllowPowerControl',false);a.setSetting('hvac2AllowSetpointControl',false);
   await a.setHvacAutomaticControlFor(1,{enabled:'no',standby_temperature:17});assert.equal(h.events.length,before);
@@ -188,7 +188,7 @@ async function main(){
  await check('A disabled module and a removed permanent slot send the allowed OFF, and a standby argument works while the module is disabled',async()=>{
   const h=await setup(2),a=h.app;known(a,2);await cycle(h);a.setSetting('hvacEnabled',false);a.setSetting('hvacCount',1);
   await cycle(h);assert.equal(h.events.filter(e=>e.kind==='power'&&e.state_value===0).length,2);
-  await a.setHvacAutomaticControlFor(0,{enabled:'no',standby_temperature:15});assert.equal(a.lastPublishedHvacSetpoint,15);
+  a.setSetting('hvacAutomaticOffAction','standby');await a.setHvacAutomaticControlFor(0,{enabled:'no',standby_temperature:15});assert.equal(a.lastPublishedHvacSetpoint,15);
  });
  await check('Manual learning also uses an ordinary legacy PV demand step when safe',async()=>{
   const h=await setup(1,{hvacPermanentEnabled:false,hvacComfortMinC:22}),a=h.app;baseline(a);a.state.gridPowerW=-5000;a.state.pvPowerW=6500;a.state.hvacRoomTemperatureC=19;
@@ -252,7 +252,8 @@ async function main(){
   const previous=process.env.HOMEFLUX_PREVIOUS_SOURCE;
   if(previous)for(const kind of ['actions','conditions','triggers'])for(const c of require('../app.json').flow[kind])if(c.deprecated)assert.equal(fs.readFileSync(`.homeycompose/flow/${kind}/${c.id}.json`,'utf8'),fs.readFileSync(`${previous}/.homeycompose/flow/${kind}/${c.id}.json`,'utf8'));
  });
- fs.mkdirSync('validation',{recursive:true});fs.writeFileSync('validation/hvac-1.2.15.json',JSON.stringify({version:'1.2.15',environment:'Node host with real application HVAC/Flow functions and mocked Homey transport; no Homey hardware measurement',passed},null,2)+'\n');
+ fs.mkdirSync('validation',{recursive:true});fs.writeFileSync('validation/hvac-coordination-1.2.16.json',JSON.stringify({version:'1.2.16',environment:'Node host with real application HVAC/Flow functions and mocked Homey transport; no Homey hardware measurement',passed},null,2)+'\n');
  console.log(`HVAC 1.2.15: ${passed.length} scenario groups passed.`);
 }
-main().catch(e=>{console.error('After:',passed.at(-1)||'setup');console.error(e.stack);process.exitCode=1;}).finally(()=>{Date.now=nativeNow;});
+module.exports={setup,cycle,known,baseline,clock:{now:()=>now,set:value=>{now=value;}}};
+if(require.main===module)main().catch(e=>{console.error('After:',passed.at(-1)||'setup');console.error(e.stack);process.exitCode=1;}).finally(()=>{Date.now=nativeNow;});

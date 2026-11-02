@@ -21,12 +21,25 @@ const nodes=new Map();const q=id=>{if(!nodes.has(id))nodes.set(id,node());return
 const ctx=vm.createContext({q,rates:[{},{},{}],uiLanguage:'nl',instanceStem:(kind,i)=>kind+(i===1?'':i)});vm.runInContext(extract(html,'updateHvacInstanceUi'),ctx);
 Object.assign(ctx,{boolean:new Set(),numeric:new Set(),jsonArray:new Set()});vm.runInContext(extract(html,'currentSettingValue'),ctx);
 // 1.2.15 keeps the visible per-device options in one compact persisted object.
-for(let i=1;i<=10;i++)for(const suffix of ['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','StandbyTemperatureC'])assert(ids.includes('hvac'+(i===1?'':i)+suffix));
+for(let i=1;i<=10;i++)for(const suffix of ['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','StandbyTemperatureC','AutomaticOffAction'])assert(ids.includes('hvac'+(i===1?'':i)+suffix));
 q('hvacDirectTariffEnabled').checked=true;q('hvac2DirectPvEnabled').checked=true;
 q('hvac5SharedPowerEnabled').checked=true;q('hvac5SharedPowerWith').value='1';q('hvac10StandbyTemperatureC').value='16.5';
 let options=JSON.parse(JSON.stringify(ctx.currentSettingValue('hvacCoordination')));
 assert.equal(options.length,10);assert.equal(options[0].DirectTariffEnabled,true);assert.equal(options[1].DirectPvEnabled,true);
 assert.equal(options[4].SharedPowerWith,1);assert.equal(options[9].StandbyTemperatureC,16.5);assert.equal(options[0].StandbyTemperatureC,'');
+assert(options.every(o=>o.AutomaticOffAction==='off'));
+for(let i=1;i<=10;i++)q('hvac'+(i===1?'':i)+'AutomaticOffAction').value='standby';
+assert(ctx.currentSettingValue('hvacCoordination').every(o=>o.AutomaticOffAction==='standby'));
+for(let i=1;i<=10;i++)q('hvac'+(i===1?'':i)+'AutomaticOffAction').value='off';
+// Run the actual settings-load branch as well as the save function.
+const loadStart=html.indexOf("        if(id==='hvacCoordination'){");
+const loadEnd=html.indexOf('        if (value === undefined',loadStart);
+vm.runInContext("function loadCoordination(value){const id='hvacCoordination';"+html.slice(loadStart,loadEnd)+'}',ctx);
+ctx.loadCoordination([{AutomaticOffAction:'standby',StandbyTemperatureC:17}]);
+assert.equal(q('hvacAutomaticOffAction').value,'standby');assert.equal(q('hvacStandbyTemperatureC').value,17);
+assert.equal(q('hvac2AutomaticOffAction').value,'off','old/missing settings retain OFF');
+assert.equal(ctx.currentSettingValue('hvacCoordination')[0].AutomaticOffAction,'standby');
+ctx.loadCoordination(options);
 q('hvac10StandbyTemperatureC').value='100';assert.throws(()=>ctx.currentSettingValue('hvacCoordination'),/5 en 99/);q('hvac10StandbyTemperatureC').value='';
 q('hvacDirectTariffEnabled').checked=false;q('hvac2DirectPvEnabled').checked=false;q('hvac5SharedPowerEnabled').checked=false;
 for(let i=1;i<=10;i++) {
