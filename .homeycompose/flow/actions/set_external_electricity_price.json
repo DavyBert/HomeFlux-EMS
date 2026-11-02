@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set external electricity price",
-    "nl": "Stel externe elektriciteitsprijs in"
+    "nl": "Stel externe elektriciteitsprijs in",
+    "fr": "Fixation du prix extérieur de l'électricité",
+    "es": "Establecer el precio de la electricidad externa",
+    "de": "Festgelegter externer Strompreis"
   },
   "hint": {
     "en": "Generic fallback input in EUR/kWh. HomeFlux only uses it when external fallback is enabled for a dynamic contract. A full curve is still required for price-based planning.",
-    "nl": "Generieke fallback-ingang in EUR/kWh. HomeFlux gebruikt deze alleen wanneer externe fallback bij een dynamisch contract is ingeschakeld. Voor prijsgebaseerde planning blijft een volledige curve nodig."
+    "nl": "Generieke fallback-ingang in EUR/kWh. HomeFlux gebruikt deze alleen wanneer externe fallback bij een dynamisch contract is ingeschakeld. Voor prijsgebaseerde planning blijft een volledige curve nodig.",
+    "fr": "Entrée de retour générique en EUR/kWh. HomeFlux ne l'utilise que lorsque le repli externe est activé pour un contrat dynamique. Une courbe complète est toujours nécessaire pour la planification fondée sur les prix.",
+    "es": "Entrada de retroceso genérico en EUR/kWh. HomeFlux solo lo utiliza cuando se permite el retroceso externo para un contrato dinámico. Todavía se requiere una curva completa para la planificación basada en los precios.",
+    "de": "Generische Fallback-Inputs in EUR/kWh. HomeFlux verwendet es nur, wenn ein externes Fallback für einen dynamischen Vertrag aktiviert ist. Eine vollständige Kurve ist für die preisbasierte Planung noch erforderlich."
   },
   "args": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Electricity price (EUR/kWh)",
-        "nl": "Elektriciteitsprijs (EUR/kWh)"
+        "nl": "Elektriciteitsprijs (EUR/kWh)",
+        "fr": "Prix de l'électricité (EUR/kWh)",
+        "es": "Precio de electricidad (EUR/kWh)",
+        "de": "Strompreis (EUR/kWh)"
       },
       "min": -10,
       "max": 50,
@@ -22,7 +31,10 @@
   ],
   "titleFormatted": {
     "en": "Set external electricity price to [[price]] EUR/kWh",
-    "nl": "Stel externe elektriciteitsprijs in op [[price]] EUR/kWh"
+    "nl": "Stel externe elektriciteitsprijs in op [[price]] EUR/kWh",
+    "fr": "Fixer le prix extérieur de l'électricité à [[price]] EUR/kWh",
+    "es": "Establecer el precio de la electricidad externa a [[price]] EUR/kWh",
+    "de": "Externer Strompreis auf [[price]] EUR/kWh festsetzen"
   },
   "deprecated": true
 }

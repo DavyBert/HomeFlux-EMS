@@ -1,14 +1,23 @@
 {
   "title": {
     "en": "Request forecast is needed",
-    "nl": "PV-forecast is nodig"
+    "nl": "PV-forecast is nodig",
+    "fr": "Demande de prévision est nécessaire",
+    "es": "Se necesita un pronóstico de solicitud",
+    "de": "Anforderungsprognose wird benötigt"
   },
   "titleFormatted": {
     "en": "Request forecast is needed",
-    "nl": "PV-forecast is nodig"
+    "nl": "PV-forecast is nodig",
+    "fr": "Demande de prévision est nécessaire",
+    "es": "Se necesita un pronóstico de solicitud",
+    "de": "Anforderungsprognose wird benötigt"
   },
   "hint": {
     "en": "Fires every 30 minutes and once at app start. Use it to send the remaining PV forecast to HomeFlux EMS.",
-    "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de resterende PV-forecast naar HomeFlux EMS te sturen."
+    "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de resterende PV-forecast naar HomeFlux EMS te sturen.",
+    "fr": "Incendie toutes les 30 minutes et une fois au début de l'application. Utilisez-le pour envoyer les autres PV prévisions à HomeFlux EMS.",
+    "es": "Dispara cada 30 minutos y una vez en el inicio de la aplicación. Úsalo para enviar el pronóstico PV restante a HomeFlux EMS.",
+    "de": "Feuert alle 30 Minuten und einmal beim App-Start. Verwenden Sie es, um die verbleibende PV Prognose an HomeFlux EMS zu senden."
   }
 }

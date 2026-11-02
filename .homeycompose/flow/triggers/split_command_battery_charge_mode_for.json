@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Battery: switch to charge mode",
-    "nl": "Batterij: schakel naar laadmodus"
+    "nl": "Batterij: schakel naar laadmodus",
+    "fr": "Batterie: passer en mode charge",
+    "es": "Batería: cambiar al modo de carga",
+    "de": "Batterie: Wechsel in den Lademodus"
   },
   "hint": {
     "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
-    "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+    "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel.",
+    "fr": "Seulement les feux lorsque la commande fractionnée est activée pour la batterie sélectionnée et HomeFlux nécessite le mode charge. La puissance suit 1 secondes après un interrupteur de mode autorisé.",
+    "es": "Sólo los incendios cuando el comando split está habilitado para la batería seleccionada y el modo de carga de HomeFlux necesidades. La potencia sigue 1 segundos después de un interruptor de modo permitido.",
+    "de": "Bricht nur, wenn der Split-Befehl für die ausgewählte Batterie aktiviert ist und HomeFlux den Lademodus benötigt. Die Leistung folgt 1 Sekunden nach einem erlaubten Modusschalter."
   },
   "titleFormatted": {
     "en": "[[battery]]: switch to charge mode",
-    "nl": "[[battery]]: schakel naar laadmodus"
+    "nl": "[[battery]]: schakel naar laadmodus",
+    "fr": "[[battery]]: passer en mode charge",
+    "es": "[[battery]]: conmutar el modo de carga",
+    "de": "[[battery]]: Wechsel in den Lademodus"
   },
   "args": [
     {
@@ -17,63 +26,90 @@
       "type": "dropdown",
       "title": {
         "en": "Battery",
-        "nl": "Batterij"
+        "nl": "Batterij",
+        "fr": "Batterie",
+        "es": "Batería",
+        "de": "Batterie"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "Battery 1",
-            "nl": "Batterij 1"
+            "nl": "Batterij 1",
+            "fr": "Batterie 1",
+            "es": "Batería 1",
+            "de": "Batterie 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "Battery 2",
-            "nl": "Batterij 2"
+            "nl": "Batterij 2",
+            "fr": "Batterie 2",
+            "es": "Batería 2",
+            "de": "Batterie 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "Battery 3",
-            "nl": "Batterij 3"
+            "nl": "Batterij 3",
+            "fr": "Batterie 3",
+            "es": "Batería 3",
+            "de": "Batterie 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "Battery 4",
-            "nl": "Batterij 4"
+            "nl": "Batterij 4",
+            "fr": "Batterie 4",
+            "es": "Batería 4",
+            "de": "Batterie 4"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "Battery 5",
-            "nl": "Batterij 5"
+            "nl": "Batterij 5",
+            "fr": "Batterie 5",
+            "es": "Batería 5",
+            "de": "Batterie 5"
           }
         },
         {
           "id": "6",
           "title": {
             "en": "Battery 6",
-            "nl": "Batterij 6"
+            "nl": "Batterij 6",
+            "fr": "Batterie 6",
+            "es": "Batería 6",
+            "de": "Batterie 6"
           }
         },
         {
           "id": "7",
           "title": {
             "en": "Battery 7",
-            "nl": "Batterij 7"
+            "nl": "Batterij 7",
+            "fr": "Batterie 7",
+            "es": "Batería 7",
+            "de": "Batterie 7"
           }
         },
         {
           "id": "8",
           "title": {
             "en": "Battery 8",
-            "nl": "Batterij 8"
+            "nl": "Batterij 8",
+            "fr": "Batterie 8",
+            "es": "Batería 8",
+            "de": "Batterie 8"
           }
         }
       ]

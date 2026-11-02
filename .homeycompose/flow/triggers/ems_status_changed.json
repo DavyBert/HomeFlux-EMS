@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "EMS status changed",
-    "nl": "EMS-status is gewijzigd"
+    "nl": "EMS-status is gewijzigd",
+    "fr": "EMS changement de statut",
+    "es": "Modificación de la categoría EMS",
+    "de": "EMS Status geändert"
   },
   "titleFormatted": {
     "en": "EMS status changed",
-    "nl": "EMS-status is gewijzigd"
+    "nl": "EMS-status is gewijzigd",
+    "fr": "EMS changement de statut",
+    "es": "Modificación de la categoría EMS",
+    "de": "EMS Status geändert"
   },
   "hint": {
     "en": "Fires when the compact HomeFlux EMS status line changes.",
-    "nl": "Start wanneer de compacte HomeFlux EMS-statusregel wijzigt."
+    "nl": "Start wanneer de compacte HomeFlux EMS-statusregel wijzigt.",
+    "fr": "Incendie lorsque la ligne d'état compacte HomeFlux EMS change.",
+    "es": "Fuegos cuando la línea de estado compacta HomeFlux EMS cambia.",
+    "de": "Feuert, wenn sich die kompakte HomeFlux EMS Statuszeile ändert."
   },
   "tokens": [
     {
@@ -17,11 +26,17 @@
       "type": "string",
       "title": {
         "en": "EMS status",
-        "nl": "EMS-status"
+        "nl": "EMS-status",
+        "fr": "EMS statut",
+        "es": "EMS estado",
+        "de": "EMS-Status"
       },
       "example": {
         "en": "Normal · Self-consumption · Expensive in 2h",
-        "nl": "Normaal · Zelfconsumptie · Duur over 2u"
+        "nl": "Normaal · Zelfconsumptie · Duur over 2u",
+        "fr": "Normale · Autoconsommation · Dépense en 2h",
+        "es": "Normal · Autoconsumo · Expensivo en 2h",
+        "de": "Normal · Eigenverbrauch · Teuer in 2h"
       }
     },
     {
@@ -29,11 +44,17 @@
       "type": "string",
       "title": {
         "en": "Current tariff",
-        "nl": "Huidig tarief"
+        "nl": "Huidig tarief",
+        "fr": "Tarif actuel",
+        "es": "Tarifa actual",
+        "de": "Aktueller Tarif"
       },
       "example": {
         "en": "Normal",
-        "nl": "Normaal"
+        "nl": "Normaal",
+        "fr": "Normal",
+        "es": "Normal",
+        "de": "Normal"
       }
     },
     {
@@ -41,11 +62,17 @@
       "type": "string",
       "title": {
         "en": "Operation",
-        "nl": "Werking"
+        "nl": "Werking",
+        "fr": "Fonctionnement",
+        "es": "Operación",
+        "de": "Betrieb"
       },
       "example": {
         "en": "Self-consumption",
-        "nl": "Zelfconsumptie"
+        "nl": "Zelfconsumptie",
+        "fr": "Autoconsommation",
+        "es": "Autoconsumo",
+        "de": "Eigenverbrauch"
       }
     },
     {
@@ -53,11 +80,17 @@
       "type": "string",
       "title": {
         "en": "Next tariff",
-        "nl": "Volgend tarief"
+        "nl": "Volgend tarief",
+        "fr": "Prochain tarif",
+        "es": "Próxima tarifa",
+        "de": "Nächster Tarif"
       },
       "example": {
         "en": "Expensive in 2h",
-        "nl": "Duur over 2u"
+        "nl": "Duur over 2u",
+        "fr": "Coût en 2h",
+        "es": "Gastos en 2h",
+        "de": "Teuer in 2h"
       }
     }
   ]

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Current Homey Energy price is among the [[hours]] cheapest hours today",
-    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag"
+    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag",
+    "fr": "▁Actuellement Homey Le▁prix de l'énergie est l'un des [[hours]] ▁heures▁moins▁chères▁aujourd'hui",
+    "es": "Precio actual Homey Energy se encuentra entre las [[hours]] horas más baratas hoy",
+    "de": "Aktueller Homey Energiepreis ist unter den [[hours]] günstigsten Stunden heute"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Hours",
-        "nl": "Uren"
+        "nl": "Uren",
+        "fr": "Heures",
+        "es": "Horas",
+        "de": "Stunden"
       },
       "min": 0.25,
       "max": 12,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Current Homey Energy price is among the [[hours]] cheapest hours today",
-    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag"
+    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] goedkoopste uren vandaag",
+    "fr": "▁Actuellement Homey Le▁prix de l'énergie est l'un des [[hours]] ▁heures▁moins▁chères▁aujourd'hui",
+    "es": "Precio actual Homey Energy se encuentra entre las [[hours]] horas más baratas hoy",
+    "de": "Aktueller Homey Energiepreis ist unter den [[hours]] günstigsten Stunden heute"
   }
 }

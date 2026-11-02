@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set external electricity price curve",
-    "nl": "Stel externe elektriciteitsprijscurve in"
+    "nl": "Stel externe elektriciteitsprijscurve in",
+    "fr": "Définir la courbe des prix externes de l'électricité",
+    "es": "Establecer la curva de precio de la electricidad externa",
+    "de": "Festlegung der externen Strompreiskurve"
   },
   "hint": {
     "en": "Send a JSON string containing hourly or 15-minute prices. ISO timestamps are recommended. HomeFlux accepts arrays, pricesPerInterval payloads and timestamp-to-price maps.",
-    "nl": "Stuur een JSON-tekst met uur- of kwartierprijzen. ISO-tijdstempels worden aanbevolen. HomeFlux accepteert arrays, pricesPerInterval-payloads en timestamp-naar-prijs maps."
+    "nl": "Stuur een JSON-tekst met uur- of kwartierprijzen. ISO-tijdstempels worden aanbevolen. HomeFlux accepteert arrays, pricesPerInterval-payloads en timestamp-naar-prijs maps.",
+    "fr": "Envoyez une chaîne JSON contenant des prix horaires ou 15 minutes. Les horodatages ISO sont recommandés. HomeFlux accepte les tableaux, les prixLes charges utilesPerInterval et les cartes horodatées.",
+    "es": "Envíe una cadena JSON con precios por hora o 15 minutos. Se recomiendan los horarios ISO. HomeFlux acepta arrays, preciosPerInterval payloads y mapas timetamp-to-price.",
+    "de": "Senden Sie einen JSON-String mit stündlichen oder 15-Minuten-Preisen. ISO-Zeitstempel werden empfohlen. HomeFlux akzeptiert Arrays, PreisePerInterval-Nutzlasten und Zeitstempel-zu-Preis-Karten."
   },
   "args": [
     {
@@ -13,13 +19,19 @@
       "type": "text",
       "title": {
         "en": "Price curve JSON",
-        "nl": "Prijscurve JSON"
+        "nl": "Prijscurve JSON",
+        "fr": "Courbe de prix JSON",
+        "es": "Curva de precio JSON",
+        "de": "Preiskurve JSON"
       }
     }
   ],
   "titleFormatted": {
     "en": "Set external electricity price curve to [[curve]]",
-    "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]"
+    "nl": "Stel externe elektriciteitsprijscurve in op [[curve]]",
+    "fr": "Fixer la courbe de prix externe de l'électricité à [[curve]]",
+    "es": "Establecer la curva de precio de la electricidad externa a [[curve]]",
+    "de": "Externe Strompreiskurve auf [[curve]] einstellen"
   },
   "deprecated": true
 }

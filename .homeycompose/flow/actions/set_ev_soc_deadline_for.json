@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set EV minimum SoC by time",
-    "nl": "Stel EV: minimum-SoC tegen tijd in"
+    "nl": "Stel EV: minimum-SoC tegen tijd in",
+    "fr": "Set EV minimum SoC par le temps",
+    "es": "Set EV mínimo SoC por tiempo",
+    "de": "Set EV Minimum SoC nach Zeit"
   },
   "hint": {
     "en": "Sets a persistent minimum SoC and deadline for the selected EV. It remains active until another EV target is submitted or the planning override is cleared. Guarantee = No tries to secure the minimum on configured favourable tariffs/PV; Yes may use any tariff when required. After fresh SoC reaches the target, the per-EV setting selects stopping or continuing with normal tariff/PV preferences. Stopping is the default. Peak Guard always remains absolute. The target survives app/Homey restarts. Only Clear EV planning removes the override; a new Flow target replaces it.",
-    "nl": "Stelt een blijvende minimum-SoC en deadline voor de geselecteerde EV in. Het doel blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. Doel gegarandeerd = Nee probeert het minimum via ingestelde gunstige tarieven/PV te halen; Ja mag elk tarief gebruiken wanneer dat nodig is. Na verse SoC op het doel bepaalt de instelling per EV of laden stopt of verdergaat volgens de normale tarief- en PV-voorkeuren. Stoppen is de standaard. Peak Guard blijft altijd absoluut. Het doel blijft behouden na een app-/Homey-herstart. Alleen Wis EV-planning verwijdert de override; een nieuw Flow-doel vervangt het."
+    "nl": "Stelt een blijvende minimum-SoC en deadline voor de geselecteerde EV in. Het doel blijft actief tot een ander EV-doel wordt ingestuurd of de planningsoverride wordt gewist. Doel gegarandeerd = Nee probeert het minimum via ingestelde gunstige tarieven/PV te halen; Ja mag elk tarief gebruiken wanneer dat nodig is. Na verse SoC op het doel bepaalt de instelling per EV of laden stopt of verdergaat volgens de normale tarief- en PV-voorkeuren. Stoppen is de standaard. Peak Guard blijft altijd absoluut. Het doel blijft behouden na een app-/Homey-herstart. Alleen Wis EV-planning verwijdert de override; een nieuw Flow-doel vervangt het.",
+    "fr": "Définit un minimum persistant de SoC et une date limite pour le EV sélectionné. Il reste actif jusqu'à ce qu'une autre cible EV soit soumise ou que le dépassement de planification soit annulé. Garantie = Non tente de garantir le minimum sur les tarifs favorables configurés/PV; Oui peut utiliser n'importe quel tarif si nécessaire. Après SoC frais atteint l'objectif, le réglage par-EV sélectionne l'arrêt ou la poursuite avec des préférences tarifaires normales/PV. L'arrêt est par défaut. Peak Guard reste toujours absolu. La cible survit aux redémarrages de l'application Homey. Seule la planification Clear EV supprime le dépassement; une nouvelle cible Flow la remplace.",
+    "es": "Establece un mínimo persistente SoC y plazo para el EV seleccionado. Se mantiene activo hasta que se presente otro objetivo de EV o se despeja la anulación de la planificación. Garantía = No trata de asegurar el mínimo sobre tarifas favorables configuradas/PV; Sí puede utilizar cualquier tarifa cuando sea necesario. Después de que el SoC fresco alcance el objetivo, el ajuste per-EV selecciona detener o continuar con las preferencias tarifarias normales/PV. Parar es el predeterminado. Peak Guard siempre sigue siendo absoluta. El objetivo sobrevive a la aplicación/Homey reinicia. Sólo la planificación Clear EV elimina la anulación; un nuevo objetivo Flow lo reemplaza.",
+    "de": "Legt ein persistentes Minimum SoC und eine Frist für das ausgewählte EV fest. Es bleibt aktiv, bis ein weiteres EV-Ziel eingereicht oder die Planungsüberschreibung gelöscht wird. Garantie = No versucht, das Minimum für konfigurierte günstige Tarife / PV zu sichern; Ja kann bei Bedarf einen beliebigen Tarif verwenden. Nachdem frisch SoC das Ziel erreicht hat, wählt die Einstellung pro EV das Stoppen oder Weiterfahren mit normalen Tarifen / PV Präferenzen. Stoppen ist der Default. Peak Guard bleibt immer absolut. Das Ziel überlebt App / Homey Neustarts. Nur die Clear EV-Planung entfernt den Override; ein neues Flow-Ziel ersetzt es."
   },
   "args": [
     {
@@ -13,35 +19,50 @@
       "type": "dropdown",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "EV 1",
-            "nl": "EV 1"
+            "nl": "EV 1",
+            "fr": "EV 1",
+            "es": "EV 1",
+            "de": "EV 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "EV 2",
-            "nl": "EV 2"
+            "nl": "EV 2",
+            "fr": "EV 2",
+            "es": "EV 2",
+            "de": "EV 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "EV 3",
-            "nl": "EV 3"
+            "nl": "EV 3",
+            "fr": "EV 3",
+            "es": "EV 3",
+            "de": "EV 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "EV 4",
-            "nl": "EV 4"
+            "nl": "EV 4",
+            "fr": "EV 4",
+            "es": "EV 4",
+            "de": "EV 4"
           }
         }
       ]
@@ -51,7 +72,10 @@
       "type": "number",
       "title": {
         "en": "Minimum SoC (%)",
-        "nl": "Minimum-SoC (%)"
+        "nl": "Minimum-SoC (%)",
+        "fr": "Minimum SoC (%)",
+        "es": "Mínimo SoC (%)",
+        "de": "Mindestens SoC (%)"
       },
       "min": 1,
       "max": 100,
@@ -62,7 +86,10 @@
       "type": "text",
       "title": {
         "en": "Deadline (HH:mm)",
-        "nl": "Deadline (uu:mm)"
+        "nl": "Deadline (uu:mm)",
+        "fr": "Date limite (HH:mm)",
+        "es": "Fecha límite (HH:mm)",
+        "de": "Frist (HH:mm)"
       },
       "placeholder": "07:00"
     },
@@ -71,21 +98,30 @@
       "type": "dropdown",
       "title": {
         "en": "Guarantee target?",
-        "nl": "Doel gegarandeerd?"
+        "nl": "Doel gegarandeerd?",
+        "fr": "Cible de garantie ?",
+        "es": "¿Objetivo de garantía?",
+        "de": "Garantieziel?"
       },
       "values": [
         {
           "id": "no",
           "title": {
             "en": "No — favourable moments only",
-            "nl": "Nee — alleen gunstige momenten"
+            "nl": "Nee — alleen gunstige momenten",
+            "fr": "Non — des moments favorables seulement",
+            "es": "No, sólo momentos favorables",
+            "de": "Nein — nur günstige Momente"
           }
         },
         {
           "id": "yes",
           "title": {
             "en": "Yes — all tariffs if required",
-            "nl": "Ja — alle tarieven indien nodig"
+            "nl": "Ja — alle tarieven indien nodig",
+            "fr": "Oui — tous les tarifs si nécessaire",
+            "es": "Sí - todos los tarifas si es necesario",
+            "de": "Ja — alle Tarife, falls erforderlich"
           }
         }
       ]
@@ -93,7 +129,10 @@
   ],
   "titleFormatted": {
     "en": "[[ev]]: minimum [[target_soc]]% SoC by [[time]] · guaranteed: [[guarantee]]",
-    "nl": "[[ev]]: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]"
+    "nl": "[[ev]]: minimum [[target_soc]]% SoC tegen [[time]] · gegarandeerd: [[guarantee]]",
+    "fr": "[[ev]]: minimum [[target_soc]]% SoC par [[time]] · garanti: [[guarantee]]",
+    "es": "[[ev]]: mínimo [[target_soc]]% SoC por [[time]] · garantizado: [[guarantee]]",
+    "de": "[[ev]]: mindestens [[target_soc]]% SoC von [[time]] · garantiert: [[guarantee]]"
   },
   "deprecated": true
 }

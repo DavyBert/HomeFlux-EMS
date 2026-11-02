@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set PV power",
-    "nl": "Stel PV-vermogen in"
+    "nl": "Stel PV-vermogen in",
+    "fr": "Réglage PV puissance",
+    "es": "Set PV potencia",
+    "de": "Set PV Power"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "PV power (W)",
-        "nl": "PV-vermogen (W)"
+        "nl": "PV-vermogen (W)",
+        "fr": "PV puissance (W)",
+        "es": "PV potencia (W)",
+        "de": "PV Leistung (W)"
       },
       "min": 0,
       "max": 100000,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Set PV power to [[power]] W",
-    "nl": "Stel PV-vermogen in op [[power]] W"
+    "nl": "Stel PV-vermogen in op [[power]] W",
+    "fr": "Réglage PV puissance à [[power]] W",
+    "es": "Establecer la potencia PV a [[power]] W",
+    "de": "Setzen Sie PV Power auf [[power]] W"
   }
 }

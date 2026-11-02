@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set EV status",
-    "nl": "Stel EV-status in"
+    "nl": "Stel EV-status in",
+    "fr": "Définir le statut EV",
+    "es": "Establecer el estado EV",
+    "de": "Set EV Status"
   },
   "hint": {
     "en": "Push the selected EV availability and actual charging current to HomeFlux. the selected EV SoC has its own Flow card. Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Stuur de geselecteerde EV-beschikbaarheid en werkelijke laadstroom naar HomeFlux. de geselecteerde EV-SoC heeft een aparte Flow-kaart. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Stuur de geselecteerde EV-beschikbaarheid en werkelijke laadstroom naar HomeFlux. de geselecteerde EV-SoC heeft een aparte Flow-kaart. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Poussez la disponibilité sélectionnée EV et le courant de charge réel à HomeFlux. le EV SoC sélectionné a sa propre carte Flow. Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Empuja la disponibilidad EV seleccionada y la corriente de carga real a HomeFlux. el seleccionado EV SoC tiene su propia tarjeta Flow. Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Schieben Sie die ausgewählte Verfügbarkeit von EV und den tatsächlichen Ladestrom auf HomeFlux. die ausgewählte EV SoC hat eine eigene Flow Karte. Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   },
   "args": [
     {
@@ -13,11 +19,17 @@
       "type": "autocomplete",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "placeholder": {
         "en": "Select configured EV",
-        "nl": "Kies geconfigureerde EV"
+        "nl": "Kies geconfigureerde EV",
+        "fr": "Sélectionner configuré EV",
+        "es": "Seleccionado EV",
+        "de": "Wählen Sie konfiguriert EV"
       }
     },
     {
@@ -25,21 +37,30 @@
       "type": "dropdown",
       "title": {
         "en": "EV 1 available",
-        "nl": "EV 1 beschikbaar/aangesloten"
+        "nl": "EV 1 beschikbaar/aangesloten",
+        "fr": "EV 1 disponible",
+        "es": "EV 1 disponible",
+        "de": "EV 1 verfügbar"
       },
       "values": [
         {
           "id": "yes",
           "title": {
             "en": "Yes",
-            "nl": "Ja"
+            "nl": "Ja",
+            "fr": "Oui",
+            "es": "Sí.",
+            "de": "Ja"
           }
         },
         {
           "id": "no",
           "title": {
             "en": "No",
-            "nl": "Nee"
+            "nl": "Nee",
+            "fr": "Numéro",
+            "es": "No.",
+            "de": "Nein"
           }
         }
       ]
@@ -49,7 +70,10 @@
       "type": "number",
       "title": {
         "en": "Actual charge current (A)",
-        "nl": "Actuele laadstroom (A)"
+        "nl": "Actuele laadstroom (A)",
+        "fr": "Charge réelle courante (A)",
+        "es": "Corriente de carga real (A)",
+        "de": "Ist-Ladestrom (A)"
       },
       "min": 0,
       "max": 64,
@@ -58,6 +82,9 @@
   ],
   "titleFormatted": {
     "en": "Set [[ev]]: [[connected]], [[charge_current]] A",
-    "nl": "Stel [[ev]] in: [[connected]], [[charge_current]] A"
+    "nl": "Stel [[ev]] in: [[connected]], [[charge_current]] A",
+    "fr": "Ensemble [[ev]]: [[connected]], [[charge_current]] A",
+    "es": "Set [[ev]]: [[connected]], [[charge_current]] A",
+    "de": "Reihe [[ev]]: [[connected]], [[charge_current]] A"
   }
 }

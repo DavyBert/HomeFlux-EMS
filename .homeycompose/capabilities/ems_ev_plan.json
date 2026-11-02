@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "EV planning",
-    "nl": "EV-planning"
+    "nl": "EV-planning",
+    "fr": "EV planification",
+    "es": "Planificación de EV",
+    "de": "EV Planung"
   },
   "getable": true,
   "setable": false,

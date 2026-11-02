@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery 7: switch to discharge mode",
-    "nl": "Batterij 7: schakel naar ontlaadmodus"
+    "nl": "Batterij 7: schakel naar ontlaadmodus",
+    "fr": "Batterie 7: passer en mode décharge",
+    "es": "Batería 7: conmutar al modo de descarga",
+    "de": "Batterie 7: Wechsel in den Entlademodus"
   },
   "hint": {
     "en": "Only fires when split command is enabled for battery 7 and HomeFlux needs discharge mode. Power follows 1 second after an allowed mode switch.",
-    "nl": "Start alleen wanneer split command voor batterij 7 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+    "nl": "Start alleen wanneer split command voor batterij 7 actief is en HomeFlux ontlaadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel.",
+    "fr": "Seulement les feux lorsque la commande fractionnée est activée pour la batterie 7 et HomeFlux nécessite un mode de décharge. La puissance suit 1 secondes après un interrupteur de mode autorisé.",
+    "es": "Sólo los incendios cuando el comando split está habilitado para la batería 7 y HomeFlux necesita el modo de descarga. La potencia sigue 1 segundos después de un interruptor de modo permitido.",
+    "de": "Nur Brände, wenn der Split-Befehl für die Batterie 7 und HomeFlux aktiviert ist, benötigen den Entlademodus. Die Leistung folgt 1 Sekunden nach einem erlaubten Modusschalter."
   },
   "deprecated": true
 }

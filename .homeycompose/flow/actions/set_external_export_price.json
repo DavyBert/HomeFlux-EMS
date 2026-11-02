@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set current export price",
-    "nl": "Stel actuele exportprijs in"
+    "nl": "Stel actuele exportprijs in",
+    "fr": "Définir le prix à l'exportation actuel",
+    "es": "Establecer el precio de exportación actual",
+    "de": "Aktueller Ausfuhrpreis"
   },
   "hint": {
     "en": "Sets the current feed-in/export price in EUR/kWh for Savings, mainly for dynamic contracts. Positive means compensation you receive; negative means a cost you pay to inject. Fixed and multi-rate contracts use their configured tariff export prices.",
-    "nl": "Stelt de actuele injectie-/exportprijs in EUR/kWh in voor Winst, vooral voor dynamische contracten. Positief betekent een vergoeding die je ontvangt; negatief betekent een kost die je betaalt om te injecteren. Vaste en meervoudige tarieven gebruiken hun ingestelde exportprijs per tarief."
+    "nl": "Stelt de actuele injectie-/exportprijs in EUR/kWh in voor Winst, vooral voor dynamische contracten. Positief betekent een vergoeding die je ontvangt; negatief betekent een kost die je betaalt om te injecteren. Vaste en meervoudige tarieven gebruiken hun ingestelde exportprijs per tarief.",
+    "fr": "Définit le prix d'entrée/d'exportation actuel en EUR/kWh pour l'épargne, principalement pour les contrats dynamiques. Positive signifie compensation que vous recevez; négatif signifie un coût que vous payez pour injecter. Les contrats à taux fixe et multitaux utilisent leurs prix d'exportation tarifaires configurés.",
+    "es": "Establece el precio actual de entrada/exportación en EUR/kWh para Ahorros, principalmente para contratos dinámicos. Positivo significa compensación que recibes; negativo significa un costo que pagas para inyectar. Los contratos fijos y de varios tipos utilizan sus precios de exportación tarifaria configurados.",
+    "de": "Setzt den aktuellen Einspeise-/Exportpreis in EUR/kWh für Spareinlagen, hauptsächlich für dynamische Verträge, fest. Positiv bedeutet eine Entschädigung, die Sie erhalten; Negativ bedeutet eine Kosten, die Sie zahlen, um zu injizieren. Fest- und Mehrtarifverträge verwenden ihre konfigurierten Exporttarifpreise."
   },
   "args": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Export price (EUR/kWh)",
-        "nl": "Exportprijs (EUR/kWh)"
+        "nl": "Exportprijs (EUR/kWh)",
+        "fr": "Prix à l'exportation (EUR/kWh)",
+        "es": "Precio de exportación (EUR/kWh)",
+        "de": "Ausfuhrpreis (EUR/kWh)"
       },
       "min": -10,
       "max": 50,
@@ -22,6 +31,9 @@
   ],
   "titleFormatted": {
     "en": "Current export price is [[price]] EUR/kWh",
-    "nl": "Actuele exportprijs is [[price]] EUR/kWh"
+    "nl": "Actuele exportprijs is [[price]] EUR/kWh",
+    "fr": "Le prix à l'exportation actuel est de [[price]] EUR/kWh",
+    "es": "Precio de exportación actual es de [[price]] EUR/kWh",
+    "de": "Derzeitiger Ausfuhrpreis: [[price]] EUR/kWh"
   }
 }

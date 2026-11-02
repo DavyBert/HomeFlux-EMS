@@ -1,10 +1,16 @@
 {
   "title": {
     "en": "Water heater output is on",
-    "nl": "Boiler-uitgang staat aan"
+    "nl": "Boiler-uitgang staat aan",
+    "fr": "La sortie du chauffe-eau est en marche",
+    "es": "La salida del calentador de agua está encendida",
+    "de": "Warmwasserbereiterleistung ist eingeschaltet"
   },
   "titleFormatted": {
     "en": "Water heater output is on",
-    "nl": "Boiler-uitgang staat aan"
+    "nl": "Boiler-uitgang staat aan",
+    "fr": "La sortie du chauffe-eau est en marche",
+    "es": "La salida del calentador de agua está encendida",
+    "de": "Warmwasserbereiterleistung ist eingeschaltet"
   }
 }

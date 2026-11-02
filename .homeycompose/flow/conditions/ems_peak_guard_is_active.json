@@ -1,10 +1,16 @@
 {
   "title": {
     "en": "Peak Guard is actively limiting",
-    "nl": "Peak Guard grijpt momenteel in"
+    "nl": "Peak Guard grijpt momenteel in",
+    "fr": "Peak Guard limite activement",
+    "es": "Peak Guard está limitando activamente",
+    "de": "Peak Guard begrenzt aktiv"
   },
   "titleFormatted": {
     "en": "Peak Guard is actively limiting",
-    "nl": "Peak Guard grijpt momenteel in"
+    "nl": "Peak Guard grijpt momenteel in",
+    "fr": "Peak Guard limite activement",
+    "es": "Peak Guard está limitando activamente",
+    "de": "Peak Guard begrenzt aktiv"
   }
 }

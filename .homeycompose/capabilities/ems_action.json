@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Operation",
-    "nl": "Werking"
+    "nl": "Werking",
+    "fr": "Fonctionnement",
+    "es": "Operación",
+    "de": "Betrieb"
   },
   "getable": true,
   "setable": false,

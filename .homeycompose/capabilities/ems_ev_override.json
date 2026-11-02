@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "EV override",
-    "nl": "EV-override"
+    "nl": "EV-override",
+    "fr": "EV remplacement",
+    "es": "EV anulación",
+    "de": "EV überschreiben"
   },
   "getable": true,
   "setable": false,

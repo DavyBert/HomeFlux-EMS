@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC room temperature",
-    "nl": "Stel HVAC ruimtetemperatuur in"
+    "nl": "Stel HVAC ruimtetemperatuur in",
+    "fr": "Réglage HVAC température ambiante",
+    "es": "Set HVAC temperatura ambiente",
+    "de": "Einstellen HVAC Raumtemperatur"
   },
   "args": [
     {
@@ -9,11 +12,17 @@
       "type": "autocomplete",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "placeholder": {
         "en": "Select configured HVAC",
-        "nl": "Kies geconfigureerde HVAC"
+        "nl": "Kies geconfigureerde HVAC",
+        "fr": "Sélectionner configuré HVAC",
+        "es": "Seleccionado HVAC",
+        "de": "Wählen Sie konfiguriert HVAC"
       }
     },
     {
@@ -21,7 +30,10 @@
       "type": "number",
       "title": {
         "en": "Room temperature (C)",
-        "nl": "Ruimtetemperatuur (C)"
+        "nl": "Ruimtetemperatuur (C)",
+        "fr": "Température ambiante (C)",
+        "es": "Temperatura ambiente (C)",
+        "de": "Raumtemperatur (C)"
       },
       "min": -20,
       "max": 99,
@@ -30,10 +42,16 @@
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] room temperature to [[temperature]] C",
-    "nl": "Stel [[hvac]] ruimtetemperatuur in op [[temperature]] C"
+    "nl": "Stel [[hvac]] ruimtetemperatuur in op [[temperature]] C",
+    "fr": "Réglage [[hvac]] température ambiante à [[temperature]] C",
+    "es": "Set [[hvac]] temperatura ambiente a [[temperature]] C",
+    "de": "[[hvac]] Raumtemperatur auf [[temperature]] C einstellen"
   },
   "hint": {
     "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   }
 }

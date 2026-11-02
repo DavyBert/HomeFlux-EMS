@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery: discharge power is updated",
-    "nl": "Batterij: ontlaadvermogen is bijgewerkt"
+    "nl": "Batterij: ontlaadvermogen is bijgewerkt",
+    "fr": "Batterie : la puissance de décharge est mise à jour",
+    "es": "Batería: se actualiza la potencia de descarga",
+    "de": "Batterie: Entladeleistung wird aktualisiert"
   },
   "hint": {
     "en": "Use the power token for the selected Battery discharge power. After a discharge-mode switch this fires 1 second later.",
-    "nl": "Gebruik de power-tag voor het ontlaadvermogen van de geselecteerde Batterij. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+    "nl": "Gebruik de power-tag voor het ontlaadvermogen van de geselecteerde Batterij. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later.",
+    "fr": "Utilisez le jeton de puissance pour la puissance de décharge de la batterie sélectionnée. Après un interrupteur en mode décharge, il allume 1 seconde plus tard.",
+    "es": "Utilice el token de potencia para la potencia de descarga de la batería seleccionada. Después de un interruptor de movimiento de descarga este fuego 1 segundo más tarde.",
+    "de": "Verwenden Sie das Power-Token für die ausgewählte Batterieentladeleistung. Nach einem Entladeschalter feuert dieser 1 Sekunde später."
   },
   "tokens": [
     {
@@ -13,14 +19,20 @@
       "type": "number",
       "title": {
         "en": "Discharge power (W)",
-        "nl": "Ontlaadvermogen (W)"
+        "nl": "Ontlaadvermogen (W)",
+        "fr": "Puissance de décharge (W)",
+        "es": "Potencia de descarga (W)",
+        "de": "Entladeleistung (W)"
       },
       "example": 1000
     }
   ],
   "titleFormatted": {
     "en": "[[battery]]: discharge power is updated",
-    "nl": "[[battery]]: ontlaadvermogen is bijgewerkt"
+    "nl": "[[battery]]: ontlaadvermogen is bijgewerkt",
+    "fr": "[[battery]]: la puissance de décharge est mise à jour",
+    "es": "[[battery]]: se actualiza la potencia de descarga",
+    "de": "[[battery]]: Entladeleistung wird aktualisiert"
   },
   "args": [
     {
@@ -28,63 +40,90 @@
       "type": "dropdown",
       "title": {
         "en": "Battery",
-        "nl": "Batterij"
+        "nl": "Batterij",
+        "fr": "Batterie",
+        "es": "Batería",
+        "de": "Batterie"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "Battery 1",
-            "nl": "Batterij 1"
+            "nl": "Batterij 1",
+            "fr": "Batterie 1",
+            "es": "Batería 1",
+            "de": "Batterie 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "Battery 2",
-            "nl": "Batterij 2"
+            "nl": "Batterij 2",
+            "fr": "Batterie 2",
+            "es": "Batería 2",
+            "de": "Batterie 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "Battery 3",
-            "nl": "Batterij 3"
+            "nl": "Batterij 3",
+            "fr": "Batterie 3",
+            "es": "Batería 3",
+            "de": "Batterie 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "Battery 4",
-            "nl": "Batterij 4"
+            "nl": "Batterij 4",
+            "fr": "Batterie 4",
+            "es": "Batería 4",
+            "de": "Batterie 4"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "Battery 5",
-            "nl": "Batterij 5"
+            "nl": "Batterij 5",
+            "fr": "Batterie 5",
+            "es": "Batería 5",
+            "de": "Batterie 5"
           }
         },
         {
           "id": "6",
           "title": {
             "en": "Battery 6",
-            "nl": "Batterij 6"
+            "nl": "Batterij 6",
+            "fr": "Batterie 6",
+            "es": "Batería 6",
+            "de": "Batterie 6"
           }
         },
         {
           "id": "7",
           "title": {
             "en": "Battery 7",
-            "nl": "Batterij 7"
+            "nl": "Batterij 7",
+            "fr": "Batterie 7",
+            "es": "Batería 7",
+            "de": "Batterie 7"
           }
         },
         {
           "id": "8",
           "title": {
             "en": "Battery 8",
-            "nl": "Batterij 8"
+            "nl": "Batterij 8",
+            "fr": "Batterie 8",
+            "es": "Batería 8",
+            "de": "Batterie 8"
           }
         }
       ]

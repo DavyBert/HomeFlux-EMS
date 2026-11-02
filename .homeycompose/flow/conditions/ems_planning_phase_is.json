@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Planning phase is [[phase]]",
-    "nl": "Planningsfase is [[phase]]"
+    "nl": "Planningsfase is [[phase]]",
+    "fr": "La phase de planification est [[phase]]",
+    "es": "La fase de planificación es [[phase]]",
+    "de": "Planungsphase ist [[phase]]"
   },
   "args": [
     {
@@ -9,21 +12,30 @@
       "type": "dropdown",
       "title": {
         "en": "Planning phase",
-        "nl": "Planningsfase"
+        "nl": "Planningsfase",
+        "fr": "Phase de planification",
+        "es": "Fase de planificación",
+        "de": "Planungsphase"
       },
       "values": [
         {
           "id": "day",
           "title": {
             "en": "Day planning",
-            "nl": "Dagplanning"
+            "nl": "Dagplanning",
+            "fr": "Planification diurne",
+            "es": "Planificación diurna",
+            "de": "Tagesplanung"
           }
         },
         {
           "id": "night",
           "title": {
             "en": "Night planning",
-            "nl": "Nachtplanning"
+            "nl": "Nachtplanning",
+            "fr": "Planification nocturne",
+            "es": "Planificación nocturna",
+            "de": "Nachtplanung"
           }
         }
       ]
@@ -31,6 +43,9 @@
   ],
   "titleFormatted": {
     "en": "Planning phase is [[phase]]",
-    "nl": "Planningsfase is [[phase]]"
+    "nl": "Planningsfase is [[phase]]",
+    "fr": "La phase de planification est [[phase]]",
+    "es": "La fase de planificación es [[phase]]",
+    "de": "Planungsphase ist [[phase]]"
   }
 }

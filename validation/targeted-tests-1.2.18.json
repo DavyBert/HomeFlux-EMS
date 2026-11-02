@@ -1,0 +1,144 @@
+{
+  "version": "1.2.18",
+  "baseline": "1.2.17",
+  "passedSuites": 23,
+  "suites": [
+    {
+      "suite": "settings-startup",
+      "passed": true,
+      "seconds": 0.117
+    },
+    {
+      "suite": "settings-runtime-audit",
+      "passed": true,
+      "seconds": 0.143
+    },
+    {
+      "suite": "settings-translations",
+      "passed": true,
+      "seconds": 0.082
+    },
+    {
+      "suite": "hvac-ui-1.2.7",
+      "passed": true,
+      "seconds": 1.182
+    },
+    {
+      "suite": "price-ui-1.0.6",
+      "passed": true,
+      "seconds": 0.118
+    },
+    {
+      "suite": "voltage-ui-0.7.16",
+      "passed": true,
+      "seconds": 0.11
+    },
+    {
+      "suite": "input-monitor-ui-1.1.14",
+      "passed": true,
+      "seconds": 0.11
+    },
+    {
+      "suite": "configured-flow-cards",
+      "passed": true,
+      "seconds": 1.887
+    },
+    {
+      "suite": "flow-slot-cards",
+      "passed": true,
+      "seconds": 1.512
+    },
+    {
+      "suite": "help-catalog",
+      "passed": true,
+      "seconds": 0.111
+    },
+    {
+      "suite": "widget",
+      "passed": true,
+      "seconds": 0.119
+    },
+    {
+      "suite": "widget-decision-1.2.14",
+      "passed": true,
+      "seconds": 0.298
+    },
+    {
+      "suite": "regressions-0.9.3",
+      "passed": true,
+      "seconds": 0.254
+    },
+    {
+      "suite": "app-control",
+      "passed": true,
+      "seconds": 1.151
+    },
+    {
+      "suite": "ev-widget-ui-1.2.4",
+      "passed": true,
+      "seconds": 0.308
+    },
+    {
+      "suite": "ev-widget-handler-audit-1.2.4",
+      "passed": true,
+      "seconds": 0.329
+    },
+    {
+      "suite": "ev-multiday-1.2.4",
+      "passed": true,
+      "seconds": 0.53
+    },
+    {
+      "suite": "ev-savings-flow-1.2.6",
+      "passed": true,
+      "seconds": 0.249
+    },
+    {
+      "suite": "cpu-coalescing-1.2.13",
+      "passed": true,
+      "seconds": 7.109
+    },
+    {
+      "suite": "hvac-coordination-1.2.15",
+      "passed": true,
+      "seconds": 0.688
+    },
+    {
+      "suite": "features-1.2.16",
+      "passed": true,
+      "seconds": 0.371
+    },
+    {
+      "suite": "import-avoidance-1.2.17",
+      "passed": true,
+      "seconds": 2.249
+    },
+    {
+      "suite": "localization-1.2.18",
+      "passed": true,
+      "seconds": 0.305
+    }
+  ],
+  "browserComparisons": 340,
+  "browserLanguages": [
+    "nl",
+    "en",
+    "fr",
+    "es",
+    "de"
+  ],
+  "browserWidths": [
+    360,
+    393,
+    768,
+    1280
+  ],
+  "browserTabs": 17,
+  "fullRegressionSuiteRun": false,
+  "skipped": "Independent battery/planning/EV/HVAC/COP/boiler algorithm suites; controller sources are byte-identical. Relevant app-control, CPU-coalescing, HVAC coordination, 1.2.16 and 1.2.17 checks were run.",
+  "homeyInstalledOrPublished": false,
+  "remainingRisks": [
+    "Host browser and mocked Homey bridge only; no physical Homey/mobile WebView verification.",
+    "No native-speaker review of every translated help paragraph."
+  ]
+}

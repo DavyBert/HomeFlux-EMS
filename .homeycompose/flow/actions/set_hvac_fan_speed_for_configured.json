@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC fan speed",
-    "nl": "Stel HVAC-ventilatorsnelheid in"
+    "nl": "Stel HVAC-ventilatorsnelheid in",
+    "fr": "Set HVAC vitesse du ventilateur",
+    "es": "Set HVAC velocidad de ventilador",
+    "de": "Set HVAC Lüfterdrehzahl"
   },
   "args": [
     {
@@ -9,11 +12,17 @@
       "type": "autocomplete",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "placeholder": {
         "en": "Select configured HVAC",
-        "nl": "Kies geconfigureerde HVAC"
+        "nl": "Kies geconfigureerde HVAC",
+        "fr": "Sélectionner configuré HVAC",
+        "es": "Seleccionado HVAC",
+        "de": "Wählen Sie konfiguriert HVAC"
       }
     },
     {
@@ -21,7 +30,10 @@
       "type": "number",
       "title": {
         "en": "Fan speed value",
-        "nl": "Ventilatorsnelheid waarde"
+        "nl": "Ventilatorsnelheid waarde",
+        "fr": "Valeur de la vitesse du ventilateur",
+        "es": "Valor de velocidad del ventilador",
+        "de": "Ventilatordrehzahlwert"
       },
       "min": 0,
       "max": 10000,
@@ -30,10 +42,16 @@
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] fan speed to [[speed]]",
-    "nl": "Stel [[hvac]]-ventilatorsnelheid in op [[speed]]"
+    "nl": "Stel [[hvac]]-ventilatorsnelheid in op [[speed]]",
+    "fr": "Set [[hvac]] vitesse du ventilateur à [[speed]]",
+    "es": "Set [[hvac]] velocidad de ventilador a [[speed]]",
+    "de": "[[hvac]] Lüfterdrehzahl auf [[speed]] einstellen"
   },
   "hint": {
     "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   }
 }

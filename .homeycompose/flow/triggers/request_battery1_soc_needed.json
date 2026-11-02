@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Request Battery 1 SoC is needed",
-    "nl": "SoC batterij 1 is nodig"
+    "nl": "SoC batterij 1 is nodig",
+    "fr": "La batterie 1 SoC est nécessaire",
+    "es": "Se necesita la batería 1 SoC",
+    "de": "Request Battery 1 SoC wird benötigt"
   },
   "titleFormatted": {
     "en": "Request Battery 1 SoC is needed",
-    "nl": "SoC batterij 1 is nodig"
+    "nl": "SoC batterij 1 is nodig",
+    "fr": "La batterie 1 SoC est nécessaire",
+    "es": "Se necesita la batería 1 SoC",
+    "de": "Request Battery 1 SoC wird benötigt"
   },
   "hint": {
     "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
-    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS.",
+    "fr": "Incendie toutes les 3 minutes et une fois à l'application commencer quand cette batterie est configurée. Envoyez son actuel SoC à HomeFlux EMS.",
+    "es": "Incendia cada 3 minutos y una vez en la aplicación comienza cuando esta batería está configurada. Envíe su actual SoC a HomeFlux EMS.",
+    "de": "Feuert alle 3 Minuten und einmal beim App-Start, wenn diese Batterie konfiguriert ist. Senden Sie seine aktuelle SoC an HomeFlux EMS."
   },
   "deprecated": true
 }

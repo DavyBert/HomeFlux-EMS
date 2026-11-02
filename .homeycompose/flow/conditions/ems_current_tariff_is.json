@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Current tariff is [[tariff]]",
-    "nl": "Huidig tarief is [[tariff]]"
+    "nl": "Huidig tarief is [[tariff]]",
+    "fr": "Le tarif actuel est [[tariff]]",
+    "es": "El tarifa actual es [[tariff]]",
+    "de": "Aktueller Tarif ist [[tariff]]"
   },
   "args": [
     {
@@ -9,12 +12,18 @@
       "type": "text",
       "title": {
         "en": "Tariff name",
-        "nl": "Tariefnaam"
+        "nl": "Tariefnaam",
+        "fr": "Dénomination tarifaire",
+        "es": "Nombre del tribunal",
+        "de": "Zolltarifbezeichnung"
       }
     }
   ],
   "titleFormatted": {
     "en": "Current tariff is [[tariff]]",
-    "nl": "Huidig tarief is [[tariff]]"
+    "nl": "Huidig tarief is [[tariff]]",
+    "fr": "Le tarif actuel est [[tariff]]",
+    "es": "El tarifa actual es [[tariff]]",
+    "de": "Aktueller Tarif ist [[tariff]]"
   }
 }

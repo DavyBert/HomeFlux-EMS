@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Battery group is [[state]]",
-    "nl": "Batterijgroep is [[state]]"
+    "nl": "Batterijgroep is [[state]]",
+    "fr": "Le groupe batterie est [[state]]",
+    "es": "Grupo de batería es [[state]]",
+    "de": "Batteriegruppe ist [[state]]"
   },
   "args": [
     {
@@ -9,28 +12,40 @@
       "type": "dropdown",
       "title": {
         "en": "Battery state",
-        "nl": "Batterijstatus"
+        "nl": "Batterijstatus",
+        "fr": "État de la batterie",
+        "es": "Estado de la batería",
+        "de": "Batteriezustand"
       },
       "values": [
         {
           "id": "charging",
           "title": {
             "en": "Charging",
-            "nl": "Laden"
+            "nl": "Laden",
+            "fr": "Recharge",
+            "es": "Cargando",
+            "de": "Laden"
           }
         },
         {
           "id": "idle",
           "title": {
             "en": "Idle",
-            "nl": "Rust"
+            "nl": "Rust",
+            "fr": "Au repos",
+            "es": "En reposo",
+            "de": "Ruhe"
           }
         },
         {
           "id": "discharging",
           "title": {
             "en": "Discharging",
-            "nl": "Ontladen"
+            "nl": "Ontladen",
+            "fr": "Décharge",
+            "es": "Desplazamiento",
+            "de": "Entladen"
           }
         }
       ]
@@ -38,6 +53,9 @@
   ],
   "titleFormatted": {
     "en": "Battery group is [[state]]",
-    "nl": "Batterijgroep is [[state]]"
+    "nl": "Batterijgroep is [[state]]",
+    "fr": "Le groupe batterie est [[state]]",
+    "es": "Grupo de batería es [[state]]",
+    "de": "Batteriegruppe ist [[state]]"
   }
 }

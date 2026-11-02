@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "PV power limit is updated",
-    "nl": "PV-vermogenslimiet is bijgewerkt"
+    "nl": "PV-vermogenslimiet is bijgewerkt",
+    "fr": "PV la limite de puissance est mise à jour",
+    "es": "Se actualiza el límite de potencia PV",
+    "de": "PV Power Limit wird aktualisiert"
   },
   "hint": {
     "en": "Use the percentage token to limit PV/inverter output. 100% is unrestricted; HomeFlux never commands below 10%.",
-    "nl": "Gebruik de percentage-tag om het PV-/omvormervermogen te begrenzen. 100% is onbeperkt; HomeFlux stuurt nooit lager dan 10%."
+    "nl": "Gebruik de percentage-tag om het PV-/omvormervermogen te begrenzen. 100% is onbeperkt; HomeFlux stuurt nooit lager dan 10%.",
+    "fr": "Utilisez le jeton de pourcentage pour limiter la sortie PV/inverter. 100% est illimité; HomeFlux ne commande jamais en dessous de 10%.",
+    "es": "Utilice la ficha porcentual para limitar la salida PV/inverter. 100% no está restringida; HomeFlux nunca comandos por debajo de 10%.",
+    "de": "Verwenden Sie den prozentualen Token, um PV / Inverter-Ausgang zu begrenzen. 100% ist uneingeschränkt; HomeFlux kommandiert niemals unter 10%."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "PV limit (%)",
-        "nl": "PV-limiet (%)"
+        "nl": "PV-limiet (%)",
+        "fr": "Limite de PV (%)",
+        "es": "Límite PV (%)",
+        "de": "PV Grenze (%)"
       },
       "example": 75
     },
@@ -22,7 +31,10 @@
       "type": "number",
       "title": {
         "en": "PV target power (W)",
-        "nl": "PV-doelvermogen (W)"
+        "nl": "PV-doelvermogen (W)",
+        "fr": "PV puissance cible (W)",
+        "es": "PV potencia de destino (W)",
+        "de": "PV Zielleistung (W)"
       },
       "example": 3750
     },
@@ -31,7 +43,10 @@
       "type": "number",
       "title": {
         "en": "PV curtailed power (W)",
-        "nl": "PV teruggeregeld (W)"
+        "nl": "PV teruggeregeld (W)",
+        "fr": "PV puissance réduite (W)",
+        "es": "PV potencia de reducción (W)",
+        "de": "PV eingeschränkte Leistung (W)"
       },
       "example": 1250
     },
@@ -40,7 +55,10 @@
       "type": "number",
       "title": {
         "en": "Minimum export buffer (W)",
-        "nl": "Minimum exportbuffer (W)"
+        "nl": "Minimum exportbuffer (W)",
+        "fr": "Coffre-fort minimal pour l'exportation (W)",
+        "es": "Búfer mínimo de exportación (W)",
+        "de": "Mindestausfuhrpuffer (W)"
       },
       "example": 50
     },
@@ -49,7 +67,10 @@
       "type": "number",
       "title": {
         "en": "Predicted grid after limit (W)",
-        "nl": "Verwacht net na begrenzing (W)"
+        "nl": "Verwacht net na begrenzing (W)",
+        "fr": "réseau prévue après la limite (W)",
+        "es": "Cuadrícula prescrita después del límite (W)",
+        "de": "Voraussichtliches Raster nach dem Grenzwert (W)"
       },
       "example": -50
     }

@@ -28,6 +28,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.18
+
+More compact settings on mobile and desktop, with tighter spacing, less nested padding and a smaller save bar. Added French, Spanish and German for settings, Flow cards, widgets, status messages, app-store descriptions and release notes.
+
+Compactere instellingen op mobiel en desktop, met minder tussenruimte, minder inspringing in geneste groepen en een kleinere opslagbalk. Frans, Spaans en Duits toegevoegd voor instellingen, Flow-kaarten, widgets, statusmeldingen, websitebeschrijvingen en release notes.
+
+Paramètres plus compacts sur mobile et ordinateur, avec des espacements réduits, des groupes moins indentés et une barre d’enregistrement plus petite. Ajout du français, de l’espagnol et de l’allemand pour les paramètres, les cartes Flow, les widgets, les messages d’état, les descriptions de l’application et les notes de version.
+
+Ajustes más compactos en móviles y ordenadores, con menos espacio entre elementos, menor sangría en los grupos y una barra de guardado más pequeña. Se añaden francés, español y alemán para los ajustes, las tarjetas Flow, los widgets, los mensajes de estado, las descripciones de la aplicación y las notas de versión.
+
+Kompaktere Einstellungen auf Mobilgeräten und am Desktop mit kleineren Abständen, weniger Einrückung in verschachtelten Gruppen und einer kleineren Speicherleiste. Französisch, Spanisch und Deutsch für Einstellungen, Flow-Karten, Widgets, Statusmeldungen, App-Beschreibungen und Versionshinweise hinzugefügt.
+
 ### 1.2.17
 
 Avoid all grid import now takes priority over battery saving and deferred charging while a future maximum-power charge plan is pending. During expensive dynamic intervals, waiting for a later charge block no longer prevents normal battery discharge; the explicit low-PV preference for expensive intervals remains effective.

@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set EV 1 status",
-    "nl": "Stel EV 1-status in"
+    "nl": "Stel EV 1-status in",
+    "fr": "Set EV 1 statut",
+    "es": "Establecer el estado EV 1",
+    "de": "Set EV 1 Status"
   },
   "hint": {
     "en": "Push EV 1 availability and actual charging current to HomeFlux. EV 1 SoC has its own Flow card.",
-    "nl": "Stuur EV 1-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 1-SoC heeft een aparte Flow-kaart."
+    "nl": "Stuur EV 1-beschikbaarheid en werkelijke laadstroom naar HomeFlux. EV 1-SoC heeft een aparte Flow-kaart.",
+    "fr": "Push EV 1 disponibilité et courant de charge réel à HomeFlux. EV 1 SoC possède sa propre carte Flow.",
+    "es": "Empujar EV 1 disponibilidad y corriente de carga real a HomeFlux. EV 1 SoC tiene su propia tarjeta Flow.",
+    "de": "Push EV 1 Verfügbarkeit und tatsächlicher Ladestrom auf HomeFlux. EV 1 SoC hat eine eigene Flow Karte."
   },
   "args": [
     {
@@ -13,21 +19,30 @@
       "type": "dropdown",
       "title": {
         "en": "EV 1 available",
-        "nl": "EV 1 beschikbaar/aangesloten"
+        "nl": "EV 1 beschikbaar/aangesloten",
+        "fr": "EV 1 disponible",
+        "es": "EV 1 disponible",
+        "de": "EV 1 verfügbar"
       },
       "values": [
         {
           "id": "yes",
           "title": {
             "en": "Yes",
-            "nl": "Ja"
+            "nl": "Ja",
+            "fr": "Oui",
+            "es": "Sí.",
+            "de": "Ja"
           }
         },
         {
           "id": "no",
           "title": {
             "en": "No",
-            "nl": "Nee"
+            "nl": "Nee",
+            "fr": "Numéro",
+            "es": "No.",
+            "de": "Nein"
           }
         }
       ]
@@ -37,7 +52,10 @@
       "type": "number",
       "title": {
         "en": "Actual charge current (A)",
-        "nl": "Actuele laadstroom (A)"
+        "nl": "Actuele laadstroom (A)",
+        "fr": "Charge réelle courante (A)",
+        "es": "Corriente de carga real (A)",
+        "de": "Ist-Ladestrom (A)"
       },
       "min": 0,
       "max": 64,
@@ -46,7 +64,10 @@
   ],
   "titleFormatted": {
     "en": "Set EV 1: [[connected]], [[charge_current]] A",
-    "nl": "Stel EV 1 in: [[connected]], [[charge_current]] A"
+    "nl": "Stel EV 1 in: [[connected]], [[charge_current]] A",
+    "fr": "Ensemble EV 1: [[connected]], [[charge_current]] A",
+    "es": "Set EV 1: [[connected]], [[charge_current]] A",
+    "de": "Reihe EV 1: [[connected]], [[charge_current]] A"
   },
   "deprecated": true
 }

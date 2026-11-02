@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Boiler warmed status is updated",
-    "nl": "Boiler opgewarmd-status is bijgewerkt"
+    "nl": "Boiler opgewarmd-status is bijgewerkt",
+    "fr": "L'état des chauffe-eau chaudes est mis à jour",
+    "es": "Estatus caliente de boiler se actualiza",
+    "de": "Boiler Warmed Status wird aktualisiert"
   },
   "hint": {
     "en": "The boolean token is Yes while HomeFlux still considers the boiler warmed after a completed heating cycle.",
-    "nl": "De ja/nee-tag is Ja zolang HomeFlux de boiler na een voltooide opwarmcyclus nog als opgewarmd beschouwt."
+    "nl": "De ja/nee-tag is Ja zolang HomeFlux de boiler na een voltooide opwarmcyclus nog als opgewarmd beschouwt.",
+    "fr": "Le jeton booléen est Oui tandis que HomeFlux considère toujours la chauffe-eau chauffée après un cycle de chauffage complet.",
+    "es": "El token booleano es Sí, mientras que HomeFlux todavía considera la caldera caliente después de un ciclo de calefacción completado.",
+    "de": "Das boolesche Zeichen ist Ja, während HomeFlux den nach einem abgeschlossenen Heizzyklus erwärmten Kessel immer noch als erwärmt betrachtet."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "boolean",
       "title": {
         "en": "Boiler warmed",
-        "nl": "Boiler opgewarmd"
+        "nl": "Boiler opgewarmd",
+        "fr": "Chauffe-eau chauffé",
+        "es": "Termo calentado",
+        "de": "Warmwasserspeicher aufgeheizt"
       },
       "example": true
     }

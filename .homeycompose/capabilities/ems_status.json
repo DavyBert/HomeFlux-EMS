@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "EMS status",
-    "nl": "EMS-status"
+    "nl": "EMS-status",
+    "fr": "EMS statut",
+    "es": "EMS estado",
+    "de": "EMS-Status"
   },
   "getable": true,
   "setable": false,

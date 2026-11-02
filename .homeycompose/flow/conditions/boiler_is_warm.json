@@ -1,10 +1,16 @@
 {
   "title": {
     "en": "Water heater is marked warm",
-    "nl": "Boiler is als opgewarmd gemarkeerd"
+    "nl": "Boiler is als opgewarmd gemarkeerd",
+    "fr": "Le chauffe-eau est marqué chaud",
+    "es": "Calentador de agua está marcado",
+    "de": "Warmwasserbereiter ist als warm gekennzeichnet"
   },
   "titleFormatted": {
     "en": "Water heater is marked warm",
-    "nl": "Boiler is als opgewarmd gemarkeerd"
+    "nl": "Boiler is als opgewarmd gemarkeerd",
+    "fr": "Le chauffe-eau est marqué chaud",
+    "es": "Calentador de agua está marcado",
+    "de": "Warmwasserbereiter ist als warm gekennzeichnet"
   }
 }

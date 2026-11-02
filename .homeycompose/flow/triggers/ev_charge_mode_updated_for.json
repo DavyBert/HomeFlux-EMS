@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "EV charge mode is updated",
-    "nl": "EV-laadmodus is bijgewerkt"
+    "nl": "EV-laadmodus is bijgewerkt",
+    "fr": "EV mode charge est mis à jour",
+    "es": "El modo de carga EV se actualiza",
+    "de": "EV Lademodus wird aktualisiert"
   },
   "hint": {
     "en": "For chargers that are controlled with modes instead of amperes. Map stop/smart/standard to the matching charger actions.",
-    "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties."
+    "nl": "Voor laadpalen die met modi in plaats van ampères worden gestuurd. Koppel stop/smart/standard aan de overeenkomstige laadpaalacties.",
+    "fr": "Pour les chargeurs qui sont commandés avec des modes au lieu d'ampères. Carte stop/smart/standard aux actions de chargeur correspondantes.",
+    "es": "Para los cargadores que se controlan con modos en lugar de amperios. Mapa stop/smart/standard a las acciones del cargador.",
+    "de": "Für Ladegeräte, die mit Modi anstelle von Ampere gesteuert werden. Karte Stopp / Smart / Standard zu den passenden Ladegerät Aktionen."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "string",
       "title": {
         "en": "Charge mode",
-        "nl": "Laadmodus"
+        "nl": "Laadmodus",
+        "fr": "Mode charge",
+        "es": "Modo de carga",
+        "de": "Lademodus"
       },
       "example": "smart"
     },
@@ -22,14 +31,20 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Slim laden toegestaan"
     }
   ],
   "titleFormatted": {
     "en": "[[ev]] charge mode is updated",
-    "nl": "[[ev]]-laadmodus is bijgewerkt"
+    "nl": "[[ev]]-laadmodus is bijgewerkt",
+    "fr": "[[ev]] mode charge est mis à jour",
+    "es": "El modo de carga [[ev]] se actualiza",
+    "de": "[[ev]] Lademodus wird aktualisiert"
   },
   "args": [
     {
@@ -37,35 +52,50 @@
       "type": "dropdown",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "EV 1",
-            "nl": "EV 1"
+            "nl": "EV 1",
+            "fr": "EV 1",
+            "es": "EV 1",
+            "de": "EV 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "EV 2",
-            "nl": "EV 2"
+            "nl": "EV 2",
+            "fr": "EV 2",
+            "es": "EV 2",
+            "de": "EV 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "EV 3",
-            "nl": "EV 3"
+            "nl": "EV 3",
+            "fr": "EV 3",
+            "es": "EV 3",
+            "de": "EV 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "EV 4",
-            "nl": "EV 4"
+            "nl": "EV 4",
+            "fr": "EV 4",
+            "es": "EV 4",
+            "de": "EV 4"
           }
         }
       ]

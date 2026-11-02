@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Read external prices JSON",
-    "nl": "Lees externe prijzen JSON"
+    "nl": "Lees externe prijzen JSON",
+    "fr": "Lire les prix extérieurs JSON",
+    "es": "Lea precios externos JSON",
+    "de": "Lesen Sie externe Preise JSON"
   },
   "titleFormatted": {
     "en": "Read [[source]] prices JSON [[curve]] for [[period]]",
-    "nl": "Lees [[source]] prijzen JSON [[curve]] voor [[period]]"
+    "nl": "Lees [[source]] prijzen JSON [[curve]] voor [[period]]",
+    "fr": "Lire les prix [[source]] JSON [[curve]] pour [[period]]",
+    "es": "Lea [[source]] precios JSON [[curve]] para [[period]]",
+    "de": "Lesen Sie [[source]] Preise JSON [[curve]] für [[period]]"
   },
   "hint": {
     "en": "Send a timestamped JSON curve or a numeric price array, up to 120 hours ahead. For numeric arrays select the same period as the provider; resolution follows the dynamic contract. Timestamped data ignores Period.",
-    "nl": "Stuur een JSON-prijscurve met tijdstempels of een getallenarray, tot 120 uur vooruit. Kies bij getallenarrays dezelfde periode als de provider; de resolutie volgt het dynamische contract. Bij tijdstempels wordt Periode genegeerd."
+    "nl": "Stuur een JSON-prijscurve met tijdstempels of een getallenarray, tot 120 uur vooruit. Kies bij getallenarrays dezelfde periode als de provider; de resolutie volgt het dynamische contract. Bij tijdstempels wordt Periode genegeerd.",
+    "fr": "Envoyez une courbe JSON horodatée ou un tableau de prix numérique, jusqu'à 120 heures à l'avance. Pour les tableaux numériques, sélectionnez la même période que le fournisseur; la résolution suit le contrat dynamique. Les données horodatées ignorent la période.",
+    "es": "Envíe una curva JSON atemporal o una matriz de precios numéricos, hasta 120 horas por delante. Para los arrays numéricos seleccione el mismo período que el proveedor; resolución sigue el contrato dinámico. Los datos de Timestamped ignoran el Período.",
+    "de": "Senden Sie eine zeitgestempelte JSON-Kurve oder ein numerisches Preisfeld bis zu 120 Stunden im Voraus. Wählen Sie für numerische Arrays den gleichen Zeitraum wie der Anbieter; die Auflösung folgt dem dynamischen Vertrag. Timestamped Daten ignorieren Periode."
   },
   "args": [
     {
@@ -17,21 +26,30 @@
       "type": "dropdown",
       "title": {
         "en": "Price source",
-        "nl": "Prijsbron"
+        "nl": "Prijsbron",
+        "fr": "Source des prix",
+        "es": "Fuente de precio",
+        "de": "Preisquelle"
       },
       "values": [
         {
           "id": "external",
           "label": {
             "en": "External Price 1",
-            "nl": "External Price 1"
+            "nl": "External Price 1",
+            "fr": "Prix extérieur 1",
+            "es": "Precio externo 1",
+            "de": "Externer Preis 1"
           }
         },
         {
           "id": "external2",
           "label": {
             "en": "External Price 2",
-            "nl": "External Price 2"
+            "nl": "External Price 2",
+            "fr": "Prix extérieur 2",
+            "es": "Precio externo 2",
+            "de": "Externer Preis 2"
           }
         }
       ]
@@ -41,7 +59,10 @@
       "type": "text",
       "title": {
         "en": "Prices JSON",
-        "nl": "Prijzen JSON"
+        "nl": "Prijzen JSON",
+        "fr": "Prix JSON",
+        "es": "Precios JSON",
+        "de": "Preise JSON"
       }
     },
     {
@@ -49,28 +70,40 @@
       "type": "dropdown",
       "title": {
         "en": "Period",
-        "nl": "Periode"
+        "nl": "Periode",
+        "fr": "Période",
+        "es": "Período",
+        "de": "Zeitraum"
       },
       "values": [
         {
           "id": "next_hours",
           "label": {
             "en": "Next hours",
-            "nl": "Komende uren"
+            "nl": "Komende uren",
+            "fr": "Prochaines heures",
+            "es": "Siguientes horarios",
+            "de": "Nächste Stunden"
           }
         },
         {
           "id": "this_day",
           "label": {
             "en": "This day",
-            "nl": "Deze dag"
+            "nl": "Deze dag",
+            "fr": "Aujourd'hui",
+            "es": "Este día",
+            "de": "Dieser Tag"
           }
         },
         {
           "id": "tomorrow",
           "label": {
             "en": "Tomorrow",
-            "nl": "Morgen"
+            "nl": "Morgen",
+            "fr": "Demain",
+            "es": "Mañana",
+            "de": "Morgen"
           }
         }
       ]

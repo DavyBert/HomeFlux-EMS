@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery 3: charge power is updated",
-    "nl": "Batterij 3: laadvermogen is bijgewerkt"
+    "nl": "Batterij 3: laadvermogen is bijgewerkt",
+    "fr": "Batterie 3: la puissance de charge est mise à jour",
+    "es": "Batería 3: se actualiza la potencia de carga",
+    "de": "Batterie 3: Ladeleistung wird aktualisiert"
   },
   "hint": {
     "en": "Use the power token for battery 3 charge power. After a charge-mode switch this fires 1 second later.",
-    "nl": "Gebruik de power-tag voor het laadvermogen van batterij 3. Na een wissel naar laadmodus start deze kaart 1 seconde later."
+    "nl": "Gebruik de power-tag voor het laadvermogen van batterij 3. Na een wissel naar laadmodus start deze kaart 1 seconde later.",
+    "fr": "Utilisez le jeton d'alimentation pour la batterie 3 puissance de charge. Après un interrupteur en mode charge ce feu 1 seconde plus tard.",
+    "es": "Utilice el token de potencia para la batería 3 potencia de carga. Después de un interruptor de carga este fuego 1 segundo más tarde.",
+    "de": "Verwenden Sie das Power-Token für die Batterie 3 Ladeleistung. Nach einem Lademodusschalter feuert dieser 1 Sekunde später."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Charge power (W)",
-        "nl": "Laadvermogen (W)"
+        "nl": "Laadvermogen (W)",
+        "fr": "Puissance de charge (W)",
+        "es": "Potencia de carga (W)",
+        "de": "Ladeleistung (W)"
       },
       "example": 1000
     }

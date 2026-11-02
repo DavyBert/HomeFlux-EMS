@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set EV 4 SoC",
-    "nl": "Stel EV 4-SoC in"
+    "nl": "Stel EV 4-SoC in",
+    "fr": "Ensemble EV 4 SoC",
+    "es": "Set EV 4 SoC",
+    "de": "Set EV 4 SoC"
   },
   "hint": {
     "en": "Push the current EV 4 state of charge to HomeFlux. Only used when EV 4 SoC support is enabled in settings.",
-    "nl": "Stuur de actuele EV 4-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 4-SoC in de instellingen is ingeschakeld."
+    "nl": "Stuur de actuele EV 4-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer EV 4-SoC in de instellingen is ingeschakeld.",
+    "fr": "Poussez l'état de charge actuel EV 4 à HomeFlux. Utilisé uniquement lorsque le support EV 4 SoC est activé dans les réglages.",
+    "es": "Empuje el estado actual EV 4 a HomeFlux. Sólo se utiliza cuando el soporte EV 4 SoC está habilitado en la configuración.",
+    "de": "Schieben Sie den aktuellen Ladezustand EV 4 auf HomeFlux. Wird nur verwendet, wenn die EV 4 SoC Unterstützung in den Einstellungen aktiviert ist."
   },
   "args": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "EV 4 SoC (%)",
-        "nl": "EV 4 SoC (%)"
+        "nl": "EV 4 SoC (%)",
+        "fr": "EV 4 SoC (%)",
+        "es": "EV 4 SoC (%)",
+        "de": "EV 4 SoC (%)"
       },
       "min": 0,
       "max": 100,
@@ -22,7 +31,10 @@
   ],
   "titleFormatted": {
     "en": "Set EV 4 SoC to [[soc]]%",
-    "nl": "Stel EV 4-SoC in op [[soc]]%"
+    "nl": "Stel EV 4-SoC in op [[soc]]%",
+    "fr": "Ensemble EV 4 SoC à [[soc]]%",
+    "es": "Set EV 4 SoC a [[soc]]%",
+    "de": "Set EV 4 SoC auf [[soc]]%"
   },
   "deprecated": true
 }

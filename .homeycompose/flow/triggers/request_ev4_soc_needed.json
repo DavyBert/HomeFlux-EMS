@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "EV 4 SoC is needed",
-    "nl": "EV 4-SoC is nodig"
+    "nl": "EV 4-SoC is nodig",
+    "fr": "EV 4 SoC est nécessaire",
+    "es": "Se necesita EV 4 SoC",
+    "de": "EV 4 SoC wird benötigt"
   },
   "titleFormatted": {
     "en": "EV 4 SoC is needed",
-    "nl": "EV 4-SoC is nodig"
+    "nl": "EV 4-SoC is nodig",
+    "fr": "EV 4 SoC est nécessaire",
+    "es": "Se necesita EV 4 SoC",
+    "de": "EV 4 SoC wird benötigt"
   },
   "hint": {
     "en": "Fires every 3 minutes and once after enabling EV 4 SoC support. It stops completely when EV 4 SoC support is disabled.",
-    "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 4-SoC. Deze opvraag stopt volledig wanneer EV 4-SoC wordt uitgeschakeld."
+    "nl": "Start elke 3 minuten en één keer na het inschakelen van EV 4-SoC. Deze opvraag stopt volledig wanneer EV 4-SoC wordt uitgeschakeld.",
+    "fr": "Incendie toutes les 3 minutes et une fois après avoir permis EV 4 SoC support. Il s'arrête complètement lorsque le support EV 4 SoC est désactivé.",
+    "es": "Dispara cada 3 minutos y una vez después de habilitar el soporte EV 4 SoC. Se detiene completamente cuando el soporte EV 4 SoC está deshabilitado.",
+    "de": "Feuert alle 3 Minuten und einmal nach Aktivierung EV 4 SoC Unterstützung. Es stoppt vollständig, wenn EV 4 SoC Unterstützung deaktiviert ist."
   },
   "deprecated": true
 }

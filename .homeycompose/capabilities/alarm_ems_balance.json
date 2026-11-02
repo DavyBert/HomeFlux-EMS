@@ -3,18 +3,27 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Battery Balance fault",
-    "nl": "Battery Balance fout"
+    "nl": "Battery Balance fout",
+    "fr": "Défaut de balance de la batterie",
+    "es": "Fallo de equilibrio de batería",
+    "de": "Fehler bei der Batteriebilanz"
   },
   "getable": true,
   "setable": false,
   "insights": false,
   "insightsTitleTrue": {
     "en": "Battery Balance fault detected",
-    "nl": "Battery Balance fout gedetecteerd"
+    "nl": "Battery Balance fout gedetecteerd",
+    "fr": "Défaut de balance de la batterie détecté",
+    "es": "Fallo de equilibrio de batería detectado",
+    "de": "Fehler bei der Batteriebilanz erkannt"
   },
   "insightsTitleFalse": {
     "en": "Battery Balance is OK",
-    "nl": "Battery Balance is OK"
+    "nl": "Battery Balance is OK",
+    "fr": "Balance de la batterie est OK",
+    "es": "Saldo de batería está bien",
+    "de": "Battery Balance ist in Ordnung"
   },
   "icon": "/assets/capabilities/balance.svg"
 }

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC room temperature",
-    "nl": "Stel HVAC ruimtetemperatuur in"
+    "nl": "Stel HVAC ruimtetemperatuur in",
+    "fr": "Réglage HVAC température ambiante",
+    "es": "Set HVAC temperatura ambiente",
+    "de": "Einstellen HVAC Raumtemperatur"
   },
   "args": [
     {
@@ -9,35 +12,50 @@
       "type": "dropdown",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "HVAC 1",
-            "nl": "HVAC 1"
+            "nl": "HVAC 1",
+            "fr": "HVAC 1",
+            "es": "HVAC 1",
+            "de": "HVAC 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "HVAC 2",
-            "nl": "HVAC 2"
+            "nl": "HVAC 2",
+            "fr": "HVAC 2",
+            "es": "HVAC 2",
+            "de": "HVAC 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "HVAC 3",
-            "nl": "HVAC 3"
+            "nl": "HVAC 3",
+            "fr": "HVAC 3",
+            "es": "HVAC 3",
+            "de": "HVAC 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "HVAC 4",
-            "nl": "HVAC 4"
+            "nl": "HVAC 4",
+            "fr": "HVAC 4",
+            "es": "HVAC 4",
+            "de": "HVAC 4"
           }
         }
       ]
@@ -47,7 +65,10 @@
       "type": "number",
       "title": {
         "en": "Room temperature (C)",
-        "nl": "Ruimtetemperatuur (C)"
+        "nl": "Ruimtetemperatuur (C)",
+        "fr": "Température ambiante (C)",
+        "es": "Temperatura ambiente (C)",
+        "de": "Raumtemperatur (C)"
       },
       "min": -20,
       "max": 60,
@@ -56,7 +77,10 @@
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] room temperature to [[temperature]] C",
-    "nl": "Stel [[hvac]] ruimtetemperatuur in op [[temperature]] C"
+    "nl": "Stel [[hvac]] ruimtetemperatuur in op [[temperature]] C",
+    "fr": "Réglage [[hvac]] température ambiante à [[temperature]] C",
+    "es": "Set [[hvac]] temperatura ambiente a [[temperature]] C",
+    "de": "[[hvac]] Raumtemperatur auf [[temperature]] C einstellen"
   },
   "deprecated": true
 }

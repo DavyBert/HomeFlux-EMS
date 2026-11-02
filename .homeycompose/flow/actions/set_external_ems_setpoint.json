@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Report external EMS battery power",
-    "nl": "Rapporteer batterijvermogen externe EMS"
+    "nl": "Rapporteer batterijvermogen externe EMS",
+    "fr": "Rapport de puissance de batterie externe EMS",
+    "es": "Reporte de batería externa EMS",
+    "de": "Melden Sie externe EMS Batterieleistung"
   },
   "hint": {
     "en": "Report the actual battery power used by the external EMS back to HomeFlux while Hybrid EMS is delegated. Positive = discharge, negative = charge.",
-    "nl": "Rapporteer tijdens Hybrid EMS het werkelijk gebruikte batterijvermogen van de externe EMS aan HomeFlux. Positief = ontladen, negatief = laden."
+    "nl": "Rapporteer tijdens Hybrid EMS het werkelijk gebruikte batterijvermogen van de externe EMS aan HomeFlux. Positief = ontladen, negatief = laden.",
+    "fr": "Signaler la puissance réelle de la batterie utilisée par le EMS externe de retour à HomeFlux alors que Hybrid EMS est délégué. Positif = décharge, négatif = charge.",
+    "es": "Informar la potencia de la batería real utilizada por el exterior EMS de vuelta a HomeFlux, mientras que se delega Hybrid EMS. Positivo = descarga, negativo = cargo.",
+    "de": "Melden Sie die tatsächliche Batterieleistung, die vom externen EMS verwendet wird, zurück zu HomeFlux, während Hybrid EMS delegiert ist. Positiv = Entladung, negativ = Ladung."
   },
   "args": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "External EMS battery power (W)",
-        "nl": "Batterijvermogen externe EMS (W)"
+        "nl": "Batterijvermogen externe EMS (W)",
+        "fr": "Puissance externe de la batterie EMS (W)",
+        "es": "Potencia externa de la batería EMS (W)",
+        "de": "Externe EMS Batterieleistung (W)"
       },
       "min": -50000,
       "max": 50000,
@@ -22,6 +31,9 @@
   ],
   "titleFormatted": {
     "en": "Report external EMS battery power: [[power]] W",
-    "nl": "Rapporteer batterijvermogen externe EMS: [[power]] W"
+    "nl": "Rapporteer batterijvermogen externe EMS: [[power]] W",
+    "fr": "Rapport externe EMS puissance de la batterie: [[power]] W",
+    "es": "Reporte externo EMS batería potencia: [[power]] W",
+    "de": "Melden Sie externe EMS Batterieleistung: [[power]] W"
   }
 }

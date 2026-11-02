@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC automatic control",
-    "nl": "Stel HVAC automatische sturing in"
+    "nl": "Stel HVAC automatische sturing in",
+    "fr": "Set HVAC commande automatique",
+    "es": "Juego de control automático HVAC",
+    "de": "Set HVAC Automatische Steuerung"
   },
   "args": [
     {
@@ -9,35 +12,50 @@
       "type": "dropdown",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "HVAC 1",
-            "nl": "HVAC 1"
+            "nl": "HVAC 1",
+            "fr": "HVAC 1",
+            "es": "HVAC 1",
+            "de": "HVAC 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "HVAC 2",
-            "nl": "HVAC 2"
+            "nl": "HVAC 2",
+            "fr": "HVAC 2",
+            "es": "HVAC 2",
+            "de": "HVAC 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "HVAC 3",
-            "nl": "HVAC 3"
+            "nl": "HVAC 3",
+            "fr": "HVAC 3",
+            "es": "HVAC 3",
+            "de": "HVAC 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "HVAC 4",
-            "nl": "HVAC 4"
+            "nl": "HVAC 4",
+            "fr": "HVAC 4",
+            "es": "HVAC 4",
+            "de": "HVAC 4"
           }
         }
       ]
@@ -47,21 +65,30 @@
       "type": "dropdown",
       "title": {
         "en": "Automatic control",
-        "nl": "Automatische sturing"
+        "nl": "Automatische sturing",
+        "fr": "Contrôle automatique",
+        "es": "Control automático",
+        "de": "Automatische Steuerung"
       },
       "values": [
         {
           "id": "yes",
           "title": {
             "en": "Yes",
-            "nl": "Ja"
+            "nl": "Ja",
+            "fr": "Oui",
+            "es": "Sí.",
+            "de": "Ja"
           }
         },
         {
           "id": "no",
           "title": {
             "en": "No",
-            "nl": "Nee"
+            "nl": "Nee",
+            "fr": "Numéro",
+            "es": "No.",
+            "de": "Nein"
           }
         }
       ]
@@ -69,7 +96,10 @@
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] automatic control to [[enabled]]",
-    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]"
+    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]",
+    "fr": "Set [[hvac]] commande automatique à [[enabled]]",
+    "es": "Establecer el control automático [[hvac]] a [[enabled]]",
+    "de": "Setzen Sie [[hvac]] automatische Steuerung auf [[enabled]]"
   },
   "deprecated": true
 }

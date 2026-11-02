@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "EV status",
-    "nl": "EV-status"
+    "nl": "EV-status",
+    "fr": "EV statut",
+    "es": "EV estado",
+    "de": "EV-Status"
   },
   "getable": true,
   "setable": false,

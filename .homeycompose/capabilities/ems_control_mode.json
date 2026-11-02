@@ -3,7 +3,10 @@
   "uiComponent": "picker",
   "title": {
     "en": "EMS mode",
-    "nl": "EMS-modus"
+    "nl": "EMS-modus",
+    "fr": "Mode EMS",
+    "es": "Modo EMS",
+    "de": "EMS-Modus"
   },
   "getable": true,
   "setable": true,
@@ -12,42 +15,60 @@
       "id": "auto",
       "title": {
         "en": "Automatic",
-        "nl": "Automatisch"
+        "nl": "Automatisch",
+        "fr": "Automatique",
+        "es": "Automático",
+        "de": "Automatisch"
       }
     },
     {
       "id": "self_consumption",
       "title": {
         "en": "Self consumption",
-        "nl": "Zelfconsumptie"
+        "nl": "Zelfconsumptie",
+        "fr": "Autoconsommation",
+        "es": "Consumo por cuenta propia",
+        "de": "Eigenverbrauch"
       }
     },
     {
       "id": "solar_capture",
       "title": {
         "en": "Battery save",
-        "nl": "Batterij sparen"
+        "nl": "Batterij sparen",
+        "fr": "Sauver la batterie",
+        "es": "Ahorro de batería",
+        "de": "Batteriesparen"
       }
     },
     {
       "id": "avoid_import",
       "title": {
         "en": "Avoid import",
-        "nl": "Net vermijden"
+        "nl": "Net vermijden",
+        "fr": "Éviter l'importation",
+        "es": "Evitar la importación",
+        "de": "Import vermeiden"
       }
     },
     {
       "id": "manual_charge",
       "title": {
         "en": "Forced charge",
-        "nl": "Geforceerd laden"
+        "nl": "Geforceerd laden",
+        "fr": "Charge forcée",
+        "es": "Carga forzada",
+        "de": "erzwungene Ladung"
       }
     },
     {
       "id": "standby",
       "title": {
         "en": "Standby",
-        "nl": "Stand-by"
+        "nl": "Stand-by",
+        "fr": "Veille",
+        "es": "Espera",
+        "de": "Standby"
       }
     }
   ],

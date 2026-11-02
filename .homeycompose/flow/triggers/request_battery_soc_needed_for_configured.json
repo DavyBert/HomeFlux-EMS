@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Request Battery SoC is needed",
-    "nl": "SoC Batterij is nodig"
+    "nl": "SoC Batterij is nodig",
+    "fr": "Demande Batterie SoC est nécessaire",
+    "es": "Se necesita la batería SoC",
+    "de": "Request Battery SoC wird benötigt"
   },
   "titleFormatted": {
     "en": "Request [[battery]] SoC is needed",
-    "nl": "SoC [[battery]] is nodig"
+    "nl": "SoC [[battery]] is nodig",
+    "fr": "La demande [[battery]] SoC est nécessaire",
+    "es": "Se necesita la solicitud [[battery]] SoC",
+    "de": "Anfrage [[battery]] SoC erforderlich"
   },
   "hint": {
     "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS. Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Incendie toutes les 3 minutes et une fois à l'application commencer quand cette batterie est configurée. Envoyez son actuel SoC à HomeFlux EMS. Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Incendia cada 3 minutos y una vez en la aplicación comienza cuando esta batería está configurada. Envíe su actual SoC a HomeFlux EMS. Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Feuert alle 3 Minuten und einmal beim App-Start, wenn diese Batterie konfiguriert ist. Senden Sie seine aktuelle SoC an HomeFlux EMS. Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   },
   "args": [
     {
@@ -17,11 +26,17 @@
       "type": "autocomplete",
       "title": {
         "en": "Battery",
-        "nl": "Batterij"
+        "nl": "Batterij",
+        "fr": "Batterie",
+        "es": "Batería",
+        "de": "Batterie"
       },
       "placeholder": {
         "en": "Select configured battery",
-        "nl": "Kies geconfigureerde batterij"
+        "nl": "Kies geconfigureerde batterij",
+        "fr": "Sélectionnez la batterie configurée",
+        "es": "Batería configurada",
+        "de": "Konfigurierte Batterie auswählen"
       }
     }
   ]

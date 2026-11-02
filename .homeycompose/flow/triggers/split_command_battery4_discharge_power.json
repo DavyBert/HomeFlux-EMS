@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery 4: discharge power is updated",
-    "nl": "Batterij 4: ontlaadvermogen is bijgewerkt"
+    "nl": "Batterij 4: ontlaadvermogen is bijgewerkt",
+    "fr": "Batterie 4: la puissance de décharge est mise à jour",
+    "es": "Batería 4: se actualiza la potencia de descarga",
+    "de": "Batterie 4: Entladeleistung wird aktualisiert"
   },
   "hint": {
     "en": "Use the power token for battery 4 discharge power. After a discharge-mode switch this fires 1 second later.",
-    "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 4. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later."
+    "nl": "Gebruik de power-tag voor het ontlaadvermogen van batterij 4. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later.",
+    "fr": "Utilisez le jeton de puissance pour la batterie 4 puissance de décharge. Après un interrupteur en mode décharge, il allume 1 seconde plus tard.",
+    "es": "Utilice el token de potencia para la batería 4 potencia de descarga. Después de un interruptor de movimiento de descarga este fuego 1 segundo más tarde.",
+    "de": "Verwenden Sie das Power-Token für die Batterie 4 Entladeleistung. Nach einem Entladeschalter feuert dieser 1 Sekunde später."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Discharge power (W)",
-        "nl": "Ontlaadvermogen (W)"
+        "nl": "Ontlaadvermogen (W)",
+        "fr": "Puissance de décharge (W)",
+        "es": "Potencia de descarga (W)",
+        "de": "Entladeleistung (W)"
       },
       "example": 1000
     }

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "EMS action is [[action]]",
-    "nl": "EMS-actie is [[action]]"
+    "nl": "EMS-actie is [[action]]",
+    "fr": "EMS action est [[action]]",
+    "es": "EMS acción es [[action]]",
+    "de": "EMS Aktion ist [[action]]"
   },
   "args": [
     {
@@ -9,56 +12,80 @@
       "type": "dropdown",
       "title": {
         "en": "Action",
-        "nl": "Actie"
+        "nl": "Actie",
+        "fr": "Décision",
+        "es": "Medida",
+        "de": "Aktion"
       },
       "values": [
         {
           "id": "idle",
           "title": {
             "en": "Idle / no action",
-            "nl": "Geen actie"
+            "nl": "Geen actie",
+            "fr": "Idle / pas d'action",
+            "es": "Idle / no action",
+            "de": "Leerlauf/keine Aktion"
           }
         },
         {
           "id": "pv_charge",
           "title": {
             "en": "Charging from PV",
-            "nl": "Laden uit PV"
+            "nl": "Laden uit PV",
+            "fr": "Charge à partir de PV",
+            "es": "Carga de PV",
+            "de": "Aufladung ab PV"
           }
         },
         {
           "id": "grid_charge",
           "title": {
             "en": "Charging from grid",
-            "nl": "Laden uit net"
+            "nl": "Laden uit net",
+            "fr": "Recharge sur réseau",
+            "es": "Carga desde la red",
+            "de": "Netzladen"
           }
         },
         {
           "id": "grid_and_pv_charge",
           "title": {
             "en": "Charging from grid + PV",
-            "nl": "Laden uit net + PV"
+            "nl": "Laden uit net + PV",
+            "fr": "Chargement du réseau + PV",
+            "es": "Carga de cuadrícula + PV",
+            "de": "Gebühren aus dem Netz + PV"
           }
         },
         {
           "id": "discharge",
           "title": {
             "en": "Discharging",
-            "nl": "Ontladen"
+            "nl": "Ontladen",
+            "fr": "Décharge",
+            "es": "Desplazamiento",
+            "de": "Entladen"
           }
         },
         {
           "id": "avoid_grid_import",
           "title": {
             "en": "Avoiding grid import",
-            "nl": "Netimport vermijden"
+            "nl": "Netimport vermijden",
+            "fr": "Prélèvement réseau évité",
+            "es": "Evitando consumo de la red",
+            "de": "Netzbezug vermeiden"
           }
         },
         {
           "id": "peak_shave",
           "title": {
             "en": "Peak Guard intervention",
-            "nl": "Peak Guard ingreep"
+            "nl": "Peak Guard ingreep",
+            "fr": "Intervention de Peak Guard",
+            "es": "Intervención de Peak Guard",
+            "de": "Eingriff durch Peak Guard"
           }
         }
       ]
@@ -66,6 +93,9 @@
   ],
   "titleFormatted": {
     "en": "EMS action is [[action]]",
-    "nl": "EMS-actie is [[action]]"
+    "nl": "EMS-actie is [[action]]",
+    "fr": "EMS action est [[action]]",
+    "es": "EMS acción es [[action]]",
+    "de": "EMS Aktion ist [[action]]"
   }
 }

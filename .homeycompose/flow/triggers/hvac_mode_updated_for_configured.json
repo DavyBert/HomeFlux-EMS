@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "HVAC mode command is updated",
-    "nl": "HVAC-modusopdracht is bijgewerkt"
+    "nl": "HVAC-modusopdracht is bijgewerkt",
+    "fr": "La commande en mode HVAC est mise à jour",
+    "es": "El comando modo HVAC se actualiza",
+    "de": "HVAC mode command wird aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "string",
       "title": {
         "en": "Mode",
-        "nl": "Modus"
+        "nl": "Modus",
+        "fr": "Mode",
+        "es": "Modo",
+        "de": "Modus"
       },
       "example": "cool"
     },
@@ -18,14 +24,20 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Koelen met PV-overschot"
     }
   ],
   "titleFormatted": {
     "en": "[[hvac]] mode command is updated",
-    "nl": "[[hvac]]-modusopdracht is bijgewerkt"
+    "nl": "[[hvac]]-modusopdracht is bijgewerkt",
+    "fr": "La commande en mode [[hvac]] est mise à jour",
+    "es": "El comando modo [[hvac]] se actualiza",
+    "de": "[[hvac]] mode command wird aktualisiert"
   },
   "args": [
     {
@@ -33,16 +45,25 @@
       "type": "autocomplete",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "placeholder": {
         "en": "Select configured HVAC",
-        "nl": "Kies geconfigureerde HVAC"
+        "nl": "Kies geconfigureerde HVAC",
+        "fr": "Sélectionner configuré HVAC",
+        "es": "Seleccionado HVAC",
+        "de": "Wählen Sie konfiguriert HVAC"
       }
     }
   ],
   "hint": {
     "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   }
 }

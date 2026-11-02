@@ -1,14 +1,23 @@
 {
   "title": {
     "en": "Request PV power is needed",
-    "nl": "PV-vermogen is nodig"
+    "nl": "PV-vermogen is nodig",
+    "fr": "Demande PV puissance est nécessaire",
+    "es": "Se necesita la energía PV",
+    "de": "Request PV Power wird benötigt"
   },
   "titleFormatted": {
     "en": "Request PV power is needed",
-    "nl": "PV-vermogen is nodig"
+    "nl": "PV-vermogen is nodig",
+    "fr": "Demande PV puissance est nécessaire",
+    "es": "Se necesita la energía PV",
+    "de": "Request PV Power wird benötigt"
   },
   "hint": {
     "en": "Fires every 15 seconds and once at app start. Use it to send the latest PV power to HomeFlux EMS.",
-    "nl": "Start elke 15 seconden en één keer bij appstart. Gebruik deze kaart om het actuele PV-vermogen naar HomeFlux EMS te sturen."
+    "nl": "Start elke 15 seconden en één keer bij appstart. Gebruik deze kaart om het actuele PV-vermogen naar HomeFlux EMS te sturen.",
+    "fr": "Feu toutes les 15 secondes et une fois au début de l'application. Utilisez-le pour envoyer la dernière puissance PV à HomeFlux EMS.",
+    "es": "Dispara cada 15 segundos y una vez en el inicio de la aplicación. Úsalo para enviar la última potencia PV a HomeFlux EMS.",
+    "de": "Feuert alle 15 Sekunden und einmal beim App-Start. Verwenden Sie es, um die neueste PV-Power an HomeFlux EMS zu senden."
   }
 }

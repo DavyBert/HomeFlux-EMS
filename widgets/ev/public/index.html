@@ -14,7 +14,7 @@ main{padding:18px}button{font:inherit;border:1px solid var(--line);background:va
 'use strict';
 let H, prefs, payload, selected, section='status', period='day', controller, confirmTimer, active=true, generation=0, inFlight=null, feedback='', error=false, pointer=null,lastHeight=0,storageKey='';
 let manualDeadline={};
-const language=()=>t('language')==='nl'?'nl':'en';
+const language=()=>{const code=t('language').toLowerCase().split(/[-_]/)[0];return ['nl','en','fr','es','de'].includes(code)?code:'en';};
 const deadlineText=p=>p?.deadlineLabel?.[language()]||'';
 const host=document.getElementById('app');
 const t=key=>H.__(`evWidget.${key}`), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

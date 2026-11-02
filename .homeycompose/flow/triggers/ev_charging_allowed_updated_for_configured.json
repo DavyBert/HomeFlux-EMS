@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "EV charging permission is updated",
-    "nl": "EV laden toegestaan is bijgewerkt"
+    "nl": "EV laden toegestaan is bijgewerkt",
+    "fr": "EV permission de chargement est mis à jour",
+    "es": "EV permiso de carga se actualiza",
+    "de": "EV Ladeberechtigung aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "string",
       "title": {
         "en": "Charging allowed",
-        "nl": "Laden toegestaan"
+        "nl": "Laden toegestaan",
+        "fr": "Charge autorisée",
+        "es": "Carga permitida",
+        "de": "Gebühren erlaubt"
       },
       "example": "Ja"
     },
@@ -18,7 +24,10 @@
       "type": "number",
       "title": {
         "en": "Allowed (1/0)",
-        "nl": "Toegestaan (1/0)"
+        "nl": "Toegestaan (1/0)",
+        "fr": "Autorisés (1/0)",
+        "es": "(1/0)",
+        "de": "Erlaubt (1/0)"
       },
       "example": 1
     },
@@ -27,14 +36,20 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Laden met PV-overschot"
     }
   ],
   "titleFormatted": {
     "en": "[[ev]] charging permission is updated",
-    "nl": "[[ev]] laden toegestaan is bijgewerkt"
+    "nl": "[[ev]] laden toegestaan is bijgewerkt",
+    "fr": "[[ev]] permission de chargement est mis à jour",
+    "es": "[[ev]] permiso de carga se actualiza",
+    "de": "[[ev]] Ladeberechtigung aktualisiert"
   },
   "args": [
     {
@@ -42,16 +57,25 @@
       "type": "autocomplete",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "placeholder": {
         "en": "Select configured EV",
-        "nl": "Kies geconfigureerde EV"
+        "nl": "Kies geconfigureerde EV",
+        "fr": "Sélectionner configuré EV",
+        "es": "Seleccionado EV",
+        "de": "Wählen Sie konfiguriert EV"
       }
     }
   ],
   "hint": {
     "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   }
 }

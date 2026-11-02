@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Override EV 1 mode for one charging session",
-    "nl": "Override EV 1-modus voor één laadbeurt"
+    "nl": "Override EV 1-modus voor één laadbeurt",
+    "fr": "Mode Override EV 1 pour une session de recharge",
+    "es": "Override EV 1 modo para una sesión de carga",
+    "de": "Überschreiben des EV 1-Modus für eine Ladesitzung"
   },
   "hint": {
     "en": "Temporarily use the selected EV 1 operating mode for one connection session. If the EV 1 is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured EV 1 mode is never overwritten.",
-    "nl": "Gebruik tijdelijk de gekozen EV 1-werkingsmodus voor één verbindingssessie. Is de EV 1 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 1-modus wordt nooit overschreven."
+    "nl": "Gebruik tijdelijk de gekozen EV 1-werkingsmodus voor één verbindingssessie. Is de EV 1 al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde EV 1-modus wordt nooit overschreven.",
+    "fr": "Utilisez temporairement le mode d'exploitation EV 1 sélectionné pour une session de connexion. Si le EV 1 est déjà connecté, le rebord se termine quand il se déconnecte. S'il est déconnecté, la redéfinition attend le prochain cycle de connexion → déconnecté. Le mode EV 1 configuré n'est jamais écrasé.",
+    "es": "Utilizar temporalmente el modo operativo EV 1 seleccionado para una sesión de conexión. Si el EV 1 ya está conectado, la anulación termina cuando se desconecta. Si se desconecta, la anulación espera la próxima conexión → ciclo de desconexión. El modo EV 1 configurado nunca se sobrescribe.",
+    "de": "Verwenden Sie vorübergehend den ausgewählten EV 1-Betriebsmodus für eine Verbindungssitzung. Wenn der EV 1 bereits angeschlossen ist, endet der Override, wenn er sich trennt. Wenn es getrennt ist, wartet der Override auf den nächsten connect → disconnect-Zyklus. Der konfigurierte EV 1-Modus wird nie überschrieben."
   },
   "args": [
     {
@@ -13,28 +19,40 @@
       "type": "dropdown",
       "title": {
         "en": "EV 1 operating mode",
-        "nl": "EV 1-werkingsmodus"
+        "nl": "EV 1-werkingsmodus",
+        "fr": "EV 1 mode de fonctionnement",
+        "es": "Modo operativo EV 1",
+        "de": "EV 1 Betriebsart"
       },
       "values": [
         {
           "id": "smart",
           "title": {
             "en": "Smart",
-            "nl": "Slim"
+            "nl": "Slim",
+            "fr": "Intelligent",
+            "es": "Smart",
+            "de": "intelligent"
           }
         },
         {
           "id": "soc_target",
           "title": {
             "en": "SoC target",
-            "nl": "Op SoC-doel"
+            "nl": "Op SoC-doel",
+            "fr": "Objectif SoC",
+            "es": "Meta SoC",
+            "de": "Zielvorgabe SoC"
           }
         },
         {
           "id": "emergency",
           "title": {
             "en": "Emergency charge",
-            "nl": "Emergency charge"
+            "nl": "Emergency charge",
+            "fr": "Frais d ' urgence",
+            "es": "Cargo de emergencia",
+            "de": "Notfallgebühr"
           }
         }
       ]
@@ -42,7 +60,10 @@
   ],
   "titleFormatted": {
     "en": "EV 1 override for one session: [[mode]]",
-    "nl": "EV 1-override voor één laadbeurt: [[mode]]"
+    "nl": "EV 1-override voor één laadbeurt: [[mode]]",
+    "fr": "EV 1 remplacer pour une session: [[mode]]",
+    "es": "EV 1 anulación para una sesión: [[mode]]",
+    "de": "EV 1 überschreiben für eine Sitzung: [[mode]]"
   },
   "deprecated": true
 }

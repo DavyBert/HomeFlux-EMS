@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set EMS mode",
-    "nl": "Stel EMS-modus in"
+    "nl": "Stel EMS-modus in",
+    "fr": "Réglez le mode EMS",
+    "es": "Configurar el modo EMS",
+    "de": "Set EMS Modus"
   },
   "args": [
     {
@@ -9,49 +12,70 @@
       "type": "dropdown",
       "title": {
         "en": "Mode",
-        "nl": "Modus"
+        "nl": "Modus",
+        "fr": "Mode",
+        "es": "Modo",
+        "de": "Modus"
       },
       "values": [
         {
           "id": "auto",
           "title": {
             "en": "Automatic",
-            "nl": "Automatisch"
+            "nl": "Automatisch",
+            "fr": "Automatique",
+            "es": "Automático",
+            "de": "Automatisch"
           }
         },
         {
           "id": "self_consumption",
           "title": {
             "en": "Self consumption",
-            "nl": "Zelfconsumptie"
+            "nl": "Zelfconsumptie",
+            "fr": "Autoconsommation",
+            "es": "Consumo por cuenta propia",
+            "de": "Eigenverbrauch"
           }
         },
         {
           "id": "solar_capture",
           "title": {
             "en": "Battery save",
-            "nl": "Batterij sparen"
+            "nl": "Batterij sparen",
+            "fr": "Sauver la batterie",
+            "es": "Ahorro de batería",
+            "de": "Batteriesparen"
           }
         },
         {
           "id": "avoid_import",
           "title": {
             "en": "Avoid grid import",
-            "nl": "Netimport vermijden"
+            "nl": "Netimport vermijden",
+            "fr": "Éviter le prélèvement réseau",
+            "es": "Evitar el consumo de la red",
+            "de": "Netzbezug vermeiden"
           }
         },
         {
           "id": "manual_charge",
           "title": {
             "en": "Forced charge",
-            "nl": "Geforceerd laden"
+            "nl": "Geforceerd laden",
+            "fr": "Charge forcée",
+            "es": "Carga forzada",
+            "de": "erzwungene Ladung"
           }
         },
         {
           "id": "standby",
           "title": {
             "en": "Standby",
-            "nl": "Stand-by"
+            "nl": "Stand-by",
+            "fr": "Veille",
+            "es": "Espera",
+            "de": "Standby"
           }
         }
       ]
@@ -59,6 +83,9 @@
   ],
   "titleFormatted": {
     "en": "Set EMS mode to [[mode]]",
-    "nl": "Stel EMS-modus in op [[mode]]"
+    "nl": "Stel EMS-modus in op [[mode]]",
+    "fr": "Réglez le mode EMS à [[mode]]",
+    "es": "Establecer el modo EMS a [[mode]]",
+    "de": "Setzen Sie EMS Modus auf [[mode]]"
   }
 }

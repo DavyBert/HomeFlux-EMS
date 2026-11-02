@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "EV 1 charging permission is updated",
-    "nl": "EV 1 laden toegestaan is bijgewerkt"
+    "nl": "EV 1 laden toegestaan is bijgewerkt",
+    "fr": "EV 1 la permission de recharger est mise à jour",
+    "es": "EV 1 permiso de carga se actualiza",
+    "de": "EV 1 Ladeberechtigung aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "string",
       "title": {
         "en": "Charging allowed",
-        "nl": "Laden toegestaan"
+        "nl": "Laden toegestaan",
+        "fr": "Charge autorisée",
+        "es": "Carga permitida",
+        "de": "Gebühren erlaubt"
       },
       "example": "Ja"
     },
@@ -18,7 +24,10 @@
       "type": "number",
       "title": {
         "en": "Allowed (1/0)",
-        "nl": "Toegestaan (1/0)"
+        "nl": "Toegestaan (1/0)",
+        "fr": "Autorisés (1/0)",
+        "es": "(1/0)",
+        "de": "Erlaubt (1/0)"
       },
       "example": 1
     },
@@ -27,7 +36,10 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Laden met PV-overschot"
     }

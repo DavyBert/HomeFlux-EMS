@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Current tariff",
-    "nl": "Huidig tarief"
+    "nl": "Huidig tarief",
+    "fr": "Tarif actuel",
+    "es": "Tarifa actual",
+    "de": "Aktueller Tarif"
   },
   "getable": true,
   "setable": false,

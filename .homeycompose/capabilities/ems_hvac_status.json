@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "HVAC status",
-    "nl": "HVAC-status"
+    "nl": "HVAC-status",
+    "fr": "HVAC statut",
+    "es": "HVAC estado",
+    "de": "HVAC-Status"
   },
   "getable": true,
   "setable": false,

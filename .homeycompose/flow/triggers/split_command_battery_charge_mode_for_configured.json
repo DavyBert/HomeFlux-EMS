@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Battery: switch to charge mode",
-    "nl": "Batterij: schakel naar laadmodus"
+    "nl": "Batterij: schakel naar laadmodus",
+    "fr": "Batterie: passer en mode charge",
+    "es": "Batería: cambiar al modo de carga",
+    "de": "Batterie: Wechsel in den Lademodus"
   },
   "hint": {
     "en": "Only fires when split command is enabled for the selected Battery and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch. Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Start alleen wanneer split command voor de geselecteerde Batterij actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Seulement les feux lorsque la commande fractionnée est activée pour la batterie sélectionnée et HomeFlux nécessite le mode charge. La puissance suit 1 secondes après un interrupteur de mode autorisé. Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Sólo los incendios cuando el comando split está habilitado para la batería seleccionada y el modo de carga de HomeFlux necesidades. La potencia sigue 1 segundos después de un interruptor de modo permitido. Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Bricht nur, wenn der Split-Befehl für die ausgewählte Batterie aktiviert ist und HomeFlux den Lademodus benötigt. Die Leistung folgt 1 Sekunden nach einem erlaubten Modusschalter. Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   },
   "titleFormatted": {
     "en": "[[battery]]: switch to charge mode",
-    "nl": "[[battery]]: schakel naar laadmodus"
+    "nl": "[[battery]]: schakel naar laadmodus",
+    "fr": "[[battery]]: passer en mode charge",
+    "es": "[[battery]]: conmutar el modo de carga",
+    "de": "[[battery]]: Wechsel in den Lademodus"
   },
   "args": [
     {
@@ -17,11 +26,17 @@
       "type": "autocomplete",
       "title": {
         "en": "Battery",
-        "nl": "Batterij"
+        "nl": "Batterij",
+        "fr": "Batterie",
+        "es": "Batería",
+        "de": "Batterie"
       },
       "placeholder": {
         "en": "Select configured battery",
-        "nl": "Kies geconfigureerde batterij"
+        "nl": "Kies geconfigureerde batterij",
+        "fr": "Sélectionnez la batterie configurée",
+        "es": "Batería configurada",
+        "de": "Konfigurierte Batterie auswählen"
       }
     }
   ]

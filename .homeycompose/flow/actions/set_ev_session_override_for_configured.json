@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Override EV mode for one charging session",
-    "nl": "Override EV-modus voor één laadbeurt"
+    "nl": "Override EV-modus voor één laadbeurt",
+    "fr": "Mode Override EV pour une session de recharge",
+    "es": "Override EV modo para una sesión de carga",
+    "de": "Überschreiben des EV-Modus für eine Ladesitzung"
   },
   "hint": {
     "en": "Temporarily use the selected operating mode for the selected EV for one connection session. If the selected EV is already connected, the override ends when it disconnects. If it is disconnected, the override waits for the next connect → disconnect cycle. The configured mode for the selected EV is never overwritten. Only slots within the saved device count are offered. At count 0 the list is empty. Extend shifts an existing SoC/kWh deadline by 1–7 local calendar days, keeping its target, time, guarantee and delivered energy. No active plan means no extension. The extended plan survives restarts and disconnects; other planning inputs are blocked until its goal is reached or Clear EV planning is used. Peak Guard remains absolute.",
-    "nl": "Gebruik tijdelijk de gekozen werkingsmodus voor de geselecteerde EV gedurende één verbindingssessie. Is de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde modus van de geselecteerde EV wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg. Verlengen verschuift een bestaande SoC-/kWh-deadline met 1–7 lokale kalenderdagen en behoudt doel, tijd, garantie en geleverde energie. Zonder actieve planning wordt niets aangemaakt. De verlengde planning overleeft herstarts en loskoppelen; andere planningsinvoer blijft geblokkeerd tot het doel bereikt is of Wis EV-planning wordt gebruikt. Peak Guard blijft absoluut."
+    "nl": "Gebruik tijdelijk de gekozen werkingsmodus voor de geselecteerde EV gedurende één verbindingssessie. Is de geselecteerde EV al aangesloten, dan eindigt de override zodra hij wordt losgekoppeld. Is hij niet aangesloten, dan wacht de override op de volgende aansluiten → loskoppelen-cyclus. De ingestelde modus van de geselecteerde EV wordt nooit overschreven. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg. Verlengen verschuift een bestaande SoC-/kWh-deadline met 1–7 lokale kalenderdagen en behoudt doel, tijd, garantie en geleverde energie. Zonder actieve planning wordt niets aangemaakt. De verlengde planning overleeft herstarts en loskoppelen; andere planningsinvoer blijft geblokkeerd tot het doel bereikt is of Wis EV-planning wordt gebruikt. Peak Guard blijft absoluut.",
+    "fr": "Utiliser temporairement le mode d'exploitation sélectionné pour la session de connexion EV sélectionnée. Si le EV sélectionné est déjà connecté, la redéfinition se termine lorsqu'elle se déconnecte. S'il est déconnecté, la redéfinition attend le prochain cycle de connexion → déconnecté. Le mode configuré pour le EV sélectionné n'est jamais écrasé. Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide. Prolonger les déplacements d'un délai existant de SoC/kWh de 1–7 jours civils locaux, en gardant sa cible, son temps, sa garantie et sa fourniture d'énergie. Aucun plan actif ne signifie aucune extension. Le plan étendu survit aux redémarrages et aux débranchements; d'autres entrées de planification sont bloquées jusqu'à ce que son objectif soit atteint ou que la planification Clear EV soit utilisée. Peak Guard reste absolu.",
+    "es": "Utilice temporalmente el modo operativo seleccionado para el EV seleccionado para una sesión de conexión. Si el EV seleccionado ya está conectado, la anulación termina cuando se desconecta. Si se desconecta, la anulación espera la próxima conexión → ciclo de desconexión. El modo configurado para el EV seleccionado nunca es sobrescrito. Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía. Extender cambia un plazo de SoC/kWh existente en 1–7 días naturales locales, manteniendo su objetivo, tiempo, garantía y energía entregada. Ningún plan activo significa que no hay extensión. El plan ampliado sobrevive a reiniciar y desconexión; se bloquean otros insumos de planificación hasta que se alcance su objetivo o se utiliza la planificación Clear EV. Peak Guard sigue siendo absoluta.",
+    "de": "Verwenden Sie vorübergehend den ausgewählten Betriebsmodus für die ausgewählte EV für eine Verbindungssitzung. Wenn der ausgewählte EV bereits angeschlossen ist, endet der Override, wenn er sich trennt. Wenn es getrennt ist, wartet der Override auf den nächsten connect → disconnect-Zyklus. Der konfigurierte Modus für den ausgewählten EV wird nie überschrieben. Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer. Die Verlängerung verschiebt eine bestehende Frist von SoC/kWh um 1–7 lokale Kalendertage, wobei Ziel, Zeit, Garantie und gelieferte Energie beibehalten werden. Kein aktiver Plan bedeutet keine Verlängerung. Der erweiterte Plan überlebt Neustarts und Trennungen; andere Planungseingaben werden blockiert, bis das Ziel erreicht ist oder die Clear EV-Planung verwendet wird. Peak Guard bleibt absolut."
   },
   "args": [
     {
@@ -13,11 +19,17 @@
       "type": "autocomplete",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "placeholder": {
         "en": "Select configured EV",
-        "nl": "Kies geconfigureerde EV"
+        "nl": "Kies geconfigureerde EV",
+        "fr": "Sélectionner configuré EV",
+        "es": "Seleccionado EV",
+        "de": "Wählen Sie konfiguriert EV"
       }
     },
     {
@@ -25,77 +37,110 @@
       "type": "dropdown",
       "title": {
         "en": "EV 1 operating mode",
-        "nl": "EV 1-werkingsmodus"
+        "nl": "EV 1-werkingsmodus",
+        "fr": "EV 1 mode de fonctionnement",
+        "es": "Modo operativo EV 1",
+        "de": "EV 1 Betriebsart"
       },
       "values": [
         {
           "id": "smart",
           "title": {
             "en": "Smart",
-            "nl": "Slim"
+            "nl": "Slim",
+            "fr": "Intelligent",
+            "es": "Smart",
+            "de": "intelligent"
           }
         },
         {
           "id": "soc_target",
           "title": {
             "en": "SoC target",
-            "nl": "Op SoC-doel"
+            "nl": "Op SoC-doel",
+            "fr": "Objectif SoC",
+            "es": "Meta SoC",
+            "de": "Zielvorgabe SoC"
           }
         },
         {
           "id": "emergency",
           "title": {
             "en": "Emergency charge",
-            "nl": "Emergency charge"
+            "nl": "Emergency charge",
+            "fr": "Frais d ' urgence",
+            "es": "Cargo de emergencia",
+            "de": "Notfallgebühr"
           }
         },
         {
           "id": "extend_plan_1_days",
           "title": {
             "en": "Extend current plan by 1 day",
-            "nl": "Verleng huidige planning met 1 dag"
+            "nl": "Verleng huidige planning met 1 dag",
+            "fr": "Prolonger le plan actuel de 1 jour",
+            "es": "Ampliar el plan actual en 1 día",
+            "de": "Aktuellen Plan um 1 Tag verlängern"
           }
         },
         {
           "id": "extend_plan_2_days",
           "title": {
             "en": "Extend current plan by 2 days",
-            "nl": "Verleng huidige planning met 2 dagen"
+            "nl": "Verleng huidige planning met 2 dagen",
+            "fr": "Prolonger le plan actuel de 2 jours",
+            "es": "Ampliar el plan actual en 2 días",
+            "de": "Aktuellen Plan um 2 Tage verlängern"
           }
         },
         {
           "id": "extend_plan_3_days",
           "title": {
             "en": "Extend current plan by 3 days",
-            "nl": "Verleng huidige planning met 3 dagen"
+            "nl": "Verleng huidige planning met 3 dagen",
+            "fr": "Prolonger le plan actuel de 3 jours",
+            "es": "Ampliar el plan actual en 3 días",
+            "de": "Aktuellen Plan um 3 Tage verlängern"
           }
         },
         {
           "id": "extend_plan_4_days",
           "title": {
             "en": "Extend current plan by 4 days",
-            "nl": "Verleng huidige planning met 4 dagen"
+            "nl": "Verleng huidige planning met 4 dagen",
+            "fr": "Prolonger le plan actuel de 4 jours",
+            "es": "Ampliar el plan actual en 4 días",
+            "de": "Aktuellen Plan um 4 Tage verlängern"
           }
         },
         {
           "id": "extend_plan_5_days",
           "title": {
             "en": "Extend current plan by 5 days",
-            "nl": "Verleng huidige planning met 5 dagen"
+            "nl": "Verleng huidige planning met 5 dagen",
+            "fr": "Prolonger le plan actuel de 5 jours",
+            "es": "Ampliar el plan actual en 5 días",
+            "de": "Aktuellen Plan um 5 Tage verlängern"
           }
         },
         {
           "id": "extend_plan_6_days",
           "title": {
             "en": "Extend current plan by 6 days",
-            "nl": "Verleng huidige planning met 6 dagen"
+            "nl": "Verleng huidige planning met 6 dagen",
+            "fr": "Prolonger le plan actuel de 6 jours",
+            "es": "Ampliar el plan actual en 6 días",
+            "de": "Aktuellen Plan um 6 Tage verlängern"
           }
         },
         {
           "id": "extend_plan_7_days",
           "title": {
             "en": "Extend current plan by 7 days",
-            "nl": "Verleng huidige planning met 7 dagen"
+            "nl": "Verleng huidige planning met 7 dagen",
+            "fr": "Prolonger le plan actuel de 7 jours",
+            "es": "Ampliar el plan actual en 7 días",
+            "de": "Aktuellen Plan um 7 Tage verlängern"
           }
         }
       ]
@@ -103,6 +148,9 @@
   ],
   "titleFormatted": {
     "en": "[[ev]] override for one session: [[mode]]",
-    "nl": "[[ev]]-override voor één laadbeurt: [[mode]]"
+    "nl": "[[ev]]-override voor één laadbeurt: [[mode]]",
+    "fr": "[[ev]] remplacer pour une session: [[mode]]",
+    "es": "[[ev]] anulación para una sesión: [[mode]]",
+    "de": "[[ev]] Override für eine Sitzung: [[mode]]"
   }
 }

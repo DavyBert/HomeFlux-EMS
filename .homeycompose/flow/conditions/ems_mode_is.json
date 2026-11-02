@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "EMS mode is [[mode]]",
-    "nl": "EMS-modus is [[mode]]"
+    "nl": "EMS-modus is [[mode]]",
+    "fr": "EMS mode est [[mode]]",
+    "es": "El modo EMS es [[mode]]",
+    "de": "EMS Modus ist [[mode]]"
   },
   "args": [
     {
@@ -9,49 +12,70 @@
       "type": "dropdown",
       "title": {
         "en": "Mode",
-        "nl": "Modus"
+        "nl": "Modus",
+        "fr": "Mode",
+        "es": "Modo",
+        "de": "Modus"
       },
       "values": [
         {
           "id": "self_consumption",
           "title": {
             "en": "Self consumption",
-            "nl": "Zelfconsumptie"
+            "nl": "Zelfconsumptie",
+            "fr": "Autoconsommation",
+            "es": "Consumo por cuenta propia",
+            "de": "Eigenverbrauch"
           }
         },
         {
           "id": "solar_capture",
           "title": {
             "en": "Battery save",
-            "nl": "Batterij sparen"
+            "nl": "Batterij sparen",
+            "fr": "Sauver la batterie",
+            "es": "Ahorro de batería",
+            "de": "Batteriesparen"
           }
         },
         {
           "id": "charge",
           "title": {
             "en": "Planned grid charging",
-            "nl": "Gepland netladen"
+            "nl": "Gepland netladen",
+            "fr": "Facturation prévue du réseau",
+            "es": "Carga de red prevista",
+            "de": "Geplante Netzentgelte"
           }
         },
         {
           "id": "manual_charge",
           "title": {
             "en": "Forced charging",
-            "nl": "Geforceerd laden"
+            "nl": "Geforceerd laden",
+            "fr": "Charge forcée",
+            "es": "Carga forzada",
+            "de": "Zwangsaufladung"
           }
         },
         {
           "id": "avoid_import",
           "title": {
             "en": "Avoid grid import",
-            "nl": "Netimport vermijden"
+            "nl": "Netimport vermijden",
+            "fr": "Éviter le prélèvement réseau",
+            "es": "Evitar el consumo de la red",
+            "de": "Netzbezug vermeiden"
           }
         },
         {
           "id": "standby",
           "title": {
             "en": "Standby",
-            "nl": "Stand-by"
+            "nl": "Stand-by",
+            "fr": "Veille",
+            "es": "Espera",
+            "de": "Standby"
           }
         }
       ]
@@ -59,6 +83,9 @@
   ],
   "titleFormatted": {
     "en": "EMS mode is [[mode]]",
-    "nl": "EMS-modus is [[mode]]"
+    "nl": "EMS-modus is [[mode]]",
+    "fr": "EMS mode est [[mode]]",
+    "es": "El modo EMS es [[mode]]",
+    "de": "EMS Modus ist [[mode]]"
   }
 }

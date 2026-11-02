@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC mode",
-    "nl": "Stel HVAC-modus in"
+    "nl": "Stel HVAC-modus in",
+    "fr": "Réglez le mode HVAC",
+    "es": "Configurar el modo HVAC",
+    "de": "Set HVAC Modus"
   },
   "args": [
     {
@@ -9,35 +12,50 @@
       "type": "dropdown",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "HVAC 1",
-            "nl": "HVAC 1"
+            "nl": "HVAC 1",
+            "fr": "HVAC 1",
+            "es": "HVAC 1",
+            "de": "HVAC 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "HVAC 2",
-            "nl": "HVAC 2"
+            "nl": "HVAC 2",
+            "fr": "HVAC 2",
+            "es": "HVAC 2",
+            "de": "HVAC 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "HVAC 3",
-            "nl": "HVAC 3"
+            "nl": "HVAC 3",
+            "fr": "HVAC 3",
+            "es": "HVAC 3",
+            "de": "HVAC 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "HVAC 4",
-            "nl": "HVAC 4"
+            "nl": "HVAC 4",
+            "fr": "HVAC 4",
+            "es": "HVAC 4",
+            "de": "HVAC 4"
           }
         }
       ]
@@ -47,42 +65,60 @@
       "type": "dropdown",
       "title": {
         "en": "Mode",
-        "nl": "Modus"
+        "nl": "Modus",
+        "fr": "Mode",
+        "es": "Modo",
+        "de": "Modus"
       },
       "values": [
         {
           "id": "off",
           "title": {
             "en": "Off",
-            "nl": "Uit"
+            "nl": "Uit",
+            "fr": "Arrêt",
+            "es": "Apagado",
+            "de": "Aus"
           }
         },
         {
           "id": "cool",
           "title": {
             "en": "Cooling",
-            "nl": "Koelen"
+            "nl": "Koelen",
+            "fr": "Refroidissement",
+            "es": "Enfriamiento",
+            "de": "Kühlung"
           }
         },
         {
           "id": "heat",
           "title": {
             "en": "Heating",
-            "nl": "Verwarmen"
+            "nl": "Verwarmen",
+            "fr": "Chauffage",
+            "es": "Calefacción",
+            "de": "Heizung"
           }
         },
         {
           "id": "auto",
           "title": {
             "en": "Auto",
-            "nl": "Automatisch"
+            "nl": "Automatisch",
+            "fr": "Automatique",
+            "es": "Auto",
+            "de": "Auto"
           }
         },
         {
           "id": "fan",
           "title": {
             "en": "Fan only",
-            "nl": "Alleen ventilatie"
+            "nl": "Alleen ventilatie",
+            "fr": "Ventilateur seulement",
+            "es": "Sólo fan",
+            "de": "nur Ventilatoren"
           }
         }
       ]
@@ -90,7 +126,10 @@
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] mode to [[mode]]",
-    "nl": "Stel [[hvac]]-modus in op [[mode]]"
+    "nl": "Stel [[hvac]]-modus in op [[mode]]",
+    "fr": "Réglez le mode [[hvac]] à [[mode]]",
+    "es": "Establecer el modo [[hvac]] a [[mode]]",
+    "de": "Setzen Sie [[hvac]] Modus auf [[mode]]"
   },
   "deprecated": true
 }

@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "EV 1 charge current is updated",
-    "nl": "EV 1-laadstroom is bijgewerkt"
+    "nl": "EV 1-laadstroom is bijgewerkt",
+    "fr": "EV 1 courant de charge est mis à jour",
+    "es": "EV 1 corriente de carga se actualiza",
+    "de": "EV 1 Ladestrom wird aktualisiert"
   },
   "hint": {
     "en": "Use this output to set the EV charger current. Peak Guard can always reduce it.",
-    "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen."
+    "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen.",
+    "fr": "Utilisez cette sortie pour régler le courant de chargeur EV. Peak Guard peut toujours le réduire.",
+    "es": "Utilice esta salida para establecer la corriente de cargador EV. Peak Guard siempre puede reducirlo.",
+    "de": "Verwenden Sie diesen Ausgang, um den EV Ladestrom einzustellen. Peak Guard kann es immer reduzieren."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Charge current (A)",
-        "nl": "Laadstroom (A)"
+        "nl": "Laadstroom (A)",
+        "fr": "Charge courante (A)",
+        "es": "Corriente de carga (A)",
+        "de": "Ladestrom (A)"
       },
       "example": 10
     },
@@ -22,7 +31,10 @@
       "type": "number",
       "title": {
         "en": "Estimated charge power (W)",
-        "nl": "Geschat laadvermogen (W)"
+        "nl": "Geschat laadvermogen (W)",
+        "fr": "Puissance de charge estimée (W)",
+        "es": "Potencia de carga estimada (W)",
+        "de": "Geschätzte Ladeleistung (W)"
       },
       "example": 6900
     },
@@ -31,7 +43,10 @@
       "type": "string",
       "title": {
         "en": "Source",
-        "nl": "Bron"
+        "nl": "Bron",
+        "fr": "Source",
+        "es": "Fuente",
+        "de": "Quelle"
       },
       "example": "pv"
     },
@@ -40,7 +55,10 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Laden met PV-overschot"
     },
@@ -49,7 +67,10 @@
       "type": "number",
       "title": {
         "en": "EV target SoC (%)",
-        "nl": "EV-doel SoC (%)"
+        "nl": "EV-doel SoC (%)",
+        "fr": "Objectif EV SoC (%)",
+        "es": "EV Meta SoC (%)",
+        "de": "EV Ziel SoC (in %)"
       },
       "example": 80
     }

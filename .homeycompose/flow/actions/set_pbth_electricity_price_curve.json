@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set PBTH electricity price curve",
-    "nl": "Stel PBTH-elektriciteitsprijscurve in"
+    "nl": "Stel PBTH-elektriciteitsprijscurve in",
+    "fr": "Set PBTH courbe de prix de l'électricité",
+    "es": "Cosecha PBTH curva de precio eléctrico",
+    "de": "Set PBTH Strompreiskurve"
   },
   "hint": {
     "en": "Connect the Prices token from Power by the Hour's 'Provide import prices JSON' card. Select the same period in both cards. HomeFlux derives 15- or 60-minute resolution from the configured dynamic contract.",
-    "nl": "Koppel de tag Prijzen van Power by the Hour's kaart 'Geef import prijzen JSON op'. Kies in beide kaarten dezelfde periode. HomeFlux leidt 15- of 60-minutenresolutie af uit het ingestelde dynamische contract."
+    "nl": "Koppel de tag Prijzen van Power by the Hour's kaart 'Geef import prijzen JSON op'. Kies in beide kaarten dezelfde periode. HomeFlux leidt 15- of 60-minutenresolutie af uit het ingestelde dynamische contract.",
+    "fr": "Connectez le jeton des prix de Power par la carte 'Fournir les prix d'importation JSON' de l'heure. Sélectionnez la même période dans les deux cartes. HomeFlux dérive une résolution de 15- ou 60-minute du contrat dynamique configuré.",
+    "es": "Conecte el símbolo de precios de Power por la tarjeta 'Provide precios de importación JSON' de la Hora. Seleccione el mismo período en ambas tarjetas. HomeFlux deriva 15- o 60-minuto resolución del contrato dinámico configurado.",
+    "de": "Verbinden Sie das Preis-Token von Power by the Hour's 'Provide import prices JSON' Karte. Wählen Sie den gleichen Zeitraum in beiden Karten. HomeFlux leitet 15- oder 60-Minuten-Auflösung aus dem konfigurierten dynamischen Vertrag ab."
   },
   "args": [
     {
@@ -13,28 +19,40 @@
       "type": "dropdown",
       "title": {
         "en": "Period",
-        "nl": "Periode"
+        "nl": "Periode",
+        "fr": "Période",
+        "es": "Período",
+        "de": "Zeitraum"
       },
       "values": [
         {
           "id": "this_day",
           "label": {
             "en": "This day",
-            "nl": "Deze dag"
+            "nl": "Deze dag",
+            "fr": "Aujourd'hui",
+            "es": "Este día",
+            "de": "Dieser Tag"
           }
         },
         {
           "id": "tomorrow",
           "label": {
             "en": "Tomorrow",
-            "nl": "Morgen"
+            "nl": "Morgen",
+            "fr": "Demain",
+            "es": "Mañana",
+            "de": "Morgen"
           }
         },
         {
           "id": "next_hours",
           "label": {
             "en": "Next hours",
-            "nl": "Komende uren"
+            "nl": "Komende uren",
+            "fr": "Prochaines heures",
+            "es": "Siguientes horarios",
+            "de": "Nächste Stunden"
           }
         }
       ]
@@ -44,13 +62,19 @@
       "type": "text",
       "title": {
         "en": "PBTH Prices JSON",
-        "nl": "PBTH Prijzen JSON"
+        "nl": "PBTH Prijzen JSON",
+        "fr": "PBTH Prix JSON",
+        "es": "PBTH precios JSON",
+        "de": "PBTH Preise JSON"
       }
     }
   ],
   "titleFormatted": {
     "en": "Set PBTH [[period]] electricity prices to [[curve]]",
-    "nl": "Stel PBTH-elektriciteitsprijzen voor [[period]] in op [[curve]]"
+    "nl": "Stel PBTH-elektriciteitsprijzen voor [[period]] in op [[curve]]",
+    "fr": "Set PBTH [[period]] prix de l'électricité à [[curve]]",
+    "es": "Set PBTH [[period]] precios de electricidad a [[curve]]",
+    "de": "PBTH [[period]] Strompreise auf [[curve]] einstellen"
   },
   "deprecated": true
 }

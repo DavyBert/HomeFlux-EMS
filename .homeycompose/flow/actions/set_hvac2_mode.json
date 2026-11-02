@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC 2 mode",
-    "nl": "Stel HVAC 2-modus in"
+    "nl": "Stel HVAC 2-modus in",
+    "fr": "Set HVAC 2 mode",
+    "es": "Establecer el modo HVAC 2",
+    "de": "Einstellung HVAC 2 Modus"
   },
   "args": [
     {
@@ -9,42 +12,60 @@
       "type": "dropdown",
       "title": {
         "en": "Mode",
-        "nl": "Modus"
+        "nl": "Modus",
+        "fr": "Mode",
+        "es": "Modo",
+        "de": "Modus"
       },
       "values": [
         {
           "id": "off",
           "title": {
             "en": "Off",
-            "nl": "Uit"
+            "nl": "Uit",
+            "fr": "Arrêt",
+            "es": "Apagado",
+            "de": "Aus"
           }
         },
         {
           "id": "cool",
           "title": {
             "en": "Cooling",
-            "nl": "Koelen"
+            "nl": "Koelen",
+            "fr": "Refroidissement",
+            "es": "Enfriamiento",
+            "de": "Kühlung"
           }
         },
         {
           "id": "heat",
           "title": {
             "en": "Heating",
-            "nl": "Verwarmen"
+            "nl": "Verwarmen",
+            "fr": "Chauffage",
+            "es": "Calefacción",
+            "de": "Heizung"
           }
         },
         {
           "id": "auto",
           "title": {
             "en": "Auto",
-            "nl": "Automatisch"
+            "nl": "Automatisch",
+            "fr": "Automatique",
+            "es": "Auto",
+            "de": "Auto"
           }
         },
         {
           "id": "fan",
           "title": {
             "en": "Fan only",
-            "nl": "Alleen ventilatie"
+            "nl": "Alleen ventilatie",
+            "fr": "Ventilateur seulement",
+            "es": "Sólo fan",
+            "de": "nur Ventilatoren"
           }
         }
       ]
@@ -52,7 +73,10 @@
   ],
   "titleFormatted": {
     "en": "Set HVAC 2 mode to [[mode]]",
-    "nl": "Stel HVAC 2-modus in op [[mode]]"
+    "nl": "Stel HVAC 2-modus in op [[mode]]",
+    "fr": "Set HVAC 2 mode à [[mode]]",
+    "es": "Establecer el modo HVAC 2 a [[mode]]",
+    "de": "HVAC 2 Modus auf [[mode]] einstellen"
   },
   "deprecated": true
 }

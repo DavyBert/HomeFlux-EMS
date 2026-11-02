@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery commands are updated",
-    "nl": "Batterijcommando's zijn bijgewerkt"
+    "nl": "Batterijcommando's zijn bijgewerkt",
+    "fr": "Les commandes de la batterie sont mises à jour",
+    "es": "Los comandos de batería se actualizan",
+    "de": "Batteriebefehle werden aktualisiert"
   },
   "hint": {
     "en": "Fires when HomeFlux EMS publishes a new set of battery power commands.",
-    "nl": "Start wanneer HomeFlux EMS een nieuwe set batterijvermogens publiceert."
+    "nl": "Start wanneer HomeFlux EMS een nieuwe set batterijvermogens publiceert.",
+    "fr": "Incendie lorsque HomeFlux EMS publie un nouvel ensemble de commandes de puissance de batterie.",
+    "es": "Fuegos cuando HomeFlux EMS publica un nuevo conjunto de comandos de batería.",
+    "de": "Feuert, wenn HomeFlux EMS einen neuen Satz von Batterieleistungsbefehlen veröffentlicht."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Battery count",
-        "nl": "Aantal batterijen"
+        "nl": "Aantal batterijen",
+        "fr": "Nombre de batteries",
+        "es": "Conteo de baterías",
+        "de": "Batteriezahl"
       },
       "example": 4
     },
@@ -22,7 +31,10 @@
       "type": "number",
       "title": {
         "en": "Battery 1 command (W)",
-        "nl": "Batterij 1 commando (W)"
+        "nl": "Batterij 1 commando (W)",
+        "fr": "Commande de batterie 1 (W)",
+        "es": "Batería 1 comando (W)",
+        "de": "Kommando Batterie 1 (W)"
       },
       "example": -500
     },
@@ -31,7 +43,10 @@
       "type": "number",
       "title": {
         "en": "Battery 2 command (W)",
-        "nl": "Batterij 2 commando (W)"
+        "nl": "Batterij 2 commando (W)",
+        "fr": "Commande de batterie 2 (W)",
+        "es": "Batería 2 comando (W)",
+        "de": "Kommando Batterie 2 (W)"
       },
       "example": -500
     },
@@ -40,7 +55,10 @@
       "type": "number",
       "title": {
         "en": "Battery 3 command (W)",
-        "nl": "Batterij 3 commando (W)"
+        "nl": "Batterij 3 commando (W)",
+        "fr": "Commande de batterie 3 (W)",
+        "es": "Batería 3 comando (W)",
+        "de": "Kommando Batterie 3 (W)"
       },
       "example": -500
     },
@@ -49,7 +67,10 @@
       "type": "number",
       "title": {
         "en": "Battery 4 command (W)",
-        "nl": "Batterij 4 commando (W)"
+        "nl": "Batterij 4 commando (W)",
+        "fr": "Commande de batterie 4 (W)",
+        "es": "Batería 4 comando (W)",
+        "de": "Kommando Batterie 4 (W)"
       },
       "example": -500
     },
@@ -58,7 +79,10 @@
       "type": "number",
       "title": {
         "en": "Battery 5 command (W)",
-        "nl": "Batterij 5 commando (W)"
+        "nl": "Batterij 5 commando (W)",
+        "fr": "Commande de batterie 5 (W)",
+        "es": "Batería 5 comando (W)",
+        "de": "Kommando Batterie 5 (W)"
       },
       "example": 0
     },
@@ -67,7 +91,10 @@
       "type": "number",
       "title": {
         "en": "Battery 6 command (W)",
-        "nl": "Batterij 6 commando (W)"
+        "nl": "Batterij 6 commando (W)",
+        "fr": "Commande de batterie 6 (W)",
+        "es": "Batería 6 comando (W)",
+        "de": "Kommando Batterie 6 (W)"
       },
       "example": 0
     },
@@ -76,7 +103,10 @@
       "type": "number",
       "title": {
         "en": "Battery 7 command (W)",
-        "nl": "Batterij 7 commando (W)"
+        "nl": "Batterij 7 commando (W)",
+        "fr": "Commande de batterie 7 (W)",
+        "es": "Batería 7 comando (W)",
+        "de": "Kommando Batterie 7 (W)"
       },
       "example": 0
     },
@@ -85,7 +115,10 @@
       "type": "number",
       "title": {
         "en": "Battery 8 command (W)",
-        "nl": "Batterij 8 commando (W)"
+        "nl": "Batterij 8 commando (W)",
+        "fr": "Commande de batterie 8 (W)",
+        "es": "Batería 8 comando (W)",
+        "de": "Kommando Batterie 8 (W)"
       },
       "example": 0
     },
@@ -94,7 +127,10 @@
       "type": "number",
       "title": {
         "en": "Total command (W)",
-        "nl": "Totaal commando (W)"
+        "nl": "Totaal commando (W)",
+        "fr": "Commande totale (W)",
+        "es": "Total comando (W)",
+        "de": "Kommando insgesamt (W)"
       },
       "example": -2000
     },
@@ -103,11 +139,17 @@
       "type": "string",
       "title": {
         "en": "EMS mode",
-        "nl": "EMS-modus"
+        "nl": "EMS-modus",
+        "fr": "Mode EMS",
+        "es": "Modo EMS",
+        "de": "EMS-Modus"
       },
       "example": {
         "en": "Self-consumption",
-        "nl": "Zelfconsumptie"
+        "nl": "Zelfconsumptie",
+        "fr": "Autoconsommation",
+        "es": "Autoconsumo",
+        "de": "Eigenverbrauch"
       }
     },
     {
@@ -115,11 +157,17 @@
       "type": "string",
       "title": {
         "en": "EMS override",
-        "nl": "EMS-override"
+        "nl": "EMS-override",
+        "fr": "EMS remplacement",
+        "es": "EMS anulación",
+        "de": "EMS überschreiben"
       },
       "example": {
         "en": "Peak shave 2500 W",
-        "nl": "Peak shave 2500 W"
+        "nl": "Peak shave 2500 W",
+        "fr": "Peak raser 2500 W",
+        "es": "Afeitado de pico 2500 W",
+        "de": "Peak Rasur 2500 W"
       }
     },
     {
@@ -127,11 +175,17 @@
       "type": "string",
       "title": {
         "en": "EMS status",
-        "nl": "EMS-status"
+        "nl": "EMS-status",
+        "fr": "EMS statut",
+        "es": "EMS estado",
+        "de": "EMS-Status"
       },
       "example": {
         "en": "Self-consumption · Cheap tariff in 2h",
-        "nl": "Zelfconsumptie · Dal over 2u"
+        "nl": "Zelfconsumptie · Dal over 2u",
+        "fr": "Autoconsommation · Tarif réduit en 2h",
+        "es": "Autoconsumo · Tarifa barata en 2h",
+        "de": "Eigenverbrauch · Günstiger Tarif in 2h"
       }
     },
     {
@@ -139,11 +193,17 @@
       "type": "string",
       "title": {
         "en": "Next change",
-        "nl": "Volgende wijziging"
+        "nl": "Volgende wijziging",
+        "fr": "Changement suivant",
+        "es": "Siguiente cambio",
+        "de": "Nächste Änderung"
       },
       "example": {
         "en": "Cheap tariff in 2h",
-        "nl": "Dal over 2u"
+        "nl": "Dal over 2u",
+        "fr": "Tarif réduit en 2h",
+        "es": "Tarifas baratas en 2h",
+        "de": "Günstiger Tarif in 2h"
       }
     }
   ]

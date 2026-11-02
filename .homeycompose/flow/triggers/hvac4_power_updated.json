@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "HVAC 4 power command is updated",
-    "nl": "HVAC 4 aan/uit-opdracht is bijgewerkt"
+    "nl": "HVAC 4 aan/uit-opdracht is bijgewerkt",
+    "fr": "La commande de puissance HVAC 4 est mise à jour",
+    "es": "Se actualiza el comando de potencia HVAC 4",
+    "de": "HVAC 4 power command wird aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "string",
       "title": {
         "en": "State",
-        "nl": "Status"
+        "nl": "Status",
+        "fr": "État",
+        "es": "Estado",
+        "de": "Staat"
       },
       "example": "Aan"
     },
@@ -18,7 +24,10 @@
       "type": "number",
       "title": {
         "en": "State (1/0)",
-        "nl": "Status (1/0)"
+        "nl": "Status (1/0)",
+        "fr": "État (1/0)",
+        "es": "Estado (1/0)",
+        "de": "Staat (1/0)"
       },
       "example": 1
     },
@@ -27,7 +36,10 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Koelen met PV-overschot"
     }

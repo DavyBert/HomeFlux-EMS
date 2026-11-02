@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set EV SoC",
-    "nl": "Stel EV-SoC in"
+    "nl": "Stel EV-SoC in",
+    "fr": "Ensemble EV SoC",
+    "es": "Set EV SoC",
+    "de": "Set EV SoC"
   },
   "hint": {
     "en": "Push the current the selected EV state of charge to HomeFlux. Only used when the selected EV SoC support is enabled in settings. Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Stuur de actuele de geselecteerde EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer de geselecteerde EV-SoC in de instellingen is ingeschakeld. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Stuur de actuele de geselecteerde EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer de geselecteerde EV-SoC in de instellingen is ingeschakeld. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Poussez le courant de l'état de charge EV sélectionné à HomeFlux. Utilisé uniquement lorsque le support EV SoC sélectionné est activé dans les paramètres. Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Empuje la corriente el estado de carga EV seleccionado a HomeFlux. Sólo se utiliza cuando el soporte seleccionado EV SoC está habilitado en la configuración. Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Schieben Sie den ausgewählten Ladezustand EV auf HomeFlux. Wird nur verwendet, wenn die ausgewählte EV SoC-Unterstützung in den Einstellungen aktiviert ist. Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   },
   "args": [
     {
@@ -13,11 +19,17 @@
       "type": "autocomplete",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "placeholder": {
         "en": "Select configured EV",
-        "nl": "Kies geconfigureerde EV"
+        "nl": "Kies geconfigureerde EV",
+        "fr": "Sélectionner configuré EV",
+        "es": "Seleccionado EV",
+        "de": "Wählen Sie konfiguriert EV"
       }
     },
     {
@@ -25,7 +37,10 @@
       "type": "number",
       "title": {
         "en": "EV 1 SoC (%)",
-        "nl": "EV 1 SoC (%)"
+        "nl": "EV 1 SoC (%)",
+        "fr": "EV 1 SoC",
+        "es": "EV 1 SoC (%)",
+        "de": "EV 1 SoC (%)"
       },
       "min": 0,
       "max": 100,
@@ -34,6 +49,9 @@
   ],
   "titleFormatted": {
     "en": "Set [[ev]] SoC to [[soc]]%",
-    "nl": "Stel [[ev]]-SoC in op [[soc]]%"
+    "nl": "Stel [[ev]]-SoC in op [[soc]]%",
+    "fr": "Ensemble [[ev]] SoC à [[soc]]%",
+    "es": "Set [[ev]] SoC a [[soc]]%",
+    "de": "Set [[ev]] SoC auf [[soc]]%"
   }
 }

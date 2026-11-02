@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC 1 setpoint",
-    "nl": "Stel HVAC 1-setpoint in"
+    "nl": "Stel HVAC 1-setpoint in",
+    "fr": "Réglage HVAC 1",
+    "es": "Conjunto HVAC 1",
+    "de": "Set HVAC 1 Sollwert"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Setpoint (C)",
-        "nl": "Setpoint (C)"
+        "nl": "Setpoint (C)",
+        "fr": "Positionnement (C)",
+        "es": "Punto de referencia (C)",
+        "de": "Sollwert (C)"
       },
       "min": 5,
       "max": 35,
@@ -18,7 +24,10 @@
   ],
   "titleFormatted": {
     "en": "Set HVAC 1 setpoint to [[setpoint]] C",
-    "nl": "Stel HVAC 1-setpoint in op [[setpoint]] C"
+    "nl": "Stel HVAC 1-setpoint in op [[setpoint]] C",
+    "fr": "Set HVAC 1 à [[setpoint]] C",
+    "es": "Establecer el punto HVAC 1 a [[setpoint]] C",
+    "de": "Set HVAC 1 Sollwert auf [[setpoint]] C"
   },
   "deprecated": true
 }

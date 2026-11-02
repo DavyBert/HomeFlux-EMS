@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "HVAC power command is updated",
-    "nl": "HVAC aan/uit-opdracht is bijgewerkt"
+    "nl": "HVAC aan/uit-opdracht is bijgewerkt",
+    "fr": "La commande d'alimentation HVAC est mise à jour",
+    "es": "El comando de potencia HVAC se actualiza",
+    "de": "HVAC power command wird aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "string",
       "title": {
         "en": "State",
-        "nl": "Status"
+        "nl": "Status",
+        "fr": "État",
+        "es": "Estado",
+        "de": "Staat"
       },
       "example": "Aan"
     },
@@ -18,7 +24,10 @@
       "type": "number",
       "title": {
         "en": "State (1/0)",
-        "nl": "Status (1/0)"
+        "nl": "Status (1/0)",
+        "fr": "État (1/0)",
+        "es": "Estado (1/0)",
+        "de": "Staat (1/0)"
       },
       "example": 1
     },
@@ -27,14 +36,20 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Koelen met PV-overschot"
     }
   ],
   "titleFormatted": {
     "en": "[[hvac]] power command is updated",
-    "nl": "[[hvac]] aan/uit-opdracht is bijgewerkt"
+    "nl": "[[hvac]] aan/uit-opdracht is bijgewerkt",
+    "fr": "La commande d'alimentation [[hvac]] est mise à jour",
+    "es": "El comando de potencia [[hvac]] se actualiza",
+    "de": "[[hvac]] power command wird aktualisiert"
   },
   "args": [
     {
@@ -42,35 +57,50 @@
       "type": "dropdown",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "HVAC 1",
-            "nl": "HVAC 1"
+            "nl": "HVAC 1",
+            "fr": "HVAC 1",
+            "es": "HVAC 1",
+            "de": "HVAC 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "HVAC 2",
-            "nl": "HVAC 2"
+            "nl": "HVAC 2",
+            "fr": "HVAC 2",
+            "es": "HVAC 2",
+            "de": "HVAC 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "HVAC 3",
-            "nl": "HVAC 3"
+            "nl": "HVAC 3",
+            "fr": "HVAC 3",
+            "es": "HVAC 3",
+            "de": "HVAC 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "HVAC 4",
-            "nl": "HVAC 4"
+            "nl": "HVAC 4",
+            "fr": "HVAC 4",
+            "es": "HVAC 4",
+            "de": "HVAC 4"
           }
         }
       ]

@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Battery command",
-    "nl": "Batterijcommando"
+    "nl": "Batterijcommando",
+    "fr": "Commande de batterie",
+    "es": "Comando de batería",
+    "de": "Batteriebefehl"
   },
   "getable": true,
   "setable": false,

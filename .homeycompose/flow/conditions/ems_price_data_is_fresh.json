@@ -1,10 +1,16 @@
 {
   "title": {
     "en": "Price data is current",
-    "nl": "Prijsgegevens zijn actueel"
+    "nl": "Prijsgegevens zijn actueel",
+    "fr": "Les données sur les prix sont à jour",
+    "es": "Los datos de precios son actuales",
+    "de": "Preisdaten sind aktuell"
   },
   "titleFormatted": {
     "en": "Price data is current",
-    "nl": "Prijsgegevens zijn actueel"
+    "nl": "Prijsgegevens zijn actueel",
+    "fr": "Les données sur les prix sont à jour",
+    "es": "Los datos de precios son actuales",
+    "de": "Preisdaten sind aktuell"
   }
 }

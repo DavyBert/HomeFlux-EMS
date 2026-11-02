@@ -1,6 +1,9 @@
 {
   "title": {
     "en": "Recalculate EMS now",
-    "nl": "Bereken EMS nu opnieuw"
+    "nl": "Bereken EMS nu opnieuw",
+    "fr": "Recalculer EMS maintenant",
+    "es": "Recalculado EMS ahora",
+    "de": "EMS jetzt neu berechnen"
   }
 }

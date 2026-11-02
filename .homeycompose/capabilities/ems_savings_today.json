@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Savings today",
-    "nl": "Winst vandaag"
+    "nl": "Winst vandaag",
+    "fr": "Économies aujourd'hui",
+    "es": "Ahorros hoy",
+    "de": "Einsparungen heute"
   },
   "getable": true,
   "setable": false,
@@ -11,7 +14,10 @@
   "decimals": 2,
   "units": {
     "en": "€",
-    "nl": "€"
+    "nl": "€",
+    "fr": "€",
+    "es": "€",
+    "de": "€"
   },
   "icon": "/assets/capabilities/savings-today.svg"
 }

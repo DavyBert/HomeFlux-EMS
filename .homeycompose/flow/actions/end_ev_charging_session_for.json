@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "EV charging session has ended",
-    "nl": "Laadsessie EV is beëindigd"
+    "nl": "Laadsessie EV is beëindigd",
+    "fr": "EV session de chargement a pris fin",
+    "es": "La sesión de carga de EV ha terminado",
+    "de": "EV Ladesitzung ist beendet"
   },
   "hint": {
     "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws the selected EV grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until the selected EV reconnects.",
-    "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van de geselecteerde EV onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot de geselecteerde EV opnieuw wordt aangesloten."
+    "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van de geselecteerde EV onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot de geselecteerde EV opnieuw wordt aangesloten.",
+    "fr": "Utilisez un chargeur fiable ou l'état final du véhicule. HomeFlux retire immédiatement l'autorisation du réseau EV sélectionnée, envoie Stop pour le contrôle du mode et reprend le contrôle normal de la batterie. L'extrémité reste verrouillée jusqu'à ce que le EV sélectionné se reconnecte.",
+    "es": "Utilice un cargador confiable o estado de salida del vehículo. HomeFlux retira inmediatamente el permiso de red EV seleccionado, envía Stop for mode control y reanuda el control normal de la batería. El final permanece inmovilizado hasta que el EV seleccionado vuelva a conectarse.",
+    "de": "Verwenden Sie einen zuverlässigen Ladegerät- oder Fahrzeug-Endstatus. HomeFlux zieht sofort die ausgewählte EV-Gitterberechtigung zurück, sendet Stop zur Modussteuerung und nimmt die normale Batteriesteuerung wieder auf. Das Ende bleibt verriegelt, bis sich der ausgewählte EV wieder verbindet."
   },
   "titleFormatted": {
     "en": "[[ev]] charging session has ended",
-    "nl": "Laadsessie [[ev]] is beëindigd"
+    "nl": "Laadsessie [[ev]] is beëindigd",
+    "fr": "[[ev]] session de chargement a pris fin",
+    "es": "La sesión de carga de [[ev]] ha terminado",
+    "de": "[[ev]] Ladesitzung ist beendet"
   },
   "args": [
     {
@@ -17,35 +26,50 @@
       "type": "dropdown",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "EV 1",
-            "nl": "EV 1"
+            "nl": "EV 1",
+            "fr": "EV 1",
+            "es": "EV 1",
+            "de": "EV 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "EV 2",
-            "nl": "EV 2"
+            "nl": "EV 2",
+            "fr": "EV 2",
+            "es": "EV 2",
+            "de": "EV 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "EV 3",
-            "nl": "EV 3"
+            "nl": "EV 3",
+            "fr": "EV 3",
+            "es": "EV 3",
+            "de": "EV 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "EV 4",
-            "nl": "EV 4"
+            "nl": "EV 4",
+            "fr": "EV 4",
+            "es": "EV 4",
+            "de": "EV 4"
           }
         }
       ]

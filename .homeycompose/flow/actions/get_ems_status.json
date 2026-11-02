@@ -1,36 +1,69 @@
 {
   "title": {
     "en": "Get EMS status",
-    "nl": "Haal EMS-status op"
+    "nl": "Haal EMS-status op",
+    "fr": "Obtenez le statut EMS",
+    "es": "Obtener EMS estado",
+    "de": "EMS Status erhalten"
   },
   "titleFormatted": {
     "en": "Get current HomeFlux EMS status",
-    "nl": "Haal actuele HomeFlux EMS-status op"
+    "nl": "Haal actuele HomeFlux EMS-status op",
+    "fr": "Obtenez le statut actuel HomeFlux EMS",
+    "es": "Obtenga el estado actual HomeFlux EMS",
+    "de": "Erhalten Sie den aktuellen HomeFlux EMS Status"
   },
   "hint": {
     "en": "Returns the current EMS status as tokens. Connect the status token to Homey's own Logic card to write it to a text variable.",
-    "nl": "Geeft de actuele EMS-status als tokens terug. Verbind de status-tag met Homey's eigen Logic-kaart om hem naar een tekstvariabele te schrijven."
+    "nl": "Geeft de actuele EMS-status als tokens terug. Verbind de status-tag met Homey's eigen Logic-kaart om hem naar een tekstvariabele te schrijven.",
+    "fr": "Renvoie le statut actuel EMS comme jetons. Connectez le jeton d'état à la propre carte Logic de Homey pour l'écrire à une variable texte.",
+    "es": "Devuelve el estado actual EMS como fichas. Conecte la ficha de estado a Homey propia tarjeta Logic para escribirla a una variable de texto.",
+    "de": "Gibt den aktuellen EMS-Status als Token zurück. Verbinden Sie das Status-Token mit der Homey-eigenen Logic-Karte, um es in eine Textvariable zu schreiben."
   },
   "tokens": [
     {
       "name": "status",
       "type": "string",
-      "title": { "en": "EMS status", "nl": "EMS-status" }
+      "title": {
+        "en": "EMS status",
+        "nl": "EMS-status",
+        "fr": "EMS statut",
+        "es": "EMS estado",
+        "de": "EMS-Status"
+      }
     },
     {
       "name": "tariff",
       "type": "string",
-      "title": { "en": "Current tariff", "nl": "Huidig tarief" }
+      "title": {
+        "en": "Current tariff",
+        "nl": "Huidig tarief",
+        "fr": "Tarif actuel",
+        "es": "Tarifa actual",
+        "de": "Aktueller Tarif"
+      }
     },
     {
       "name": "action",
       "type": "string",
-      "title": { "en": "Operating mode", "nl": "Werkingsmodus" }
+      "title": {
+        "en": "Operating mode",
+        "nl": "Werkingsmodus",
+        "fr": "Mode de fonctionnement",
+        "es": "Modo de funcionamiento",
+        "de": "Betriebsart"
+      }
     },
     {
       "name": "next_change",
       "type": "string",
-      "title": { "en": "Next tariff", "nl": "Volgend tarief" }
+      "title": {
+        "en": "Next tariff",
+        "nl": "Volgend tarief",
+        "fr": "Prochain tarif",
+        "es": "Próxima tarifa",
+        "de": "Nächster Tarif"
+      }
     }
   ]
 }

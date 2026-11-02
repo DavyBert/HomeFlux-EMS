@@ -1,10 +1,16 @@
 {
   "title": {
     "en": "EMS control is enabled",
-    "nl": "EMS-sturing is actief"
+    "nl": "EMS-sturing is actief",
+    "fr": "EMS le contrôle est activé",
+    "es": "El control EMS está habilitado",
+    "de": "EMS Steuerung ist aktiviert"
   },
   "titleFormatted": {
     "en": "EMS control is enabled",
-    "nl": "EMS-sturing is actief"
+    "nl": "EMS-sturing is actief",
+    "fr": "EMS le contrôle est activé",
+    "es": "El control EMS está habilitado",
+    "de": "EMS Steuerung ist aktiviert"
   }
 }

@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Request Battery SoC is needed",
-    "nl": "SoC Batterij is nodig"
+    "nl": "SoC Batterij is nodig",
+    "fr": "Demande Batterie SoC est nécessaire",
+    "es": "Se necesita la batería SoC",
+    "de": "Request Battery SoC wird benötigt"
   },
   "titleFormatted": {
     "en": "Request [[battery]] SoC is needed",
-    "nl": "SoC [[battery]] is nodig"
+    "nl": "SoC [[battery]] is nodig",
+    "fr": "La demande [[battery]] SoC est nécessaire",
+    "es": "Se necesita la solicitud [[battery]] SoC",
+    "de": "Anfrage [[battery]] SoC erforderlich"
   },
   "hint": {
     "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
-    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS.",
+    "fr": "Incendie toutes les 3 minutes et une fois à l'application commencer quand cette batterie est configurée. Envoyez son actuel SoC à HomeFlux EMS.",
+    "es": "Incendia cada 3 minutos y una vez en la aplicación comienza cuando esta batería está configurada. Envíe su actual SoC a HomeFlux EMS.",
+    "de": "Feuert alle 3 Minuten und einmal beim App-Start, wenn diese Batterie konfiguriert ist. Senden Sie seine aktuelle SoC an HomeFlux EMS."
   },
   "args": [
     {
@@ -17,63 +26,90 @@
       "type": "dropdown",
       "title": {
         "en": "Battery",
-        "nl": "Batterij"
+        "nl": "Batterij",
+        "fr": "Batterie",
+        "es": "Batería",
+        "de": "Batterie"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "Battery 1",
-            "nl": "Batterij 1"
+            "nl": "Batterij 1",
+            "fr": "Batterie 1",
+            "es": "Batería 1",
+            "de": "Batterie 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "Battery 2",
-            "nl": "Batterij 2"
+            "nl": "Batterij 2",
+            "fr": "Batterie 2",
+            "es": "Batería 2",
+            "de": "Batterie 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "Battery 3",
-            "nl": "Batterij 3"
+            "nl": "Batterij 3",
+            "fr": "Batterie 3",
+            "es": "Batería 3",
+            "de": "Batterie 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "Battery 4",
-            "nl": "Batterij 4"
+            "nl": "Batterij 4",
+            "fr": "Batterie 4",
+            "es": "Batería 4",
+            "de": "Batterie 4"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "Battery 5",
-            "nl": "Batterij 5"
+            "nl": "Batterij 5",
+            "fr": "Batterie 5",
+            "es": "Batería 5",
+            "de": "Batterie 5"
           }
         },
         {
           "id": "6",
           "title": {
             "en": "Battery 6",
-            "nl": "Batterij 6"
+            "nl": "Batterij 6",
+            "fr": "Batterie 6",
+            "es": "Batería 6",
+            "de": "Batterie 6"
           }
         },
         {
           "id": "7",
           "title": {
             "en": "Battery 7",
-            "nl": "Batterij 7"
+            "nl": "Batterij 7",
+            "fr": "Batterie 7",
+            "es": "Batería 7",
+            "de": "Batterie 7"
           }
         },
         {
           "id": "8",
           "title": {
             "en": "Battery 8",
-            "nl": "Batterij 8"
+            "nl": "Batterij 8",
+            "fr": "Batterie 8",
+            "es": "Batería 8",
+            "de": "Batterie 8"
           }
         }
       ]

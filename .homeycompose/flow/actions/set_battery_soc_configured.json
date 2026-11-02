@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set battery SoC",
-    "nl": "Stel batterij-SoC in"
+    "nl": "Stel batterij-SoC in",
+    "fr": "Ensemble batterie SoC",
+    "es": "Batería SoC",
+    "de": "Batteriesatz SoC"
   },
   "args": [
     {
@@ -9,11 +12,17 @@
       "type": "autocomplete",
       "title": {
         "en": "Battery",
-        "nl": "Batterij"
+        "nl": "Batterij",
+        "fr": "Batterie",
+        "es": "Batería",
+        "de": "Batterie"
       },
       "placeholder": {
         "en": "Select configured battery",
-        "nl": "Kies geconfigureerde batterij"
+        "nl": "Kies geconfigureerde batterij",
+        "fr": "Sélectionnez la batterie configurée",
+        "es": "Batería configurada",
+        "de": "Konfigurierte Batterie auswählen"
       }
     },
     {
@@ -21,7 +30,10 @@
       "type": "number",
       "title": {
         "en": "SoC (%)",
-        "nl": "SoC (%)"
+        "nl": "SoC (%)",
+        "fr": "SoC (en %)",
+        "es": "SoC (%)",
+        "de": "SoC (%)"
       },
       "min": 0,
       "max": 100,
@@ -30,10 +42,16 @@
   ],
   "titleFormatted": {
     "en": "Set [[battery]] SoC to [[soc]]%",
-    "nl": "Stel [[battery]] SoC in op [[soc]]%"
+    "nl": "Stel [[battery]] SoC in op [[soc]]%",
+    "fr": "Ensemble [[battery]] SoC à [[soc]]%",
+    "es": "Set [[battery]] SoC a [[soc]]%",
+    "de": "Set [[battery]] SoC auf [[soc]]%"
   },
   "hint": {
     "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   }
 }

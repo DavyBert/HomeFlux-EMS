@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
-    "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
+    "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag",
+    "fr": "La fente actuelle est à l'intérieur de la moins chère consécutive [[hours]] heure bloc aujourd'hui",
+    "es": "La tragaperras actual está dentro del bloque consecutivo más barato [[hours]] hora hoy",
+    "de": "Aktueller Slot befindet sich heute im billigsten [[hours]]-Stunden-Block in Folge"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Hours",
-        "nl": "Uren"
+        "nl": "Uren",
+        "fr": "Heures",
+        "es": "Horas",
+        "de": "Stunden"
       },
       "min": 0.25,
       "max": 12,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Current slot is inside the cheapest consecutive [[hours]] hour block today",
-    "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag"
+    "nl": "Huidig tijdslot valt in het goedkoopste aaneengesloten blok van [[hours]] uur vandaag",
+    "fr": "La fente actuelle est à l'intérieur de la moins chère consécutive [[hours]] heure bloc aujourd'hui",
+    "es": "La tragaperras actual está dentro del bloque consecutivo más barato [[hours]] hora hoy",
+    "de": "Aktueller Slot befindet sich heute im billigsten [[hours]]-Stunden-Block in Folge"
   }
 }

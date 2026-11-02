@@ -1,0 +1,13 @@
+{
+  "version": "1.2.18",
+  "languages": [
+    "fr",
+    "es",
+    "de"
+  ],
+  "translatedStringsChecked": 8175,
+  "metadataObjectsChecked": 2953,
+  "placeholdersPreserved": true,
+  "originalFormSchemaPreserved": true,
+  "controllerSourcesUnchanged": true
+}

@@ -1,7 +1,10 @@
 {
   "name": {
     "en": "HomeFlux EMS",
-    "nl": "HomeFlux EMS"
+    "nl": "HomeFlux EMS",
+    "fr": "HomeFlux EMS",
+    "es": "HomeFlux EMS",
+    "de": "HomeFlux EMS"
   },
   "class": "other",
   "platforms": [

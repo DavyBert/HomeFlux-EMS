@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set remaining PV forecast",
-    "nl": "Stel resterende PV-voorspelling in"
+    "nl": "Stel resterende PV-voorspelling in",
+    "fr": "Fixer les autres prévisions PV",
+    "es": "Previsión restante PV",
+    "de": "Set verbleibende PV Prognose"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Remaining PV (kWh)",
-        "nl": "Resterende PV (kWh)"
+        "nl": "Resterende PV (kWh)",
+        "fr": "▁Rester PV (kWh)",
+        "es": "Permaneciendo PV (kWh)",
+        "de": "Verbleibende PV (kWh)"
       },
       "min": 0,
       "max": 200,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Set remaining PV forecast to [[energy]] kWh",
-    "nl": "Stel resterende PV-voorspelling in op [[energy]] kWh"
+    "nl": "Stel resterende PV-voorspelling in op [[energy]] kWh",
+    "fr": "Le reste de PV devrait atteindre [[energy]] kWh",
+    "es": "Establecer el pronóstico restante PV a [[energy]] kWh",
+    "de": "Verbleibende PV Prognose auf [[energy]] kWh einstellen"
   }
 }

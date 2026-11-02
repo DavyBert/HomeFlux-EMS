@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "EV target cannot be reached",
-    "nl": "EV-doel kan niet worden gehaald"
+    "nl": "EV-doel kan niet worden gehaald",
+    "fr": "L'objectif EV ne peut être atteint",
+    "es": "No se puede alcanzar la meta EV",
+    "de": "EV Ziel nicht erreicht"
   },
   "hint": {
     "en": "Triggers at most once per EV connection session when a target cannot be reached within the selected tariffs or at all. A confirmed disconnect rearms the warning; app restarts retain the session warning latch.",
-    "nl": "Wordt maximaal één keer per EV-aansluitsessie geactiveerd als het doel niet haalbaar is binnen de gekozen tarieven of helemaal niet. Een bevestigde disconnect maakt de melding opnieuw vrij; een app-herstart bewaart de sessievergrendeling."
+    "nl": "Wordt maximaal één keer per EV-aansluitsessie geactiveerd als het doel niet haalbaar is binnen de gekozen tarieven of helemaal niet. Een bevestigde disconnect maakt de melding opnieuw vrij; een app-herstart bewaart de sessievergrendeling.",
+    "fr": "Déclenche au plus une fois par session de connexion EV lorsqu'une cible ne peut pas être atteinte dans les tarifs sélectionnés ou du tout. Une déconnexion confirmée réinvente l'avertissement; l'application redémarre en maintenant le verrou d'avertissement de session.",
+    "es": "Los desencadenantes al máximo por sesión de conexión EV cuando no se puede alcanzar un objetivo dentro de los tarifas seleccionados o en absoluto. Una desconexión confirma la advertencia; la aplicación retiene el cierre de advertencia de sesión.",
+    "de": "Triggert höchstens einmal pro EV Verbindungssitzung, wenn ein Ziel innerhalb der ausgewählten Tarife oder überhaupt nicht erreicht werden kann. Eine bestätigte trennung bewaffnet die warnung neu; app-neustarts behalten das sitzungswarn-latch."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "EV number",
-        "nl": "EV-nummer"
+        "nl": "EV-nummer",
+        "fr": "Numéro EV",
+        "es": "EV número",
+        "de": "EV Nummer"
       },
       "example": 1
     },
@@ -22,7 +31,10 @@
       "type": "string",
       "title": {
         "en": "EV name",
-        "nl": "EV-naam"
+        "nl": "EV-naam",
+        "fr": "EV dénomination",
+        "es": "EV nombre",
+        "de": "EV Name"
       },
       "example": "EV 1"
     },
@@ -31,7 +43,10 @@
       "type": "string",
       "title": {
         "en": "Warning",
-        "nl": "Waarschuwing"
+        "nl": "Waarschuwing",
+        "fr": "Avertissement",
+        "es": "Advertencia",
+        "de": "Warnung"
       },
       "example": "EV target cannot be reached within selected tariffs"
     },
@@ -40,7 +55,10 @@
       "type": "number",
       "title": {
         "en": "Energy still needed (kWh)",
-        "nl": "Nog nodige energie (kWh)"
+        "nl": "Nog nodige energie (kWh)",
+        "fr": "Énergie encore nécessaire (kWh)",
+        "es": "Energía todavía necesaria (kWh)",
+        "de": "Noch benötigte Energie (kWh)"
       },
       "example": 20
     },
@@ -49,7 +67,10 @@
       "type": "string",
       "title": {
         "en": "Deadline",
-        "nl": "Deadline"
+        "nl": "Deadline",
+        "fr": "Délai",
+        "es": "Fecha límite",
+        "de": "Frist"
       },
       "example": "10/09/2026 07:00"
     }

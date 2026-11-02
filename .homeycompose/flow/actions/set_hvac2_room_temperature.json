@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC 2 room temperature",
-    "nl": "Stel HVAC 2 ruimtetemperatuur in"
+    "nl": "Stel HVAC 2 ruimtetemperatuur in",
+    "fr": "Set HVAC 2 température ambiante",
+    "es": "Set HVAC 2 temperatura ambiente",
+    "de": "Einstellung HVAC 2 Raumtemperatur"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Room temperature (C)",
-        "nl": "Ruimtetemperatuur (C)"
+        "nl": "Ruimtetemperatuur (C)",
+        "fr": "Température ambiante (C)",
+        "es": "Temperatura ambiente (C)",
+        "de": "Raumtemperatur (C)"
       },
       "min": -20,
       "max": 60,
@@ -18,7 +24,10 @@
   ],
   "titleFormatted": {
     "en": "Set HVAC 2 room temperature to [[temperature]] C",
-    "nl": "Stel HVAC 2 ruimtetemperatuur in op [[temperature]] C"
+    "nl": "Stel HVAC 2 ruimtetemperatuur in op [[temperature]] C",
+    "fr": "Ensemble HVAC 2 température ambiante à [[temperature]] C",
+    "es": "Set HVAC 2 temperatura ambiente a [[temperature]] C",
+    "de": "HVAC 2 Raumtemperatur auf [[temperature]] C einstellen"
   },
   "deprecated": true
 }

@@ -790,7 +790,7 @@ class HomeFluxEmsApp extends Homey.App {
   displayLanguage() { return this.homey?.i18n?.getLanguage?.() || 'nl'; }
 
   translateDisplay(value) {
-    return this.displayLanguage().toLowerCase().startsWith('nl') ? String(value ?? '') : translateDisplay(value);
+    return translateDisplay(value, this.displayLanguage());
   }
 
   localizeDisplay(value) { return localizeDisplay(value, this.displayLanguage()); }
@@ -6241,11 +6241,11 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       mode: forcedMode,
       status: this.translateDisplay(status),
-      tariff: String(tariff),
+      tariff: result?.tariff?.kind === 'tou' ? String(tariff) : this.translateDisplay(tariff),
       action: this.translateDisplay(action),
       batteryCommand: this.translateDisplay(this.getBatteryCommandDeviceStatus()),
       chargePlan: this.translateDisplay(this.getCompactChargePlanDeviceStatus()),
-      controlOwner: this.getHybridControlOwnerDeviceStatus(settings),
+      controlOwner: this.translateDisplay(this.getHybridControlOwnerDeviceStatus(settings)),
       evStatus: this.translateDisplay(this.getEvDeviceStatus(settings)),
       evPlan: this.translateDisplay(this.getEvPlanningDeviceStatus(settings)),
       evOverride: this.translateDisplay(this.getEvOverrideDeviceStatus(settings)),
@@ -6282,7 +6282,7 @@ class HomeFluxEmsApp extends Homey.App {
     const count = kind === 'battery' ? this.getBatteryCount(settings)
       : kind === 'ev' ? this.getEvCount(settings)
         : kind === 'hvac' ? this.getHvacCount(settings) : 0;
-    const label = kind === 'battery' ? (nl ? 'Batterij' : 'Battery') : kind.toUpperCase();
+    const label = kind === 'battery' ? this.translateDisplay(nl ? 'Batterij' : 'Battery') : kind.toUpperCase();
     return Array.from({ length: count }, (_, index) => {
       const baseName = `${label} ${index + 1}`;
       const customName = kind === 'ev' ? this.getEvInstanceName(index, settings)
@@ -6514,7 +6514,7 @@ class HomeFluxEmsApp extends Homey.App {
   clearInputMonitor() { return this.getInputMonitor().clear(); }
 
   registerFlowCards() {
-    const flow = this.getInputMonitor().observeFlow(this.homey.flow);
+    const flow = require('./lib/flow-language').localizeFlowErrors(this.getInputMonitor().observeFlow(this.homey.flow), () => this.displayLanguage());
     this.configuredFlowCards = new ConfiguredFlowCards(flow, {
       getSlots: kind => this.getConfiguredFlowSlots(kind),
       getLanguage: () => this.homey.i18n?.getLanguage?.() || 'en',

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC 4 automatic control",
-    "nl": "Stel HVAC 4 automatische sturing in"
+    "nl": "Stel HVAC 4 automatische sturing in",
+    "fr": "Set HVAC 4 commande automatique",
+    "es": "Juego de control automático HVAC 4",
+    "de": "Set HVAC 4 automatische Steuerung"
   },
   "args": [
     {
@@ -9,21 +12,30 @@
       "type": "dropdown",
       "title": {
         "en": "Automatic control",
-        "nl": "Automatische sturing"
+        "nl": "Automatische sturing",
+        "fr": "Contrôle automatique",
+        "es": "Control automático",
+        "de": "Automatische Steuerung"
       },
       "values": [
         {
           "id": "yes",
           "title": {
             "en": "Yes",
-            "nl": "Ja"
+            "nl": "Ja",
+            "fr": "Oui",
+            "es": "Sí.",
+            "de": "Ja"
           }
         },
         {
           "id": "no",
           "title": {
             "en": "No",
-            "nl": "Nee"
+            "nl": "Nee",
+            "fr": "Numéro",
+            "es": "No.",
+            "de": "Nein"
           }
         }
       ]
@@ -31,7 +43,10 @@
   ],
   "titleFormatted": {
     "en": "Set HVAC 4 automatic control to [[enabled]]",
-    "nl": "Stel HVAC 4 automatische sturing in op [[enabled]]"
+    "nl": "Stel HVAC 4 automatische sturing in op [[enabled]]",
+    "fr": "Set HVAC 4 commande automatique à [[enabled]]",
+    "es": "Juego HVAC 4 control automático a [[enabled]]",
+    "de": "Setzt HVAC 4 automatische Steuerung auf [[enabled]]"
   },
   "deprecated": true
 }

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC 4 fan speed",
-    "nl": "Stel HVAC 4-ventilatorsnelheid in"
+    "nl": "Stel HVAC 4-ventilatorsnelheid in",
+    "fr": "Set HVAC 4 vitesse du ventilateur",
+    "es": "Set HVAC 4 de velocidad de ventilador",
+    "de": "Einstellung HVAC 4 Lüfterdrehzahl"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Fan speed value",
-        "nl": "Ventilatorsnelheid waarde"
+        "nl": "Ventilatorsnelheid waarde",
+        "fr": "Valeur de la vitesse du ventilateur",
+        "es": "Valor de velocidad del ventilador",
+        "de": "Ventilatordrehzahlwert"
       },
       "min": 0,
       "max": 10000,
@@ -18,7 +24,10 @@
   ],
   "titleFormatted": {
     "en": "Set HVAC 4 fan speed to [[speed]]",
-    "nl": "Stel HVAC 4-ventilatorsnelheid in op [[speed]]"
+    "nl": "Stel HVAC 4-ventilatorsnelheid in op [[speed]]",
+    "fr": "Set HVAC 4 vitesse du ventilateur à [[speed]]",
+    "es": "Set HVAC 4 velocidad de los ventiladores a [[speed]]",
+    "de": "HVAC 4 Lüfterdrehzahl auf [[speed]] einstellen"
   },
   "deprecated": true
 }

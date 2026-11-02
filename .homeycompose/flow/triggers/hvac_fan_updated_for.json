@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "HVAC fan command is updated",
-    "nl": "HVAC-ventilatoropdracht is bijgewerkt"
+    "nl": "HVAC-ventilatoropdracht is bijgewerkt",
+    "fr": "La commande de ventilateur HVAC est mise à jour",
+    "es": "Se actualiza el comando de ventiladores HVAC",
+    "de": "HVAC Lüfterbefehl wird aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "string",
       "title": {
         "en": "Fan action",
-        "nl": "Ventilatoractie"
+        "nl": "Ventilatoractie",
+        "fr": "Action du ventilateur",
+        "es": "Acción de fans",
+        "de": "Ventilatorwirkung"
       },
       "example": "higher"
     },
@@ -18,7 +24,10 @@
       "type": "number",
       "title": {
         "en": "Current fan speed value",
-        "nl": "Huidige ventilatorwaarde"
+        "nl": "Huidige ventilatorwaarde",
+        "fr": "Valeur actuelle de la vitesse du ventilateur",
+        "es": "Valor de velocidad del ventilador actual",
+        "de": "aktueller Ventilatordrehzahlwert"
       },
       "example": 200
     },
@@ -27,7 +36,10 @@
       "type": "number",
       "title": {
         "en": "Target fan speed value",
-        "nl": "Doelwaarde ventilator"
+        "nl": "Doelwaarde ventilator",
+        "fr": "Valeur de la vitesse du ventilateur cible",
+        "es": "Valor de velocidad del ventilador de destino",
+        "de": "Soll-Lüfterdrehzahlwert"
       },
       "example": 300
     },
@@ -36,14 +48,20 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "Koelen met PV-overschot"
     }
   ],
   "titleFormatted": {
     "en": "[[hvac]] fan command is updated",
-    "nl": "[[hvac]]-ventilatoropdracht is bijgewerkt"
+    "nl": "[[hvac]]-ventilatoropdracht is bijgewerkt",
+    "fr": "La commande de ventilateur [[hvac]] est mise à jour",
+    "es": "El comando de ventiladores [[hvac]] se actualiza",
+    "de": "[[hvac]] Lüfterbefehl wird aktualisiert"
   },
   "args": [
     {
@@ -51,35 +69,50 @@
       "type": "dropdown",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "HVAC 1",
-            "nl": "HVAC 1"
+            "nl": "HVAC 1",
+            "fr": "HVAC 1",
+            "es": "HVAC 1",
+            "de": "HVAC 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "HVAC 2",
-            "nl": "HVAC 2"
+            "nl": "HVAC 2",
+            "fr": "HVAC 2",
+            "es": "HVAC 2",
+            "de": "HVAC 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "HVAC 3",
-            "nl": "HVAC 3"
+            "nl": "HVAC 3",
+            "fr": "HVAC 3",
+            "es": "HVAC 3",
+            "de": "HVAC 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "HVAC 4",
-            "nl": "HVAC 4"
+            "nl": "HVAC 4",
+            "fr": "HVAC 4",
+            "es": "HVAC 4",
+            "de": "HVAC 4"
           }
         }
       ]

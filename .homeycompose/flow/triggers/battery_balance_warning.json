@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery Balance warning",
-    "nl": "Battery Balance waarschuwing"
+    "nl": "Battery Balance waarschuwing",
+    "fr": "Avertissement de la balance des batteries",
+    "es": "Alerta de equilibrio de la batería",
+    "de": "Warnhinweis für die Batteriebilanz"
   },
   "hint": {
     "en": "Fires when battery SoC spread keeps increasing while balancing is actively controlling the batteries.",
-    "nl": "Start wanneer de SoC-spreiding blijft toenemen terwijl Battery Balance de batterijen actief aanstuurt."
+    "nl": "Start wanneer de SoC-spreiding blijft toenemen terwijl Battery Balance de batterijen actief aanstuurt.",
+    "fr": "Incendie lorsque la batterie SoC s'étend continue d'augmenter tandis que l'équilibrage contrôle activement les batteries.",
+    "es": "Fuegos cuando la batería SoC se expande sigue aumentando mientras que el equilibrio está controlando activamente las baterías.",
+    "de": "Brände, wenn die Batterie SoC sich ausbreitet, nehmen zu, während das Balancieren die Batterien aktiv steuert."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "string",
       "title": {
         "en": "Warning",
-        "nl": "Waarschuwing"
+        "nl": "Waarschuwing",
+        "fr": "Avertissement",
+        "es": "Advertencia",
+        "de": "Warnung"
       },
       "example": "Controleer de gekoppelde batterij-SoC's."
     },
@@ -22,7 +31,10 @@
       "type": "number",
       "title": {
         "en": "Current spread (%)",
-        "nl": "Huidige spreiding (%)"
+        "nl": "Huidige spreiding (%)",
+        "fr": "Écart actuel (%)",
+        "es": "Distribución actual (%)",
+        "de": "Aktueller Spread (in %)"
       },
       "example": 5.2
     },
@@ -31,7 +43,10 @@
       "type": "number",
       "title": {
         "en": "Baseline spread (%)",
-        "nl": "Startspreiding (%)"
+        "nl": "Startspreiding (%)",
+        "fr": "Écart de référence (%)",
+        "es": "Distribución de las bases de referencia (%)",
+        "de": "Basisspread (in %)"
       },
       "example": 2.1
     },
@@ -40,7 +55,10 @@
       "type": "number",
       "title": {
         "en": "Lowest SoC battery",
-        "nl": "Batterij met laagste SoC"
+        "nl": "Batterij met laagste SoC",
+        "fr": "Batterie SoC la plus basse",
+        "es": "Bateria más baja SoC",
+        "de": "Niedrigste SoC Batterie"
       },
       "example": 1
     },
@@ -49,7 +67,10 @@
       "type": "number",
       "title": {
         "en": "Highest SoC battery",
-        "nl": "Batterij met hoogste SoC"
+        "nl": "Batterij met hoogste SoC",
+        "fr": "Batterie SoC la plus élevée",
+        "es": "Batería SoC más alta",
+        "de": "Höchste SoC Batterie"
       },
       "example": 3
     }

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "PV power is above [[power]] W",
-    "nl": "PV-vermogen is hoger dan [[power]] W"
+    "nl": "PV-vermogen is hoger dan [[power]] W",
+    "fr": "La puissance de PV est supérieure à [[power]] W",
+    "es": "PV potencia es superior a [[power]] W",
+    "de": "PV Leistung über [[power]] W"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Power (W)",
-        "nl": "Vermogen (W)"
+        "nl": "Vermogen (W)",
+        "fr": "Puissance (W)",
+        "es": "Power (W)",
+        "de": "Leistung (W)"
       },
       "min": 0,
       "max": 100000,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "PV power is above [[power]] W",
-    "nl": "PV-vermogen is hoger dan [[power]] W"
+    "nl": "PV-vermogen is hoger dan [[power]] W",
+    "fr": "La puissance de PV est supérieure à [[power]] W",
+    "es": "PV potencia es superior a [[power]] W",
+    "de": "PV Leistung über [[power]] W"
   }
 }

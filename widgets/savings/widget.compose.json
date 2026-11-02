@@ -1,7 +1,10 @@
 {
   "name": {
     "en": "Savings",
-    "nl": "Winst"
+    "nl": "Winst",
+    "fr": "Économies",
+    "es": "Ahorro",
+    "de": "Ersparnis"
   },
   "height": 150,
   "settings": [
@@ -10,7 +13,10 @@
       "type": "dropdown",
       "title": {
         "en": "Chart",
-        "nl": "Grafiek"
+        "nl": "Grafiek",
+        "fr": "Graphique",
+        "es": "Chart",
+        "de": "Karte"
       },
       "value": "profit",
       "values": [
@@ -18,28 +24,40 @@
           "id": "cost",
           "title": {
             "en": "Cost",
-            "nl": "Kost"
+            "nl": "Kost",
+            "fr": "Coût",
+            "es": "Coste",
+            "de": "Kosten"
           }
         },
         {
           "id": "profit",
           "title": {
             "en": "Net profit",
-            "nl": "Netto winst"
+            "nl": "Netto winst",
+            "fr": "Gain net",
+            "es": "Beneficio neto",
+            "de": "Nettogewinn"
           }
         },
         {
           "id": "cost_profit",
           "title": {
             "en": "Cost + profit",
-            "nl": "Kost + winst"
+            "nl": "Kost + winst",
+            "fr": "Coût + bénéfice",
+            "es": "Costo + beneficio",
+            "de": "Kosten + Gewinn"
           }
         },
         {
           "id": "profit_cost",
           "title": {
             "en": "Profit + cost",
-            "nl": "Winst + kost"
+            "nl": "Winst + kost",
+            "fr": "Résultat + coût",
+            "es": "Profit + costo",
+            "de": "Gewinn + Kosten"
           }
         }
       ]
@@ -49,7 +67,10 @@
       "type": "dropdown",
       "title": {
         "en": "Period",
-        "nl": "Periode"
+        "nl": "Periode",
+        "fr": "Période",
+        "es": "Período",
+        "de": "Zeitraum"
       },
       "value": "day",
       "values": [
@@ -57,42 +78,60 @@
           "id": "day",
           "title": {
             "en": "Day",
-            "nl": "Dag"
+            "nl": "Dag",
+            "fr": "Jour",
+            "es": "Día",
+            "de": "Tag"
           }
         },
         {
           "id": "month",
           "title": {
             "en": "Month",
-            "nl": "Maand"
+            "nl": "Maand",
+            "fr": "Mois",
+            "es": "Mes",
+            "de": "Monat"
           }
         },
         {
           "id": "year",
           "title": {
             "en": "Year",
-            "nl": "Jaar"
+            "nl": "Jaar",
+            "fr": "Année",
+            "es": "Año",
+            "de": "Jahr"
           }
         },
         {
           "id": "this_month",
           "title": {
             "en": "This month",
-            "nl": "Deze maand"
+            "nl": "Deze maand",
+            "fr": "Ce mois-ci",
+            "es": "Este mes",
+            "de": "Diesen Monat"
           }
         },
         {
           "id": "previous_month",
           "title": {
             "en": "Previous month",
-            "nl": "Vorige maand"
+            "nl": "Vorige maand",
+            "fr": "Mois précédent",
+            "es": "Mes anterior",
+            "de": "Vorheriger Monat"
           }
         },
         {
           "id": "rolling",
           "title": {
             "en": "Rolling",
-            "nl": "Rolling"
+            "nl": "Rolling",
+            "fr": "Roulement",
+            "es": "Rolling",
+            "de": "Rollen"
           }
         }
       ]
@@ -102,7 +141,10 @@
       "type": "number",
       "title": {
         "en": "Rolling days (1–1827)",
-        "nl": "Rolling dagen (1–1827)"
+        "nl": "Rolling dagen (1–1827)",
+        "fr": "Jours de roulement (1–1827)",
+        "es": "Días de rodamiento (1–1827)",
+        "de": "Rollierende Tage (1–1827)"
       },
       "value": 30,
       "min": 1,
@@ -113,7 +155,10 @@
       "type": "dropdown",
       "title": {
         "en": "Percentage bar",
-        "nl": "Percentagebalk"
+        "nl": "Percentagebalk",
+        "fr": "Barre de pourcentage",
+        "es": "Porcentaje de barras",
+        "de": "Prozentualer Balken"
       },
       "value": "show",
       "values": [
@@ -121,14 +166,20 @@
           "id": "show",
           "title": {
             "en": "Show",
-            "nl": "Tonen"
+            "nl": "Tonen",
+            "fr": "Afficher",
+            "es": "Show",
+            "de": "Schauspiel"
           }
         },
         {
           "id": "hide",
           "title": {
             "en": "Hide",
-            "nl": "Verbergen"
+            "nl": "Verbergen",
+            "fr": "Masquer",
+            "es": "Escóndete",
+            "de": "Hüllen"
           }
         }
       ]
@@ -138,7 +189,10 @@
       "type": "dropdown",
       "title": {
         "en": "Percentage bar in combined chart",
-        "nl": "Percentagebalk bij dubbele grafiek"
+        "nl": "Percentagebalk bij dubbele grafiek",
+        "fr": "Barre de pourcentage dans le graphique combiné",
+        "es": "Barra porcentual en el gráfico combinado",
+        "de": "Prozentualer Balken im kombinierten Chart"
       },
       "value": "profit",
       "values": [
@@ -146,14 +200,20 @@
           "id": "cost",
           "title": {
             "en": "Show with cost",
-            "nl": "Tonen bij kost"
+            "nl": "Tonen bij kost",
+            "fr": "Afficher avec le coût",
+            "es": "Mostrar con costo",
+            "de": "Show mit Kosten"
           }
         },
         {
           "id": "profit",
           "title": {
             "en": "Show with profit",
-            "nl": "Tonen bij winst"
+            "nl": "Tonen bij winst",
+            "fr": "Afficher avec le bénéfice",
+            "es": "Mostrar con ganancia",
+            "de": "Show mit Gewinn"
           }
         }
       ]
@@ -163,7 +223,10 @@
       "type": "dropdown",
       "title": {
         "en": "Combine grid charging",
-        "nl": "Combineer netladen"
+        "nl": "Combineer netladen",
+        "fr": "Combiner la charge du réseau",
+        "es": "Combinación de carga de red",
+        "de": "Netzaufladung kombinieren"
       },
       "value": "no",
       "values": [
@@ -171,14 +234,20 @@
           "id": "no",
           "title": {
             "en": "No",
-            "nl": "Nee"
+            "nl": "Nee",
+            "fr": "Numéro",
+            "es": "No.",
+            "de": "Nein"
           }
         },
         {
           "id": "yes",
           "title": {
             "en": "Yes",
-            "nl": "Ja"
+            "nl": "Ja",
+            "fr": "Oui",
+            "es": "Sí.",
+            "de": "Ja"
           }
         }
       ]
@@ -188,7 +257,10 @@
       "type": "dropdown",
       "title": {
         "en": "Refresh interval",
-        "nl": "Updatefrequentie"
+        "nl": "Updatefrequentie",
+        "fr": "Intervalle de rafraîchissement",
+        "es": "Intervalo de referencia",
+        "de": "Erfrischungsintervall"
       },
       "value": "5",
       "values": [
@@ -196,35 +268,50 @@
           "id": "1",
           "title": {
             "en": "1 minute",
-            "nl": "1 minuut"
+            "nl": "1 minuut",
+            "fr": "1 minute",
+            "es": "1 minutos",
+            "de": "1 Minuten"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "3 minutes",
-            "nl": "3 minuten"
+            "nl": "3 minuten",
+            "fr": "3 minutes",
+            "es": "3 minutos",
+            "de": "3 Minuten"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "5 minutes",
-            "nl": "5 minuten"
+            "nl": "5 minuten",
+            "fr": "5 minutes",
+            "es": "5 minutos",
+            "de": "5 Minuten"
           }
         },
         {
           "id": "10",
           "title": {
             "en": "10 minutes",
-            "nl": "10 minuten"
+            "nl": "10 minuten",
+            "fr": "10 minutes",
+            "es": "10 minutos",
+            "de": "10 Minuten"
           }
         },
         {
           "id": "15",
           "title": {
             "en": "15 minutes",
-            "nl": "15 minuten"
+            "nl": "15 minuten",
+            "fr": "15 minutes",
+            "es": "15 minutos",
+            "de": "15 Minuten"
           }
         }
       ]

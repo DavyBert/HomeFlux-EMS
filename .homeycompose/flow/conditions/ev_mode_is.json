@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "[[ev]] mode is [[mode]]",
-    "nl": "[[ev]]-modus is [[mode]]"
+    "nl": "[[ev]]-modus is [[mode]]",
+    "fr": "[[ev]] mode est [[mode]]",
+    "es": "El modo [[ev]] es [[mode]]",
+    "de": "[[ev]] Modus ist [[mode]]"
   },
   "args": [
     {
@@ -9,35 +12,50 @@
       "type": "dropdown",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "EV 1",
-            "nl": "EV 1"
+            "nl": "EV 1",
+            "fr": "EV 1",
+            "es": "EV 1",
+            "de": "EV 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "EV 2",
-            "nl": "EV 2"
+            "nl": "EV 2",
+            "fr": "EV 2",
+            "es": "EV 2",
+            "de": "EV 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "EV 3",
-            "nl": "EV 3"
+            "nl": "EV 3",
+            "fr": "EV 3",
+            "es": "EV 3",
+            "de": "EV 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "EV 4",
-            "nl": "EV 4"
+            "nl": "EV 4",
+            "fr": "EV 4",
+            "es": "EV 4",
+            "de": "EV 4"
           }
         }
       ]
@@ -47,28 +65,40 @@
       "type": "dropdown",
       "title": {
         "en": "Mode",
-        "nl": "Modus"
+        "nl": "Modus",
+        "fr": "Mode",
+        "es": "Modo",
+        "de": "Modus"
       },
       "values": [
         {
           "id": "smart",
           "title": {
             "en": "Smart",
-            "nl": "Slim"
+            "nl": "Slim",
+            "fr": "Intelligent",
+            "es": "Smart",
+            "de": "intelligent"
           }
         },
         {
           "id": "soc_target",
           "title": {
             "en": "SoC target",
-            "nl": "Op SoC-doel"
+            "nl": "Op SoC-doel",
+            "fr": "Objectif SoC",
+            "es": "Meta SoC",
+            "de": "Zielvorgabe SoC"
           }
         },
         {
           "id": "emergency",
           "title": {
             "en": "Emergency charge",
-            "nl": "Emergency charge"
+            "nl": "Emergency charge",
+            "fr": "Frais d ' urgence",
+            "es": "Cargo de emergencia",
+            "de": "Notfallgebühr"
           }
         }
       ]
@@ -76,7 +106,10 @@
   ],
   "titleFormatted": {
     "en": "[[ev]] mode is [[mode]]",
-    "nl": "[[ev]]-modus is [[mode]]"
+    "nl": "[[ev]]-modus is [[mode]]",
+    "fr": "[[ev]] mode est [[mode]]",
+    "es": "El modo [[ev]] es [[mode]]",
+    "de": "[[ev]] Modus ist [[mode]]"
   },
   "deprecated": true
 }

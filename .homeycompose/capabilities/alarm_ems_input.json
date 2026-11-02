@@ -3,18 +3,27 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Missing EMS input",
-    "nl": "EMS-invoer ontbreekt"
+    "nl": "EMS-invoer ontbreekt",
+    "fr": "Manquant EMS entrée",
+    "es": "Falta de EMS entradas",
+    "de": "Fehlender EMS-Input"
   },
   "getable": true,
   "setable": false,
   "insights": false,
   "insightsTitleTrue": {
     "en": "Required EMS input is missing",
-    "nl": "Vereiste EMS-invoer ontbreekt"
+    "nl": "Vereiste EMS-invoer ontbreekt",
+    "fr": "Obligatoire EMS entrée est manquante",
+    "es": "Falta la entrada requerida EMS",
+    "de": "Erforderlicher EMS-Eingang fehlt"
   },
   "insightsTitleFalse": {
     "en": "All required EMS input is available",
-    "nl": "Alle vereiste EMS-invoer is beschikbaar"
+    "nl": "Alle vereiste EMS-invoer is beschikbaar",
+    "fr": "Toutes les entrées requises EMS sont disponibles",
+    "es": "Todas las entradas necesarias EMS están disponibles",
+    "de": "Alle erforderlichen EMS-Eingänge sind verfügbar"
   },
   "icon": "/assets/capabilities/input-warning.svg"
 }

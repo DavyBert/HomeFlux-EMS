@@ -1,14 +1,23 @@
 {
   "title": {
     "en": "Tomorrow PV forecast is needed",
-    "nl": "PV-voorspelling morgen is nodig"
+    "nl": "PV-voorspelling morgen is nodig",
+    "fr": "Demain PV prévision est nécessaire",
+    "es": "Mañana se necesita un pronóstico de PV",
+    "de": "Morgen PV Prognose wird benötigt"
   },
   "titleFormatted": {
     "en": "Tomorrow PV forecast is needed",
-    "nl": "PV-voorspelling morgen is nodig"
+    "nl": "PV-voorspelling morgen is nodig",
+    "fr": "Demain PV prévision est nécessaire",
+    "es": "Mañana se necesita un pronóstico de PV",
+    "de": "Morgen PV Prognose wird benötigt"
   },
   "hint": {
     "en": "Fires every 30 minutes and once at app start. Use it to send tomorrow's total PV forecast to HomeFlux EMS.",
-    "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de totale PV-voorspelling voor morgen naar HomeFlux EMS te sturen."
+    "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de totale PV-voorspelling voor morgen naar HomeFlux EMS te sturen.",
+    "fr": "Incendie toutes les 30 minutes et une fois au début de l'application. Utilisez-le pour envoyer le total de demain PV prévisions à HomeFlux EMS.",
+    "es": "Dispara cada 30 minutos y una vez en el inicio de la aplicación. Úsalo para enviar el pronóstico total PV de mañana a HomeFlux EMS.",
+    "de": "Feuert alle 30 Minuten und einmal beim App-Start. Verwenden Sie es, um die gesamte PV-Prognose von morgen an HomeFlux EMS zu senden."
   }
 }

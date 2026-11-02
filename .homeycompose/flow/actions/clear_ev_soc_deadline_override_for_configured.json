@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Clear EV planning override",
-    "nl": "Wis EV-planningsoverride"
+    "nl": "Wis EV-planningsoverride",
+    "fr": "Effacer la dérogation de planification EV",
+    "es": "Borrar la anulación de planificación EV",
+    "de": "EV-Planungsüberschreibung löschen"
   },
   "hint": {
     "en": "Clears the persistent Flow minimum target for the selected EV, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app. Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Wist het blijvende Flow-minimumdoel voor de geselecteerde EV, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "nl": "Wist het blijvende Flow-minimumdoel voor de geselecteerde EV, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg.",
+    "fr": "Efface la cible minimale persistante de Flow pour le EV sélectionné, qu'elle ait été fournie en SoC ou en kWh requis. HomeFlux revient immédiatement aux paramètres de la cible/deadline configurés dans l'application. Seules les fentes dans le nombre d'appareils sauvegardés sont proposées. Au nombre 0, la liste est vide.",
+    "es": "Borra el objetivo mínimo persistente Flow para el EV seleccionado, ya sea que se suministró como SoC o kWh requerido. HomeFlux se remonta inmediatamente a la configuración de destino/deadline configurada en la aplicación. Sólo se ofrecen ranuras dentro del recuento de dispositivo guardado. A la cuenta 0 la lista está vacía.",
+    "de": "Löscht das persistente Flow-Mindestziel für das ausgewählte EV, unabhängig davon, ob es als SoC oder benötigte kWh geliefert wurde. HomeFlux greift sofort auf die in der App konfigurierten Ziel-/Fristeinstellungen zurück. Es werden nur Slots innerhalb der gespeicherten Geräteanzahl angeboten. Bei Zählung 0 ist die Liste leer."
   },
   "titleFormatted": {
     "en": "Clear [[ev]] planning override",
-    "nl": "Wis [[ev]]-planningsoverride"
+    "nl": "Wis [[ev]]-planningsoverride",
+    "fr": "Effacer la dérogation de planification [[ev]]",
+    "es": "Borrar la anulación de planificación [[ev]]",
+    "de": "Planungsüberschreibung für [[ev]] löschen"
   },
   "args": [
     {
@@ -17,11 +26,17 @@
       "type": "autocomplete",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "placeholder": {
         "en": "Select configured EV",
-        "nl": "Kies geconfigureerde EV"
+        "nl": "Kies geconfigureerde EV",
+        "fr": "Sélectionner configuré EV",
+        "es": "Seleccionado EV",
+        "de": "Wählen Sie konfiguriert EV"
       }
     }
   ]

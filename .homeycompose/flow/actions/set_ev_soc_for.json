@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set EV SoC",
-    "nl": "Stel EV-SoC in"
+    "nl": "Stel EV-SoC in",
+    "fr": "Ensemble EV SoC",
+    "es": "Set EV SoC",
+    "de": "Set EV SoC"
   },
   "hint": {
     "en": "Push the current the selected EV state of charge to HomeFlux. Only used when the selected EV SoC support is enabled in settings.",
-    "nl": "Stuur de actuele de geselecteerde EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer de geselecteerde EV-SoC in de instellingen is ingeschakeld."
+    "nl": "Stuur de actuele de geselecteerde EV-laadstatus naar HomeFlux. Wordt alleen gebruikt wanneer de geselecteerde EV-SoC in de instellingen is ingeschakeld.",
+    "fr": "Poussez le courant de l'état de charge EV sélectionné à HomeFlux. Utilisé uniquement lorsque le support EV SoC sélectionné est activé dans les paramètres.",
+    "es": "Empuje la corriente el estado de carga EV seleccionado a HomeFlux. Sólo se utiliza cuando el soporte seleccionado EV SoC está habilitado en la configuración.",
+    "de": "Schieben Sie den ausgewählten Ladezustand EV auf HomeFlux. Wird nur verwendet, wenn die ausgewählte EV SoC-Unterstützung in den Einstellungen aktiviert ist."
   },
   "args": [
     {
@@ -13,35 +19,50 @@
       "type": "dropdown",
       "title": {
         "en": "EV",
-        "nl": "EV"
+        "nl": "EV",
+        "fr": "EV",
+        "es": "EV",
+        "de": "EV"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "EV 1",
-            "nl": "EV 1"
+            "nl": "EV 1",
+            "fr": "EV 1",
+            "es": "EV 1",
+            "de": "EV 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "EV 2",
-            "nl": "EV 2"
+            "nl": "EV 2",
+            "fr": "EV 2",
+            "es": "EV 2",
+            "de": "EV 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "EV 3",
-            "nl": "EV 3"
+            "nl": "EV 3",
+            "fr": "EV 3",
+            "es": "EV 3",
+            "de": "EV 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "EV 4",
-            "nl": "EV 4"
+            "nl": "EV 4",
+            "fr": "EV 4",
+            "es": "EV 4",
+            "de": "EV 4"
           }
         }
       ]
@@ -51,7 +72,10 @@
       "type": "number",
       "title": {
         "en": "EV 1 SoC (%)",
-        "nl": "EV 1 SoC (%)"
+        "nl": "EV 1 SoC (%)",
+        "fr": "EV 1 SoC",
+        "es": "EV 1 SoC (%)",
+        "de": "EV 1 SoC (%)"
       },
       "min": 0,
       "max": 100,
@@ -60,7 +84,10 @@
   ],
   "titleFormatted": {
     "en": "Set [[ev]] SoC to [[soc]]%",
-    "nl": "Stel [[ev]]-SoC in op [[soc]]%"
+    "nl": "Stel [[ev]]-SoC in op [[soc]]%",
+    "fr": "Ensemble [[ev]] SoC à [[soc]]%",
+    "es": "Set [[ev]] SoC a [[soc]]%",
+    "de": "Set [[ev]] SoC auf [[soc]]%"
   },
   "deprecated": true
 }

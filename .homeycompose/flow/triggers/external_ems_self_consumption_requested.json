@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set external EMS to self consumption",
-    "nl": "Stel externe EMS in op zelfconsumptie"
+    "nl": "Stel externe EMS in op zelfconsumptie",
+    "fr": "Ensemble externe EMS à l'autoconsommation",
+    "es": "Establecer EMS externo para el autoconsumo",
+    "de": "Setzen Sie die externe EMS auf den Eigenverbrauch"
   },
   "hint": {
     "en": "Fires when Hybrid EMS delegates pure self-consumption to the external EMS, and once more if the watchdog requests a retry.",
-    "nl": "Start wanneer Hybrid EMS pure zelfconsumptie overdraagt aan de externe EMS en nogmaals wanneer de watchdog een nieuwe poging vraagt."
+    "nl": "Start wanneer Hybrid EMS pure zelfconsumptie overdraagt aan de externe EMS en nogmaals wanneer de watchdog een nieuwe poging vraagt.",
+    "fr": "Incendie lorsque Hybrid EMS délègue l'autoconsommation pure au EMS externe, et une fois de plus si le chien de garde demande une réessayer.",
+    "es": "Fuegos cuando Hybrid EMS delegados autoconsumo puro al exterior EMS, y una vez más si el reloj pide una reingresación.",
+    "de": "Feuert, wenn Hybrid EMS den reinen Eigenverbrauch an das externe EMS delegiert, und noch einmal, wenn der Wachhund einen Wiederholungsversuch anfordert."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "pure_self_consumption"
     },
@@ -22,7 +31,10 @@
       "type": "number",
       "title": {
         "en": "Retry (0/1)",
-        "nl": "Nieuwe poging (0/1)"
+        "nl": "Nieuwe poging (0/1)",
+        "fr": "Réessayer (0/1)",
+        "es": "Retry (0/1)",
+        "de": "Retry (0/1)"
       },
       "example": 0
     }

@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Current Homey Energy price is among the [[hours]] most expensive hours today",
-    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag"
+    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag",
+    "fr": "Actuellement Homey Le prix de l'énergie est parmi les [[hours]] heures les plus chères aujourd'hui",
+    "es": "Precio actual de energía Homey es entre las [[hours]] horas más caras de hoy",
+    "de": "Aktueller Homey Energiepreis gehört zu den [[hours]] teuersten Stunden heute"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Hours",
-        "nl": "Uren"
+        "nl": "Uren",
+        "fr": "Heures",
+        "es": "Horas",
+        "de": "Stunden"
       },
       "min": 0.25,
       "max": 12,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Current Homey Energy price is among the [[hours]] most expensive hours today",
-    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag"
+    "nl": "Huidige Homey Energy prijs hoort bij de [[hours]] duurste uren vandaag",
+    "fr": "Actuellement Homey Le prix de l'énergie est parmi les [[hours]] heures les plus chères aujourd'hui",
+    "es": "Precio actual de energía Homey es entre las [[hours]] horas más caras de hoy",
+    "de": "Aktueller Homey Energiepreis gehört zu den [[hours]] teuersten Stunden heute"
   }
 }

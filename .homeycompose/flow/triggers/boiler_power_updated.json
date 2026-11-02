@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Boiler power command is updated",
-    "nl": "Boiler aan/uit-opdracht is bijgewerkt"
+    "nl": "Boiler aan/uit-opdracht is bijgewerkt",
+    "fr": "La commande de puissance de la chauffe-eau est mise à jour",
+    "es": "El comando Boiler power se actualiza",
+    "de": "Boiler Power Command wird aktualisiert"
   },
   "hint": {
     "en": "Use the boolean token to switch the boiler or store its current HomeFlux state in a Logic variable.",
-    "nl": "Gebruik de ja/nee-tag om de boiler te schakelen of de actuele HomeFlux-status in een Logica-variabele te bewaren."
+    "nl": "Gebruik de ja/nee-tag om de boiler te schakelen of de actuele HomeFlux-status in een Logica-variabele te bewaren.",
+    "fr": "Utilisez le jeton booléen pour changer la chauffe-eau ou stocker son état actuel HomeFlux dans une variable Logic.",
+    "es": "Utilice la ficha booleana para cambiar la caldera o almacenar su estado actual HomeFlux en una variable Logic.",
+    "de": "Verwenden Sie das boolesche Token, um den Boiler zu schalten oder seinen aktuellen HomeFlux-Zustand in einer Logic-Variablen zu speichern."
   },
   "tokens": [
     {
@@ -13,7 +19,10 @@
       "type": "boolean",
       "title": {
         "en": "Boiler on",
-        "nl": "Boiler aan"
+        "nl": "Boiler aan",
+        "fr": "Chauffe-eau allumé",
+        "es": "Termo encendido",
+        "de": "Warmwasserspeicher ein"
       },
       "example": true
     }

@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Total savings",
-    "nl": "Winst totaal"
+    "nl": "Winst totaal",
+    "fr": "Total des économies",
+    "es": "Total de economías",
+    "de": "Gesamteinsparungen"
   },
   "getable": true,
   "setable": false,
@@ -11,7 +14,10 @@
   "decimals": 2,
   "units": {
     "en": "€",
-    "nl": "€"
+    "nl": "€",
+    "fr": "€",
+    "es": "€",
+    "de": "€"
   },
   "icon": "/assets/capabilities/savings-total.svg"
 }

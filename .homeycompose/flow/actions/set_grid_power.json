@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set grid power",
-    "nl": "Stel netvermogen in"
+    "nl": "Stel netvermogen in",
+    "fr": "Régler la puissance du réseau",
+    "es": "Configurar energía de la red",
+    "de": "Stellnetzstrom"
   },
   "hint": {
     "en": "Positive is grid import, negative is export.",
-    "nl": "Positief is netafname, negatief is injectie."
+    "nl": "Positief is netafname, negatief is injectie.",
+    "fr": "Positif est l'importation de réseau, négatif est l'exportation.",
+    "es": "Positivo es la importación de cuadrícula, negativo es la exportación.",
+    "de": "Positiv ist Netzimport, negativ ist Export."
   },
   "args": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Grid power (W)",
-        "nl": "Netvermogen (W)"
+        "nl": "Netvermogen (W)",
+        "fr": "Puissance du réseau (W)",
+        "es": "Poder de agarre (W)",
+        "de": "Netzleistung (W)"
       },
       "min": -200000,
       "max": 200000,
@@ -22,6 +31,9 @@
   ],
   "titleFormatted": {
     "en": "Set grid power to [[power]] W",
-    "nl": "Stel netvermogen in op [[power]] W"
+    "nl": "Stel netvermogen in op [[power]] W",
+    "fr": "Réglez la puissance du réseau à [[power]] W",
+    "es": "Configurar la potencia de la red a [[power]] W",
+    "de": "Netzleistung auf [[power]] W einstellen"
   }
 }

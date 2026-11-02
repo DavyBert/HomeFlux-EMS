@@ -3,7 +3,10 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Battery control owner",
-    "nl": "Batterijsturing"
+    "nl": "Batterijsturing",
+    "fr": "Propriétaire de la commande de batterie",
+    "es": "Propietario de control de batería",
+    "de": "Eigentümer der Batteriesteuerung"
   },
   "getable": true,
   "setable": false,

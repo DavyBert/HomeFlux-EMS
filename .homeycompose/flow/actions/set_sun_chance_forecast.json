@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Set expected sunshine probability today and tomorrow",
-    "nl": "Stel verwachte zonkans vandaag en morgen in"
+    "nl": "Stel verwachte zonkans vandaag en morgen in",
+    "fr": "Réglez la probabilité de soleil prévue aujourd'hui et demain",
+    "es": "Establecer la probabilidad de sol esperada hoy y mañana",
+    "de": "Set erwartete Sonnenscheinwahrscheinlichkeit heute und morgen"
   },
   "titleFormatted": {
     "en": "Set sunshine probability today to [[today]]% and tomorrow to [[tomorrow]]%",
-    "nl": "Stel zonkans vandaag in op [[today]]% en morgen op [[tomorrow]]%"
+    "nl": "Stel zonkans vandaag in op [[today]]% en morgen op [[tomorrow]]%",
+    "fr": "Réglez la probabilité de soleil aujourd'hui à [[today]]% et demain à [[tomorrow]]%",
+    "es": "Establecer la probabilidad de sol hoy al [[today]]% y mañana al [[tomorrow]]%",
+    "de": "Sonnenscheinwahrscheinlichkeit heute auf [[today]]% und morgen auf [[tomorrow]]%"
   },
   "hint": {
     "en": "Send local-calendar-day forecasts. Values are date-bound and persist after restart.",
-    "nl": "Geef voorspellingen voor de lokale kalenderdagen door. Waarden zijn datumgebonden en blijven na herstart behouden."
+    "nl": "Geef voorspellingen voor de lokale kalenderdagen door. Waarden zijn datumgebonden en blijven na herstart behouden.",
+    "fr": "Envoyez des prévisions locales. Les valeurs sont liées à la date et persistent après le redémarrage.",
+    "es": "Enviar pronósticos locales-calendario-día. Los valores son de fecha límite y persisten después de reiniciar.",
+    "de": "Senden Sie lokale Kalender-Tage-Prognosen. Werte sind datumsgebunden und bleiben nach dem Neustart bestehen."
   },
   "args": [
     {
@@ -17,7 +26,10 @@
       "type": "number",
       "title": {
         "en": "Today (%)",
-        "nl": "Vandaag (%)"
+        "nl": "Vandaag (%)",
+        "fr": "Aujourd'hui (%)",
+        "es": "Hoy (%)",
+        "de": "Heute (%)"
       },
       "min": 0,
       "max": 100,
@@ -28,7 +40,10 @@
       "type": "number",
       "title": {
         "en": "Tomorrow (%)",
-        "nl": "Morgen (%)"
+        "nl": "Morgen (%)",
+        "fr": "Demain (%)",
+        "es": "Mañana (%)",
+        "de": "Morgen (%)"
       },
       "min": 0,
       "max": 100,

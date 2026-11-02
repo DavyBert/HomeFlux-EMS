@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC automatic control",
-    "nl": "Stel HVAC automatische sturing in"
+    "nl": "Stel HVAC automatische sturing in",
+    "fr": "Set HVAC commande automatique",
+    "es": "Juego de control automático HVAC",
+    "de": "Set HVAC Automatische Steuerung"
   },
   "args": [
     {
@@ -9,11 +12,17 @@
       "type": "autocomplete",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "placeholder": {
         "en": "Select configured HVAC",
-        "nl": "Kies geconfigureerde HVAC"
+        "nl": "Kies geconfigureerde HVAC",
+        "fr": "Sélectionner configuré HVAC",
+        "es": "Seleccionado HVAC",
+        "de": "Wählen Sie konfiguriert HVAC"
       }
     },
     {
@@ -21,21 +30,30 @@
       "type": "dropdown",
       "title": {
         "en": "Automatic control",
-        "nl": "Automatische sturing"
+        "nl": "Automatische sturing",
+        "fr": "Contrôle automatique",
+        "es": "Control automático",
+        "de": "Automatische Steuerung"
       },
       "values": [
         {
           "id": "yes",
           "title": {
             "en": "Yes",
-            "nl": "Ja"
+            "nl": "Ja",
+            "fr": "Oui",
+            "es": "Sí.",
+            "de": "Ja"
           }
         },
         {
           "id": "no",
           "title": {
             "en": "No",
-            "nl": "Nee"
+            "nl": "Nee",
+            "fr": "Numéro",
+            "es": "No.",
+            "de": "Nein"
           }
         }
       ]
@@ -49,20 +67,32 @@
       "step": 0.5,
       "title": {
         "en": "Standby temperature (optional)",
-        "nl": "Stand-bytemperatuur (optioneel)"
+        "nl": "Stand-bytemperatuur (optioneel)",
+        "fr": "Température de veille (facultative)",
+        "es": "Temperatura de espera (opcional)",
+        "de": "Standby-Temperatur (optional)"
       },
       "placeholder": {
         "en": "Leave empty to retain setting",
-        "nl": "Leeg = instelling behouden"
+        "nl": "Leeg = instelling behouden",
+        "fr": "Laisser vide pour conserver le réglage",
+        "es": "Dejar vacío para conservar el ajuste",
+        "de": "Leer lassen, um die Einstellung beizubehalten"
       }
     }
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] automatic control to [[enabled]] (standby [[standby_temperature]] °C)",
-    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]] (stand-by [[standby_temperature]] °C)"
+    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]] (stand-by [[standby_temperature]] °C)",
+    "fr": "Réglage automatique [[hvac]] à [[enabled]] (standby [[standby_temperature]] °C)",
+    "es": "Establecer el control automático [[hvac]] a [[enabled]] (standby [[standby_temperature]] °C)",
+    "de": "Automatische Steuerung [[hvac]] auf [[enabled]] einstellen (Standby [[standby_temperature]] °C)"
   },
   "hint": {
     "en": "Enables or disables automatic HVAC control. Disabling immediately repeats the action chosen in this HVAC’s settings: send the standby setpoint or send OFF. The optional Flow temperature overrides the saved standby temperature. Only permitted outputs are used; re-enabling resumes normal safe control.",
-    "nl": "Schakelt automatische HVAC-sturing aan of uit. Uitschakelen stuurt direct opnieuw de gekozen actie uit de HVAC-instellingen: het stand-bysetpoint of Uit. De optionele Flow-temperatuur vervangt de opgeslagen stand-bytemperatuur. Alleen toegestane uitgangen worden gebruikt; inschakelen hervat de normale veilige regeling."
+    "nl": "Schakelt automatische HVAC-sturing aan of uit. Uitschakelen stuurt direct opnieuw de gekozen actie uit de HVAC-instellingen: het stand-bysetpoint of Uit. De optionele Flow-temperatuur vervangt de opgeslagen stand-bytemperatuur. Alleen toegestane uitgangen worden gebruikt; inschakelen hervat de normale veilige regeling.",
+    "fr": "Active ou désactive le contrôle automatique HVAC. Désactiver répète immédiatement l'action choisie dans ces paramètres HVAC: envoyer le point de consigne en attente ou envoyer OFF. La température optionnelle Flow dépasse la température de veille enregistrée. Seules les sorties autorisées sont utilisées; la réactivation reprend le contrôle normal en toute sécurité.",
+    "es": "Permite o deshabilita el control automático HVAC. Desactivar de inmediato repite la acción elegida en la configuración de este HVAC: envía el punto de reserva o envía OFF. La temperatura opcional Flow anula la temperatura de reserva guardada. Únicamente se utilizan los productos permitidos; volver a habilitar reanuda el control seguro normal.",
+    "de": "Aktiviert oder deaktiviert die automatische HVAC Steuerung. Die Deaktivierung wiederholt sofort die in den Einstellungen dieses HVAC gewählte Aktion: Senden Sie den Standby-Sollpunkt oder senden Sie OFF. Die optionale Flow Temperatur überschreibt die gespeicherte Standby-Temperatur. Es werden nur erlaubte Ausgänge verwendet; die Wiederermöglichung der normalen sicheren Steuerung wird wieder aufgenommen."
   }
 }

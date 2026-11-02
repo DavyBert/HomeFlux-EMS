@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Battery 6: switch to charge mode",
-    "nl": "Batterij 6: schakel naar laadmodus"
+    "nl": "Batterij 6: schakel naar laadmodus",
+    "fr": "Batterie 6: passer en mode recharge",
+    "es": "Batería 6: conmutar el modo de carga",
+    "de": "Batterie 6: Wechsel in den Lademodus"
   },
   "hint": {
     "en": "Only fires when split command is enabled for battery 6 and HomeFlux needs charge mode. Power follows 1 second after an allowed mode switch.",
-    "nl": "Start alleen wanneer split command voor batterij 6 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel."
+    "nl": "Start alleen wanneer split command voor batterij 6 actief is en HomeFlux laadmodus nodig heeft. Het vermogen volgt 1 seconde na een toegelaten modewissel.",
+    "fr": "Il n'y a que des feux lorsque la commande fractionnée est activée pour la batterie 6 et HomeFlux nécessite un mode de charge. La puissance suit 1 secondes après un interrupteur de mode autorisé.",
+    "es": "Sólo los incendios cuando el comando split está habilitado para la batería 6 y HomeFlux necesita el modo de carga. La potencia sigue 1 segundos después de un interruptor de modo permitido.",
+    "de": "Nur wenn der Split-Befehl für die Batterie 6 und HomeFlux aktiviert ist, wird der Lademodus benötigt. Die Leistung folgt 1 Sekunden nach einem erlaubten Modusschalter."
   },
   "deprecated": true
 }

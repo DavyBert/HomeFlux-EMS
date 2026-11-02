@@ -1,11 +1,17 @@
 {
   "title": {
     "en": "Set exported energy today",
-    "nl": "Geëxporteerde energie vandaag"
+    "nl": "Geëxporteerde energie vandaag",
+    "fr": "Ensemble énergie exportée aujourd'hui",
+    "es": "Conjunto de energía exportada hoy",
+    "de": "Exportierte Energie heute eingestellt"
   },
   "hint": {
     "en": "Send the cumulative grid-export energy for today in kWh. HomeFlux uses it only to calibrate the calculated PV/battery export totals in Savings; it does not change EMS control.",
-    "nl": "Stuur de cumulatieve netinjectie van vandaag in kWh. HomeFlux gebruikt deze alleen om de berekende PV-/batterij-exporttotalen in Winst te kalibreren; dit wijzigt de EMS-sturing niet."
+    "nl": "Stuur de cumulatieve netinjectie van vandaag in kWh. HomeFlux gebruikt deze alleen om de berekende PV-/batterij-exporttotalen in Winst te kalibreren; dit wijzigt de EMS-sturing niet.",
+    "fr": "Envoyer l'énergie cumulée du réseau-export pour aujourd'hui en kWh. HomeFlux utilise seulement pour étalonner les totaux d'exportation de PV/batterie calculés dans Épargne; il ne change pas le contrôle EMS.",
+    "es": "Envíe la energía acumulativa de la red-exportación para hoy en kWh. HomeFlux lo utiliza sólo para calibrar los totales calculados de exportación PV/batería en Ahorros; no cambia el control EMS.",
+    "de": "Senden Sie die kumulative Netz-Export-Energie für heute in kWh. HomeFlux verwendet es nur, um die berechneten PV/Batterieexportsummen in Einsparungen zu kalibrieren; es ändert nicht EMS Kontrolle."
   },
   "args": [
     {
@@ -13,7 +19,10 @@
       "type": "number",
       "title": {
         "en": "Exported energy today (kWh)",
-        "nl": "Geëxporteerde energie vandaag (kWh)"
+        "nl": "Geëxporteerde energie vandaag (kWh)",
+        "fr": "Énergie exportée aujourd'hui (kWh)",
+        "es": "Energía exportada hoy (kWh)",
+        "de": "Exportierte Energie heute (kWh)"
       },
       "min": 0,
       "max": 10000,
@@ -22,6 +31,9 @@
   ],
   "titleFormatted": {
     "en": "Exported energy today is [[energy]] kWh",
-    "nl": "Geëxporteerde energie vandaag is [[energy]] kWh"
+    "nl": "Geëxporteerde energie vandaag is [[energy]] kWh",
+    "fr": "L'énergie exportée aujourd'hui est de [[energy]] kWh",
+    "es": "La energía exportada hoy es [[energy]] kWh",
+    "de": "Exportierte Energie ist heute [[energy]] kWh"
   }
 }

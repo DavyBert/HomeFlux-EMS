@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC outdoor temperature",
-    "nl": "Stel HVAC buitentemperatuur in"
+    "nl": "Stel HVAC buitentemperatuur in",
+    "fr": "Set HVAC température extérieure",
+    "es": "Set HVAC temperatura exterior",
+    "de": "Einstellung HVAC Außentemperatur"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Outdoor temperature for all HVACs (C)",
-        "nl": "Buitentemperatuur voor alle HVACs (C)"
+        "nl": "Buitentemperatuur voor alle HVACs (C)",
+        "fr": "Température extérieure pour tous les CVC (C)",
+        "es": "Temperatura exterior para todos los HVAC (C)",
+        "de": "Außentemperatur für alle HVACs (C)"
       },
       "min": -50,
       "max": 70,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Set HVAC outdoor temperature to [[temperature]] C",
-    "nl": "Stel HVAC buitentemperatuur in op [[temperature]] C"
+    "nl": "Stel HVAC buitentemperatuur in op [[temperature]] C",
+    "fr": "Set HVAC température extérieure à [[temperature]] C",
+    "es": "Set HVAC temperatura exterior a [[temperature]] C",
+    "de": "HVAC Außentemperatur auf [[temperature]] C einstellen"
   }
 }

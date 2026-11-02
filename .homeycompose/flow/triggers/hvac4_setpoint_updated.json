@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "HVAC 4 setpoint command is updated",
-    "nl": "HVAC 4-setpoint is bijgewerkt"
+    "nl": "HVAC 4-setpoint is bijgewerkt",
+    "fr": "La commande HVAC 4 setpoint est mise à jour",
+    "es": "Se actualiza el comando HVAC 4 setpoint",
+    "de": "HVAC 4 Sollwertbefehl wird aktualisiert"
   },
   "tokens": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Setpoint (C)",
-        "nl": "Setpoint (C)"
+        "nl": "Setpoint (C)",
+        "fr": "Positionnement (C)",
+        "es": "Punto de referencia (C)",
+        "de": "Sollwert (C)"
       },
       "example": 21.5
     },
@@ -18,7 +24,10 @@
       "type": "string",
       "title": {
         "en": "Reason",
-        "nl": "Reden"
+        "nl": "Reden",
+        "fr": "Motif",
+        "es": "Motivo",
+        "de": "Grund"
       },
       "example": "PV-overschot weg - setpoint geleidelijk terug"
     }

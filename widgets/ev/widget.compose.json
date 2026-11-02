@@ -1,7 +1,10 @@
 {
   "name": {
     "en": "HomeFlux EV",
-    "nl": "HomeFlux EV"
+    "nl": "HomeFlux EV",
+    "fr": "HomeFlux EV",
+    "es": "HomeFlux EV",
+    "de": "HomeFlux EV"
   },
   "height": 530,
   "settings": [
@@ -11,7 +14,10 @@
       "value": true,
       "title": {
         "en": "Show compact EV Status",
-        "nl": "Compacte EV-status tonen"
+        "nl": "Compacte EV-status tonen",
+        "fr": "Afficher l'état compact EV",
+        "es": "Mostrar compacto EV Estado",
+        "de": "Kompakt anzeigen EV Status"
       }
     },
     {
@@ -20,7 +26,10 @@
       "value": true,
       "title": {
         "en": "Show EV Scheduler",
-        "nl": "EV Scheduler tonen"
+        "nl": "EV Scheduler tonen",
+        "fr": "Afficher EV Planificateur",
+        "es": "Mostrar EV Programador",
+        "de": "Show EV Scheduler"
       }
     },
     {
@@ -29,7 +38,10 @@
       "value": true,
       "title": {
         "en": "Show EV Insights",
-        "nl": "EV Insights tonen"
+        "nl": "EV Insights tonen",
+        "fr": "Afficher EV Insights",
+        "es": "Mostrar EV entradas",
+        "de": "EV Einblicke anzeigen"
       }
     },
     {
@@ -38,7 +50,10 @@
       "value": false,
       "title": {
         "en": "Switch Status / Planning / Insights with buttons",
-        "nl": "Status / Planning / Inzichten wisselen met knoppen"
+        "nl": "Status / Planning / Inzichten wisselen met knoppen",
+        "fr": "Changer d'état / Planification / Insights avec boutons",
+        "es": "Estado de conmutación / Planeamiento / Insights con botones",
+        "de": "Switch Status / Planning / Insights mit Buttons"
       }
     }
   ],

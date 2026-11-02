@@ -1,15 +1,24 @@
 {
   "title": {
     "en": "Charge plan is updated",
-    "nl": "Laadplan is bijgewerkt"
+    "nl": "Laadplan is bijgewerkt",
+    "fr": "Le plan des frais est mis à jour",
+    "es": "Plan de carga actualizado",
+    "de": "Der Ladeplan wird aktualisiert"
   },
   "titleFormatted": {
     "en": "Charge plan is updated",
-    "nl": "Laadplan is bijgewerkt"
+    "nl": "Laadplan is bijgewerkt",
+    "fr": "Le plan des frais est mis à jour",
+    "es": "Plan de carga actualizado",
+    "de": "Der Ladeplan wird aktualisiert"
   },
   "hint": {
     "en": "Fires when HomeFlux decides or changes the overnight charge plan. Use the Charge plan token with Homey's standard Logic action to write it to a text variable.",
-    "nl": "Start wanneer HomeFlux het nachtelijke laadplan beslist of wijzigt. Gebruik de tag Laadplan met de standaard Logic-kaart van Homey om dit naar een tekstvariabele te schrijven."
+    "nl": "Start wanneer HomeFlux het nachtelijke laadplan beslist of wijzigt. Gebruik de tag Laadplan met de standaard Logic-kaart van Homey om dit naar een tekstvariabele te schrijven.",
+    "fr": "Incendie lorsque HomeFlux décide ou modifie le plan de charge d'une nuit. Utilisez le jeton Charge avec l'action standard Logic de Homey pour l'écrire à une variable texte.",
+    "es": "Fuegos cuando HomeFlux decide o cambia el plan de carga de la noche a la mañana. Utilice la ficha del plan de carga con la acción Homey estándar Logic para escribirla a una variable de texto.",
+    "de": "Feuert, wenn HomeFlux entscheidet oder den Übernachtungsplan ändert. Verwenden Sie das Charge-Plan-Token mit der Standard-Aktion Homey Logic, um es in eine Textvariable zu schreiben."
   },
   "tokens": [
     {
@@ -17,11 +26,17 @@
       "type": "string",
       "title": {
         "en": "Charge plan",
-        "nl": "Laadplan"
+        "nl": "Laadplan",
+        "fr": "Plan des frais",
+        "es": "Plan de carga",
+        "de": "Gebührenplan"
       },
       "example": {
         "en": "SoC target 19% · enough battery reserve, no grid charging is planned.",
-        "nl": "SoC-doel 19% · genoeg batterijreserve, er wordt niet geladen."
+        "nl": "SoC-doel 19% · genoeg batterijreserve, er wordt niet geladen.",
+        "fr": "SoC cible 19% · assez de réserve de batterie, aucune charge du réseau n'est prévue.",
+        "es": "SoC objetivo 19% · suficiente reserva de batería, no se planea carga de red.",
+        "de": "SoC Ziel 19% · genügend Batteriereserve, keine Netzladung ist geplant."
       }
     },
     {
@@ -29,7 +44,10 @@
       "type": "number",
       "title": {
         "en": "Target SoC (%)",
-        "nl": "Doel-SoC (%)"
+        "nl": "Doel-SoC (%)",
+        "fr": "Objectif SoC (%)",
+        "es": "Meta SoC (%)",
+        "de": "Ziel SoC (in %)"
       },
       "example": 19
     },
@@ -38,7 +56,10 @@
       "type": "number",
       "title": {
         "en": "Current SoC (%)",
-        "nl": "Huidige SoC (%)"
+        "nl": "Huidige SoC (%)",
+        "fr": "Actuellement SoC (%)",
+        "es": "Corriente SoC (%)",
+        "de": "Aktuelle SoC (%)"
       },
       "example": 72
     },
@@ -47,7 +68,10 @@
       "type": "string",
       "title": {
         "en": "Charge window",
-        "nl": "Laaduren"
+        "nl": "Laaduren",
+        "fr": "Fenêtre de chargement",
+        "es": "Ventana de carga",
+        "de": "Ladefenster"
       },
       "example": "01:00–07:00"
     },
@@ -56,7 +80,10 @@
       "type": "number",
       "title": {
         "en": "Planning PV forecast (kWh)",
-        "nl": "PV-voorspelling voor planning (kWh)"
+        "nl": "PV-voorspelling voor planning (kWh)",
+        "fr": "Planification PV prévisions (kWh)",
+        "es": "Planificación PV (kWh)",
+        "de": "Planung PV Prognose (kWh)"
       },
       "example": 20.3
     }

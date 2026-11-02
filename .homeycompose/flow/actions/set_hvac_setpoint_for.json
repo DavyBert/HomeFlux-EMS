@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set HVAC setpoint",
-    "nl": "Stel HVAC-setpoint in"
+    "nl": "Stel HVAC-setpoint in",
+    "fr": "Réglage HVAC",
+    "es": "Set HVAC",
+    "de": "Set HVAC Sollwert"
   },
   "args": [
     {
@@ -9,35 +12,50 @@
       "type": "dropdown",
       "title": {
         "en": "HVAC",
-        "nl": "HVAC"
+        "nl": "HVAC",
+        "fr": "HVAC",
+        "es": "HVAC",
+        "de": "HVAC"
       },
       "values": [
         {
           "id": "1",
           "title": {
             "en": "HVAC 1",
-            "nl": "HVAC 1"
+            "nl": "HVAC 1",
+            "fr": "HVAC 1",
+            "es": "HVAC 1",
+            "de": "HVAC 1"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "HVAC 2",
-            "nl": "HVAC 2"
+            "nl": "HVAC 2",
+            "fr": "HVAC 2",
+            "es": "HVAC 2",
+            "de": "HVAC 2"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "HVAC 3",
-            "nl": "HVAC 3"
+            "nl": "HVAC 3",
+            "fr": "HVAC 3",
+            "es": "HVAC 3",
+            "de": "HVAC 3"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "HVAC 4",
-            "nl": "HVAC 4"
+            "nl": "HVAC 4",
+            "fr": "HVAC 4",
+            "es": "HVAC 4",
+            "de": "HVAC 4"
           }
         }
       ]
@@ -47,7 +65,10 @@
       "type": "number",
       "title": {
         "en": "Setpoint (C)",
-        "nl": "Setpoint (C)"
+        "nl": "Setpoint (C)",
+        "fr": "Positionnement (C)",
+        "es": "Punto de referencia (C)",
+        "de": "Sollwert (C)"
       },
       "min": 5,
       "max": 35,
@@ -56,7 +77,10 @@
   ],
   "titleFormatted": {
     "en": "Set [[hvac]] setpoint to [[setpoint]] C",
-    "nl": "Stel [[hvac]]-setpoint in op [[setpoint]] C"
+    "nl": "Stel [[hvac]]-setpoint in op [[setpoint]] C",
+    "fr": "Réglage [[hvac]] à [[setpoint]] C",
+    "es": "Establecer el punto [[hvac]] a [[setpoint]] C",
+    "de": "Set [[hvac]] Sollwert auf [[setpoint]] C"
   },
   "deprecated": true
 }

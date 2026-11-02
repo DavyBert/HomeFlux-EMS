@@ -1,10 +1,16 @@
 {
   "title": {
     "en": "Refresh Homey Energy prices",
-    "nl": "Vernieuw Homey Energy prijzen"
+    "nl": "Vernieuw Homey Energy prijzen",
+    "fr": "Rafraîchir les prix de l'énergie Homey",
+    "es": "Actualización Homey Precios de energía",
+    "de": "Refresh Homey Energiepreise"
   },
   "hint": {
     "en": "Refreshes Homey's own dynamic electricity price data for monitoring.",
-    "nl": "Leest Homey's eigen dynamische elektriciteitsprijzen opnieuw in voor monitoring."
+    "nl": "Leest Homey's eigen dynamische elektriciteitsprijzen opnieuw in voor monitoring.",
+    "fr": "Rafraîchit les données de prix dynamiques de l'électricité de Homey pour la surveillance.",
+    "es": "Refresca los datos del precio de electricidad dinámico de Homey para monitorizar.",
+    "de": "Aktualisiert die eigenen dynamischen Strompreisdaten von Homey zur Überwachung."
   }
 }

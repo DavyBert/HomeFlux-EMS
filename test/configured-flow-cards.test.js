@@ -93,10 +93,13 @@ for (const d of CONFIGURED_CARDS) {
       id: `extend_plan_${i + 1}_days`, title: {
         en: `Extend current plan by ${i + 1} ${i === 0 ? 'day' : 'days'}`,
         nl: `Verleng huidige planning met ${i + 1} ${i === 0 ? 'dag' : 'dagen'}`,
+        fr: `Prolonger le plan actuel de ${i + 1} ${i === 0 ? 'jour' : 'jours'}`,
+        es: `Ampliar el plan actual en ${i + 1} ${i === 0 ? 'día' : 'días'}`,
+        de: `Aktuellen Plan um ${i + 1} ${i === 0 ? 'Tag' : 'Tage'} verlängern`,
       },
     }))];
   }
-  if (d.id === 'set_hvac_automatic_control_for_configured') expectedArgs.push({ name:'standby_temperature', type:'number', required:false, min:5, max:99, step:0.5, title:{en:'Standby temperature (optional)',nl:'Stand-bytemperatuur (optioneel)'}, placeholder:{en:'Leave empty to retain setting',nl:'Leeg = instelling behouden'} });
+  if (d.id === 'set_hvac_automatic_control_for_configured') expectedArgs.push({"name": "standby_temperature", "type": "number", "required": false, "min": 5, "max": 99, "step": 0.5, "title": {"en": "Standby temperature (optional)", "nl": "Stand-bytemperatuur (optioneel)", "fr": "Température de veille (facultative)", "es": "Temperatura de espera (opcional)", "de": "Standby-Temperatur (optional)"}, "placeholder": {"en": "Leave empty to retain setting", "nl": "Leeg = instelling behouden", "fr": "Laisser vide pour conserver le réglage", "es": "Dejar vacío para conservar el ajuste", "de": "Leer lassen, um die Einstellung beizubehalten"}});
   assert.deepEqual(card.args.filter(a => a.name !== d.argument), expectedArgs);
   const arg = card.args.find(a => a.name === d.argument);
   assert.equal(arg.type, 'autocomplete');

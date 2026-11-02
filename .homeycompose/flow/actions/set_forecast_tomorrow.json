@@ -1,7 +1,10 @@
 {
   "title": {
     "en": "Set tomorrow PV forecast",
-    "nl": "Stel PV-voorspelling morgen in"
+    "nl": "Stel PV-voorspelling morgen in",
+    "fr": "Réglé demain PV prévision",
+    "es": "Previsión de mañana PV",
+    "de": "Set Morgen PV Prognose"
   },
   "args": [
     {
@@ -9,7 +12,10 @@
       "type": "number",
       "title": {
         "en": "Tomorrow PV (kWh)",
-        "nl": "PV morgen (kWh)"
+        "nl": "PV morgen (kWh)",
+        "fr": "Demain PV (kWh)",
+        "es": "Mañana PV (kWh)",
+        "de": "Morgen PV (kWh)"
       },
       "min": 0,
       "max": 200,
@@ -18,6 +24,9 @@
   ],
   "titleFormatted": {
     "en": "Set tomorrow PV forecast to [[energy]] kWh",
-    "nl": "Stel PV-voorspelling morgen in op [[energy]] kWh"
+    "nl": "Stel PV-voorspelling morgen in op [[energy]] kWh",
+    "fr": "Réglé demain PV prévision à [[energy]] kWh",
+    "es": "Establecer el pronóstico de mañana PV a [[energy]] kWh",
+    "de": "Set morgen PV Prognose auf [[energy]] kWh"
   }
 }

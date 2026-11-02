@@ -3,18 +3,27 @@
   "uiComponent": "sensor",
   "title": {
     "en": "Manual override",
-    "nl": "Handmatige override"
+    "nl": "Handmatige override",
+    "fr": "Dépassement manuel",
+    "es": "Anulación manual",
+    "de": "Manuelles Override"
   },
   "getable": true,
   "setable": false,
   "insights": false,
   "insightsTitleTrue": {
     "en": "Manual EMS override active",
-    "nl": "Handmatige EMS-override actief"
+    "nl": "Handmatige EMS-override actief",
+    "fr": "Dérogation EMS manuelle active",
+    "es": "Anulación manual del EMS activa",
+    "de": "Manuelle EMS-Überschreibung aktiv"
   },
   "insightsTitleFalse": {
     "en": "EMS is automatic",
-    "nl": "EMS staat op automatisch"
+    "nl": "EMS staat op automatisch",
+    "fr": "EMS est automatique",
+    "es": "EMS es automático",
+    "de": "EMS ist automatisch"
   },
   "icon": "/assets/capabilities/override.svg"
 }
