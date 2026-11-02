@@ -6058,7 +6058,7 @@
     "PV in batterij · gratis": "PV in Batterie · frei",
     "batteryResponse.start": "Bestes Mindestintervall ermitteln",
     "batteryResponse.stop": "Reaktionstest stoppen",
-    "batteryResponse.help": "Zusätzliches Werkzeug neben dem bestehenden Batterietest: fünf Zyklen mit 0 W, insgesamt 400 W Ladeleistung und zurück auf 0 W. Hausverbrauch und Solarleistung stabil halten und EV-Laden stoppen. Das Werkzeug übernimmt während des Tests vorübergehend die Batteriesteuerung. Nur nach einem Klick; keine regelmäßigen Reaktionstests. Die Empfehlung beruht auf der gemessenen Lade-/Nullreaktion.",
+    "batteryResponse.help": "Zusätzliches Werkzeug neben dem bestehenden Batterietest: fünf Zyklen mit 0 W, insgesamt 400 W Ladeleistung und zurück auf 0 W. Hausverbrauch und Solarleistung stabil halten und EV-Laden stoppen. Das Werkzeug übernimmt während des Tests vorübergehend die Batteriesteuerung. Nur nach einem Klick; keine regelmäßigen Reaktionstests. Die Empfehlung beruht auf der gemessenen Lade-/Nullreaktion. Der Reaktionstest unterstützt den Dual-Modus mit 100 → 500 → 100 W Ladeleistung (oder dem höheren eingestellten Minimum plus 400 W). Bei mehreren Batterien bleibt der gesamte Messschritt 400 W.",
     "batteryResponse.progress": "Messung {done}/{total} · {phase}",
     "batteryResponse.noResult": "Noch kein erfolgreicher Reaktionstest. Das Intervall wird nicht automatisch geändert.",
     "batteryResponse.result": "Letzter erfolgreicher Test: {time}. Mittlere Reaktionszeit (10 Befehle): {response} s. P1-Takt: {cadence} s. Gemittelte P1-Messungen: {samples} (0 = direkt). Richtwert: {min}–{max} s.",

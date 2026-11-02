@@ -6058,7 +6058,7 @@
     "PV in batterij · gratis": "PV en batería · gratis",
     "batteryResponse.start": "Encontrar el mejor intervalo mínimo",
     "batteryResponse.stop": "Detener la prueba de respuesta",
-    "batteryResponse.help": "Herramienta independiente de la prueba de batería existente: cinco ciclos de 0 W, 400 W de carga total y vuelta a 0 W. Mantenga estables el consumo y el sol, y detenga la carga EV. La herramienta controla temporalmente la batería durante la prueba. Solo tras pulsar el botón; no hay pruebas periódicas. El consejo se basa en la respuesta medida de carga y de retorno a cero.",
+    "batteryResponse.help": "Herramienta independiente de la prueba de batería existente: cinco ciclos de 0 W, 400 W de carga total y vuelta a 0 W. Mantenga estables el consumo y el sol, y detenga la carga EV. La herramienta controla temporalmente la batería durante la prueba. Solo tras pulsar el botón; no hay pruebas periódicas. El consejo se basa en la respuesta medida de carga y de retorno a cero. La prueba de respuesta admite modo dual con 100 → 500 → 100 W de carga (o el mínimo configurado superior más 400 W). Con varias baterías, el cambio total sigue siendo de 400 W.",
     "batteryResponse.progress": "Medición {done}/{total} · {phase}",
     "batteryResponse.noResult": "Aún no hay una prueba de respuesta completada. El intervalo no se cambia automáticamente.",
     "batteryResponse.result": "Última prueba completada: {time}. Tiempo de respuesta medio (10 órdenes): {response} s. Cadencia P1: {cadence} s. Muestras P1 promediadas: {samples} (0 = directo). Intervalo recomendado: {min}–{max} s.",

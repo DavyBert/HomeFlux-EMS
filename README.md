@@ -30,7 +30,26 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.20
+
+De reactietest ondersteunt dual mode met 100 → 500 → 100 W laden (of het hogere ingestelde minimum plus 400 W). Bij meerdere batterijen blijft de totale meetstap 400 W.
+
+The response test supports dual mode with 100 → 500 → 100 W charging (or the higher configured minimum plus 400 W). With multiple batteries, the total measured step remains 400 W.
+
+Le test de réaction prend en charge le mode dual avec 100 → 500 → 100 W de charge (ou le minimum configuré supérieur plus 400 W). Avec plusieurs batteries, la variation totale reste de 400 W.
+
+La prueba de respuesta admite modo dual con 100 → 500 → 100 W de carga (o el mínimo configurado superior más 400 W). Con varias baterías, el cambio total sigue siendo de 400 W.
+
+Der Reaktionstest unterstützt den Dual-Modus mit 100 → 500 → 100 W Ladeleistung (oder dem höheren eingestellten Minimum plus 400 W). Bei mehreren Batterien bleibt der gesamte Messschritt 400 W.
+
 ### 1.2.19
+
+Reactietest: gemiddeld tien afzonderlijke stuurreacties; terugkeer bevestigd bij minstens 300 W daling.
+
+De reactietestknop wordt na afronden of stoppen automatisch bijgewerkt.
+
+Reactietest: uitregeltijd na de 300 W-terugbevestiging telt niet mee in de reactiemeting.
+
 
 Autotune gebruikt voor de ontlaadgrens van Batterij sparen de laagste dagelijkse SoC, ook bij later laden en na herstart. Nieuwe aparte batterijreactietest die alleen na een klik start met vijf 400 W-laadpulsen, blijvend resultaat en advies voor stuurinterval en P1-middeling. Een oranje waarschuwing helpt bij een te kort gekozen interval.
 
@@ -535,9 +554,3 @@ Rework of schedules, better and more control.
 ### 0.3.9
 
 Better feature explanation.
-
-Reactietest: gemiddeld tien afzonderlijke stuurreacties; terugkeer bevestigd bij minstens 300 W daling.
-
-De reactietestknop wordt na afronden of stoppen automatisch bijgewerkt.
-
-Reactietest: uitregeltijd na de 300 W-terugbevestiging telt niet mee in de reactiemeting.

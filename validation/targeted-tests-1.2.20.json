@@ -1,0 +1,15 @@
+{
+  "version": "1.2.20",
+  "passed": [
+    "response test including dual 100/500, mixed batteries, 10 timings, completion, cancellation, restart, physical limits and safety",
+    "response UI event and inline syntax",
+    "output-tests",
+    "performance-split-loop",
+    "JSON and metadata validation"
+  ],
+  "skipped": [
+    "independent EV, HVAC, boiler, planner suites",
+    "full regression suite"
+  ],
+  "remainingRisk": "Physical Homey/battery behavior not measured"
+}

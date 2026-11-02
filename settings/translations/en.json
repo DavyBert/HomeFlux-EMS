@@ -2267,7 +2267,7 @@
     "PV in batterij · gratis": "PV in battery · free",
     "batteryResponse.start": "Find the best minimum interval",
     "batteryResponse.stop": "Stop response test",
-    "batteryResponse.help": "Separate tool alongside the existing battery test: five cycles of 0 W, 400 W total charging and back to 0 W. Keep household load and solar stable and stop EV charging. This tool temporarily controls the battery during the test. Only after a click; no periodic response tests run. Advice is based on the measured charge/zero response.",
+    "batteryResponse.help": "Separate tool alongside the existing battery test: five cycles of 0 W, 400 W total charging and back to 0 W. Keep household load and solar stable and stop EV charging. This tool temporarily controls the battery during the test. Only after a click; no periodic response tests run. Advice is based on the measured charge/zero response. The response test supports dual mode with 100 → 500 → 100 W charging (or the higher configured minimum plus 400 W). With multiple batteries, the total measured step remains 400 W.",
     "batteryResponse.progress": "Measurement {done}/{total} · {phase}",
     "batteryResponse.noResult": "No successful response test yet. The interval is not changed automatically.",
     "batteryResponse.result": "Last successful test: {time}. Average response time (10 commands): {response} s. P1 cadence: {cadence} s. P1 samples averaged: {samples} (0 = direct). Suggested interval: {min}–{max} s.",

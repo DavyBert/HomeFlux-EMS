@@ -73,7 +73,7 @@
     "planning.targetTimeDetail": "De laadberekening loopt tot dit ingestelde doelmoment.",
     "batteryResponse.start": "Beste minimumtijd automatisch vinden",
     "batteryResponse.stop": "Reactietest stoppen",
-    "batteryResponse.help": "Apart hulpmiddel naast de bestaande batterijtest: vijf keer 0 W, totaal 400 W laden en terug naar 0 W. Houd huisverbruik en zon stabiel en stop EV-laden. Tijdens de test neemt dit hulpmiddel tijdelijk de batterijsturing over. Uitsluitend na een klik; er worden geen periodieke reactietests uitgevoerd. Het advies is gebaseerd op de gemeten laad-/nulreactie.",
+    "batteryResponse.help": "Apart hulpmiddel naast de bestaande batterijtest: vijf keer 0 W, totaal 400 W laden en terug naar 0 W. Houd huisverbruik en zon stabiel en stop EV-laden. Tijdens de test neemt dit hulpmiddel tijdelijk de batterijsturing over. Uitsluitend na een klik; er worden geen periodieke reactietests uitgevoerd. Het advies is gebaseerd op de gemeten laad-/nulreactie. De reactietest ondersteunt dual mode met 100 → 500 → 100 W laden (of het hogere ingestelde minimum plus 400 W). Bij meerdere batterijen blijft de totale meetstap 400 W.",
     "batteryResponse.progress": "Meting {done}/{total} · {phase}",
     "batteryResponse.noResult": "Nog geen geslaagde reactietest. Het interval wordt niet automatisch aangepast.",
     "batteryResponse.result": "Laatste geslaagde test: {time}. Gemiddelde reactietijd (10 stuuracties): {response} s. P1-cadans: {cadence} s. P1-gemiddeldes: {samples} (0 = direct). Richtwaarde: {min}–{max} s.",

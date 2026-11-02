@@ -84,7 +84,7 @@ async function main(){
  await tolerance.sample(959);assert.equal(tolerance.app.batteryResponseTest.stage,'rising');await tolerance.sample(960);assert.equal(tolerance.app.batteryResponseTest.stage,'falling');
  await tolerance.sample(661);assert.equal(tolerance.app.batteryResponseTest.stage,'falling');await tolerance.sample(660);assert.equal(tolerance.app.batteryResponseTest.completed,1);await tolerance.app.stopBatteryResponseTest();
  // No shared ownership with the original battery test, external EMS or EV.
- for(const extra of [{hybridEmsEnabled:true},{maxTotalChargeW:300},{splitCommandBattery1Enabled:true,splitCommandBattery1KeepMinimumPower:true}]){
+ for(const extra of [{hybridEmsEnabled:true},{maxTotalChargeW:300}]){
   const x=await fixture(extra);await assert.rejects(()=>x.app.startBatteryResponseTest());assert(!x.app.batteryResponseTest?.running);
  }
  const busy=await fixture();busy.app.chargeTestRunning=true;await assert.rejects(()=>busy.app.startBatteryResponseTest(),/batterijtest/);busy.app.chargeTestRunning=false;
@@ -98,6 +98,21 @@ async function main(){
  // total or bypass per-battery maximum charging power.
  const inverted=await fixture({invertBatteryCommand:true});inverted.store.set('_chargeTestSignature',inverted.app.getChargeTestSignature());inverted.app.setSetting('chargeTestPassed',true);inverted.app.setSetting('controlEnabled',true);
  await inverted.app.startBatteryResponseTest();for(let i=0;i<4;i++)await inverted.sample();assert.equal(inverted.responseWrites.filter(x=>x.state?.mode==='battery_response_test').at(-1).tokens.total_command,400);await inverted.app.stopBatteryResponseTest();
+ // Dual mode remains in charge direction at its physical minimum.
+ const dual=await fixture({batteryCount:1,splitCommandBattery1Enabled:true,splitCommandBattery1KeepMinimumPower:true,splitCommandBattery1MinimumPowerW:100});dual.app.waitSplitPowerDelay=async()=>{};
+ dual.store.set('_chargeTestSignature',dual.app.getChargeTestSignature());dual.app.setSetting('chargeTestPassed',true);dual.app.setSetting('controlEnabled',true);
+ await dual.app.startBatteryResponseTest();
+ assert.deepEqual(dual.app.batteryResponseTest.low,[-100]);assert.deepEqual(dual.app.batteryResponseTest.commands,[-500]);
+ for(let cycle=0;cycle<5;cycle++){
+  let n=0;while(dual.app.batteryResponseTest.stage==='baseline'&&n++<8)await dual.sample(700);
+  await dual.sample(1100,2000);await dual.sample(800,3000);if(cycle<4)await dual.sample(700);
+ }
+ assert.equal(dual.app.batteryResponseTest.running,false);assert.equal(dual.app.batteryResponseTest.lastResult.responseMs,2500);assert.equal(dual.app.batteryResponseTest.lastResult.baselineWatts,100);
+ for(const watts of [100,500])assert.equal(dual.app.getSplitPowerValue('charge',-watts,dual.app.getSplitBatteryConfig(0)), -watts);
+ const dualWrites=dual.responseWrites.filter(x=>x.state?.mode==='battery_response_test');assert.equal(dualWrites.length,11);assert(dualWrites.every(x=>[-100,-500].includes(x.tokens.total_command)));assert.equal(dualWrites.at(-1).tokens.total_command,-100);
+ const dualStop=await fixture({batteryCount:1,splitCommandBattery1Enabled:true,splitCommandBattery1KeepMinimumPower:true});dualStop.app.waitSplitPowerDelay=async()=>{};dualStop.store.set('_chargeTestSignature',dualStop.app.getChargeTestSignature());dualStop.app.setSetting('chargeTestPassed',true);dualStop.app.setSetting('controlEnabled',true);await dualStop.app.startBatteryResponseTest();await dualStop.app.stopBatteryResponseTest();assert.equal(dualStop.responseWrites.at(-1).tokens.total_command,-100);assert.equal(dualStop.app.batteryResponseTest.running,false);
+ const mixed=await fixture({splitCommandBattery1Enabled:true,splitCommandBattery1KeepMinimumPower:true});mixed.app.waitSplitPowerDelay=async()=>{};mixed.store.set('_chargeTestSignature',mixed.app.getChargeTestSignature());mixed.app.setSetting('chargeTestPassed',true);mixed.app.setSetting('controlEnabled',true);await mixed.app.startBatteryResponseTest();assert.deepEqual(mixed.app.batteryResponseTest.low,[-100,0,0,0]);assert.equal(mixed.app.batteryResponseTest.commands.reduce((a,b)=>a+b,0),-500);await mixed.app.stopBatteryResponseTest();
+ const noMargin=await fixture({batteryCount:1,splitCommandBattery1Enabled:true,splitCommandBattery1MinimumPowerW:100,maxTotalChargeW:450});noMargin.store.set('_chargeTestSignature',noMargin.app.getChargeTestSignature());noMargin.app.setSetting('chargeTestPassed',true);noMargin.app.setSetting('controlEnabled',true);await assert.rejects(()=>noMargin.app.startBatteryResponseTest(),/onvoldoende veilig laadvermogen/);
  const limited=await fixture({individualBatteryPowerLimitsEnabled:true,battery1MaxChargeW:25,battery2MaxChargeW:75,battery3MaxChargeW:100,battery4MaxChargeW:400});await limited.app.startBatteryResponseTest();for(let i=0;i<4;i++)await limited.sample();const v=limited.app.batteryResponseTest.commands;assert.equal(v.reduce((a,b)=>a+b,0),-400);assert(v[0]>=-25&&v[1]>=-75&&v[2]>=-100);await limited.app.stopBatteryResponseTest();
  // The existing Split output surface is used without rewriting any Split
  // configuration or changing the existing direction-test implementation.

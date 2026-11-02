@@ -6058,7 +6058,7 @@
     "PV in batterij · gratis": "PV en batterie · libre",
     "batteryResponse.start": "Trouver le meilleur intervalle minimal",
     "batteryResponse.stop": "Arrêter le test de réaction",
-    "batteryResponse.help": "Outil distinct du test de batterie existant : cinq cycles à 0 W, puis 400 W de recharge au total et retour à 0 W. Stabilisez la consommation et le solaire, et arrêtez la recharge EV. Cet outil pilote temporairement la batterie pendant le test. Uniquement après un clic ; aucun test périodique. Le conseil repose sur la réaction mesurée en recharge et à zéro.",
+    "batteryResponse.help": "Outil distinct du test de batterie existant : cinq cycles à 0 W, puis 400 W de recharge au total et retour à 0 W. Stabilisez la consommation et le solaire, et arrêtez la recharge EV. Cet outil pilote temporairement la batterie pendant le test. Uniquement après un clic ; aucun test périodique. Le conseil repose sur la réaction mesurée en recharge et à zéro. Le test de réaction prend en charge le mode dual avec 100 → 500 → 100 W de charge (ou le minimum configuré supérieur plus 400 W). Avec plusieurs batteries, la variation totale reste de 400 W.",
     "batteryResponse.progress": "Mesure {done}/{total} · {phase}",
     "batteryResponse.noResult": "Aucun test de réaction réussi. L’intervalle n’est pas modifié automatiquement.",
     "batteryResponse.result": "Dernier test réussi : {time}. Temps de réaction moyen (10 commandes): {response} s. Cadence P1 : {cadence} s. Mesures P1 moyennées : {samples} (0 = direct). Intervalle conseillé : {min}–{max} s.",
