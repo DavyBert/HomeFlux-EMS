@@ -74,7 +74,15 @@ for (const d of CONFIGURED_CARDS) {
   assert(!baseline[d.kind].some(c => c.id === d.id), 'Never reuse an existing schema ID');
   assert.deepEqual(card.tokens, old.tokens);
   assert.deepEqual(card.title, old.title);
-  assert.deepEqual(card.titleFormatted, old.titleFormatted);
+  if (d.id === 'set_hvac_automatic_control_for_configured') {
+    for (const language of ['en','nl']) {
+      assert.equal(card.titleFormatted[language], old.titleFormatted[language]
+        + (language === 'nl' ? ' (stand-by [[standby_temperature]] °C)' : ' (standby [[standby_temperature]] °C)'));
+      // Homey's debug validator requires every argument in each formatted
+      // title, including optional arguments. Missing tokens block installation.
+      for (const argument of card.args) assert(card.titleFormatted[language].includes(`[[${argument.name}]]`), `Missing [[${argument.name}]] in ${d.id}.titleFormatted.${language}`);
+    }
+  } else assert.deepEqual(card.titleFormatted, old.titleFormatted);
   const expectedArgs = old.args.filter(a => a.name !== d.argument).map(a =>
     ['set_hvac_room_temperature_for_configured', 'set_hvac_setpoint_for_configured'].includes(d.id)
       ? { ...a, max: 99 } : { ...a });

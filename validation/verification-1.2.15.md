@@ -60,3 +60,11 @@ Aanvullend geheugen: na 500 opwarmpasses volgen 4.000 wisselende contextpasses m
 - Zonder rechtstreekse HVAC-meting kan de budgetbewaking een toename van ander huishoudelijk verbruik conservatief als verlies van thermische marge behandelen.
 - Handmatig leren kan wachten totdat een toestel in rust is en betrouwbare referentiegegevens beschikbaar zijn. Storing kan een nieuwe geschikte gelegenheid vereisen.
 - Niet-uitgevoerde onafhankelijke suites zijn niet opnieuw bevestigd; hun code bleef ongewijzigd.
+
+## Nacontrole: onbekend HVAC-vermogen 300 W
+
+Onbekend vermogen gebruikt 300 W; de gezamenlijke regeling reserveert 360 W met de bestaande 20% marge. Dezelfde terugvalwaarde geldt voor afzonderlijke berekeningen en andere actieve onbekende HVAC-verbruikers. Bekende leerwaarden worden gebruikt zodra zij betrouwbaar zijn.
+
+Vijf gerichte suites opnieuw uitgevoerd en geslaagd: HVAC-coördinatie (29 groepen), permanente HVAC-sturing (34 groepen), multi-flexible-loads, app-control en battery-settings-isolation. Syntax van beide gewijzigde modules en beide aangepaste tests geslaagd. De bestaande Peak Guard-/reviewtest behoudt zijn blokkeerasserties met aan de 300 W-raming aangepaste grenswaarden. Onafhankelijke suites en benchmarks zijn niet herhaald. De eerdere resultaten hierboven dateren van voor deze gerichte nawijziging.
+
+Bij werkelijk hoger verbruik kan de bestaande netbewaking alsnog afbouwen; 300 W is een raming. Geen fysieke Homey-test of installatie uitgevoerd.

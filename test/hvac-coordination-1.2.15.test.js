@@ -208,6 +208,43 @@ async function main(){
   await a.setHvacAutomaticControlFor(0,{enabled:'yes'});await cycle(h);assert(a.getHvacPublishSlot(0).pending);
   release();await stopping;assert.equal(a.lastPublishedHvacPower,true);assert.equal(a.lastPublishedHvacSetpoint,23);assert.equal(a.getHvacPublishSlot(0).pending,null);
  });
+ await check('New Virtual sharing an unknown source starts at 300 W plus margin under the reported 2650 W Peak Guard',async()=>{
+  const h=await setup(5,{hvacPermanentEnabled:false,hvacUsePvSurplus:false,hvac2Enabled:false,hvac3Enabled:false,hvac4Enabled:false,
+   hvac5DirectTariffEnabled:true,hvac5DirectPvEnabled:true,hvac5SharedPowerEnabled:true,hvac5SharedPowerWith:1,hvac5CheapTargetC:30,hvac5ComfortMinC:21,
+   peakShaveEnabled:true,peakLimitW:2650,peakSoftMarginW:100,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1200}),a=h.app;
+  a.state.gridPowerW=623;const r=a.getExtraHvac(4);Object.assign(r.state,{roomTemperatureC:19,setpointC:null,mode:''});Object.assign(r.seen,{setpoint:false,mode:false});r.lastPublishedSetpoint=null;r.lastPublishedMode='';
+  await cycle(h);const d=r.latestDecision;assert.equal(d.hvacEstimateW,360);assert.equal(d.hvacKnown,false);assert.equal(d.setpointCommand,30);
+  assert(h.events.some(e=>e.instance===5&&e.kind==='setpoint'&&e.setpoint===30));assert.equal(d.hvacAdmission.siteReservedW,360);assert.equal(H.runtime(a).observation,null);
+ });
+ await check('PV thresholds do not raise the 300 W unknown-power estimate; valid learned source power still takes precedence',async()=>{
+  const h=await setup(2,{hvacSurplusStartW:8000,hvac2SharedPowerEnabled:true,hvac2SharedPowerWith:1}),a=h.app;
+  let p=C.prepare(a,a.getSettings(),a.latestResult);assert.deepEqual(C.estimate(a,p,1,'heat'),{watts:360,known:false});
+  Object.assign(H.unit(a,0),{heat:1800,heatReview:false});assert.deepEqual(C.estimate(a,p,1,'heat'),{watts:2160,known:true});
+  H.unit(a,0).heatReview=true;assert.deepEqual(C.estimate(a,p,1,'heat'),{watts:360,known:false});
+  const single=await setup(1,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:300,hvacSurplusStartW:8000});
+  let d=single.app.calculateHvacControlFor(0,single.app.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.hvacEstimatedExtraImportW,300);assert.equal(d.setpointCommand,23);
+  single.app.setSetting('hvacExtraGridBudgetW',299);d=single.app.calculateHvacControlFor(0,single.app.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.setpointCommand,null);
+  const independent=await setup(2,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:500}),other=independent.app;
+  Object.assign(H.unit(other,1),{setpoint:23,mode:'heat'});
+  d=other.calculateHvacControlFor(0,other.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.hvacEstimatedExtraImportW,600);assert.equal(d.setpointCommand,null,'two unknown independent demands each reserve 300 W in the standalone controller');
+ });
+ await check('Unknown independent sources each reserve 360 W while linked unknown thermostats share one reservation',async()=>{
+  const flags={};for(let i=0;i<5;i++)flags[`hvac${i?i+1:''}DirectTariffEnabled`]=true;
+  const h=await setup(5,{...flags,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1100,peakShaveEnabled:true,peakLimitW:2000,peakSoftMarginW:100}),a=h.app;
+  await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,3);assert.equal(a.getExtraHvac(2).latestDecision.hvacAdmission.siteReservedW,1080);
+  const shared=await setup(4,{hvacDirectTariffEnabled:true,hvac2DirectTariffEnabled:true,hvac3DirectTariffEnabled:true,hvac4DirectTariffEnabled:true,
+   hvac2SharedPowerEnabled:true,hvac2SharedPowerWith:1,hvac3SharedPowerEnabled:true,hvac3SharedPowerWith:1,hvac4SharedPowerEnabled:true,hvac4SharedPowerWith:1,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:400});
+  await cycle(shared);assert.equal(shared.events.filter(e=>e.kind==='setpoint').length,4);assert.equal(shared.app.getExtraHvac(3).latestDecision.hvacAdmission.siteReservedW,360);
+ });
+ await check('A real load exceeding the unknown-power estimate still triggers immediate budget/Peak Guard shedding',async()=>{
+  for(const limit of ['budget','peak']){
+   const h=await setup(1,{hvacDirectTariffEnabled:true,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1200,peakShaveEnabled:true,peakLimitW:2650,peakSoftMarginW:100}),a=h.app;
+   await cycle(h);assert(h.events.some(e=>e.kind==='setpoint'));
+   const requests=[];a.requestContextEvaluate=(...args)=>requests.push(args);a.state.gridPowerW=limit==='peak'?2800:2000;a.checkFlexibleSafetyFromGrid(now);
+   assert(requests.some(args=>args[0]===true&&args[1]===(limit==='peak'?'peak_guard':'hvac_budget')));await cycle(h);
+   assert(h.events.some(e=>e.kind==='power'&&e.state_value===0));assert.equal(a.lastPublishedHvacPower,false);
+  }
+ });
  await check('Ten-slot settings defaults are off; active Flow extension is optional and deprecated cards remain byte-identical',async()=>{
   for(let i=0;i<10;i++)for(const suffix of ['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled'])assert.equal(DEFAULTS.hvacCoordination[i][suffix],false);
   assert(Object.keys(DEFAULTS).length<1020,'new settings must avoid the large-object spread cliff');

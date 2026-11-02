@@ -26,6 +26,10 @@
     "Manual learning also uses an ordinary legacy PV demand step when safe",
     "Shared source modes change together when all linked thermostats agree; conflicting modes remain blocked",
     "Re-enabling while an OFF Flow is awaiting completion restores ON through the existing latest-wins publication slot",
+    "New Virtual sharing an unknown source starts at 300 W plus margin under the reported 2650 W Peak Guard",
+    "PV thresholds do not raise the 300 W unknown-power estimate; valid learned source power still takes precedence",
+    "Unknown independent sources each reserve 360 W while linked unknown thermostats share one reservation",
+    "A real load exceeding the unknown-power estimate still triggers immediate budget/Peak Guard shedding",
     "Ten-slot settings defaults are off; active Flow extension is optional and deprecated cards remain byte-identical"
   ]
 }

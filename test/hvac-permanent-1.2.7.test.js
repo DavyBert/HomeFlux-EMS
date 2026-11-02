@@ -54,7 +54,9 @@ async function main(){
   a.inputSeen.hvac.outdoorTemperature=true;a.state.hvacOutdoorTemperatureC=5;a.inputSeen.hvac.mode=false;a.lastPublishedHvacMode='';
   Object.assign(H.unit(a,0),{mode:'',setpoint:null});H.runtime(a).nextAt=now+300000;assert.equal(calc(a).setpointCommand,null);
   H.runtime(a).nextAt=0;a.setSetting('hvacExtraGridBudgetEnabled',true);a.setSetting('hvacExtraGridBudgetW',0);assert.equal(calc(a).setpointCommand,null);
-  a.setSetting('hvacExtraGridBudgetEnabled',false);a.setSetting('peakShaveEnabled',true);a.setSetting('peakLimitW',1000);assert.equal(calc(a).setpointCommand,null);
+  // 500 W base + the 300 W unknown-load estimate must still be blocked
+  // when the configured Peak Guard (including its margin) has no headroom.
+  a.setSetting('hvacExtraGridBudgetEnabled',false);a.setSetting('peakShaveEnabled',true);a.setSetting('peakLimitW',700);assert.equal(calc(a).setpointCommand,null);
   a.setSetting('peakShaveEnabled',false);a.setSetting('hvacOutdoorNoIncreaseEnabled',true);a.setSetting('hvacOutdoorNoIncreaseAboveC',0);assert.equal(calc(a).setpointCommand,null);
   a.setSetting('hvacOutdoorNoIncreaseEnabled',false);const queued=calc(a);near(queued.setpointCommand,55);
   a.inputSeen.hvac.mode=true;a.state.hvacMode='cool';assert.equal(H.beforePublish(a,0,queued),false,'new conflicting mode feedback invalidates a queued setpoint-only command');
@@ -272,12 +274,14 @@ async function main(){
   a.setSetting('hvacTariffEnabled',true);a.setSetting('hvacPermanentEnabled',false);assert(!calc(a).permanent);
  });
  await check('Budget respects learned power and review; necessary comfort survives optional grid cap',async()=>{
-  const h=await setup({hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1500}),a=h.app;
+  // Keep the same blocked/allowed/review assertions with the new 300 W
+  // fallback: 250 W admits a measured 200 W but not unknown/reviewed demand.
+  const h=await setup({hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:250}),a=h.app;
   assert.equal(calc(a).setpointCommand,null);
-  H.unit(a,0).heat=800;near(calc(a).setpointCommand,23);
-  H.recheck(a,0,'heat');assert.equal(calc(a).setpointCommand,null);near(H.unit(a,0).heat,800);
+  H.unit(a,0).heat=200;near(calc(a).setpointCommand,23);
+  H.recheck(a,0,'heat');assert.equal(calc(a).setpointCommand,null);near(H.unit(a,0).heat,200);
   a.state.hvacRoomTemperatureC=18;near(calc(a).setpointCommand,23);
-  a.setSetting('peakShaveEnabled',true);a.setSetting('peakLimitW',1000);assert.equal(calc(a).setpointCommand,null);
+  a.setSetting('peakShaveEnabled',true);a.setSetting('peakLimitW',700);assert.equal(calc(a).setpointCommand,null);
  });
  await check('Shared HVAC import budget reserves other units and excludes unrelated household import',async()=>{
   const h=await setup({hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1500}),a=h.app;

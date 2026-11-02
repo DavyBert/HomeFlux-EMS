@@ -25,5 +25,25 @@
   "fullSuiteRun": false,
   "hardwareTested": false,
   "installationOrPublication": false,
-  "syntaxChecks": "changed JS/JSON and Settings/status-widget inline scripts"
+  "syntaxChecks": "changed JS/JSON and Settings/status-widget inline scripts",
+  "latestFollowup": {
+    "version": "1.2.15",
+    "change": "Unknown HVAC fallback is 300 W before the existing modulation margin; coordinated reservation is 360 W. The PV start threshold no longer raises this fallback.",
+    "passedSuites": [
+      "test/hvac-coordination-1.2.15.test.js",
+      "test/hvac-permanent-1.2.7.test.js",
+      "test/multi-flexible-loads.test.js",
+      "test/app-control.test.js",
+      "test/battery-settings-isolation-1.2.8.test.js"
+    ],
+    "hvacGroups": {
+      "coordination": 29,
+      "permanent": 34
+    },
+    "syntax": "Changed runtime/test JavaScript checked; changelog JSON parsed.",
+    "fixtureUpdates": "Existing Peak Guard and learned/review budget test fixtures use tighter numeric limits appropriate for the new 300 W fallback. Existing blocked/allowed assertions retained.",
+    "skipped": "Full suite and independent EV planning, tariff import, Savings, Autotune, UI/Flow schema and performance suites were not repeated. Their code is unchanged.",
+    "risks": "300 W is an initial estimate, not a measured limit. Higher real demand may trigger subsequent budget/Peak Guard shedding. Actual Homey/hardware response has not been measured.",
+    "homeyInstalledOrPublished": false
+  }
 }
