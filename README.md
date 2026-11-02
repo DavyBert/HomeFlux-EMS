@@ -28,6 +28,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.17
+
+Avoid all grid import now takes priority over battery saving and deferred charging while a future maximum-power charge plan is pending. During expensive dynamic intervals, waiting for a later charge block no longer prevents normal battery discharge; the explicit low-PV preference for expensive intervals remains effective.
+
+Vermijd alle netimport krijgt ook bij een toekomstige maximale laadplanning voorrang op Batterij sparen en uitgesteld laden. Tijdens dure dynamische uren blokkeert het wachten op een later laadblok de normale batterijontlading niet meer; de expliciete lage-PV-keuze voor dure uren blijft gelden.
+
 ### 1.2.16
 
 Latest battery charging keeps its end anchored 15 minutes before the selected charge window closes, including active replanning and unequal battery SoC. Per-HVAC automatic-control OFF Flows immediately send either the configured standby setpoint or OFF, once per explicit call, respecting output permissions. A Flow temperature can override the saved standby temperature. Shortened the battery-saving message while charging is scheduled for later.
