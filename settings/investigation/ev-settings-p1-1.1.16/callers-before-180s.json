@@ -1,0 +1,79 @@
+{
+  "calls": 244,
+  "callers": [
+    [
+      "at HomeFluxEmsApp.getEvObservationSettings (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvGridImportControlStatus (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvGridImportObservation (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getFastControlSnapshot (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      180
+    ],
+    [
+      "at HomeFluxEmsApp.getEvObservationSettings (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvGridImportControlStatus (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvGridImportObservation (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvaluationState (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      7
+    ],
+    [
+      "at HomeFluxEmsApp.isEvDecisionOutputActiveFor (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvExpectedPowerFor (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      7
+    ],
+    [
+      "at HomeFluxEmsApp.rememberEvBatterySupply (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvDecision (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      7
+    ],
+    [
+      "at HomeFluxEmsApp.getEvObservationSettings (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getPlannedBatteryGridLimitW (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvaluationState (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      4
+    ],
+    [
+      "at HomeFluxEmsApp.calculateEvPortfolioDecisions (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      4
+    ],
+    [
+      "at HomeFluxEmsApp.isEvDecisionOutputActiveFor (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      4
+    ],
+    [
+      "at HomeFluxEmsApp.rememberEvBatterySupply (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      4
+    ],
+    [
+      "at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runEvHeartbeat (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.getEvObservationSettings (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getPlannedBatteryGridLimitW (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.getEvaluationState (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.calculateEvPortfolioDecisions (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.coordinateEvBatteryPriority (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runContextEvaluation (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at /mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at Function.from (<anonymous>) < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runContextEvaluation (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.calculateEvPortfolioDecisions (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishFlexibleLoads (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishFlexibleLoads (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.evaluateContextNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.isEvDecisionOutputActiveFor (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishFlexibleLoads (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.rememberEvBatterySupply (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishFlexibleLoads (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      3
+    ],
+    [
+      "at HomeFluxEmsApp.getAutoTuneMeasuredEvPowerW (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.recordAutoTunePlanningSample (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runSlowHeartbeatHousekeeping (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.runContextHeartbeat (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      2
+    ],
+    [
+      "at HomeFluxEmsApp.publishEvPortfolioNow (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.publishEvPortfolio (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at HomeFluxEmsApp.refreshEvOnlyContext (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js < at Object.fn (/mnt/data/homeflux_evsettings_sourcebaseline/HomeFlux-EMS/app.js",
+      1
+    ]
+  ],
+  "cpuMs": 333.04,
+  "errors": []
+}

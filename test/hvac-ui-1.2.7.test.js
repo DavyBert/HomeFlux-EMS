@@ -6,6 +6,7 @@ const stateCtx=vm.createContext({tr:(h,k,f)=>f,reasonText:s=>s});vm.runInContext
 const permanent={enabled:true,automaticControlEnabled:true,permanent:true,currentMode:'heat',reason:'HVAC direct · energievraag afbouwen'};
 assert.equal(stateCtx.hvacState({...permanent,copTargetActive:true},{}),'COP temperature target');
 assert.equal(stateCtx.hvacState(permanent,{}),'Permanent temperature control');
+assert.equal(stateCtx.hvacState({...permanent,outputPowerOn:false},{}),'Off');
 assert.equal(stateCtx.hvacState({...permanent,periodicHeating:true},{}),'Periodic heating');
 assert.equal(stateCtx.hvacState({...permanent,waiting:true,reason:'HVAC-modusuitvoer niet toegestaan'},{}),'HVAC-modusuitvoer niet toegestaan');
 assert.equal(stateCtx.hvacState({...permanent,permanent:false},{}),'Waiting for surplus','legacy presentation remains unchanged');
@@ -19,6 +20,15 @@ function node(){return {checked:false,value:'',textContent:'',querySelector(){re
 const nodes=new Map();const q=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);};
 const ctx=vm.createContext({q,rates:[{},{},{}],uiLanguage:'nl',instanceStem:(kind,i)=>kind+(i===1?'':i)});vm.runInContext(extract(html,'updateHvacInstanceUi'),ctx);
 Object.assign(ctx,{boolean:new Set(),numeric:new Set(),jsonArray:new Set()});vm.runInContext(extract(html,'currentSettingValue'),ctx);
+// 1.2.15 keeps the visible per-device options in one compact persisted object.
+for(let i=1;i<=10;i++)for(const suffix of ['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','StandbyTemperatureC'])assert(ids.includes('hvac'+(i===1?'':i)+suffix));
+q('hvacDirectTariffEnabled').checked=true;q('hvac2DirectPvEnabled').checked=true;
+q('hvac5SharedPowerEnabled').checked=true;q('hvac5SharedPowerWith').value='1';q('hvac10StandbyTemperatureC').value='16.5';
+let options=JSON.parse(JSON.stringify(ctx.currentSettingValue('hvacCoordination')));
+assert.equal(options.length,10);assert.equal(options[0].DirectTariffEnabled,true);assert.equal(options[1].DirectPvEnabled,true);
+assert.equal(options[4].SharedPowerWith,1);assert.equal(options[9].StandbyTemperatureC,16.5);assert.equal(options[0].StandbyTemperatureC,'');
+q('hvac10StandbyTemperatureC').value='100';assert.throws(()=>ctx.currentSettingValue('hvacCoordination'),/5 en 99/);q('hvac10StandbyTemperatureC').value='';
+q('hvacDirectTariffEnabled').checked=false;q('hvac2DirectPvEnabled').checked=false;q('hvac5SharedPowerEnabled').checked=false;
 for(let i=1;i<=10;i++) {
  const stem='hvac'+(i===1?'':i);assert(ids.includes(stem+'DirectionTemperature'));
  q(stem+'DirectionTemperatureSource').value='outdoor';q(stem+'OutdoorHeatingBelowC').value='16';q(stem+'OutdoorCoolingAboveC').value='25';

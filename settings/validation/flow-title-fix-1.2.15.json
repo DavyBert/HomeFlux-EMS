@@ -1,0 +1,15 @@
+{
+  "version": "1.2.15",
+  "fix": "Add [[standby_temperature]] to EN/NL titleFormatted for set_hvac_automatic_control_for_configured in Compose and generated manifest.",
+  "passed": [
+    "node --check test/configured-flow-cards.test.js",
+    "node test/configured-flow-cards.test.js",
+    "node test/flow-slot-cards.test.js",
+    "node test/help-catalog.test.js",
+    "388 Flow argument/language title checks",
+    "Full manifest/Compose card equality",
+    "JSON parsing"
+  ],
+  "skipped": "HVAC, battery, EV, boiler and other runtime regressions: no runtime code changes. Full suite not run.",
+  "limitation": "Homey CLI is unavailable in this environment; actual debug validation/install was not run."
+}

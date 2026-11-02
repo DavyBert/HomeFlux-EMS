@@ -1,0 +1,60 @@
+HomeFlux EMS 1.2.6 — EV Insights Flow follow-up
+
+Scope: existing savings Flow handler/helper, card definitions, embedded Help
+catalog and documentation. Existing EV ledger/recorder, CSV, widget, charging
+control, battery/night planning and Autotune code are unchanged.
+
+PASS: 3 JavaScript syntax checks, 1 inline settings script syntax check.
+PASS: 6 targeted test scripts, including 9 new EV Flow regression groups,
+34 existing EV-energy cases, 9 existing EV CSV/persistence cases, Savings base
+tests, Help-catalog consistency and settings runtime audit.
+PASS: 42 comparisons with the delivered pre-EV Flow helper for existing
+categories, including all three formats and signed prices; no differences.
+
+Performed commands:
+node --check app.js — PASS
+node --check lib/savings-flow.js — PASS
+node --check test/ev-savings-flow-1.2.6.test.js — PASS
+node test/ev-savings-flow-1.2.6.test.js — PASS
+node test/savings.test.js — PASS
+node test/ev-energy-1.2.4.test.js — PASS
+node test/ev-savings-export-1.2.4.test.js — PASS
+node test/help-catalog.test.js — PASS
+node test/settings-runtime-audit.test.js — PASS
+
+Skipped: full regression suite; independent battery regulation/night planning,
+Autotune, EV charging/session/deadline/Peak Guard control, HVAC and boiler
+regressions. Those production subsystems were not modified. No existing tests
+were removed or changed. Successful tests were not repeated without a relevant
+subsequent change; this follow-up introduces only the missing EV read function.
+
+Remaining risks: native Homey rendering and physical meter/charger accuracy
+were not tested. EV Insight source attribution and solar kilometres retain the
+existing estimates and data gaps. Old days without EV data cannot be restored.
+No physical CPU/memory measurements were performed.
+
+Compact test output:
+RUN node --check app.js
+
+RUN node --check lib/savings-flow.js
+
+RUN node --check test/ev-savings-flow-1.2.6.test.js
+
+RUN node test/ev-savings-flow-1.2.6.test.js
+EV Savings Flow: 9 targeted regression groups passed.
+
+RUN node test/savings.test.js
+savings tests passed
+
+RUN node test/ev-energy-1.2.4.test.js
+EV energy: 34 cases passed
+
+RUN node test/ev-savings-export-1.2.4.test.js
+EV Savings CSV export: 9 cases passed
+
+RUN node test/help-catalog.test.js
+help-catalog tests passed (29 inputs, 26 outputs, 20 conditions, 53 tags)
+
+RUN node test/settings-runtime-audit.test.js
+settings runtime audit passed (533 persisted UI settings)
+

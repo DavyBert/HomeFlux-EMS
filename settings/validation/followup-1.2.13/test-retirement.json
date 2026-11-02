@@ -1,0 +1,20 @@
+{
+  "authorization": "User requested removing old failing regressions from the active tests.",
+  "retiredFiles": [
+    {
+      "original": "test/soc-completion-1.1.9.test.js",
+      "archivedAs": "test/soc-completion-1.1.9.test.js.disabled"
+    },
+    {
+      "original": "test/diagnostics-1.1.6.test.js",
+      "archivedAs": "test/diagnostics-1.1.6.test.js.disabled"
+    },
+    {
+      "original": "test/ev-battery-protection-1.1.6.test.js",
+      "archivedAs": "test/ev-battery-protection-1.1.6.test.js.disabled"
+    }
+  ],
+  "replacement": "test/ev-grid-budget-1.2.13.test.js",
+  "reason": "Historical SoC/diagnostic suites are excluded from active commands. The old EV-protection suite incorrectly required every EV to have a positive current command; current control serializes starts. Its useful attribution and 14 scheduler scenarios are retained in the replacement, allowing a 0 A command only with denied permission and the explicit serialized-start reason. Physical protection and shared grid-limit assertions remain strict. New EV4 zero-command/freshness/permission/stop checks were added.",
+  "unchangedTests": "Other existing tests were not modified or removed."
+}

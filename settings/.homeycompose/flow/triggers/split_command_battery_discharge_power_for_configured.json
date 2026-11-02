@@ -1,0 +1,39 @@
+{
+  "title": {
+    "en": "Battery: discharge power is updated",
+    "nl": "Batterij: ontlaadvermogen is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the power token for the selected Battery discharge power. After a discharge-mode switch this fires 1 second later. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Gebruik de power-tag voor het ontlaadvermogen van de geselecteerde Batterij. Na een wissel naar ontlaadmodus start deze kaart 1 seconde later. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "tokens": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Discharge power (W)",
+        "nl": "Ontlaadvermogen (W)"
+      },
+      "example": 1000
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[battery]]: discharge power is updated",
+    "nl": "[[battery]]: ontlaadvermogen is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "autocomplete",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "placeholder": {
+        "en": "Select configured battery",
+        "nl": "Kies geconfigureerde batterij"
+      }
+    }
+  ]
+}

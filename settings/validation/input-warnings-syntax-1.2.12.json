@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "javascript": [
+    "lib/input-warnings.js",
+    "widgets/status/api.js",
+    "test/input-warnings-1.2.12.test.js",
+    "test/input-warnings-widget-1.2.12.test.js"
+  ],
+  "inlineWidgetJavaScript": true,
+  "json": [
+    "locales/en.json",
+    "locales/nl.json",
+    ".homeychangelog.json",
+    "package.json"
+  ]
+}

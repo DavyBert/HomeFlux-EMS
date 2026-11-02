@@ -1,0 +1,30 @@
+[
+  {
+    "interval": 10,
+    "seconds": 180,
+    "cpuMs": 202.565,
+    "wallMs": 171.28230199999996,
+    "contexts": 3,
+    "portfolio": 9,
+    "reasons": {
+      "ev1_status": 1,
+      "grid_context": 1,
+      "ev_house_load_protection": 2,
+      "ev1_output_timer": 1
+    }
+  },
+  {
+    "interval": 1,
+    "seconds": 180,
+    "cpuMs": 210.655,
+    "wallMs": 165.43805499999996,
+    "contexts": 3,
+    "portfolio": 9,
+    "reasons": {
+      "ev1_status": 1,
+      "grid_context": 1,
+      "ev_house_load_protection": 2,
+      "ev1_output_timer": 1
+    }
+  }
+]

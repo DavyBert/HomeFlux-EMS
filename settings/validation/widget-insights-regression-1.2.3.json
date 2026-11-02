@@ -1,0 +1,38 @@
+{
+  "cases": [
+    "16.8 kWh/day = 0.7 kW; 10h household need = 7 kWh; positive budget = 3 after filling to maximum",
+    "Negative budget and signed battery deficit reserve target only once",
+    "Screenshot regression: fill 21.6 kWh from 37.5% to 100%, independently of the 60% grid goal",
+    "A stronger day PV forecast is credited once even when the computed grid target drops",
+    "Existing normalized non-EV daily median; partial days excluded; zero fallback preserved",
+    "Minimum, safety, sun reserve and planning goal protect the largest reserve",
+    "EV reservation deducted once; later EV slots clipped to household horizon",
+    "Night never credits a full next-day forecast before morning; target still uses night median",
+    "Missing forecast, missing battery, disabled output and expired planning stay unknown",
+    "Actual production plan resolves Brussels DST/midnight horizon in elapsed hours",
+    "UI budget expiry, unknowns, neutral mode and continuous scale",
+    "Default options enabled and explicit false choices retained independently",
+    "Five-second warning alternation survives refresh; recovery and color-off retain text",
+    "Colors use real bounds, explicit direction and never mark ordinary planned waiting red",
+    "Production DOM: independent options, neutral colors, NL/EN text and persistent circle",
+    "300 real P1 inputs, 100 status reads, EV heartbeat/portfolio and cache reuses: zero additional WAF calculations; existing alerts and expiry verified",
+    "Real Flow kWh and SoC targets reserve 3 and 15 kWh; actual app reboot keeps unknown until normal planning"
+  ],
+  "runtimeMetrics": {
+    "p1Inputs": 300,
+    "statusReads": 100,
+    "heartbeatPortfolioCalls": 10,
+    "extraWafCalculations": 0,
+    "oneActualPlanWafCalculations": 1,
+    "cachedBudgetSerializedBytes": 536
+  },
+  "microbenchmark": {
+    "iterations": 10000,
+    "elapsedMs": 18.848460000000046,
+    "cpuMs": 32.47,
+    "allocatedHeapDeltaBytes": 5257184,
+    "retainedHeapDeltaBytes": null,
+    "note": "Node container microbenchmark; heap delta includes temporary allocations/GC, not retained Homey memory or device CPU percentage."
+  },
+  "testedAppVersion": "1.2.3"
+}

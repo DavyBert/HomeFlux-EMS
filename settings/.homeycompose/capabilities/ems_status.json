@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "EMS status",
+    "nl": "EMS-status"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/status.svg"
+}

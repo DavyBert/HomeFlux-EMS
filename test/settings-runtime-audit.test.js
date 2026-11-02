@@ -13,6 +13,7 @@ const runtimeFiles = [
   'lib/ems-engine.js',
   'lib/flexible-loads.js',
   'lib/hvac-permanent.js',
+  'lib/hvac-coordination.js',
   'lib/hvac-periodic.js',
   'lib/homey-energy.js',
   'lib/savings.js',

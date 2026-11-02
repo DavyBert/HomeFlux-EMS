@@ -1,0 +1,36 @@
+{
+  "title": {
+    "en": "Get EMS status",
+    "nl": "Haal EMS-status op"
+  },
+  "titleFormatted": {
+    "en": "Get current HomeFlux EMS status",
+    "nl": "Haal actuele HomeFlux EMS-status op"
+  },
+  "hint": {
+    "en": "Returns the current EMS status as tokens. Connect the status token to Homey's own Logic card to write it to a text variable.",
+    "nl": "Geeft de actuele EMS-status als tokens terug. Verbind de status-tag met Homey's eigen Logic-kaart om hem naar een tekstvariabele te schrijven."
+  },
+  "tokens": [
+    {
+      "name": "status",
+      "type": "string",
+      "title": { "en": "EMS status", "nl": "EMS-status" }
+    },
+    {
+      "name": "tariff",
+      "type": "string",
+      "title": { "en": "Current tariff", "nl": "Huidig tarief" }
+    },
+    {
+      "name": "action",
+      "type": "string",
+      "title": { "en": "Operating mode", "nl": "Werkingsmodus" }
+    },
+    {
+      "name": "next_change",
+      "type": "string",
+      "title": { "en": "Next tariff", "nl": "Volgend tarief" }
+    }
+  ]
+}

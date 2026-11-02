@@ -1,0 +1,78 @@
+HomeFlux EMS 1.1.17 — EV-prijsplanning tot de deadline
+24 oktober 2026
+
+Dit pakket bevat de appbroncode voor 1.1.17, gebaseerd op de aangeleverde
+1.1.16-EV-configuratiecache-FINAL. Er zijn geen afhankelijkheden bijgewerkt.
+
+Werking
+- Actieve kWh- en SoC-doelen vergelijken beschikbare dynamische prijzen tot
+  de deadline, over kalenderdagen heen. De EV heeft een eigen prijsvenster.
+- Met Goedkoop ingeschakeld kiest een actief doel de goedkoopste benodigde
+  laadenergie in dat venster. De EV-goedkoopimportlimiet hoort daarbij.
+  Normaal/Duur blijven afzonderlijke keuzes wanneer die effectief capaciteit
+  leveren. Nulplafonds, toegestane categorieën en gezamenlijke limieten gelden.
+- Zonder actief doel blijven de bestaande tariefvoorkeuren gelden.
+- Bestaande doelen en ongewijzigde prijsinhoud hergebruiken het gekozen plan.
+  Datum of PV-voorspelling alleen wist het EV-prijsplan niet. Aaneengesloten
+  of bestaande kwartieren krijgen voorrang bij maximaal 0,02 prijsvaluta
+  verschil in de bekende planningskosten. Grotere besparingen mogen herplannen.
+- Onbekende prijzen hebben geen goedkope capaciteit. Bekende intervallen
+  vormen een voorlopig plan; nieuwe prijzen worden gericht verwerkt.
+  Garantie buiten gekozen tarieven blijft afhankelijk van de bestaande keuze.
+- Standaardstroom, discrete Slim/Standaard-modi, netimportlimieten, een gedeelde
+  Peak Guard en feitelijk batterijverbruik begrenzen de planningscapaciteit.
+  Na een minuut bevestigde lagere levering rekent de planner met de lagere
+  gemeten stroom. Opstartrampen tellen niet als blijvende beperking; een
+  geleerde beperking blijft tijdens een geplande pauze in dezelfde verbinding.
+- Actuele PV mag blijven laden tijdens wachten op het gekozen netlaadvenster.
+  Bestaande batterijbescherming, sessiestop en uitvoertiming blijven actief.
+- Een apart EV-event behandelt echte start/stop-/capaciteitsgrenzen.
+  Ongewijzigde opeenvolgende kwartieren, ook over 00:00, vereisen geen wakeup.
+  De nieuwe EV-prijsplanner voert geen batterij-SoC-planning of PV-promotie uit.
+
+Batterijplanning
+De bestaande nacht-/dagdoelen 07:00 en 17:00, reserves, PV-prioriteit en
+dagrangschikking blijven behouden. De kernbestanden en bovengenoemde
+batterijplanningsmethoden zijn byte voor byte gelijk aan 1.1.16.
+De bestaande midnight-context blijft nieuwe PV-gegevens voor de batterij
+verwerken. Alleen de EV-reservering gebruikt haar eigen geselecteerde tarief.
+Ander werkelijk EV-verbruik kan uiteraard de fysieke batterijreactie wijzigen.
+
+Validatie
+- 76 npm-testprogramma's geslaagd, inclusief de bestaande 74.
+- 28 syntaxcontroles geslaagd.
+- 14 groepen plannerproeven en 10 groepen met echte appfuncties, Flow,
+  contextscheduler, portfolio, P1-verwerking en publicatiepoorten.
+- Gerrit-synthese: 11,5 kWh op 4,6 kW, vrijdag 18:00 tot zaterdag 07:00.
+  Zowel kWh als SoC: laden 00:00–02:30, kosten EUR 2,30, één start en stop,
+  geen tussentijdse onderbreking, deadline gehaald. Eén planopbouw per doel.
+  Dit zijn synthetische prijzen; geen reconstructie van Gerrits echte factuur.
+- Middernacht: morgenvoorspelling 9 kWh wordt de dagvoorspelling; nieuwe
+  resterende-PV-update 6 kWh bereikt de batterijplanner. Het EV-plan blijft
+  één keer opgebouwd. Beide batterijdoelmomenten blijven gelijk.
+- SoC/kWh-wijzigingen en identieke Flow-herhalingen, loskoppelen, sessiestop,
+  nieuwe/identieke/ongeldige prijsberichten, ontbrekende bron, gedeelde Peak
+  Guard, PV tijdens wachten en Current/Mode/Hybrid zijn getest.
+- Absolute kwartieren op zomer-/wintertijdagen: 92 en 100 unieke intervallen.
+  Het bestaande lokale doeluurgedrag bij een ontbrekend/dubbel uur is behouden.
+- Andere regelingen: vijf replays voor batterij, export/PV, HVAC, boiler en
+  combinatie hebben identieke publicaties en contextmomenten tegenover 1.1.16.
+- Drie gepaarde replays, 180 s per run, P1 en EV-feedback elke seconde,
+  gelijk doorlopend laden over 00:00: beide versies 12 portfolio's.
+  1.1.16: 12 EV-dagtariefscans; 1.1.17: 0. Beide: 0 meerdaagse planopbouwen
+  in het snelle P1-pad. 1.1.17 hergebruikt het voorbereide EV-plan.
+  Mediane CPU op deze host: 439.044 ms (1.1.16),
+  347.457 ms (1.1.17). Dit zijn geen Homey-CPU-percentages.
+
+Reproduceren
+  npm test
+  node test/ev-deadline-benchmark-1.1.17.cjs /pad/naar/ongewijzigde/1.1.16
+  node test/ev-context-unrelated-comparison.cjs /pad/naar/ongewijzigde/1.1.16
+
+Zie VALIDATION-1.1.17.json voor cijfers, scenario's en hashes.
+De tests simuleren Homey-I/O en een voertuig; een fysieke Homey/laadpaal is
+niet gebruikt. Niet-gepubliceerde prijzen en toekomstig fysiek beschikbaar
+vermogen zijn geen gegarandeerde energie. De planner bewaakt bekende
+capaciteit en gebruikt de bestaande deadline- en veiligheidsfallbacks.
+De Flow-kaarten blijven het volgende optreden van het gekozen lokale uur
+gebruiken; er is in deze versie geen nieuwe datumkeuze toegevoegd.

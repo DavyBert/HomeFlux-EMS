@@ -1,0 +1,115 @@
+{
+  "renderer": "WeasyPrint CSS rendering of the actual widget DOM; not a browser/Homey test",
+  "cases": [
+    {
+      "theme": "light",
+      "mode": "combined",
+      "width": 280,
+      "height": 785
+    },
+    {
+      "theme": "light",
+      "mode": "combined",
+      "width": 360,
+      "height": 746
+    },
+    {
+      "theme": "light",
+      "mode": "combined",
+      "width": 600,
+      "height": 731
+    },
+    {
+      "theme": "light",
+      "mode": "scheduler",
+      "width": 280,
+      "height": 368
+    },
+    {
+      "theme": "light",
+      "mode": "scheduler",
+      "width": 360,
+      "height": 368
+    },
+    {
+      "theme": "light",
+      "mode": "scheduler",
+      "width": 600,
+      "height": 368
+    },
+    {
+      "theme": "light",
+      "mode": "insights",
+      "width": 280,
+      "height": 515
+    },
+    {
+      "theme": "light",
+      "mode": "insights",
+      "width": 360,
+      "height": 477
+    },
+    {
+      "theme": "light",
+      "mode": "insights",
+      "width": 600,
+      "height": 462
+    },
+    {
+      "theme": "dark",
+      "mode": "combined",
+      "width": 280,
+      "height": 785
+    },
+    {
+      "theme": "dark",
+      "mode": "combined",
+      "width": 360,
+      "height": 746
+    },
+    {
+      "theme": "dark",
+      "mode": "combined",
+      "width": 600,
+      "height": 731
+    },
+    {
+      "theme": "dark",
+      "mode": "scheduler",
+      "width": 280,
+      "height": 368
+    },
+    {
+      "theme": "dark",
+      "mode": "scheduler",
+      "width": 360,
+      "height": 368
+    },
+    {
+      "theme": "dark",
+      "mode": "scheduler",
+      "width": 600,
+      "height": 368
+    },
+    {
+      "theme": "dark",
+      "mode": "insights",
+      "width": 280,
+      "height": 515
+    },
+    {
+      "theme": "dark",
+      "mode": "insights",
+      "width": 360,
+      "height": 477
+    },
+    {
+      "theme": "dark",
+      "mode": "insights",
+      "width": 600,
+      "height": 462
+    }
+  ],
+  "passed": 18,
+  "darkPaletteVerified": true
+}

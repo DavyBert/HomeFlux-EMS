@@ -1,0 +1,83 @@
+{
+  "title": {
+    "en": "Request Battery SoC is needed",
+    "nl": "SoC Batterij is nodig"
+  },
+  "titleFormatted": {
+    "en": "Request [[battery]] SoC is needed",
+    "nl": "SoC [[battery]] is nodig"
+  },
+  "hint": {
+    "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS.",
+    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS."
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "dropdown",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "Battery 1",
+            "nl": "Batterij 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "Battery 2",
+            "nl": "Batterij 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "Battery 3",
+            "nl": "Batterij 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "Battery 4",
+            "nl": "Batterij 4"
+          }
+        },
+        {
+          "id": "5",
+          "title": {
+            "en": "Battery 5",
+            "nl": "Batterij 5"
+          }
+        },
+        {
+          "id": "6",
+          "title": {
+            "en": "Battery 6",
+            "nl": "Batterij 6"
+          }
+        },
+        {
+          "id": "7",
+          "title": {
+            "en": "Battery 7",
+            "nl": "Batterij 7"
+          }
+        },
+        {
+          "id": "8",
+          "title": {
+            "en": "Battery 8",
+            "nl": "Batterij 8"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

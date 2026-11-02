@@ -1,0 +1,76 @@
+{
+  "cases": [
+    {
+      "type": "current",
+      "evs": 1,
+      "pv": 0,
+      "identical": true
+    },
+    {
+      "type": "current",
+      "evs": 1,
+      "pv": 3000,
+      "identical": true
+    },
+    {
+      "type": "current",
+      "evs": 4,
+      "pv": 0,
+      "identical": true
+    },
+    {
+      "type": "current",
+      "evs": 4,
+      "pv": 3000,
+      "identical": true
+    },
+    {
+      "type": "hybrid",
+      "evs": 1,
+      "pv": 0,
+      "identical": true
+    },
+    {
+      "type": "hybrid",
+      "evs": 1,
+      "pv": 3000,
+      "identical": true
+    },
+    {
+      "type": "hybrid",
+      "evs": 4,
+      "pv": 0,
+      "identical": true
+    },
+    {
+      "type": "hybrid",
+      "evs": 4,
+      "pv": 3000,
+      "identical": true
+    },
+    {
+      "type": "mode",
+      "evs": 1,
+      "pv": 0,
+      "identical": true
+    },
+    {
+      "type": "mode",
+      "evs": 1,
+      "pv": 3000,
+      "identical": true
+    },
+    {
+      "type": "mode",
+      "evs": 4,
+      "pv": 0,
+      "identical": true
+    },
+    {
+      "type": "mode",
+      "evs": 4,
+      "pv": 3000,
+      "identical": true
+    }
+  ]
+}

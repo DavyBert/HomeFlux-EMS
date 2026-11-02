@@ -1,0 +1,24 @@
+{
+  "passed": 13,
+  "cases": [
+    "nl: Fred emergency card hides fallback target, deadline, kWh and feasibility; short timed hint replaces planning target",
+    "nl: real output delay, Peak Guard and tariff blocking stay visible",
+    "nl: effective Emergency mode hides saved Flow goals without changing their data",
+    "nl: settings EV planning cards suppress irrelevant deadline and feasibility while preserving source split",
+    "nl: short hint keeps a shared phase across repeated renders and the next 30-second cycle",
+    "nl: normal Smart/SoC plans retain existing targets, deadline and guarantee presentation",
+    "en: Fred emergency card hides fallback target, deadline, kWh and feasibility; short timed hint replaces planning target",
+    "en: real output delay, Peak Guard and tariff blocking stay visible",
+    "en: effective Emergency mode hides saved Flow goals without changing their data",
+    "en: settings EV planning cards suppress irrelevant deadline and feasibility while preserving source split",
+    "en: short hint keeps a shared phase across repeated renders and the next 30-second cycle",
+    "en: normal Smart/SoC plans retain existing targets, deadline and guarantee presentation",
+    "both views use a 30-second CSS cycle with five visible seconds; no extra JavaScript timers"
+  ],
+  "productionPresentationFunctions": true,
+  "simulatedInputs": true,
+  "originalNonEmergencyPresentationCompared": false,
+  "nativeHomeyTested": false,
+  "browserAnimationTested": false,
+  "cssTimingAndRenderPhaseSimulated": true
+}

@@ -1915,7 +1915,20 @@
     "Bestaande maandselectie openen": "Open the existing month selection",
     "Winter gebruikt de geselecteerde maanden bij het seizoensminimum-SoC in EMS; de overige maanden zijn zomer. Deze indeling blijft gelden als het minimum-SoC uit staat.": "Winter uses the months selected for the seasonal minimum SoC in EMS; the other months are summer. This selection also applies when minimum SoC is disabled.",
     "Kies hoe het noodzakelijke netladen over de bestaande dag- en nachtvensters wordt verdeeld. Doel-SoC, PV-voorrang en Peak Guard blijven leidend. Bij 0% blijft de standaardplanning behouden. Maximaal laden gebruikt het werkelijk beschikbare vermogen; de trage context herberekent het laadblok. Een lager laadbudget kan de eindtijd of tijdreserve onhaalbaar maken.": "Choose how necessary grid charging is distributed within the existing day and night windows. Target SoC, PV priority and Peak Guard remain authoritative. At 0%, the standard plan is unchanged. Maximum charging uses the actually available power; the slow context recalculates the block. Reduced capacity can make the deadline or time reserve unreachable.",
-    "Bij variabele en dynamische tarieven wordt alleen gecentreerd als het volledige laadblok goedkoper is dan de standaardspreiding; anders blijft die spreiding actief.": "For variable and dynamic tariffs, centring is used only when the complete charging block costs less than the standard spread plan; otherwise the spread plan remains active."
+    "Bij variabele en dynamische tarieven wordt alleen gecentreerd als het volledige laadblok goedkoper is dan de standaardspreiding; anders blijft die spreiding actief.": "For variable and dynamic tariffs, centring is used only when the complete charging block costs less than the standard spread plan; otherwise the spread plan remains active.",
+    "Direct schakelen en gedeeld vermogen": "Direct switching and shared power",
+    "Direct schakelen bij tariefwissel": "Switch immediately at tariff changes",
+    "Direct schakelen bij PV-overschot": "Switch immediately on PV surplus",
+    "Direct schakelen slaat de prioriteitswachttijd over. Vermogensbudget, hysterese en veiligheidsgrenzen blijven gelden. Automatisch leren is voor dit toestel uit.": "Direct switching bypasses the priority delay. Power budget, hysteresis and safety limits remain in force. Automatic learning is disabled for this unit.",
+    "Gedeelde installatie – niet apart meten": "Shared installation – no separate measurement",
+    "Deelt de warmtebron met een andere HVAC. Geen aparte vermogensmeting.": "Shares the heat source with another HVAC. No separate power measurement.",
+    "Vermogen delen met HVAC": "Share power with HVAC",
+    "Kies HVAC": "Choose HVAC",
+    "Gedeelde kanalen reserveren samen het volledige bronvermogen met 20% modulatiemarge. Extra warmtevraag blijft mogelijk. Alleen een afzonderlijke installatie kan worden geleerd.": "Shared channels reserve the full source power together with a 20% modulation margin. Additional heat demand remains possible. Only independent installations can be learned.",
+    "Stand-bytemperatuur bij automatische sturing uit (°C, optioneel)": "Standby temperature when automatic control is off (°C, optional)",
+    "De Flow-kaart kan deze temperatuur instellen. Leeg behoudt het bestaande herstelsetpoint. Bij toegestane aan/uit-sturing wordt ook de uit-Flow gestuurd.": "The Flow card can set this temperature. Leave empty to retain the existing restore setpoint. When power control is allowed, the OFF Flow is also triggered.",
+    "Nu leren": "Learn now",
+    "Wachten op betrouwbare meetomstandigheden": "Waiting for reliable measurement conditions"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

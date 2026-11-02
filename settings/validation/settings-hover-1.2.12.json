@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "inlineJavaScriptSyntax": true,
+  "cssParsed": true,
+  "results": [
+    {
+      "selector": "tab",
+      "hoverColor": "#7fc13b",
+      "normalStatePreserved": true
+    },
+    {
+      "selector": "tab active",
+      "hoverColor": "#7fc13b",
+      "normalStatePreserved": true
+    },
+    {
+      "selector": "tab-toggle",
+      "hoverColor": "#7fc13b",
+      "normalStatePreserved": true
+    },
+    {
+      "selector": "instance-tab",
+      "hoverColor": "#7fc13b",
+      "normalStatePreserved": true
+    },
+    {
+      "selector": "instance-tab active",
+      "hoverColor": "#7fc13b",
+      "normalStatePreserved": true
+    }
+  ],
+  "settingsStartupPassed": true
+}

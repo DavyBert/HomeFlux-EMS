@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Operation",
+    "nl": "Werking"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/action.svg"
+}

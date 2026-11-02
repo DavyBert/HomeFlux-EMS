@@ -1,0 +1,62 @@
+{
+  "title": {
+    "en": "Set HVAC fan speed",
+    "nl": "Stel HVAC-ventilatorsnelheid in"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "dropdown",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "HVAC 1",
+            "nl": "HVAC 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "HVAC 2",
+            "nl": "HVAC 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "HVAC 3",
+            "nl": "HVAC 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "HVAC 4",
+            "nl": "HVAC 4"
+          }
+        }
+      ]
+    },
+    {
+      "name": "speed",
+      "type": "number",
+      "title": {
+        "en": "Fan speed value",
+        "nl": "Ventilatorsnelheid waarde"
+      },
+      "min": 0,
+      "max": 10000,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[hvac]] fan speed to [[speed]]",
+    "nl": "Stel [[hvac]]-ventilatorsnelheid in op [[speed]]"
+  },
+  "deprecated": true
+}

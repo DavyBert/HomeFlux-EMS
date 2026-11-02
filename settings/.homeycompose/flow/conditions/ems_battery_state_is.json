@@ -1,0 +1,43 @@
+{
+  "title": {
+    "en": "Battery group is [[state]]",
+    "nl": "Batterijgroep is [[state]]"
+  },
+  "args": [
+    {
+      "name": "state",
+      "type": "dropdown",
+      "title": {
+        "en": "Battery state",
+        "nl": "Batterijstatus"
+      },
+      "values": [
+        {
+          "id": "charging",
+          "title": {
+            "en": "Charging",
+            "nl": "Laden"
+          }
+        },
+        {
+          "id": "idle",
+          "title": {
+            "en": "Idle",
+            "nl": "Rust"
+          }
+        },
+        {
+          "id": "discharging",
+          "title": {
+            "en": "Discharging",
+            "nl": "Ontladen"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Battery group is [[state]]",
+    "nl": "Batterijgroep is [[state]]"
+  }
+}

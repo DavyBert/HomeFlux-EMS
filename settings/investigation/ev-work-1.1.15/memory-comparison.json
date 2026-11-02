@@ -1,0 +1,375 @@
+{
+  "node": "v24.19.0",
+  "scope": "Separate host process per profile/version, diagnostics off; 2000 warm-up inputs, then 10000 inputs. GC between 2000-input chunks.",
+  "profiles": [
+    {
+      "connected": true,
+      "liveStatus": false,
+      "before": {
+        "connected": true,
+        "liveStatus": false,
+        "measuredInputs": 10000,
+        "statusReads": 0,
+        "start": {
+          "rss": 104550400,
+          "heapTotal": 35201024,
+          "heapUsed": 15355688,
+          "external": 3874487,
+          "arrayBuffers": 146575,
+          "liveFakeTimers": 0
+        },
+        "samples": [
+          {
+            "rss": 84037632,
+            "heapTotal": 34557952,
+            "heapUsed": 14722552,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 84037632,
+            "heapTotal": 34557952,
+            "heapUsed": 14795472,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 84824064,
+            "heapTotal": 34557952,
+            "heapUsed": 14763400,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 88031232,
+            "heapTotal": 35196928,
+            "heapUsed": 15235416,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 87330816,
+            "heapTotal": 34557952,
+            "heapUsed": 14597144,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          }
+        ],
+        "retainedHeapBytes": -758544,
+        "actuationCount": 0,
+        "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "after": {
+        "connected": true,
+        "liveStatus": false,
+        "measuredInputs": 10000,
+        "statusReads": 0,
+        "start": {
+          "rss": 83374080,
+          "heapTotal": 34877440,
+          "heapUsed": 15007128,
+          "external": 3874487,
+          "arrayBuffers": 146575,
+          "liveFakeTimers": 0
+        },
+        "samples": [
+          {
+            "rss": 83374080,
+            "heapTotal": 34877440,
+            "heapUsed": 15067992,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 89792512,
+            "heapTotal": 34451456,
+            "heapUsed": 14680456,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 89595904,
+            "heapTotal": 34193408,
+            "heapUsed": 14221976,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 90062848,
+            "heapTotal": 34877440,
+            "heapUsed": 14957912,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 90062848,
+            "heapTotal": 34877440,
+            "heapUsed": 14962416,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          }
+        ],
+        "retainedHeapBytes": -44712,
+        "actuationCount": 0,
+        "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "outputsIdentical": true
+    },
+    {
+      "connected": false,
+      "liveStatus": false,
+      "before": {
+        "connected": false,
+        "liveStatus": false,
+        "measuredInputs": 10000,
+        "statusReads": 0,
+        "start": {
+          "rss": 101789696,
+          "heapTotal": 34938880,
+          "heapUsed": 15207216,
+          "external": 3874523,
+          "arrayBuffers": 146575,
+          "liveFakeTimers": 0
+        },
+        "samples": [
+          {
+            "rss": 89829376,
+            "heapTotal": 34291712,
+            "heapUsed": 14602952,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 90353664,
+            "heapTotal": 34553856,
+            "heapUsed": 14686544,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 90615808,
+            "heapTotal": 34553856,
+            "heapUsed": 14679208,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 94003200,
+            "heapTotal": 35201024,
+            "heapUsed": 15190952,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 94801920,
+            "heapTotal": 34553856,
+            "heapUsed": 14538192,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          }
+        ],
+        "retainedHeapBytes": -669024,
+        "actuationCount": 0,
+        "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "after": {
+        "connected": false,
+        "liveStatus": false,
+        "measuredInputs": 10000,
+        "statusReads": 0,
+        "start": {
+          "rss": 84742144,
+          "heapTotal": 33931264,
+          "heapUsed": 13947800,
+          "external": 3874487,
+          "arrayBuffers": 146575,
+          "liveFakeTimers": 0
+        },
+        "samples": [
+          {
+            "rss": 86851584,
+            "heapTotal": 34091008,
+            "heapUsed": 14775328,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 86851584,
+            "heapTotal": 34091008,
+            "heapUsed": 14806152,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 86061056,
+            "heapTotal": 33406976,
+            "heapUsed": 13918984,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 86061056,
+            "heapTotal": 33406976,
+            "heapUsed": 13933624,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 86716416,
+            "heapTotal": 33755136,
+            "heapUsed": 14311792,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          }
+        ],
+        "retainedHeapBytes": 363992,
+        "actuationCount": 0,
+        "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "outputsIdentical": true
+    },
+    {
+      "connected": true,
+      "liveStatus": true,
+      "before": {
+        "connected": true,
+        "liveStatus": true,
+        "measuredInputs": 10000,
+        "statusReads": 2500,
+        "start": {
+          "rss": 94150656,
+          "heapTotal": 35344384,
+          "heapUsed": 15424760,
+          "external": 3874487,
+          "arrayBuffers": 146575,
+          "liveFakeTimers": 0
+        },
+        "samples": [
+          {
+            "rss": 92663808,
+            "heapTotal": 35344384,
+            "heapUsed": 15786432,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 92663808,
+            "heapTotal": 35344384,
+            "heapUsed": 15778944,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 122576896,
+            "heapTotal": 52764672,
+            "heapUsed": 16017160,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 108781568,
+            "heapTotal": 52121600,
+            "heapUsed": 15363272,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 108781568,
+            "heapTotal": 52121600,
+            "heapUsed": 15372400,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          }
+        ],
+        "retainedHeapBytes": -52360,
+        "actuationCount": 0,
+        "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "after": {
+        "connected": true,
+        "liveStatus": true,
+        "measuredInputs": 10000,
+        "statusReads": 2500,
+        "start": {
+          "rss": 83738624,
+          "heapTotal": 35401728,
+          "heapUsed": 15787432,
+          "external": 3874487,
+          "arrayBuffers": 146575,
+          "liveFakeTimers": 0
+        },
+        "samples": [
+          {
+            "rss": 84729856,
+            "heapTotal": 35237888,
+            "heapUsed": 15692720,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 84860928,
+            "heapTotal": 35237888,
+            "heapUsed": 15705792,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 95162368,
+            "heapTotal": 52441088,
+            "heapUsed": 15720848,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 107745280,
+            "heapTotal": 52441088,
+            "heapUsed": 15727416,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          },
+          {
+            "rss": 102600704,
+            "heapTotal": 52015104,
+            "heapUsed": 15300160,
+            "external": 3874487,
+            "arrayBuffers": 146575,
+            "liveFakeTimers": 0
+          }
+        ],
+        "retainedHeapBytes": -487272,
+        "actuationCount": 0,
+        "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "outputsIdentical": true
+    }
+  ]
+}

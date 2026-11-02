@@ -1,0 +1,138 @@
+{
+  "allEqual": true,
+  "variants": [
+    "A supplied 1.2.12",
+    "B timer only",
+    "C timer plus boiler status cache"
+  ],
+  "comparison": "Exact serialized comparison of battery commands, all captured flexible/PV publications and times, contexts, sampled battery/EV/HVAC/boiler/tariff/strategy/WAF outcomes. Version metadata is not part of compared samples.",
+  "scenarios": [
+    {
+      "name": "stable",
+      "samples": 240,
+      "batteryPublications": 2,
+      "flexiblePublications": 1,
+      "contextExecutions": 6,
+      "capturedOutputs": [
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "zero",
+      "samples": 240,
+      "batteryPublications": 2,
+      "flexiblePublications": 1,
+      "contextExecutions": 6,
+      "capturedOutputs": [
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "save",
+      "samples": 240,
+      "batteryPublications": 2,
+      "flexiblePublications": 1,
+      "contextExecutions": 6,
+      "capturedOutputs": [
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "transitions",
+      "samples": 240,
+      "batteryPublications": 15,
+      "flexiblePublications": 3,
+      "contextExecutions": 11,
+      "capturedOutputs": [
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "dynamic_ev",
+      "samples": 240,
+      "batteryPublications": 32,
+      "flexiblePublications": 6,
+      "contextExecutions": 10,
+      "capturedOutputs": [
+        "boiler_power_updated",
+        "ev1_charge_current_updated",
+        "ev1_charging_allowed_updated",
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "dynamic_center",
+      "samples": 240,
+      "batteryPublications": 1,
+      "flexiblePublications": 1,
+      "contextExecutions": 5,
+      "capturedOutputs": [
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "ev_current",
+      "samples": 240,
+      "batteryPublications": 29,
+      "flexiblePublications": 8,
+      "contextExecutions": 12,
+      "capturedOutputs": [
+        "boiler_power_updated",
+        "ev1_charge_current_updated",
+        "ev1_charging_allowed_updated",
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "ev_mode",
+      "samples": 240,
+      "batteryPublications": 35,
+      "flexiblePublications": 4,
+      "contextExecutions": 13,
+      "capturedOutputs": [
+        "boiler_power_updated",
+        "ev1_charge_mode_updated",
+        "ev1_charging_allowed_updated",
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "ev_hybrid",
+      "samples": 240,
+      "batteryPublications": 29,
+      "flexiblePublications": 11,
+      "contextExecutions": 12,
+      "capturedOutputs": [
+        "boiler_power_updated",
+        "ev1_charge_current_updated",
+        "ev1_charge_mode_updated",
+        "ev1_charging_allowed_updated",
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "active",
+      "samples": 240,
+      "batteryPublications": 35,
+      "flexiblePublications": 8,
+      "contextExecutions": 13,
+      "capturedOutputs": [
+        "boiler_power_updated",
+        "hvac1_setpoint_updated",
+        "hvac_setpoint_updated_for_configured",
+        "pv_power_limit_updated"
+      ]
+    },
+    {
+      "name": "boundaries",
+      "samples": 240,
+      "batteryPublications": 35,
+      "flexiblePublications": 2,
+      "contextExecutions": 9,
+      "capturedOutputs": [
+        "boiler_power_updated",
+        "pv_power_limit_updated"
+      ]
+    }
+  ]
+}

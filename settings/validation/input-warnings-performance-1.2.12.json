@@ -1,0 +1,35 @@
+{
+  "method": "Host microbenchmark, 8 batteries/4 EVs/10 HVACs, no controller or timer callbacks; not an absolute Homey CPU measurement.",
+  "results": [
+    {
+      "label": "all inputs fresh",
+      "requests": 10000,
+      "warningsPerRequest": 0,
+      "cpuMs": 175.447,
+      "wallMs": 131.909524,
+      "averageMs": 0.0131909524,
+      "retainedHeapBytes": 50992,
+      "estimatedOneCorePercentAt10SecondRefresh": 0.000131909524
+    },
+    {
+      "label": "all inputs stale",
+      "requests": 10000,
+      "warningsPerRequest": 30,
+      "cpuMs": 215.532,
+      "wallMs": 174.868618,
+      "averageMs": 0.0174868618,
+      "retainedHeapBytes": -15664,
+      "estimatedOneCorePercentAt10SecondRefresh": 0.000174868618
+    },
+    {
+      "label": "missing calendar forecast",
+      "requests": 10000,
+      "warningsPerRequest": 30,
+      "cpuMs": 336.613,
+      "wallMs": 276.05467699999997,
+      "averageMs": 0.027605467699999997,
+      "retainedHeapBytes": 816,
+      "estimatedOneCorePercentAt10SecondRefresh": 0.000276054677
+    }
+  ]
+}

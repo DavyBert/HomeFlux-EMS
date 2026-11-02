@@ -1,0 +1,239 @@
+{
+  "name": {
+    "en": "Savings",
+    "nl": "Winst"
+  },
+  "height": 150,
+  "settings": [
+    {
+      "id": "chart",
+      "type": "dropdown",
+      "title": {
+        "en": "Chart",
+        "nl": "Grafiek"
+      },
+      "value": "profit",
+      "values": [
+        {
+          "id": "cost",
+          "title": {
+            "en": "Cost",
+            "nl": "Kost"
+          }
+        },
+        {
+          "id": "profit",
+          "title": {
+            "en": "Net profit",
+            "nl": "Netto winst"
+          }
+        },
+        {
+          "id": "cost_profit",
+          "title": {
+            "en": "Cost + profit",
+            "nl": "Kost + winst"
+          }
+        },
+        {
+          "id": "profit_cost",
+          "title": {
+            "en": "Profit + cost",
+            "nl": "Winst + kost"
+          }
+        }
+      ]
+    },
+    {
+      "id": "period",
+      "type": "dropdown",
+      "title": {
+        "en": "Period",
+        "nl": "Periode"
+      },
+      "value": "day",
+      "values": [
+        {
+          "id": "day",
+          "title": {
+            "en": "Day",
+            "nl": "Dag"
+          }
+        },
+        {
+          "id": "month",
+          "title": {
+            "en": "Month",
+            "nl": "Maand"
+          }
+        },
+        {
+          "id": "year",
+          "title": {
+            "en": "Year",
+            "nl": "Jaar"
+          }
+        },
+        {
+          "id": "this_month",
+          "title": {
+            "en": "This month",
+            "nl": "Deze maand"
+          }
+        },
+        {
+          "id": "previous_month",
+          "title": {
+            "en": "Previous month",
+            "nl": "Vorige maand"
+          }
+        },
+        {
+          "id": "rolling",
+          "title": {
+            "en": "Rolling",
+            "nl": "Rolling"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rollingDays",
+      "type": "number",
+      "title": {
+        "en": "Rolling days (1–1827)",
+        "nl": "Rolling dagen (1–1827)"
+      },
+      "value": 30,
+      "min": 1,
+      "max": 1827
+    },
+    {
+      "id": "showProgress",
+      "type": "dropdown",
+      "title": {
+        "en": "Percentage bar",
+        "nl": "Percentagebalk"
+      },
+      "value": "show",
+      "values": [
+        {
+          "id": "show",
+          "title": {
+            "en": "Show",
+            "nl": "Tonen"
+          }
+        },
+        {
+          "id": "hide",
+          "title": {
+            "en": "Hide",
+            "nl": "Verbergen"
+          }
+        }
+      ]
+    },
+    {
+      "id": "combinedProgressTarget",
+      "type": "dropdown",
+      "title": {
+        "en": "Percentage bar in combined chart",
+        "nl": "Percentagebalk bij dubbele grafiek"
+      },
+      "value": "profit",
+      "values": [
+        {
+          "id": "cost",
+          "title": {
+            "en": "Show with cost",
+            "nl": "Tonen bij kost"
+          }
+        },
+        {
+          "id": "profit",
+          "title": {
+            "en": "Show with profit",
+            "nl": "Tonen bij winst"
+          }
+        }
+      ]
+    },
+    {
+      "id": "combineGridCharging",
+      "type": "dropdown",
+      "title": {
+        "en": "Combine grid charging",
+        "nl": "Combineer netladen"
+      },
+      "value": "no",
+      "values": [
+        {
+          "id": "no",
+          "title": {
+            "en": "No",
+            "nl": "Nee"
+          }
+        },
+        {
+          "id": "yes",
+          "title": {
+            "en": "Yes",
+            "nl": "Ja"
+          }
+        }
+      ]
+    },
+    {
+      "id": "refresh",
+      "type": "dropdown",
+      "title": {
+        "en": "Refresh interval",
+        "nl": "Updatefrequentie"
+      },
+      "value": "5",
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "1 minute",
+            "nl": "1 minuut"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "3 minutes",
+            "nl": "3 minuten"
+          }
+        },
+        {
+          "id": "5",
+          "title": {
+            "en": "5 minutes",
+            "nl": "5 minuten"
+          }
+        },
+        {
+          "id": "10",
+          "title": {
+            "en": "10 minutes",
+            "nl": "10 minuten"
+          }
+        },
+        {
+          "id": "15",
+          "title": {
+            "en": "15 minutes",
+            "nl": "15 minuten"
+          }
+        }
+      ]
+    }
+  ],
+  "api": {
+    "getSavings": {
+      "method": "GET",
+      "path": "/savings"
+    }
+  }
+}

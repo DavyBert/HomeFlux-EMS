@@ -1,0 +1,145 @@
+{
+  "version": "1.2.9",
+  "baselineZipSha256": "ed6650178c389f8d66f76d5613ebcc30886b138792da9333919f10e0e576621a",
+  "changedFiles": [
+    {
+      "file": ".homeychangelog.json",
+      "before": "dd80e542d7406191e5f2132f34c717361ed35bf48e6d9811b1c35358d659f5c4",
+      "after": "69ae9def37538b04cb4316ed4e95f88971b47a9b7ab27b9b46fa868391880431"
+    },
+    {
+      "file": ".homeycompose/app.json",
+      "before": "bbc58d24a707071506e8d060b5d1430ae920ae6cdb293a9ad5fe55725b4195c4",
+      "after": "b4a4e9bafc3614bb1d2370e3de9a717c43f6c05d12f231022551aa4fbd17db71"
+    },
+    {
+      "file": ".homeycompose/flow/actions/set_ev_energy_deadline_for_configured.json",
+      "before": "e7b266637923707c6b11374414f450ff686989b426bf7723584ee9d1d9833ba3",
+      "after": "c8cade51065882ff46ab60dc6d4affa9033b10d0ebf03b11c573cbd949a25000"
+    },
+    {
+      "file": ".homeycompose/flow/actions/set_ev_session_override_for_configured.json",
+      "before": "46b79944513fdea79bc82355eaaee19f732f061eb784f3c8b724b21b85377fd0",
+      "after": "77b0b6d921b52634b3fdf80503d75e016b9c236507dbe87207fc8d599816e484"
+    },
+    {
+      "file": ".homeycompose/flow/actions/set_ev_soc_deadline_for_configured.json",
+      "before": "08382499bde9507b3cf91acaa05a7b4f5a5c97d118cfac226bac060cd39a9678",
+      "after": "7ac7c7a23b565e109ba01f2b878030f98f93c478589c04d376f3e5a9897ed510"
+    },
+    {
+      "file": "README.md",
+      "before": "c9de31e35c4e9f1f8b07f4fc4154e61fffadc09573859eac415b113ef162ff91",
+      "after": "a7f5ac2d1dfc7fadcb75bcbfed7dd9c9012087e6e2be12657eab9b11b0304ab9"
+    },
+    {
+      "file": "app.js",
+      "before": "8d1376ff04290f3566bead8bf674215913ceb1ba8c844713d4f933b303159719",
+      "after": "23ccc4b5c74a4f37501f3957c6acfa5d988d700d28d5b494ba92acc018231669"
+    },
+    {
+      "file": "app.json",
+      "before": "91f0ca4db94ce6c06646151f65e3a8dd36c7551074ee188508a0596e1cb9f4d8",
+      "after": "48a4370bba87e128275749c1d5dc2dc7bcae73d12f57dd14c7df0c1b69669f96"
+    },
+    {
+      "file": "lib/ev-dashboard.js",
+      "before": "644905784e8e0bb97c48db128650aee534d950037841d09fd308778583195cb2",
+      "after": "f029f7668decf95ff01062f2c9b8a3435beec68cede15c592587cb20b1550d96"
+    },
+    {
+      "file": "lib/ev-plan-options.js",
+      "before": "91be124a566f9003f447799e4637c0e982fb7b84d4715ea2d36e6bb52c7df254",
+      "after": "866087fc317dac1a63970086f5032ac78a66a64e880efd5263872cd23f254533"
+    },
+    {
+      "file": "package-lock.json",
+      "before": "40ebaa56874355999b93e44fd79e857f4ad259b3f52818250c0f72ac040c777e",
+      "after": "270c422d54d559bc4d781105691069a1946c4d50b7bf11b79068fe77394666a5"
+    },
+    {
+      "file": "package.json",
+      "before": "3d17900ecd771f1d440005aa353d7098f91ad7ff5aa1542d93152a1824033d7d",
+      "after": "ae18cc632b6389fac1f2d50e235d70a9e77be00daf44aacbad91c79218eff8b7"
+    },
+    {
+      "file": "settings/index.html",
+      "before": "236d267fd6ef7aaaa64621625ee257690e37b0e251432dd87da91f8103b53e74",
+      "after": "9468e0822de6c365331efedc1700a5a1cf5f711740a9b0d25a5170eb65a7b73c"
+    },
+    {
+      "file": "test/configured-flow-cards.test.js",
+      "before": "f3f6b012f7473b0e4d71cf3266562c5aae494da89eac403093ad4c7251423c1b",
+      "after": "d6a07c7c2e9d08fc03a346a1f6fa3604c9c32dda2c37e228f37d6e45804ea509"
+    },
+    {
+      "file": "test/ev-flow-resume-waf-1.2.4.test.js",
+      "before": "a115ccb7f64943517d65cd2e12bc610d9cfbc4c63d8136c8415b82e6d6e9c352",
+      "after": "e3db841859cebea002d06521f6401bbbd7e40bab5f4344d57c99fa0b749c16d2"
+    },
+    {
+      "file": "test/planning-monitor-1.1.16.test.js",
+      "before": "c21ee5ba9ea943638e6c9c691e927f50f75f975bb5d09425c6a3ee3429154006",
+      "after": "6dd23f2a1a5d86e5af75220ad425e7e93f5309f3b8e7c293c72250f73b530a02"
+    },
+    {
+      "file": "test/settings-startup.test.js",
+      "before": "a701111d4d2bdc08613cfedfbfb0028f4f65459e4264ed0e7eb06475d532d7c0",
+      "after": "eb90dbedd2c599d3fe97efc85ebe46dfe6a5736b9dab8d3a6ede817827e6dc27"
+    },
+    {
+      "file": "test/widget.test.js",
+      "before": "b15aef201f7227c1f8c74d4d753443827a6dbbb052ebc4a92e78d3bc5ccecba5",
+      "after": "bc2db57d51c8787d0b99c066e3ab81223dba51ae9f28c48dfa0cb2b4ca1675a6"
+    },
+    {
+      "file": "widgets/status/public/index.html",
+      "before": "d52c363d2b25e4ccfbb20bdfd59c0456305d96c6b3de746ee6110ee91abf530e",
+      "after": "60ffb5de648aedc7e5abb72531cccf966dd2a9aae131f84f13b02a3e01cd173d"
+    }
+  ],
+  "newFiles": [
+    "lib/ems-status-tags.js",
+    "test/features-1.2.9.test.js",
+    "test/features-control-1.2.9.test.js",
+    "test/features-memory-1.2.9.cjs",
+    "docs/UPDATE-1.2.9.md",
+    "docs/VALIDATION-1.2.9.md",
+    "validation/features-1.2.9.json",
+    "validation/features-control-1.2.9.json",
+    "validation/targeted-1.2.9.json",
+    "validation/memory-1.2.9.json",
+    "validation/ev-legacy-comparison-1.2.9.json",
+    "validation/source-audit-1.2.9.json",
+    "test/ev-peak-1.1.20.test.js.disabled",
+    "test/ev-physical-proof-1.2.4.test.js.disabled",
+    "validation/test-suite-cleanup-1.2.9.json"
+  ],
+  "preservedCriticalFiles": [
+    "lib/ems-engine.js",
+    "lib/battery-night-planner.js",
+    "lib/ev-deadline-planner.js",
+    "lib/flexible-loads.js",
+    "lib/ev-output-policy.js",
+    "lib/ev-battery-policy.js",
+    "lib/hvac-permanent.js",
+    "lib/hvac-periodic.js",
+    "README.txt",
+    "README.nl.txt"
+  ],
+  "syntax": {
+    "javascriptFiles": 12,
+    "inlineScripts": 2,
+    "jsonFiles": 13,
+    "passed": true
+  },
+  "allOriginalMembersPreserved": false,
+  "allDeprecatedFlowDefinitionsUnchanged": true,
+  "flowCardCountsUnchanged": true,
+  "readmeBodyPreserved": true,
+  "retiredTestFiles": {
+    "test/ev-peak-1.1.20.test.js": "test/ev-peak-1.1.20.test.js.disabled",
+    "test/ev-physical-proof-1.2.4.test.js": "test/ev-physical-proof-1.2.4.test.js.disabled"
+  },
+  "allOriginalMembersPreservedExceptExplicitlyArchivedTests": true
+}

@@ -1,0 +1,61 @@
+{
+  "rounds": [
+    {
+      "cpuMs": 189.283,
+      "preflights": 0
+    },
+    {
+      "cpuMs": 210.113,
+      "preflights": 0
+    },
+    {
+      "cpuMs": 187.62,
+      "preflights": 0
+    },
+    {
+      "cpuMs": 181.257,
+      "preflights": 0
+    },
+    {
+      "cpuMs": 200.428,
+      "preflights": 0
+    },
+    {
+      "cpuMs": 274.319,
+      "preflights": 0
+    },
+    {
+      "cpuMs": 242.593,
+      "preflights": 0
+    }
+  ],
+  "warmup": 120000,
+  "unit": "30000 queued scheduler requests",
+  "scope": "Component-only real requestEvaluate/preflight with pending interval, synthetic repeated calls; not P1 replay or Homey CPU.",
+  "traces": [
+    {
+      "at": 1792486805000,
+      "total": 631,
+      "commands": [
+        631,
+        0,
+        0,
+        0
+      ],
+      "mode": "self_consumption",
+      "override": ""
+    },
+    {
+      "at": 1792486812000,
+      "total": 2038,
+      "commands": [
+        1490,
+        548,
+        0,
+        0
+      ],
+      "mode": "self_consumption",
+      "override": ""
+    }
+  ]
+}

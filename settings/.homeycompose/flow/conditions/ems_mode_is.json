@@ -1,0 +1,64 @@
+{
+  "title": {
+    "en": "EMS mode is [[mode]]",
+    "nl": "EMS-modus is [[mode]]"
+  },
+  "args": [
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "values": [
+        {
+          "id": "self_consumption",
+          "title": {
+            "en": "Self consumption",
+            "nl": "Zelfconsumptie"
+          }
+        },
+        {
+          "id": "solar_capture",
+          "title": {
+            "en": "Battery save",
+            "nl": "Batterij sparen"
+          }
+        },
+        {
+          "id": "charge",
+          "title": {
+            "en": "Planned grid charging",
+            "nl": "Gepland netladen"
+          }
+        },
+        {
+          "id": "manual_charge",
+          "title": {
+            "en": "Forced charging",
+            "nl": "Geforceerd laden"
+          }
+        },
+        {
+          "id": "avoid_import",
+          "title": {
+            "en": "Avoid grid import",
+            "nl": "Netimport vermijden"
+          }
+        },
+        {
+          "id": "standby",
+          "title": {
+            "en": "Standby",
+            "nl": "Stand-by"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "EMS mode is [[mode]]",
+    "nl": "EMS-modus is [[mode]]"
+  }
+}

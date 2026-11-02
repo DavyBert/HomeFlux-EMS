@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Battery control owner",
+    "nl": "Batterijsturing"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/control-owner.svg"
+}

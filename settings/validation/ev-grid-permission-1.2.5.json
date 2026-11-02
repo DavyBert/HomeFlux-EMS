@@ -1,0 +1,106 @@
+{
+  "simulatedHomey": true,
+  "physicalHardwareTested": false,
+  "passed": 20,
+  "results": [
+    {
+      "name": "mode: emergency uses P1 room with 0 W tariff allowance and no PV",
+      "seconds": 180,
+      "stops": 0,
+      "gridW": 11785,
+      "netAllowanceW": 11085,
+      "pvBudgetW": 0
+    },
+    {
+      "name": "mode: PV-only -> emergency, then clouds, retains grid permission"
+    },
+    {
+      "name": "mode: guarantee uses P1 room with 0 W tariff allowance and no PV",
+      "seconds": 180,
+      "stops": 0,
+      "gridW": 11785,
+      "netAllowanceW": 11085,
+      "pvBudgetW": 0
+    },
+    {
+      "name": "mode: PV-only -> guarantee, then clouds, retains grid permission"
+    },
+    {
+      "name": "current: emergency uses P1 room with 0 W tariff allowance and no PV",
+      "seconds": 180,
+      "stops": 0,
+      "gridW": 11785,
+      "netAllowanceW": 11085,
+      "pvBudgetW": 0
+    },
+    {
+      "name": "current: PV-only -> emergency, then clouds, retains grid permission"
+    },
+    {
+      "name": "current: guarantee uses P1 room with 0 W tariff allowance and no PV",
+      "seconds": 180,
+      "stops": 0,
+      "gridW": 11785,
+      "netAllowanceW": 11085,
+      "pvBudgetW": 0
+    },
+    {
+      "name": "current: PV-only -> guarantee, then clouds, retains grid permission"
+    },
+    {
+      "name": "hybrid: emergency uses P1 room with 0 W tariff allowance and no PV",
+      "seconds": 180,
+      "stops": 0,
+      "gridW": 11785,
+      "netAllowanceW": 11085,
+      "pvBudgetW": 0
+    },
+    {
+      "name": "hybrid: PV-only -> emergency, then clouds, retains grid permission"
+    },
+    {
+      "name": "hybrid: guarantee uses P1 room with 0 W tariff allowance and no PV",
+      "seconds": 180,
+      "stops": 0,
+      "gridW": 11785,
+      "netAllowanceW": 11085,
+      "pvBudgetW": 0
+    },
+    {
+      "name": "hybrid: PV-only -> guarantee, then clouds, retains grid permission"
+    },
+    {
+      "name": "Fixed contract emergency is not constrained by the 0 W regular tariff cap"
+    },
+    {
+      "name": "Fixed contract guarantee is not constrained by the 0 W regular tariff cap"
+    },
+    {
+      "name": "mode: actual P1 overload still stops/reduces EV safely"
+    },
+    {
+      "name": "current: actual P1 overload still stops/reduces EV safely"
+    },
+    {
+      "name": "hybrid: actual P1 overload still stops/reduces EV safely"
+    },
+    {
+      "name": "Reported example: P1 8,287 W + existing EV 4,416 W gives 13,529 W after the 100-W margin, without adding PV twice",
+      "peakGuardW": 17500,
+      "marginW": 100,
+      "p1W": 8287,
+      "pvW": 3807,
+      "currentEvW": 4416,
+      "peakBudgetW": 13529,
+      "allocatedA": 19
+    },
+    {
+      "name": "All four Mode slots share Peak Guard once; guaranteed and Emergency coexist",
+      "totalEvW": 16628,
+      "limitW": 17400
+    },
+    {
+      "name": "Plain PV-only Smart still stops when solar disappears"
+    }
+  ]
+}

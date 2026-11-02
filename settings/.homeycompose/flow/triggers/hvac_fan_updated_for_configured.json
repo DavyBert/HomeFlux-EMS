@@ -1,0 +1,66 @@
+{
+  "title": {
+    "en": "HVAC fan command is updated",
+    "nl": "HVAC-ventilatoropdracht is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "action",
+      "type": "string",
+      "title": {
+        "en": "Fan action",
+        "nl": "Ventilatoractie"
+      },
+      "example": "higher"
+    },
+    {
+      "name": "current_speed",
+      "type": "number",
+      "title": {
+        "en": "Current fan speed value",
+        "nl": "Huidige ventilatorwaarde"
+      },
+      "example": 200
+    },
+    {
+      "name": "target_speed",
+      "type": "number",
+      "title": {
+        "en": "Target fan speed value",
+        "nl": "Doelwaarde ventilator"
+      },
+      "example": 300
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Koelen met PV-overschot"
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[hvac]] fan command is updated",
+    "nl": "[[hvac]]-ventilatoropdracht is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "autocomplete",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "placeholder": {
+        "en": "Select configured HVAC",
+        "nl": "Kies geconfigureerde HVAC"
+      }
+    }
+  ],
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

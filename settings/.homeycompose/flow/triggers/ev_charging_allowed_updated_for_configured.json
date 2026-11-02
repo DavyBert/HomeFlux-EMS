@@ -1,0 +1,57 @@
+{
+  "title": {
+    "en": "EV charging permission is updated",
+    "nl": "EV laden toegestaan is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "allowed",
+      "type": "string",
+      "title": {
+        "en": "Charging allowed",
+        "nl": "Laden toegestaan"
+      },
+      "example": "Ja"
+    },
+    {
+      "name": "allowed_value",
+      "type": "number",
+      "title": {
+        "en": "Allowed (1/0)",
+        "nl": "Toegestaan (1/0)"
+      },
+      "example": 1
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Laden met PV-overschot"
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] charging permission is updated",
+    "nl": "[[ev]] laden toegestaan is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "autocomplete",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "placeholder": {
+        "en": "Select configured EV",
+        "nl": "Kies geconfigureerde EV"
+      }
+    }
+  ],
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

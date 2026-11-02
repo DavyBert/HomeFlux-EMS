@@ -1,0 +1,32 @@
+{
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "passed": 25,
+  "results": [
+    "Standard keeps nearest HH:mm, is opt-in owned only for widget input; no Max PV default",
+    "Days 1..7 use confirmation-day local calendar plus N, preserving HH:mm",
+    "Widget and EMS status expose identical central date immediately, no context run needed",
+    "Deadline/Guaranteed/Max PV patches preserve delivered kWh and newer central goal",
+    "Invalid horizon, past/invalid calendar dates and deadline beyond selected horizon preserve valid plan",
+    "Midnight does not move fixed deadline or refill progress; restart preserves all options",
+    "Unknown/null connection and a pause do not end widget plan; feedback display never becomes physical evidence",
+    "Connected widget goal defers latest ordinary Flow mode before state/output/context mutation",
+    "Clear resumes exactly latest saved ordinary Flow override via existing handler; other EV unaffected",
+    "Confirmed disconnect ends only widget plan and resumes latest Flow; first false after restart also ends it",
+    "Legacy Flow-created plans retain old disconnect/reconnect and ordinary mode precedence",
+    "Explicit Flow planning cards can replace widget plan; old stale widget patch preserves new Flow target",
+    "Completion stays protected/visible after restart and forbids further charging; clear resumes Flow",
+    "Expired absolute deadline survives restart and produces STOP, never a new tomorrow goal",
+    "Local calendar handles 23h/25h DST days and rejects nonexistent local wall time",
+    "PV resources reserve house and battery once; two EVs share remaining forecast without duplication",
+    "No intraday forecast profile: a full day total is never credited before morning/noon deadline",
+    "Max PV reduces planned grid deficit; Guaranteed latest safe start is based on FULL goal",
+    "Configured fixed/TOU multi-day curves use real tariff transitions/prices and configured permissions",
+    "Max PV without Guaranteed never widens cheap permission to expensive dynamic/TOU slots",
+    "Explicit safety/session-end feedback still stops during a widget plan and is never deferred",
+    "Unknown competing EV need blocks forecast credit, not the existing planner or live PV path",
+    "Tomorrow forecast reserves possible battery refill again; completed EV does not reserve PV",
+    "An entirely unpublished dynamic horizon stays provisional with zero cheap slots and retains safe start",
+    "Partial dynamic curves never invent future prices; future cheapest quarter remains selectable"
+  ]
+}

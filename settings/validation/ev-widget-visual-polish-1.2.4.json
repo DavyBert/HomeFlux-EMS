@@ -1,0 +1,27 @@
+{
+  "version": "1.2.4",
+  "scope": "Visual EV widget refinement only",
+  "targetFontPx": 21,
+  "narrowTargetFontPx": 19,
+  "estimateHelp": "Moved to all 4 EV settings panels; Dutch and English",
+  "retainedConditionalNotices": [
+    "incomplete",
+    "unpriced",
+    "shared"
+  ],
+  "passed": [
+    "17 simulated widget DOM cases",
+    "settings-translations.test.js",
+    "settings-startup.test.js",
+    "widget.test.js"
+  ],
+  "staticRenders": 6,
+  "visuallyInspectedRenders": [
+    "light 360px",
+    "dark 360px"
+  ],
+  "nativeHomeyTested": false,
+  "fullSuiteRerun": false,
+  "performanceRemeasured": false,
+  "baselineZipSha256": "7c902c63eab15a782ca974ed7cb01ce43244540fe87883d8e5571ac491cd6355"
+}

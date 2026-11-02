@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Missing EMS input",
+    "nl": "EMS-invoer ontbreekt"
+  },
+  "getable": true,
+  "setable": false,
+  "insights": false,
+  "insightsTitleTrue": {
+    "en": "Required EMS input is missing",
+    "nl": "Vereiste EMS-invoer ontbreekt"
+  },
+  "insightsTitleFalse": {
+    "en": "All required EMS input is available",
+    "nl": "Alle vereiste EMS-invoer is beschikbaar"
+  },
+  "icon": "/assets/capabilities/input-warning.svg"
+}

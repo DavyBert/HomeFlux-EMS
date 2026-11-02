@@ -1,0 +1,64 @@
+{
+  "title": {
+    "en": "Charge plan is updated",
+    "nl": "Laadplan is bijgewerkt"
+  },
+  "titleFormatted": {
+    "en": "Charge plan is updated",
+    "nl": "Laadplan is bijgewerkt"
+  },
+  "hint": {
+    "en": "Fires when HomeFlux decides or changes the overnight charge plan. Use the Charge plan token with Homey's standard Logic action to write it to a text variable.",
+    "nl": "Start wanneer HomeFlux het nachtelijke laadplan beslist of wijzigt. Gebruik de tag Laadplan met de standaard Logic-kaart van Homey om dit naar een tekstvariabele te schrijven."
+  },
+  "tokens": [
+    {
+      "name": "plan",
+      "type": "string",
+      "title": {
+        "en": "Charge plan",
+        "nl": "Laadplan"
+      },
+      "example": {
+        "en": "SoC target 19% · enough battery reserve, no grid charging is planned.",
+        "nl": "SoC-doel 19% · genoeg batterijreserve, er wordt niet geladen."
+      }
+    },
+    {
+      "name": "target_soc",
+      "type": "number",
+      "title": {
+        "en": "Target SoC (%)",
+        "nl": "Doel-SoC (%)"
+      },
+      "example": 19
+    },
+    {
+      "name": "current_soc",
+      "type": "number",
+      "title": {
+        "en": "Current SoC (%)",
+        "nl": "Huidige SoC (%)"
+      },
+      "example": 72
+    },
+    {
+      "name": "charge_window",
+      "type": "string",
+      "title": {
+        "en": "Charge window",
+        "nl": "Laaduren"
+      },
+      "example": "01:00–07:00"
+    },
+    {
+      "name": "forecast_energy",
+      "type": "number",
+      "title": {
+        "en": "Planning PV forecast (kWh)",
+        "nl": "PV-voorspelling voor planning (kWh)"
+      },
+      "example": 20.3
+    }
+  ]
+}

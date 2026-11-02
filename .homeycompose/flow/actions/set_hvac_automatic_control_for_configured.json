@@ -39,6 +39,22 @@
           }
         }
       ]
+    },
+    {
+      "name": "standby_temperature",
+      "type": "number",
+      "required": false,
+      "min": 5,
+      "max": 99,
+      "step": 0.5,
+      "title": {
+        "en": "Standby temperature (optional)",
+        "nl": "Stand-bytemperatuur (optioneel)"
+      },
+      "placeholder": {
+        "en": "Leave empty to retain setting",
+        "nl": "Leeg = instelling behouden"
+      }
     }
   ],
   "titleFormatted": {
@@ -46,7 +62,7 @@
     "nl": "Stel [[hvac]] automatische sturing in op [[enabled]]"
   },
   "hint": {
-    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
-    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+    "en": "When disabled, sends the standby temperature if specified and setpoint control is allowed. Also sends OFF when power control is allowed. Empty retains the saved standby setting. Only configured HVACs are offered.",
+    "nl": "Bij Nee wordt de gekozen stand-bytemperatuur gestuurd als setpointsturing toegestaan is. Bij toegestane aan/uit-sturing wordt ook Uit gestuurd. Leeg behoudt de opgeslagen stand-byinstelling. Alleen geconfigureerde HVAC’s worden aangeboden."
   }
 }

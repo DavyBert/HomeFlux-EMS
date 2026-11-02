@@ -1,0 +1,80 @@
+{
+  "title": {
+    "en": "Read external prices JSON",
+    "nl": "Lees externe prijzen JSON"
+  },
+  "titleFormatted": {
+    "en": "Read [[source]] prices JSON [[curve]] for [[period]]",
+    "nl": "Lees [[source]] prijzen JSON [[curve]] voor [[period]]"
+  },
+  "hint": {
+    "en": "Send a timestamped JSON curve or a numeric price array, up to 120 hours ahead. For numeric arrays select the same period as the provider; resolution follows the dynamic contract. Timestamped data ignores Period.",
+    "nl": "Stuur een JSON-prijscurve met tijdstempels of een getallenarray, tot 120 uur vooruit. Kies bij getallenarrays dezelfde periode als de provider; de resolutie volgt het dynamische contract. Bij tijdstempels wordt Periode genegeerd."
+  },
+  "args": [
+    {
+      "name": "source",
+      "type": "dropdown",
+      "title": {
+        "en": "Price source",
+        "nl": "Prijsbron"
+      },
+      "values": [
+        {
+          "id": "external",
+          "label": {
+            "en": "External Price 1",
+            "nl": "External Price 1"
+          }
+        },
+        {
+          "id": "external2",
+          "label": {
+            "en": "External Price 2",
+            "nl": "External Price 2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "curve",
+      "type": "text",
+      "title": {
+        "en": "Prices JSON",
+        "nl": "Prijzen JSON"
+      }
+    },
+    {
+      "name": "period",
+      "type": "dropdown",
+      "title": {
+        "en": "Period",
+        "nl": "Periode"
+      },
+      "values": [
+        {
+          "id": "next_hours",
+          "label": {
+            "en": "Next hours",
+            "nl": "Komende uren"
+          }
+        },
+        {
+          "id": "this_day",
+          "label": {
+            "en": "This day",
+            "nl": "Deze dag"
+          }
+        },
+        {
+          "id": "tomorrow",
+          "label": {
+            "en": "Tomorrow",
+            "nl": "Morgen"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

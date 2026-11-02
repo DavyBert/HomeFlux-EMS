@@ -1,0 +1,671 @@
+EV INSIGHTS FOLLOW-UP: see VALIDATION-EV-FLOW-1.2.6.txt for the current selective checks.
+The full-suite evidence below belongs to the preceding 1.2.6 revision, before this EV read extension.
+
+HomeFlux EMS 1.2.6 — validation
+Date: 2026-10-29
+Runtime: Node.js v24.22.1; Homey I/O simulated by the existing test harness.
+Input: HomeFlux-EMS-v1.2.5(3).zip
+Input SHA-256: 73a6b35303340cb304638843f2f62c2cb025c939e64e9ac30dc166e20a27d47d
+
+RESULT: all 104 commands in the package test script passed across sequential
+batches (90 initial commands plus 14 remaining commands). Autotune and the new
+feature regression were also rerun after the final changes.
+
+One existing EV presentation assertion was made deterministic: checking for
+bare "6.8" could accidentally match the clock-dependent CSS animation delay.
+It now checks "6.8 kWh", the actual energy text. Production EV presentation
+code was unchanged. The affected test and subsequent tests passed.
+
+Additional verification:
+- 13 new feature regression groups: P1 zero at negative control bands; source
+  attribution; rolling calendar boundaries; Savings Flow categories, formats,
+  currency, coverage and missing values; optional SoC target/restart stability;
+  fixed/TOU/dynamic windows; solar capture/Peak Guard/Safety SoC; persisted PV
+  median including restarted planning; realistic paired Autotune bands and
+  4–17 second hard limits.
+- 1500 deterministic default-off engine comparisons with the uploaded 1.2.5
+  source: every existing result field matched. Only the newly added false
+  diagnostic flag nightChargeHold was excluded from the comparison.
+- 39 runtime JavaScript files and four inline HTML scripts passed syntax checks.
+- Manifests, Compose and translation JSON parse and match; Flow IDs are unique.
+- All runtime/package manifest versions are 1.2.6. Runtime logging obtains the
+  version from the manifest; no separate hardcoded app version was found.
+- 155 existing deprecated Compose Flow cards remain byte-identical.
+- README.txt and README.nl.txt remain byte-identical. The slogan is unchanged.
+- Historical validation files supplied in the input were restored unchanged.
+
+Limits: no physical Homey installation or physical CPU/memory measurement.
+Savings still uses the established last-command battery-power estimate and
+existing input-freshness rules; no historical missing measurements are invented.
+
+NEW FEATURE OUTPUT
+
+PASS P1 zero: export within/beyond negative band, small import and zero use the real meter
+PASS Export attribution preserves PV, grid-origin battery and unknown battery export
+PASS Rolling day/week/calendar month/year boundaries, leap years and invalid input
+PASS Then Flow: category totals, current day, gaps, negative values, no extra records
+PASS Optional night hysteresis stops charge/discharge cycling, resumes at margin, unchanged when off
+PASS Night target anchor tolerates small forecast changes, allows material changes, matches planning
+PASS Night hold applies only to permitted windows across fixed, TOU and dynamic contracts
+PASS Night hold still captures solar and permits Peak Guard and Safety SoC recovery
+PASS Optional 00-02 median freezes exactly once, excludes evening/post-02 inputs and survives restart
+PASS Median default off, missing-window fallback, genuine PV start and next-night reset
+PASS Autotune interval hard limits clamp legacy ranges, permission and recommendations
+PASS Autotune symmetric realistic pair: evidence, steps, one-off and automatic permission/ranges
+PASS Autotune pair honors both ranges and preserves other parameter cooldowns
+13 feature regression groups passed (1.2.6)
+
+AUTOTUNE OUTPUT
+
+automatic Autotune tests passed
+
+DEFAULT-OFF PARITY
+
+1500 default-off engine cases match uploaded 1.2.5 exactly.
+
+STATIC CHECKS
+
+Syntax valid: 39 runtime JavaScript files, 4 inline scripts; manifests/Compose/translation JSON valid.
+Version, slogan, short README, Compose/built manifests and unique Flow IDs verified.
+
+PRIMARY SUITE OUTPUT (first 90 passing commands)
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> com.homeflux.ems@1.2.6 test
+> node test/engine.test.js && node test/homey-energy.test.js && node test/flexible-loads.test.js && node test/ev-headroom.test.js && node test/app-control.test.js && node test/performance-split-loop.test.js && node test/help-catalog.test.js && node test/autotune.test.js && node test/settings-startup.test.js && node test/settings-translations.test.js && node test/settings-runtime-audit.test.js && node test/output-tests.test.js && node test/multi-flexible-loads.test.js && node test/performance-architecture.test.js && node test/savings.test.js && node test/widget.test.js && node test/regressions-0.7.8.test.js && node test/regressions-0.7.9.test.js && node test/regressions-0.7.10.test.js && node test/regressions-0.7.11.test.js && node test/flow-slot-cards.test.js && node test/configured-flow-cards.test.js && node test/regressions-0.7.15.test.js && node test/regressions-0.7.16.test.js && node test/voltage-ui-0.7.16.test.js && node test/regressions-0.8.1.test.js && node test/regressions-0.8.2.test.js && node test/regressions-0.8.3.test.js && node test/regressions-0.8.4.test.js && node test/regressions-0.8.7.test.js && node test/pv-plan-feedback.test.js && node test/regressions-0.9.1.test.js && node test/regressions-0.9.2.test.js && node test/regressions-0.9.3.test.js && node test/regressions-0.9.5.test.js && node test/regressions-0.9.7.test.js && node test/regressions-0.9.8.test.js && node test/regressions-0.9.9.test.js && node test/regressions-1.0.0.test.js && node test/efficiency.test.js && node test/price-sources-1.0.6.test.js && node test/price-ui-1.0.6.test.js && node test/price-alignment-names-1.0.6.test.js && node test/fast-control-audit-1.0.6.test.js && node test/planning-limits-1.0.7.test.js && node test/charge-feedback-1.0.8.test.js && node test/idle-guard-1.0.8.test.js && node test/context-refresh-1.0.10.test.js && node test/ev-feedback-1.0.11.test.js && node test/settings-cache-1.0.12.test.js && node test/pv-source-1.1.1.test.js && node test/active-charge-1.1.2.test.js && node test/source-switch-1.1.3.test.js && node test/night-forecast-1.1.4.test.js && node test/independent-ev-1.1.5.test.js && node test/diagnostics-1.1.6.test.js && node test/ev-battery-protection-1.1.6.test.js && node test/soc-completion-1.1.9.test.js && node test/ev-battery-transition-1.1.9.test.js && node test/split-resend-seconds-1.1.10.test.js && node test/ev-pv-house-first-1.1.11.test.js && node test/ev-input-work-1.1.12.test.js && node test/ev-deadline-cache-1.1.12.test.js && node test/ev-duplicate-cpu-1.1.12.test.js && node test/ev-context-delay-1.1.13.test.js && node test/input-monitor-1.1.14.test.js && node test/input-monitor-ui-1.1.14.test.js && node test/ev-work-1.1.15.test.js && node test/ev-plan-1.1.15.test.js && node test/ev-work-1.1.16.test.js && node test/planning-monitor-1.1.16.test.js && node test/ev-plan-centralization-1.1.16.test.js && node test/ev-physical-settings-1.1.16.test.js && node test/ev-physical-config-cache-1.1.16.test.js && node test/ev-deadline-planner-1.1.17.test.js && node test/ev-deadline-integration-1.1.17.test.js && node test/battery-night-1.1.18.test.js && node test/night-restart-1.1.18.test.js && node test/ev-persistence-1.1.20.test.js && node test/ev-peak-1.1.20.test.js && node test/widget-insights-1.2.1.test.js && node test/widget-insights-lifecycle-1.2.1.test.js && node test/battery-power-1.2.2.test.js && node test/waf-continuity-1.2.3.test.js && node test/ev-widget-handler-audit-1.2.4.test.js && node test/ev-dashboard-1.2.4.test.js && node test/ev-energy-1.2.4.test.js && node test/ev-widget-ui-1.2.4.test.js && node test/ev-widget-regression-1.2.4.test.js && node test/ev-savings-export-1.2.4.test.js && node test/ev-emergency-presentation-1.2.4.test.js && node test/ev-recording-audit-1.2.4.test.js && node test/ev-house-reference-1.2.4.test.js && node test/ev-multiday-1.2.4.test.js && node test/ev-multiday-control-1.2.4.test.js && node test/ev-confirmed-power-1.2.4.test.js && node test/ev-widget-emergency-1.2.4.test.js && node test/ev-flow-resume-waf-1.2.4.test.js && node test/ev-physical-proof-1.2.4.test.js && node test/ev-battery-options-1.2.4.test.js && node test/ev-mode-recording-1.2.5.test.js && node test/ev-grid-permission-1.2.5.test.js && node test/ev-house-publication-1.2.5.test.js && node test/features-1.2.6.test.js
+
+HomeFlux EMS engine tests: OK
+HomeFlux EMS v0.2.28 planning tests: OK
+HomeFlux EMS Homey Energy tests: OK
+HomeFlux EMS official Homey Energy payload tests: OK
+HomeFlux EMS PBTH price-array tests: OK
+HomeFlux EMS flexible-load tests: OK
+EV Peak Guard headroom preview tests passed
+HomeFlux EMS app control tests: OK
+split-loop performance tests passed
+help-catalog tests passed (29 inputs, 26 outputs, 20 conditions, 53 tags)
+automatic Autotune tests passed
+settings startup tests passed
+settings translation bundle tests passed
+settings runtime audit passed (533 persisted UI settings)
+output tests passed
+multi flexible-load tests passed
+performance architecture tests passed
+savings tests passed
+widget tests passed
+v0.7.8 regression tests passed
+v0.7.9 EV coordination regression tests passed
+v0.7.10 EV session, house-load and PV top-up regression tests passed
+v0.7.11 night target-SoC EV charging regression tests passed
+v0.7.12 Flow migration tests passed (120 preserved cards, 25 generic cards, 72 isolated output routes, 440 real input scenarios)
+configured Flow selectors passed (31 dynamic cards, 716 queries, 364 input comparisons, 300 condition comparisons, 72 three-generation output routes)
+0.7.15 regressions OK
+0.7.16 voltage, battery capacity, balancing and migration regressions passed
+0.7.16 phase-specific voltage options, migration and UI switching passed
+0.8.1 command cooldown tests passed: t=7 no output -> t=8 immediate; actual writes remain rate-limited
+0.8.2 residual-error regressions passed: import/export, <20 W correction, 7 s command interval, noise and battery limits
+0.8.3 startup regressions passed: finite translation mutations, read time-outs, fresh defaults and preserved upgrades
+0.8.4 regressions passed: formula import, four source modes, calibrated failover/recovery, persistence, EV tariff controls and widget prices
+live charge undefined -667 667
+0.8.7: normal charging opt-in, SoC ceiling, deadline, cheap charging and missing prices passed
+0.8.7: PV capture, Peak Guard and settings persistence passed
+PV-plan feedback passed: fixed/TOU/dynamic, stable zero, fast/full paths, stale PV, cloud, grid charging, SoC and power limits
+current priority steady states: {"battery_first":{"battery":-5000,"evW":1380},"share":{"battery":-3380,"evW":3220},"ev_first":{"battery":-160,"evW":6440}}
+hybrid priority steady states: {"battery_first":{"battery":-5000,"evW":1380},"share":{"battery":-3380,"evW":3220},"ev_first":{"battery":-160,"evW":6440}}
+mode priority steady states: {"battery_first":{"battery":-5000,"evW":0},"share":{"battery":-4300,"evW":2300},"ev_first":{"battery":-2000,"evW":4600}}
+0.9.1 battery/EV regression tests passed
+0.9.2: restart band, full recharge cycle, phase/target changes, PV, Safety recovery, limits, normal-price ceiling and persistence passed
+0.9.3: English UI/runtime translations, composite reasons, idempotence, Dutch preservation, fallback language, Flow values and API errors passed
+0.9.5 sunshine reserve: boundaries, dates, midnight, stale inputs, persistence, opt-in, discharge, PV, Safety SoC, Peak Guard and translations passed
+0.9.7: context-only planning, input coalescing, throttle, shared deadline, read-only status, manual refresh, phase/midnight, publication, pause and fast-loop isolation passed
+0.9.8: consecutive PV samples, all averages, expiry/cadence, no repeated stable evaluations, night zero, live P1 corrections, cooldown, newest input, async/failed publication and Flow/API paths passed
+0.9.9 Autotune scheduling regression tests passed
+standard: active / airfryer / pause / resume / fast swap passed
+smart: active / airfryer / pause / resume / fast swap passed
+v1.0.0 EV pause, resume, completion and physical budget scenarios passed
+Multi-battery efficiency tests passed, including sticky charging and real output handovers.
+1.0.6 price-source tests passed: migration, 15 priority permutations, shared parser, 120h, DST, three-stage fallback, retained Flows, atomic import, restart persistence and widget curves
+1.0.6 UI tests passed: checkbox-only selection, dynamic priorities, unavailable source visibility, null prices, stable widget numbering, NL/EN reasons, three SVG curves and currency
+1.0.6 alignment/name tests passed: current-day calibration, robust outliers, insufficient overlap/variation, mixed resolutions, actual repeated-hour arrays and fallback, genuine quarters, incomplete hours, Brussels timestamps/DST, A/B/C failover/recovery, cache/restart, formula-free fitting, live Flow names/stable IDs and original widget curves
+1.0.6 fast-control audit passed: planned charge export/import, real Flow/API inputs, efficiency on/off, repeated feedback, fixed cooldown/coalescing, averaging, unchanged output, startup/context, pause, Peak Guard, output mutex, SoC and Hybrid safeguards.
+1.0.7 regression tests passed: 8 contract/phase combinations, 100% defaults, grid limits, recalculation, cached/full control, PV/clouds, safety/manual/Peak Guard, hysteresis, unchanged floors, NL/EN widget, EV display and upgrade/restart.
+1.0.8 charge feedback regression passed: stable/noisy P1, minute expiry, PV source/capture, import/Peak Guard, target/SoC/limits/balancing, unavailable battery, safety/manual, Hybrid, stale input, split timers, flexible-load targets and concurrent publication.
+1.0.8 idle guard passed: stable/gaming P1, soft Peak Guard/hard SoC, all individual active/mixed setpoints, zero-output confirmation/failure, stale/missing data, pending work, PV/averaging, planning/mode/state changes, bookkeeping and flexible-load/Split/Hybrid fallbacks.
+1.0.10 context refresh regression passed: real Flow/API scheduler, unchanged deadlines, structural invalidation, live budgets/SoC/forecast/limits, minute expiry, export/Peak Guard, pending/Split/Hybrid, reentrant scheduling and heartbeat propagation.
+1.0.11 measured EV feedback: 28 real-scheduler scenarios passed.
+┌─────────┬──────────────────────────────────────┬───────────┬─────────┬──────────┬──────────────────┐
+│ (index) │ scenario                             │ measuredA │ EVgridW │ batteryW │ batteryPublishes │
+├─────────┼──────────────────────────────────────┼───────────┼─────────┼──────────┼──────────────────┤
+│ 0       │ 'three-phase-16A'                    │ 16        │ 11085   │ 631      │ 1                │
+│ 1       │ 'three-phase-14A'                    │ 14        │ 9699    │ 631      │ 1                │
+│ 2       │ 'three-phase-8A'                     │ 8         │ 5543    │ 631      │ 1                │
+│ 3       │ 'three-phase-6A'                     │ 6         │ 4157    │ 631      │ 1                │
+│ 4       │ 'single-phase-8A'                    │ 8         │ 1840    │ 631      │ 1                │
+│ 5       │ 'hybrid-8A'                          │ 8         │ 5543    │ 630      │ 5                │
+│ 6       │ 'above-command-20A'                  │ 20        │ 13856   │ 631      │ 1                │
+│ 7       │ 'above-grid-budget'                  │ 16        │ 11085   │ 631      │ 9                │
+│ 8       │ 'new-command-with-existing-feedback' │ 8         │ 5543    │ 631      │ 1                │
+│ 9       │ 'zero-current'                       │ 0         │ 0       │ 631      │ 3                │
+│ 10      │ 'disconnect'                         │ 0         │ 0       │ 631      │ 3                │
+│ 11      │ 'session-end'                        │ 0         │ 0       │ 631      │ 3                │
+│ 12      │ 'missing-feedback'                   │ 8         │ 0       │ 6000     │ 2                │
+│ 13      │ 'expired-and-restored-feedback'      │ 8         │ 5543    │ 630      │ 5                │
+│ 14      │ 'tariff-disabled'                    │ 0         │ 0       │ 631      │ 1                │
+│ 15      │ 'tariff-permission-change'           │ 0         │ 0       │ 631      │ 3                │
+│ 16      │ 'scheduled-tariff-boundary'          │ 0         │ 0       │ 631      │ 3                │
+│ 17      │ 'grid-budget-change'                 │ 0         │ 0       │ 631      │ 3                │
+│ 18      │ 'pv-and-house-variation'             │ 8         │ 3143    │ 7        │ 9                │
+│ 19      │ 'planned-battery-charge'             │ 8         │ 5543    │ -1151    │ 5                │
+│ 20      │ 'peak-guard'                         │ 0         │ 0       │ 6000     │ 2                │
+│ 21      │ 'explicit-battery-support'           │ 6         │ 0       │ 4787     │ 8                │
+│ 22      │ 'legacy-bypass-ignored'              │ 8         │ 5543    │ 631      │ 1                │
+│ 23      │ 'mode-only-detection'                │ 0         │ 0       │ 631      │ 13               │
+│ 24      │ 'split-battery-outputs'              │ 8         │ 5543    │ 730      │ 2                │
+│ 25      │ 'hybrid-battery-control'             │ 8         │ 5543    │ 631      │ 1                │
+│ 26      │ 'two-EVs-partial-feedback'           │ 8         │ 5543    │ 2010     │ 3                │
+│ 27      │ 'pending-ev-publication'             │ 8         │ 5543    │ 631      │ 1                │
+└─────────┴──────────────────────────────────────┴───────────┴─────────┴──────────┴──────────────────┘
+1.0.12 settings cache passed: genuine startup, EV disabled/four slots, legacy mode tolerances, snapshots and cache rebuild.
+1.1.1 PV source: production startup/settings/cache, Flow/API, no PV-only evaluations, live vs average, expiry, adaptive live, raw peak protection and 7-second coalescing passed.
+Active charging: 13 production-cache scenarios passed.
+1.1.3 source-switch: fixed cap, raw Peak Guard, stale output, synchronous reuse, newest timer inputs and proof expiry passed.
+1.1.4 night median: Flow/API, odd/even/zero, invalid input, read-only sampling, midnight, PV/day remaining, sunset reset, sustained forecast, dark-day rollover, actual SoC, Peak Guard, DST and restart passed.
+Independent EV: 55 production-cache scenarios passed (matrix, settings transitions, safety, missing battery test, simulation budgets, pending/failure and multi-EV).
+Compact diagnostics: 37 production-path checks passed (deltas/reconstruction/lifecycle/bounds/EV feedback/publication/off).
+1.1.6 EV battery protection: 14 scheduler scenarios passed.
+1.1.9 SoC completion: 55 decision/scheduler scenarios passed.
+1.1.9 EV battery transitions: 33 scenarios passed.
+1.1.10 split resend: migration, restart, eight batteries, 1-second timer, interval edits, mode-only outputs and safety gates passed.
+1.1.11 PV first for household: 72 cloud/STOP scenarios passed (production scheduler and Flow outputs).
+1.1.12 EV input work: 29 scenarios passed.
+1.1.12 EV deadline cache: 238 reference/boundary checks passed.
+[
+  {
+    "interval": 10,
+    "seconds": 180,
+    "cpuMs": 368.218,
+    "wallMs": 342.6041799999998,
+    "contexts": 2,
+    "portfolio": 7,
+    "reasons": {
+      "grid_context": 1,
+      "ev_house_load_protection": 2
+    }
+  },
+  {
+    "interval": 1,
+    "seconds": 180,
+    "cpuMs": 560.342,
+    "wallMs": 556.0236799999998,
+    "contexts": 2,
+    "portfolio": 7,
+    "reasons": {
+      "grid_context": 1,
+      "ev_house_load_protection": 2
+    }
+  }
+]
+1.1.13 deferred EV context: 20 scenarios passed.
+1.1.14 Input Monitor: 19 scenarios passed.
+1.1.14 Input Monitor UI: polling, visibility, sorting, warning recovery, manual/auto stop, JSON download, errors and cleanup passed.
+1.1.15 EV work: 22 targeted scenarios passed.
+1.1.15 EV planning: 33 scenarios and 975 exact calendar/DST comparisons passed.
+1.1.16 EV work: 9 concurrent, safety and status scenarios passed.
+1.1.16 planning monitor: 6 frequency, attribution, real planner, freeze and status scenarios passed.
+1.1.16 EV planning centralization: 32 exact decision comparisons, Flow revision, Live status and 40 deadline projections passed.
+1.1.16 physical settings: 648 tariff/electrical parity checks and 180 active-SoC accounting passes.
+1.1.16 EV physical config cache: stable reuse, internal/external invalidation, TOU change invalidation, override isolation, plan independence and passive monitoring passed.
+1.1.17 deadline planner: 14 scenario groups passed.
+1.1.17 deadline integration: 10 production scenario groups passed.
+PASS Production replay: overnight goal met outside daily cheap hours
+PASS Cost per delivered kWh and normalized equal-energy comparison
+PASS Already charging across midnight keeps window and chosen intervals
+PASS CPU and calculation counts: 180 unchanged one-second meter inputs
+PASS Forecast promotion, live correction in both directions and plan/display agreement
+PASS Late forecast correction exposes infeasible target
+PASS Partial, missing and newly published prices
+PASS PV capture above planning cap and authoritative day transition
+PASS Hourly prices use the same deadline and do not change public classes
+PASS Normal-price permission keeps its own SoC cap
+PASS Restart reconstructs the same remaining window from persisted dated forecasts
+PASS DST absolute hours and local forecast tomorrow dates
+PASS Price hysteresis retains feasible sessions; material savings replan
+PASS Near-equal scattered quarters prefer one session; early PV end starts now
+PASS Shared Peak Guard and EV deadline plan remain independent
+1.1.18 battery night: 15 production/planner scenarios passed.
+PASS Screenshot reproduction: inferred night targets tomorrow and correct PV after evening restart
+PASS Low SoC still gets future windows with available overnight prices
+PASS Morning restart and explicit dark-night continuation stay on today
+PASS Actual PV start returns to existing day forecast and sunset debounce
+PASS 20:00 fallback and midnight preserve the corrected target and median
+PASS Custom target times, fixed/TOU and cache avoid per-P1 calendar rebuilding
+1.1.18 evening restart: 6 production-path scenarios passed.
+PASS Four EVs: SoC and kWh goals, time and guarantee survive repeated fresh app boots
+PASS Completion, disconnect, settings changes and hidden EV slots do not delete Flow targets
+PASS Graceful restart checkpoints latest kWh progress rather than an older five-minute value
+PASS Completed kWh plan does not refill merely because the app restarts while cable stays connected
+PASS Reached SoC goal is retained through restart and requires fresh SoC feedback for decisions
+PASS Completed kWh data from older versions stays completed until an observed new connection
+PASS Only explicit clear deletes a plan; zero kWh remains a completed Flow goal after restart
+PASS Newest Flow goal replaces the previous kind and remains the only active source after restart
+PASS Rolling deadlines across midnight/DST and repeated feedback do not remove the saved goal
+1.1.20 EV persistence: 9 scenario groups passed.
+PASS Mode cannot bypass an uncertain high house reference using Flow amperes
+PASS Actual lower delivery stays authoritative and kWh progress counts measured current
+PASS Genuine peak overload still stops and retains the 300-second hold
+PASS Stale positive telemetry falls back conservatively instead of financing false headroom
+PASS Mode-only integration without current measurement retains P1 inference
+PASS Current and hybrid charger control retain safe physical accounting
+PASS Multiple mode EVs share one Peak Guard budget
+PASS Full planning diagnostic exposes Emergency-only Peak Guard arithmetic
+1.1.20 EV Peak Guard: 8 production-path groups passed.
+PASS 16.8 kWh/day = 0.7 kW; 10h household need = 7 kWh; positive budget = 3 after filling to maximum
+PASS Negative budget and signed battery deficit reserve target only once
+PASS Screenshot regression: fill 21.6 kWh from 37.5% to 100%, independently of the 60% grid goal
+PASS A stronger day PV forecast is credited once even when the computed grid target drops
+PASS Existing normalized non-EV daily median; partial days excluded; zero fallback preserved
+PASS Minimum, safety, sun reserve and planning goal protect the largest reserve
+PASS WAF ignores known and unknown EV reservations and horizons
+PASS Night never credits a full next-day forecast before morning; target still uses night median
+PASS Missing forecast, missing battery, disabled output and expired planning stay unknown
+PASS Actual production plan resolves Brussels DST/midnight horizon in elapsed hours
+PASS UI budget expiry, unknowns, neutral mode and continuous scale
+PASS Default options enabled and explicit false choices retained independently
+PASS Five-second warning alternation survives refresh; recovery and color-off retain text
+PASS Colors use real bounds, explicit direction and never mark ordinary planned waiting red
+PASS Production DOM: independent options, neutral colors, NL/EN text and persistent circle
+PASS 300 real P1 inputs, 100 status reads, EV heartbeat/portfolio and cache reuses: zero additional WAF calculations; existing alerts and expiry verified
+PASS Real Flow kWh and SoC targets never reserve or gate the household WAF; actual app reboot keeps unknown until normal planning
+{"iterations":10000,"elapsedMs":16.098449999999957,"cpuMs":28.379,"allocatedHeapDeltaBytes":3869808,"retainedHeapDeltaBytes":null,"note":"Node container microbenchmark; heap delta includes temporary allocations/GC, not retained Homey memory or device CPU percentage."}
+PASS widget lifecycle: unchanged 10s polling, 5s local warning clock only when needed, recovery, visibility/page cleanup, independent disabled options
+Battery power 1.2.2: 26 scenarios passed (real UI validator, startup/cache/restart, engine/planning and single/dual publications).
+PASS fixed: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache
+PASS tou: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache
+PASS dynamic: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache
+PASS WAF is calculated once BEFORE an actual battery plan, using the existing control evaluation
+PASS 07:00 before PV start: day WAF uses raw remaining-today, not the continuing night median
+PASS 17:00 with PV still active: remaining today and household demand extend to next morning
+PASS Real <5 W / 10-minute PV-stop debounce starts night WAF; remaining PV is kept until then
+PASS A real winter PV end before 17:00 starts night immediately
+PASS A completely dark day stays day-WAF after 07:00 and rolls to night via the existing 20:00 fallback
+PASS Brussels DST 2026-10-24: actual night-to-morning elapsed duration is 9h
+PASS Brussels DST 2026-03-28: actual night-to-morning elapsed duration is 7h
+PASS Configured 06:30 / 18:15 targets replace hardcoded 07:00 / 17:00, including midnight
+PASS Missing data stays unknown; five-minute refresh recovers new data even while the battery-plan cache is blocked
+PASS 300 real P1 updates and 200 widget/status reads never calculate WAF or a battery plan
+WAF continuity: 14/14 scenarios passed
+PASS mandatory EV Scheduler source/handler gate (4 checks)
+EV Dashboard: 26 scheduler cases passed
+EV energy: 34 cases passed
+EV widget UI: 43 cases passed
+EV source/Flow regression and performance comparison passed baseline not supplied
+EV Savings CSV export: 9 cases passed
+
+REMAINING SUITE OUTPUT
+
+RUN node test/ev-emergency-presentation-1.2.4.test.js
+Emergency charge presentation: 13 cases passed
+EXIT 0
+RUN node test/ev-recording-audit-1.2.4.test.js
+PASS A: connected EV, repeated 0-W feedback for 60 minutes
+PASS B/H: 3,600 W for 60 minutes, real Flow inputs without a goal or charging commands
+PASS C: four 15-minute periods at 1/2/3/0 kW
+PASS D: missing feedback expires at 60 seconds, without invented delivery
+PASS E: persistence and reboot during charging retain history and do not integrate downtime
+PASS F: 23:30–00:30 splits 3.6-kW charging across local midnight
+PASS G: two independent EVs keep individual and central totals without double counting
+PASS G shared: one declared joint meter is counted once, not once per EV
+PASS Battery/EMS combinations do not gate EV recording
+PASS Unknown, stopped and disconnected feedback have distinct coverage meanings
+PASS Unavailable feedback scope explicitly excludes even otherwise positive current
+PASS Duplicate recorder calls and refreshes never integrate the same timestamp twice
+PASS Phase conversion uses configured electrical settings at each completed interval
+PASS Source prerequisite characterization: valid EV current with missing PV measurement
+PASS Absent/stale P1 or PV preserves fresh EV energy as unknown without changing site Savings or battery inventory
+PASS Unknown source does not invent energy or feedback coverage for an unmeasured EV
+PASS Expired positive feedback and confirmed zero current still remain bounded when site meters are absent
+PASS New unknown-source intervals obey midnight splitting in the same central ledger
+PASS Spring and autumn daylight-saving transitions integrate elapsed time only
+PASS Site-meter recovery does not double-count EV energy or backfill site Savings
+PASS BMW regression: valid P1 Mode observation records energy despite stale 0 A
+{
+  "sourceRoot": "/workspace/scratch/d01d4f20697b/work/HomeFlux-EMS",
+  "passed": 21,
+  "scenarios": [
+    {
+      "name": "A: connected EV, repeated 0-W feedback for 60 minutes",
+      "energyKwh": 0,
+      "missingSeconds": 0
+    },
+    {
+      "name": "B/H: 3,600 W for 60 minutes, real Flow inputs without a goal or charging commands",
+      "energyKwh": 3.5999999999997145,
+      "csvEv1Kwh": "3.5999999999997145",
+      "planningActive": false
+    },
+    {
+      "name": "C: four 15-minute periods at 1/2/3/0 kW",
+      "energyKwh": 1.499999999999924
+    },
+    {
+      "name": "D: missing feedback expires at 60 seconds, without invented delivery",
+      "energyKwh": 0.060000000000000046,
+      "missingSeconds": 120
+    },
+    {
+      "name": "E: persistence and reboot during charging retain history and do not integrate downtime",
+      "energyKwh": 3.5999999999997145,
+      "downtimeSeconds": 120
+    },
+    {
+      "name": "F: 23:30–00:30 splits 3.6-kW charging across local midnight",
+      "previousDayKwh": 1.7999999999999126,
+      "newDayKwh": 1.7999999999999126
+    },
+    {
+      "name": "G: two independent EVs keep individual and central totals without double counting",
+      "totalKwh": 7.000000000000705,
+      "ev1Kwh": 3.000000000000062,
+      "ev2Kwh": 4.000000000000249
+    },
+    {
+      "name": "G shared: one declared joint meter is counted once, not once per EV",
+      "groupKwh": 1.1666666666666694,
+      "sharedKwh": 1.1666666666666694
+    },
+    {
+      "name": "Battery/EMS combinations do not gate EV recording",
+      "combinations": [
+        {
+          "batteryCount": 0,
+          "controlEnabled": false,
+          "energyKwh": 0.6000000000000004
+        },
+        {
+          "batteryCount": 0,
+          "controlEnabled": true,
+          "energyKwh": 0.6000000000000004
+        },
+        {
+          "batteryCount": 1,
+          "controlEnabled": false,
+          "energyKwh": 0.6000000000000004
+        },
+        {
+          "batteryCount": 1,
+          "controlEnabled": true,
+          "energyKwh": 0.6000000000000004
+        }
+      ]
+    },
+    {
+      "name": "Unknown, stopped and disconnected feedback have distinct coverage meanings",
+      "missingSeconds": 60,
+      "disconnectedAddsMissing": false
+    },
+    {
+      "name": "Unavailable feedback scope explicitly excludes even otherwise positive current",
+      "energyKwh": 0,
+      "missingSeconds": 120
+    },
+    {
+      "name": "Duplicate recorder calls and refreshes never integrate the same timestamp twice",
+      "energyKwh": 0.060000000000000046,
+      "repeatedReads": 100
+    },
+    {
+      "name": "Phase conversion uses configured electrical settings at each completed interval",
+      "energyKwh": 4.599999999999955
+    },
+    {
+      "name": "Source prerequisite characterization: valid EV current with missing PV measurement",
+      "energyKwh": 0.060000000000000046,
+      "unknownKwh": 0.060000000000000046,
+      "evDayPresent": true
+    },
+    {
+      "name": "Absent/stale P1 or PV preserves fresh EV energy as unknown without changing site Savings or battery inventory",
+      "conditions": [
+        {
+          "mode": "missing_grid",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "stale_grid",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "missing_pv",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "stale_pv",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        },
+        {
+          "mode": "invalid_pv",
+          "energyKwh": 0.12000000000000009,
+          "unknownKwh": 0.12000000000000009,
+          "siteSavingsUnchanged": true
+        }
+      ]
+    },
+    {
+      "name": "Unknown source does not invent energy or feedback coverage for an unmeasured EV",
+      "energyKwh": 0,
+      "missingSeconds": 120
+    },
+    {
+      "name": "Expired positive feedback and confirmed zero current still remain bounded when site meters are absent",
+      "energyKwh": 0.06,
+      "missingSeconds": 60
+    },
+    {
+      "name": "New unknown-source intervals obey midnight splitting in the same central ledger",
+      "previousDayKwh": 0.06,
+      "nextDayKwh": 0.06
+    },
+    {
+      "name": "Spring and autumn daylight-saving transitions integrate elapsed time only",
+      "days": [
+        {
+          "date": "2026-03-29",
+          "kwh": 3.5999999999997145
+        },
+        {
+          "date": "2026-10-25",
+          "kwh": 3.5999999999997145
+        }
+      ]
+    },
+    {
+      "name": "Site-meter recovery does not double-count EV energy or backfill site Savings",
+      "energyKwh": 0.18000000000000013,
+      "gridKwh": 0.12000000000000009,
+      "unknownKwh": 0.060000000000000046
+    },
+    {
+      "name": "BMW regression: valid P1 Mode observation records energy despite stale 0 A",
+      "centralSession": "charging",
+      "detection": "house_load",
+      "receivedCurrentA": 0,
+      "observedPowerW": 6581.793068761734,
+      "energyKwh": 0.3272613775856531,
+      "missingSeconds": 1
+    }
+  ],
+  "simulatedHomey": true,
+  "physicalHomeyTested": false
+}
+EXIT 0
+RUN node test/ev-house-reference-1.2.4.test.js
+EV recent household reference: 20 cases passed
+EXIT 0
+RUN node test/ev-multiday-1.2.4.test.js
+EV multi-day: 25 production-function scenario groups passed
+EXIT 0
+RUN node test/ev-multiday-control-1.2.4.test.js
+EV multi-day control: 6 full production-path scenario groups passed
+EXIT 0
+RUN node test/ev-confirmed-power-1.2.4.test.js
+Confirmed EV power: 18 production-path groups passed
+EXIT 0
+RUN node test/ev-widget-emergency-1.2.4.test.js
+EV widget Emergency: 7 groups passed
+EXIT 0
+RUN node test/ev-flow-resume-waf-1.2.4.test.js
+PASS soc Flow goal returns after soc widget disconnect, including after edits
+PASS soc Flow goal returns after kwh widget disconnect, including after edits
+PASS kwh Flow goal returns after soc widget disconnect, including after edits
+PASS kwh Flow goal returns after kwh widget disconnect, including after edits
+PASS Restart preserves saved Flow input; first explicit false restores it; second restart retains restored Flow
+PASS Manual widget clear stays empty, including after disconnect and restart
+PASS Emergency clear does not restore Flow goal on later disconnect
+PASS Latest explicit Flow goal wins; later widget restores that goal without changing another EV
+PASS Pause/zero/unknown is not disconnect; ordinary Flow mode and underlying Flow goal both resume
+PASS No remembered Flow goal invents no plan; zero kWh Flow remains a valid restored goal
+PASS Completed widget goal still restores Flow goal on disconnect; next connection rearms full Flow kWh
+PASS Explicit Flow clear while widget active remains clear across disconnect
+PASS Widget created before first connection survives false; old widget without saved Flow invents no target
+PASS fixed: real context refreshes WAF with unknown EV SoC/horizon every five minutes
+PASS tou: real context refreshes WAF with unknown EV SoC/horizon every five minutes
+PASS dynamic_quarter: real context refreshes WAF with unknown EV SoC/horizon every five minutes
+Flow goal resume / independent WAF: 16 groups passed
+EXIT 0
+RUN node test/ev-physical-proof-1.2.4.test.js
+PASS mode 6/16 A smart: 13 minutes full 16A, no false STOP
+PASS mode 6/16 A emergency: 13 minutes full 16A, no false STOP
+PASS mode 16/16 A smart: 13 minutes full 16A, no false STOP
+PASS mode 16/16 A emergency: 13 minutes full 16A, no false STOP
+PASS current 6/16 A smart: 13 minutes full 16A, no false STOP
+PASS current 6/16 A emergency: 13 minutes full 16A, no false STOP
+PASS current 16/16 A smart: 13 minutes full 16A, no false STOP
+PASS current 16/16 A emergency: 13 minutes full 16A, no false STOP
+PASS hybrid 6/16 A smart: 13 minutes full 16A, no false STOP
+PASS hybrid 6/16 A emergency: 13 minutes full 16A, no false STOP
+PASS hybrid 16/16 A smart: 13 minutes full 16A, no false STOP
+PASS hybrid 16/16 A emergency: 13 minutes full 16A, no false STOP
+PASS Mode false/missing/large Flow amperes cannot change physical watts or teach a house reference
+PASS mode: Smart PV -> Emergency -> Smart, delayed physical reply and both meter orders
+PASS current: Smart PV -> Emergency -> Smart, delayed physical reply and both meter orders
+PASS hybrid: Smart PV -> Emergency -> Smart, delayed physical reply and both meter orders
+PASS Actual Peak Guard overload stops immediately; lower fallback fits when physically safe
+PASS PV-only loss remains a valid non-Peak-Guard stop
+PASS Mode STOP tail uses previous P1 observation, never Flow amperes or restart credit
+PASS Two Mode EVs share one P1 pool; grid, PV and signed battery never create duplicate credit
+PASS All slots use one output policy; explicit policy stops and restart holds retain their authority
+PASS Unknown active Mode house data cannot turn its own inferred EV delta into fresh baseline evidence
+Physical EV proof: 22 groups passed
+EXIT 0
+RUN node test/ev-battery-options-1.2.4.test.js
+PASS Both global settings default OFF, persisted settings restore without changing power limits
+PASS Grid majority strictly above 50%; solar, unknown and missing initial energy never manufacture a majority
+PASS Always takes priority, no origin mutation or new energy integration; zero/stale/disconnected EV does not trigger restriction
+PASS Mode consumes only physical P1 observation, never configured or Flow amperes; multiple batteries use one existing origin pool
+PASS Actual battery engine and feedback preview block discharge, including Peak Guard, while PV charge and individual limits remain valid
+PASS Split discharge minimum cannot leak through zero or a direction lock; delayed publication rechecks active EV
+PASS Conditional support cannot finance an EV start with battery energy that will be protected once charging
+PASS Real fast/context battery loop, published output and Hybrid ownership honour restriction and resume PV charging
+PASS Unreachable target trigger sends once per cable session despite text changes, recovered feasibility, new goals and overlap
+PASS Unreachable warning latch survives app restart, confirmed first disconnect resets only selected EV
+PASS WAF tag reads exact existing cached value and validity, including negative/expired; active faults clear and runtime error works without diagnostics
+PASS Each visible general EMS tile has an independent declared switch; hiding timing preserves target and bounds
+12 EV battery/options/session/widget/token groups passed
+EXIT 0
+RUN node test/ev-mode-recording-1.2.5.test.js
+PASS Mode uses P1 with missing Flow feedback
+PASS Mode uses P1 with 0 A Flow feedback
+PASS Mode uses P1 with 30 A Flow feedback
+PASS Positive Flow current cannot fabricate Mode energy when P1 confirms zero
+PASS Mode reuses the divided P1 estimate with Flow scope unavailable
+PASS Mode reuses the divided P1 estimate with Flow scope shared
+PASS Site source allocation: PV 9000 W, signed battery 0 W
+PASS Site source allocation: PV 5000 W, signed battery -1000 W
+PASS Site source allocation: PV 0 W, signed battery 6000 W
+PASS Site source allocation: PV 12000 W, signed battery 0 W
+PASS Expired P1/PV observation integrates its valid overlap only; no stale backfill
+PASS Unknown competing Current EV cannot turn a zero-filled cache into valid Mode coverage
+PASS Mixed Mode/Current source coverage expires with the competing Flow measurement
+PASS No house baseline means unknown, not nominal charger energy
+PASS Midnight splits the same observed interval; repeated widget/CSV reads add nothing
+PASS Confirmed disconnect records zero; reboot preserves totals without resurrecting observations
+Mode recording: 16 groups passed
+EXIT 0
+RUN node test/ev-grid-permission-1.2.5.test.js
+PASS mode: emergency uses P1 room with 0 W tariff allowance and no PV
+PASS mode: PV-only -> emergency, then clouds, retains grid permission
+PASS mode: guarantee uses P1 room with 0 W tariff allowance and no PV
+PASS mode: PV-only -> guarantee, then clouds, retains grid permission
+PASS current: emergency uses P1 room with 0 W tariff allowance and no PV
+PASS current: PV-only -> emergency, then clouds, retains grid permission
+PASS current: guarantee uses P1 room with 0 W tariff allowance and no PV
+PASS current: PV-only -> guarantee, then clouds, retains grid permission
+PASS hybrid: emergency uses P1 room with 0 W tariff allowance and no PV
+PASS hybrid: PV-only -> emergency, then clouds, retains grid permission
+PASS hybrid: guarantee uses P1 room with 0 W tariff allowance and no PV
+PASS hybrid: PV-only -> guarantee, then clouds, retains grid permission
+PASS Fixed contract emergency is not constrained by the 0 W regular tariff cap
+PASS Fixed contract guarantee is not constrained by the 0 W regular tariff cap
+PASS mode: actual P1 overload still stops/reduces EV safely
+PASS current: actual P1 overload still stops/reduces EV safely
+PASS hybrid: actual P1 overload still stops/reduces EV safely
+PASS Reported example: P1 8,287 W + existing EV 4,416 W gives 13,529 W after the 100-W margin, without adding PV twice
+PASS All four Mode slots share Peak Guard once; guaranteed and Emergency coexist
+PASS Plain PV-only Smart still stops when solar disappears
+Grid permission: 20 groups passed
+EXIT 0
+RUN node test/ev-house-publication-1.2.5.test.js
+PASS START publishes then freezes both histories before charging detection
+PASS Missing, zero and false-positive Mode amperes never change the frozen reference
+PASS Smart/Standard/Emergency switches and repeated START preserve one reference
+PASS A computed STOP and publication mutex do not release the reference
+PASS Failed STOP trigger retains lock, saved receipt and both references
+PASS Successful STOP alone releases; learning needs a new complete post-STOP window
+PASS waiting session status cannot release an active command
+PASS paused session status cannot release an active command
+PASS ended session status cannot release an active command
+PASS Disconnect/reconnect retains the command reference until an actual STOP
+PASS Second Mode EV and STOP of only one EV cannot replace the shared house reference
+PASS EV2 failed STOP retains its receipt independently of EV1
+PASS Concurrent STARTs preserve the pre-send candidate when EV2 publishes before EV1
+PASS Permission failure after a successful STOP cannot undo that published STOP receipt
+PASS Token-only STOP without Mode Flow publication cannot release the reference
+PASS Token-only START does not manufacture a successfully sent command
+PASS P1 during an unresolved START trigger is quarantined; success freezes the pre-send value
+PASS A failed START retains the previous STOP receipt and no in-flight samples
+PASS Restart restores active command and reference before any P1; only the real startup STOP releases it
+PASS A saved old STOP is not physical evidence after restart until a new publication succeeds
+PASS Persisted zero and unknown house references remain distinct during startup recovery
+PASS Mode output tests use the same actual-publication accounting for START and STOP
+PASS P1/refreshes do not persist per sample or request extra contexts from bookkeeping callbacks
+PASS current keeps existing measured-current house learning and no Mode persistence
+PASS hybrid keeps existing measured-current house learning and no Mode persistence
+PASS Mixed fleet cannot update battery house reference through another EV while Mode is frozen
+Published Mode house reference: 26 groups passed
+EXIT 0
+RUN node test/features-1.2.6.test.js
+PASS P1 zero: export within/beyond negative band, small import and zero use the real meter
+PASS Export attribution preserves PV, grid-origin battery and unknown battery export
+PASS Rolling day/week/calendar month/year boundaries, leap years and invalid input
+PASS Then Flow: category totals, current day, gaps, negative values, no extra records
+PASS Optional night hysteresis stops charge/discharge cycling, resumes at margin, unchanged when off
+PASS Night target anchor tolerates small forecast changes, allows material changes, matches planning
+PASS Night hold applies only to permitted windows across fixed, TOU and dynamic contracts
+PASS Night hold still captures solar and permits Peak Guard and Safety SoC recovery
+PASS Optional 00-02 median freezes exactly once, excludes evening/post-02 inputs and survives restart
+PASS Median default off, missing-window fallback, genuine PV start and next-night reset
+PASS Autotune interval hard limits clamp legacy ranges, permission and recommendations
+PASS Autotune symmetric realistic pair: evidence, steps, one-off and automatic permission/ranges
+PASS Autotune pair honors both ranges and preserves other parameter cooldowns
+13 feature regression groups passed (1.2.6)
+EXIT 0
+All 14 remaining test scripts passed.

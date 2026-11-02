@@ -1,0 +1,335 @@
+{
+  "quiet": {
+    "cpuMs": {
+      "before": [
+        283.44,
+        470.837,
+        445.394,
+        322.833,
+        321.946
+      ],
+      "after": [
+        144.647,
+        134.211,
+        309.367,
+        223.34,
+        121.104
+      ]
+    },
+    "cpuMedianMs": {
+      "before": 322.833,
+      "after": 144.647
+    },
+    "commandsAndTimingIdentical": true,
+    "contextTimingIdentical": true,
+    "before": {
+      "counts": {
+        "getSettings": 8130,
+        "getEvaluationState": 120,
+        "refreshControlContext": 0,
+        "refreshPlanningInContext": 0,
+        "getFastControlSnapshot": 2040,
+        "triggerCalculatedSetpoint": 120,
+        "queueStatusUpdate": 120
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1920,
+        "fastIdleGuardBypassStateChange": 1920,
+        "fastSkipStableSignal": 1800,
+        "fastSkipped": 1800,
+        "pvInputs": 120,
+        "fastReasonPvLive": 120,
+        "fastImmediate": 120,
+        "fastEvaluations": 120,
+        "fastNoCommandChange": 120,
+        "statusPublishes": 30
+      }
+    },
+    "after": {
+      "counts": {
+        "getSettings": 7500,
+        "getEvaluationState": 0,
+        "refreshControlContext": 0,
+        "refreshPlanningInContext": 0,
+        "getFastControlSnapshot": 1920,
+        "triggerCalculatedSetpoint": 0,
+        "queueStatusUpdate": 0
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1920,
+        "fastIdleGuardBypassStateChange": 1920,
+        "fastSkipStableSignal": 1920,
+        "fastSkipped": 1920,
+        "pvInputs": 120
+      }
+    },
+    "batteryCommandCount": 0,
+    "contextCount": 0
+  },
+  "planned": {
+    "cpuMs": {
+      "before": [
+        589.297,
+        397.243,
+        409.912,
+        418.445,
+        474.465
+      ],
+      "after": [
+        499.982,
+        424.446,
+        335.155,
+        335.664,
+        360.771
+      ]
+    },
+    "cpuMedianMs": {
+      "before": 418.445,
+      "after": 360.771
+    },
+    "commandsAndTimingIdentical": true,
+    "contextTimingIdentical": true,
+    "before": {
+      "counts": {
+        "getSettings": 8130,
+        "getEvaluationState": 1920,
+        "refreshControlContext": 0,
+        "refreshPlanningInContext": 0,
+        "getFastControlSnapshot": 2040,
+        "triggerCalculatedSetpoint": 120,
+        "queueStatusUpdate": 120,
+        "canSkipBatteryFeedback": 1800
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1920,
+        "fastIdleGuardBypassActiveSetpoint": 1920,
+        "fastFeedbackUnchangedSkipped": 1800,
+        "fastChargeUnchangedSkipped": 1800,
+        "fastSkipped": 1800,
+        "pvInputs": 120,
+        "fastReasonPvLive": 120,
+        "fastImmediate": 120,
+        "fastEvaluations": 120,
+        "fastNoCommandChange": 120,
+        "statusPublishes": 30
+      }
+    },
+    "after": {
+      "counts": {
+        "getSettings": 7680,
+        "getEvaluationState": 1920,
+        "refreshControlContext": 0,
+        "refreshPlanningInContext": 0,
+        "getFastControlSnapshot": 1950,
+        "triggerCalculatedSetpoint": 30,
+        "queueStatusUpdate": 30,
+        "canSkipBatteryFeedback": 1920
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1920,
+        "fastIdleGuardBypassActiveSetpoint": 1920,
+        "fastFeedbackUnchangedSkipped": 1890,
+        "fastChargeUnchangedSkipped": 1890,
+        "fastSkipped": 1890,
+        "pvInputs": 120,
+        "fastReasonFeedback": 30,
+        "fastImmediate": 30,
+        "fastEvaluations": 30,
+        "fastNoCommandChange": 30,
+        "statusPublishes": 30
+      }
+    },
+    "batteryCommandCount": 0,
+    "contextCount": 0
+  },
+  "active": {
+    "cpuMs": {
+      "before": [
+        725.908,
+        696.668,
+        673.112,
+        663.845,
+        696.075
+      ],
+      "after": [
+        558.922,
+        600.869,
+        525.444,
+        535.249,
+        696.189
+      ]
+    },
+    "cpuMedianMs": {
+      "before": 696.075,
+      "after": 558.922
+    },
+    "commandsAndTimingIdentical": true,
+    "contextTimingIdentical": true,
+    "before": {
+      "counts": {
+        "getSettings": 10770,
+        "getEvaluationState": 390,
+        "refreshControlContext": 30,
+        "refreshPlanningInContext": 30,
+        "getFastControlSnapshot": 2310,
+        "triggerCalculatedSetpoint": 390,
+        "queueStatusUpdate": 540,
+        "canSkipBatteryFeedback": 0
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1950,
+        "fastIdleGuardBypassPendingCommand": 780,
+        "fastReasonZone": 960,
+        "fastCoalesced": 630,
+        "statusPublishes": 360,
+        "fastImmediate": 360,
+        "fastEvaluations": 360,
+        "calculatedSetpointTriggers": 180,
+        "fastNoCommandChange": 210,
+        "fastIdleGuardBypassActiveSetpoint": 1140,
+        "fastSkipStableSignal": 840,
+        "fastSkipped": 840,
+        "pvInputs": 120,
+        "fastReasonPvLive": 120,
+        "fastCommandChange": 150,
+        "batteryCommandPublishes": 150,
+        "fastScheduled": 120,
+        "contextEvaluations": 30
+      }
+    },
+    "after": {
+      "counts": {
+        "getSettings": 10170,
+        "getEvaluationState": 270,
+        "refreshControlContext": 30,
+        "refreshPlanningInContext": 30,
+        "getFastControlSnapshot": 2190,
+        "triggerCalculatedSetpoint": 270,
+        "queueStatusUpdate": 420,
+        "canSkipBatteryFeedback": 0
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1950,
+        "fastIdleGuardBypassPendingCommand": 780,
+        "fastReasonZone": 960,
+        "fastCoalesced": 630,
+        "statusPublishes": 360,
+        "fastImmediate": 240,
+        "fastEvaluations": 240,
+        "calculatedSetpointTriggers": 180,
+        "fastNoCommandChange": 90,
+        "fastIdleGuardBypassActiveSetpoint": 1140,
+        "fastSkipStableSignal": 960,
+        "fastSkipped": 960,
+        "pvInputs": 120,
+        "fastCommandChange": 150,
+        "batteryCommandPublishes": 150,
+        "fastScheduled": 120,
+        "contextEvaluations": 30
+      }
+    },
+    "batteryCommandCount": 150,
+    "contextCount": 30
+  },
+  "peak": {
+    "cpuMs": {
+      "before": [
+        682.608,
+        678.313,
+        1157.65,
+        715.152,
+        745.594
+      ],
+      "after": [
+        653.665,
+        630.264,
+        607.263,
+        585.377,
+        600.754
+      ]
+    },
+    "cpuMedianMs": {
+      "before": 715.152,
+      "after": 607.263
+    },
+    "commandsAndTimingIdentical": true,
+    "contextTimingIdentical": true,
+    "before": {
+      "counts": {
+        "getSettings": 10785,
+        "getEvaluationState": 390,
+        "refreshControlContext": 30,
+        "refreshPlanningInContext": 30,
+        "getFastControlSnapshot": 2295,
+        "triggerCalculatedSetpoint": 375,
+        "queueStatusUpdate": 540,
+        "canSkipBatteryFeedback": 15
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1950,
+        "fastIdleGuardBypassPendingCommand": 900,
+        "fastReasonFeedback": 15,
+        "fastImmediate": 345,
+        "fastEvaluations": 345,
+        "fastCommandChange": 165,
+        "batteryCommandPublishes": 165,
+        "statusPublishes": 375,
+        "fastIdleGuardBypassActiveSetpoint": 1020,
+        "fastReasonZone": 915,
+        "fastScheduled": 150,
+        "fastCoalesced": 735,
+        "fastNoCommandChange": 180,
+        "fastSkipStableSignal": 720,
+        "fastSkipped": 720,
+        "pvInputs": 120,
+        "fastReasonPvLive": 150,
+        "calculatedSetpointTriggers": 165,
+        "contextEvaluations": 30,
+        "fastReasonPeakTransition": 120
+      }
+    },
+    "after": {
+      "counts": {
+        "getSettings": 10335,
+        "getEvaluationState": 345,
+        "refreshControlContext": 30,
+        "refreshPlanningInContext": 30,
+        "getFastControlSnapshot": 2205,
+        "triggerCalculatedSetpoint": 285,
+        "queueStatusUpdate": 450,
+        "canSkipBatteryFeedback": 60
+      },
+      "counters": {
+        "gridInputs": 1800,
+        "fastRequests": 1950,
+        "fastIdleGuardBypassPendingCommand": 885,
+        "fastReasonFeedback": 60,
+        "fastImmediate": 255,
+        "fastEvaluations": 255,
+        "fastCommandChange": 165,
+        "batteryCommandPublishes": 165,
+        "statusPublishes": 375,
+        "fastIdleGuardBypassActiveSetpoint": 1035,
+        "fastReasonZone": 915,
+        "fastScheduled": 150,
+        "fastCoalesced": 720,
+        "fastNoCommandChange": 90,
+        "fastSkipStableSignal": 825,
+        "fastSkipped": 825,
+        "pvInputs": 120,
+        "calculatedSetpointTriggers": 165,
+        "contextEvaluations": 30,
+        "fastReasonPeakTransition": 120
+      }
+    },
+    "batteryCommandCount": 165,
+    "contextCount": 30
+  }
+}

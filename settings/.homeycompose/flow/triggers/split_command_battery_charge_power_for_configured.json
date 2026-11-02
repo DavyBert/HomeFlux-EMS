@@ -1,0 +1,39 @@
+{
+  "title": {
+    "en": "Battery: charge power is updated",
+    "nl": "Batterij: laadvermogen is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use the power token for the selected Battery charge power. After a charge-mode switch this fires 1 second later. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Gebruik de power-tag voor het laadvermogen van de geselecteerde Batterij. Na een wissel naar laadmodus start deze kaart 1 seconde later. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "tokens": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Charge power (W)",
+        "nl": "Laadvermogen (W)"
+      },
+      "example": 1000
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[battery]]: charge power is updated",
+    "nl": "[[battery]]: laadvermogen is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "autocomplete",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "placeholder": {
+        "en": "Select configured battery",
+        "nl": "Kies geconfigureerde batterij"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16858 @@
+'use strict';
+
+const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
+const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
+const sunChance = require('./settings/sun-chance');
+const evDashboard = require('./lib/ev-dashboard');
+const evPlanOptions = require('./lib/ev-plan-options');
+const emsStatusTags = require('./lib/ems-status-tags');
+const evPlanResources = require('./lib/ev-plan-resources');
+const evHouseReference = require('./lib/ev-house-reference');
+const { resolveEvOutput } = require('./lib/ev-output-policy');
+const evBatteryPolicy = require('./lib/ev-battery-policy');
+const { calculateBudget, budgetHorizon } = require('./lib/widget-energy-budget');
+const { CompactDiagnostics } = require('./lib/compact-diagnostics');
+const { InputMonitor } = require('./lib/input-monitor');
+const { sourceOrder, fitCalibration, validCalibration, calibrationAgrees, normalizeSecondary } = require('./lib/price-normalization');
+const { extractMathExpression } = require('./lib/price-formula');
+
+const { EvDeadlinePlanner, prepareEvPriceCurve } = require('./lib/ev-deadline-planner');
+const chargeStrategy = require('./lib/charge-strategy');
+const { BatteryNightPlanner } = require('./lib/battery-night-planner');
+const { getBatteryNightPlanningInputs, batteryNightTariff, prepareChargeStrategy } = require('./lib/ems-engine');
+
+const Homey = require('homey');
+const { performance } = require('perf_hooks');
+const { SlotFlowCards } = require('./lib/flow-slot-cards');
+const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
+const { HomeyAPI } = require('homey-api');
+const { DEFAULTS, evaluate, prepareControlContext, previewBatteryFeedback, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh } = require('./lib/ems-engine');
+const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
+const { translate: translateDisplay, localizeDisplay, localizeTokens } = require('./lib/display-language');
+const { migrateVoltage } = require('./settings/ev-headroom');
+const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelected, getEvPvTariffPolicy } = require('./lib/flexible-loads');
+const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
+const savingsHistory = require('./lib/savings-history');
+const hvacPermanent = require('./lib/hvac-permanent');
+const hvacCoordination = require('./lib/hvac-coordination');
+const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
+
+const EV_PHYSICAL_CONFIG_SUFFIXES = new Set([
+  'Enabled', 'ControlType', 'Phases', 'Voltage', 'VoltageReference',
+  'MinCurrentA', 'StandardCurrentA', 'ModeSmartCurrentA',
+  'ModeStandardCurrentA', 'Weight', 'SmartGridPriority',
+  'DynamicCheapEnabled', 'DynamicNormalEnabled', 'DynamicExpensiveEnabled',
+  'FixedChargeWindowEnabled', 'PvStartSurplusW', 'PvStopSurplusW',
+  'PvStopDelaySeconds', 'FeedbackTolerancePercent',
+]);
+const EV_CURRENT_FEEDBACK_MAX_MS = 60000;
+const DIAGNOSTICS_MAX_MS = 48 * 60 * 60 * 1000;
+const DIAGNOSTIC_SETTING_KEYS = {
+  planning: 'diagnosticsPlanningEnabled',
+  cpu: 'diagnosticsCpuEnabled',
+  errors: 'diagnosticsErrorsEnabled',
+  memory: 'diagnosticsMemoryEnabled',
+};
+
+function parseFiniteInputNumber(value) {
+  // Number(null), Number('') and Number(false) are all 0 in JavaScript. Flow/API
+  // inputs must not let those missing/non-numeric values masquerade as a fresh
+  // 0 W meter measurement.
+  if (value === null || value === undefined || typeof value === 'boolean') return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+class HomeFluxEmsApp extends Homey.App {
+  async onInit() {
+    this.appStartedAt = Date.now();
+    this.state = {
+      gridPowerW: null,
+      pvPowerW: null,
+      forecastRemainingKwh: null,
+      forecastDailyMaxKwh: null,
+      forecastDailyMaxDate: '',
+      forecastTomorrowKwh: null,
+      forecastTomorrowDate: '',
+      sunChanceForecasts: this.homey.settings.get('_sunChanceForecasts') || {},
+      batterySoc: Array(8).fill(null),
+      lastTotalCommandW: 0,
+      chargeRestartState: this.homey.settings.get('_batteryChargeRestartState') || null,
+      pvDeltaW: 0,
+      nightPlanningActive: false,
+      nightPlanningStartedDate: '',
+      nightPlanningDecisionSource: '',
+      pvProducingDate: '',
+      pvSeenProducingToday: false,
+      evSoc: null,
+      evConnected: false,
+      evChargeCurrentA: 0,
+      hvacRoomTemperatureC: null,
+      hvacOutdoorTemperatureC: null,
+      hvacMode: 'off',
+      hvacSetpointC: null,
+      hvacFanSpeed: null,
+    };
+    this.inputSeen = {
+      grid: false,
+      pv: false,
+      forecast: false,
+      forecastTomorrow: false,
+      batterySoc: Array(8).fill(false),
+      ev: { soc: false, connected: false, chargeCurrent: false },
+      hvac: { roomTemperature: false, outdoorTemperature: false, mode: false, setpoint: false, fanSpeed: false },
+    };
+    this.nightForecastMedian = null;
+    this.inputUpdatedAt = {
+      grid: 0,
+      pv: 0,
+      forecast: 0,
+      forecastTomorrow: 0,
+      batterySoc: Array(8).fill(0),
+      ev: { soc: 0, connected: 0, chargeCurrent: 0 },
+      hvac: { roomTemperature: 0, outdoorTemperature: 0, mode: 0, setpoint: 0, fanSpeed: 0 },
+    };
+    this.balanceMonitor = {
+      baselineSpread: null,
+      worseningSince: null,
+      warningActive: false,
+      warningText: '',
+      lastWarningAt: 0,
+    };
+    this.tokens = new Map();
+    this.emsDevices = new Set();
+    this.lastEmittedCommands = [];
+    this.batteryIdleKnownOutput = null;
+    this.splitCommandTriggers = Array.from({ length: 8 }, () => ({ chargeMode: null, dischargeMode: null, chargePower: null, dischargePower: null }));
+    this.splitCommandState = Array.from({ length: 8 }, () => ({ currentMode: null, chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: null, lastSafetyModeResendAt: 0 }));
+    this.lastEmittedMode = '';
+    this.lastEmittedOverride = '';
+    // Runtime latch: once a night-surplus EV has passed the >1 kWh start gate,
+    // keep it eligible until the night target, disconnect or target SoC is reached.
+    this.evNightSurplusActive = Array(4).fill(false);
+    this.pendingResult = null;
+    this.emitTimer = null;
+    this.lastEmitAt = 0;
+    this.nextCommandAllowedAt = 0;
+    this.commandPublishing = false;
+    this.pendingCommandBypassInterval = false;
+    this.chargeTestRunning = false;
+    this.chargeTestAwaitingConfirmation = false;
+    this.chargeTestStage = '';
+    this.chargeTestTimer = null;
+    this.chargeTestLastRunAt = 0;
+    this.chargeTestSignatureAtRun = '';
+    this.hybridEmsRuntime = { delegated: false, takeover: false, externalSetpointW: null, externalSetpointAt: 0, externalSetpointChangedAt: 0, staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: 0, peakGuardWasActive: false, peakGuardCooldownUntil: 0, status: 'inactive' };
+    this.controlTimer = null;
+    this.controlTimerForce = false;
+    this.batteryEfficiencyTransitionTimer = null;
+    // Sticky primary battery for multi-battery efficiency discharge. It remains
+    // the incumbent until its SoC is more than the balance deadband below the
+    // highest available battery, preventing 1-2% SoC chatter during handovers.
+    this.efficiencyDischargeStickyIndex = null;
+    // Mirror the discharge hold for charging, relative to the lowest SoC.
+    this.efficiencyChargeStickyIndex = null;
+    // Sticky desired active-battery count for efficiency optimization. Keep it
+    // separate from the physically active outputs because a gradual handover
+    // temporarily has both the outgoing and incoming battery active.
+    this.efficiencyActiveCountSticky = null;
+    // v0.3.57: the fast battery regulator is separated from slower context work.
+    // P1/PV changes only run the battery path. EV, HVAC, boiler, tariffs, status
+    // and other derived context are consolidated behind one slow scheduler.
+    this.contextTimer = null;
+    this.contextTimerAt = 0;
+    this.contextDirty = true;
+    this.contextDirtyReasons = new Set(['startup']);
+    this.contextEvaluationRunning = false;
+    this.contextEvaluationPending = false;
+    this.lastContextEvalAt = 0;
+    this.cachedRuntimeSettings = null;
+    this.fastResultSignature = '';
+    this.contextHeartbeatTimer = null;
+    this.evContextRefresh = { timer: null, due: false, generation: 0, requests: new Set(), reference: null,
+      startedAt: 0, deadlineAt: 0 };
+    // Low-priority housekeeping shares the configured slow-context cadence.
+    // The 60-second heartbeat remains only as a coarse watchdog for time/safety
+    // boundaries and decides whether this slower housekeeping pass is due.
+    this.lastSlowHeartbeatAt = 0;
+    this.flexibleSafetySignature = '';
+    this.controlContext = null;
+    this.controlRuntimeSettings = null;
+    this.controlContextDirty = true;
+    this.controlContextRevision = 0;
+    this.controlContextUpdatedAt = 0;
+    this.lastSlowEvaluationAt = 0;
+    this.flexibleLoadsDirty = true;
+    this.lastFlexibleLoadEvaluationAt = 0;
+    this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
+    // v0.4.0: lightweight low-PV -> sunny-day promotion state. The completed
+    // day latch is persisted once so an app restart cannot re-enable Battery
+    // Save during the same solar day; the running timer itself stays in RAM.
+    this.lowForecastSunnyRuntime = { date: '', aboveSince: 0 };
+    this.lowForecastSunnyOverrideDate = '';
+    this.lastQueuedStatusSignature = '';
+    // Frequent P1 values first pass through a tiny signal gate. A full battery
+    // evaluation is only scheduled when the control zone or effective meter
+    // signal has changed enough to be capable of producing another setpoint.
+    this.lastFastControlSnapshot = null;
+    this.fastEvaluationSkipped = 0;
+    this.lastContextGridInputW = null;
+    this.lastContextPvInputW = null;
+    this.batteryCommandPauseTimer = null;
+    this.lastControlEvalAt = 0;
+    this.pvLiveObservation = null;
+    this.gridInputHistory = [];
+    this.lastAdaptiveGridW = null;
+    this.lastLargeSetpointChangeAt = 0;
+    this.adaptiveLiveUntil = 0;
+    this.overrideResumeTimer = null;
+    this.statusTimer = null;
+    this.statusPublishing = false;
+    this.pendingStatusResult = null;
+    this.pendingStatusSignature = '';
+    this.lastPublishedStatusSignature = '';
+    this.lastStatusPublishAt = 0;
+    this.lastStatusTokenValues = new Map();
+    this.lastTriggeredStatusText = null;
+    this.lastCalculatedSetpointSignature = null;
+    this.lastPublishedPvLimitPercent = null;
+    this.lastPublishedPvTargetPowerW = null;
+    this.lastPvLimitPublishedAt = 0;
+    this.pvLimitTimer = null;
+    this.pvLimitPublishing = false;
+    this.pvStopTimer = null;
+    this.chargePlanTrigger = null;
+    this.lastChargePlanSignature = '';
+    this.lastChargePlanText = '';
+    // v0.3.33: keep Homey settings in memory. The control loop used to rebuild
+    // the complete settings object through hundreds of homey.settings.get()
+    // calls from several nested helpers on every meter update/evaluation.
+    this.settingsCache = null;
+    // The physical EV configuration is immutable between relevant settings
+    // writes. Never cache live EV measurements, sessions or tariff selection.
+    this.evPhysicalConfigRevision = 0;
+    this.evPhysicalConfigMemo = Array(4).fill(null);
+    this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
+
+    // Optional diagnostics are entirely passive while disabled. When enabled,
+    // they keep compact in-memory aggregates and ring buffers only; no extra
+    // P1/PV polling or EMS evaluations are introduced.
+    this.diagnostics = this.createDiagnosticsRuntime();
+    this.diagnosticsExpiryTimer = null;
+
+    // v0.6.4: Automatic Finetuning piggybacks on measurements HomeFlux already
+    // receives. Only tiny rolling aggregates are kept in RAM; there is no new
+    // polling loop and no raw sample history beyond the existing grid buffer.
+    this.autoTuneRuntime = this.createAutoTuneRuntime();
+
+    // v0.4.9: savings accounting piggybacks on existing meter/command updates.
+    // Periodic persistence and EMS-device refresh are coalesced behind the
+    // configured slow-context cadence instead of running on every heartbeat.
+    // Raw samples are never stored; only compact daily aggregates are persisted.
+    this.savings = {
+      lastSampleAt: 0,
+      today: emptyDay(''),
+      history: {},
+      inventory: emptyInventory(),
+      total: 0,
+      lastPersistAt: 0,
+      lastDeviceSyncAt: 0,
+    };
+
+    // Optional flexible-load modules. They have their own output cadence and
+    // never make EV/HVAC inputs prerequisites for the battery EMS.
+    this.lastPublishedEvCurrentA = 0;
+    this.lastPublishedEvAllowed = false;
+    this.lastPublishedEvChargeMode = '';
+    this.forceEvOutput = false;
+    this.lastEvPublishedAt = 0;
+    this.evPublishing = false;
+    this.evTimer = null;
+    this.lastCompletedEvPortfolio = null;
+    // v0.3.40: mode-controlled EV chargers are held in STOP for a configurable
+    // minimum time after any HomeFlux STOP. The hold is timestamp-only: no extra
+    // polling loop or per-second timer is created; normal EMS passes release it.
+    this.evPeakGuardStopHoldUntil = 0;
+    this.evPeakGuardStopHoldTimer = null;
+    // v0.3.44: a Flow can temporarily override the EV operating mode for
+    // exactly one connection session. This is runtime-only and never rewrites
+    // the user's configured evMode setting.
+    this.evSessionOverride = { mode: null, sessionStarted: false, requestedAt: 0, source: '' };
+    // v0.3.38: TOU PV charging uses start/stop hysteresis. The start threshold
+    // is evaluated from available PV, but an active session is only stopped
+    // after sustained real grid import. No extra polling timer is required.
+    this.evPvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
+    this.latestEvDecision = null;
+    // Planning requests are revisions, not extra timers. A slow context pass
+    // processes the latest revision; changes during Homey I/O stay pending.
+    this.evPlanRevision = [0, 0, 0, 0];
+    this.evPlanHandledRevision = [-1, -1, -1, -1];
+    this.evPlanRequestReasons = ['', '', '', ''];
+    this.evEnergyPlans = Array.from({ length: 4 }, () => ({ active:false, targetKwh:0, remainingKwh:0, targetTime:'07:00', deadlineAt:0, lastTickAt:0, guarantee:false, sessionStarted:false }));
+    this.evEnergyPlanPersistAt = 0;
+    this.evSocPlans = Array.from({ length: 4 }, () => ({ active:false, targetSoc:0, targetTime:'07:00', deadlineAt:0, guarantee:false }));
+    this.evTargetWarningState = Array(4).fill('');
+    const savedWarnings = this.homey.settings.get('_evTargetWarningSent');
+    this.evTargetWarningSent = Array.from({ length: 4 }, (_, i) => Boolean(savedWarnings?.[i]));
+    this.evTargetWarningTrigger = null;
+    // v0.7.10: a bounded one-minute history learns normal physical house load
+    // before an EV session. It contains at most forty aggregate buckets and is
+    // updated only from P1 values HomeFlux already receives; no polling or raw
+    // sample list is added. The shared reference protects ordinary house load
+    // when one or more mode-controlled EVs are allowed to import from the grid.
+    this.evSessionDetection = {
+      houseHistory: [],
+      portfolioBaselineW: null,
+      baselineCapturedAt: 0,
+      detectedEvLoadW: null,
+      physicalSiteLoadW: null,
+      noLoadSince: 0,
+      gridReleaseBlocked: false,
+      gridReleaseBlockedAt: 0,
+      sessions: Array.from({ length: 4 }, () => ({
+        state: 'idle', connectedAt: 0, startedAt: 0, endedAt: 0,
+        endedReason: '', endedLatched: false, socTargetReached: false, detectionSource: '',
+        lastChargingAt: 0, zeroCurrentSince: 0, loadAbsent: false,
+        resumeSince: 0, resumeSamples: 0, resumeMode: '', lastLoadSampleAt: 0, observedModePowerW: null,
+      })),
+    };
+    this.lastPublishedHvacPower = null;
+    this.lastPublishedHvacMode = '';
+    this.lastPublishedHvacSetpoint = null;
+    this.lastPublishedHvacFanAction = '';
+    this.lastPublishedHvacFanSpeed = null;
+    this.latestHvacDecision = null;
+    this.hvacBaselineSetpoint = null;
+    this.hvacBaselineMode = null;
+    this.hvacBoostMode = null;
+    this.hvacManagedPowerOn = false;
+    this.lastHvacControlAt = 0;
+    // v0.7.8: one single-flight, latest-wins output queue per HVAC instance.
+    // A slow Flow response can retain at most one in-flight decision and one
+    // pending replacement instead of one Promise/decision per recalculation.
+    this.hvacPublishSlots = Array.from({ length: 10 }, () => ({ publishing: false, pending: null }));
+
+    // v0.3.49: EV 1 and HVAC 1 retain every historical setting, Flow ID and
+    // runtime field. Instances 2-4 use isolated runtime objects so multiple
+    // devices never share anti-chatter timers, deduplication state or baselines.
+    this.extraEvInstances = Array.from({ length: 3 }, () => ({
+      state: { soc: null, connected: false, chargeCurrentA: 0 },
+      seen: { soc: false, connected: false, chargeCurrent: false },
+      updatedAt: { soc: 0, connected: 0, chargeCurrent: 0 },
+      lastPublishedCurrentA: 0,
+      lastPublishedAllowed: false,
+      lastPublishedChargeMode: '',
+      forceOutput: false,
+      lastPublishedAt: 0,
+      publishing: false,
+      timer: null,
+      stopHoldUntil: 0,
+      sessionOverride: { mode: null, sessionStarted: false, requestedAt: 0, source: '' },
+      pvSession: { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 },
+      latestDecision: null,
+    }));
+    this.extraHvacInstances = Array.from({ length: 9 }, () => ({
+      state: { roomTemperatureC: null, outdoorTemperatureC: null, mode: 'off', setpointC: null, fanSpeed: null },
+      seen: { roomTemperature: false, outdoorTemperature: false, mode: false, setpoint: false, fanSpeed: false },
+      updatedAt: { roomTemperature: 0, outdoorTemperature: 0, mode: 0, setpoint: 0, fanSpeed: 0 },
+      lastPublishedPower: null,
+      lastPublishedMode: '',
+      lastPublishedSetpoint: null,
+      lastPublishedFanAction: '',
+      lastPublishedFanSpeed: null,
+      latestDecision: null,
+      baselineSetpoint: null,
+      baselineMode: null,
+      boostMode: null,
+      managedPowerOn: false,
+      lastControlAt: 0,
+    }));
+    this.extraEvTriggers = Array.from({ length: 3 }, () => ({ current: null, allowed: null, mode: null, requestSoc: null }));
+    this.extraHvacTriggers = Array.from({ length: 9 }, () => ({ power: null, mode: null, setpoint: null, fan: null }));
+    this.extraEvSocRequestTimers = [];
+    this.extraEvSocRequestInitialTimers = [];
+
+    // Boiler and flexible-load priority state are timestamp-driven. They add no
+    // polling loop; the normal EMS pass checks whether the next 5-minute (by
+    // default) priority decision is due.
+    this.boilerTrigger = null;
+    this.boilerWarmedTrigger = null;
+    this.boilerState = {
+      outputOn: false,
+      cycleAccumulatedMs: 0,
+      lastTickAt: 0,
+      lastPersistAt: 0,
+      lastCompletedAt: 0,
+      lastCompletedDate: '',
+      lastCompletedSource: '',
+      activeSource: '',
+      trackingStartedAt: Date.now(),
+      latestDecision: null,
+      lastPublishedOutput: null,
+      lastPublishedWarmed: null,
+      peakSupportRequestedAt: 0,
+    };
+    this.flexiblePriorityState = { nextEvaluationAt: 0, lastStartedId: '', lastEvaluationAt: 0 };
+
+    this.inputRequestTimers = [];
+    this.inputRequestInitialTimer = null;
+    this.inputRequestTriggers = { pv: null, forecast: null, forecastTomorrow: null, batterySoc: [], evSoc: null };
+    this.evSocRequestTimer = null;
+    this.evSocRequestInitialTimer = null;
+    this.homeyApi = null;
+    this.homeyApiPromise = null;
+    this.ownerHomeyApi = null;
+    this.ownerHomeyApiPromise = null;
+    this.homeyEnergyAnalysisCache = { key: '', value: null };
+    this.homeyEnergyResampleCache = { key: '', value: [] };
+    this.externalEnergyResampleCache = { key: '', value: [] };
+    this.homeyEnergy = {
+      available: false,
+      refreshing: false,
+      priceType: null,
+      zone: null,
+      interval: null,
+      slots: [],
+      lastUpdatedAt: null,
+      lastAttemptAt: 0,
+      error: '',
+    };
+    // The historic object remains the External Price 1/export-input interface.
+    this.externalEnergy = {
+      currentPrice: null,
+      currentUpdatedAt: 0,
+      exportPrice: null,
+      exportUpdatedAt: 0,
+      slots: [],
+      curveUpdatedAt: 0,
+      error: '',
+      responseShape: '',
+    };
+
+    this.externalEnergy2 = { slots: [], curveUpdatedAt: 0, error: '', responseShape: '' };
+    const savedCurves = this.homey.settings.get('_externalPriceCurves');
+    for (const source of ['external', 'external2']) {
+      const saved = savedCurves?.[source];
+      if (saved && Array.isArray(saved.slots)) Object.assign(this.getExternalPriceState(source), saved, { slots: trimCurve(saved.slots, new Date(), this.homey.clock.getTimezone() || 'UTC') });
+    }
+
+    await this.migrateSettings();
+    await this.ensureDefaults();
+    this.refreshSettingsCache();
+    const initialEfficiencySettings = this.getSettings();
+    if (initialEfficiencySettings.optimizeMultiBatteryEfficiency
+      && this.getBatteryCount(initialEfficiencySettings) >= 2
+      && Number(initialEfficiencySettings.balanceDeadbandPct) < 2) this.setSetting('balanceDeadbandPct', 2);
+    this.restoreDiagnosticsSession();
+    this.restoreEvEnergyPlanOverrides();
+    this.restoreEvSocPlanOverrides();
+    evPlanOptions.restore(this);
+    this.restoreEvModeHouseReference();
+    this.evFlowPlansRestored = true;
+    this.restoreBoilerRuntime();
+
+    // v0.3.29: keep the stored operator switch in sync with the effective
+    // safety state. A version update can invalidate an older charge-test
+    // signature (for example when the tested output configuration expands).
+    // In that situation output is effectively blocked, so persist that same
+    // OFF state instead of leaving a stale controlEnabled=true behind.
+    const startupSettings = this.getSettings();
+    if (Boolean(startupSettings.controlEnabled) && !this.isChargeTestValid(startupSettings)) {
+      this.setSetting('controlEnabled', false);
+    }
+
+    this.restoreForecastState();
+    this.restoreLowForecastSunnyState();
+    this.restoreSavingsState();
+    this.restoreAutoTuneLearning();
+    await this.syncTokens();
+    this.registerFlowCards();
+    this.setupInputRequestSchedule();
+    this.syncEvSocRequestSchedule();
+    this.armOverrideResume();
+
+    // Homey Energy is only polled automatically when it is actually selected as
+    // the dynamic price source. Flow cards can still request a manual refresh.
+    this.homey.setTimeout(() => {
+      if (this.usesHomeyEnergyPrices()) {
+        this.refreshHomeyEnergyPrices(true).catch(err => this.error('Initial Homey Energy refresh failed', err));
+      }
+    }, 1500);
+    this.homey.setInterval(() => {
+      if (this.usesHomeyEnergyPrices()) {
+        this.refreshHomeyEnergyPrices(false).catch(err => this.error('Homey Energy refresh failed', err));
+      }
+    }, 15 * 60 * 1000);
+
+    this.homey.settings.on('set', async key => {
+      try {
+        // These keys persist EV state already changed by its handler or
+        // energy accounting. Goal changes request their own context; energy
+        // completion stops immediately. A later settings callback must not
+        // invalidate tariffs/planning or start a duplicate EMS pass.
+        if (key === '_evModeHouseReference') return;
+        if (key === 'evSocDeadlineOverrides' || key === 'evEnergyDeadlineOverrides' || key === '_evWidgetPlanRuntime') {
+          this.notifyEvDashboard();
+          if (this.isDiagnosticEnabled('planning')) {
+            this.recordDiagnosticSetting(key, this.homey.settings.get(key));
+          }
+          this.recordDiagnosticCounter('evPlanPersistenceEventsSkipped');
+          return;
+        }
+        // Keep the RAM snapshot authoritative for all following calculations.
+        // An external settings write costs one Homey read here, instead of a
+        // complete settings scan in every nested helper.
+        const previousSettingValue = this.settingsCache?.[key];
+        this.refreshCachedSetting(key);
+        if (evDashboard.isSetting(String(key))) { this.notifyEvDashboard(); return; }
+        this.cachedRuntimeSettings = null;
+        if (['optimizeMultiBatteryEfficiency', 'batteryCount', 'balanceDeadbandPct'].includes(String(key))) {
+          const current = this.getSettings();
+          if (current.optimizeMultiBatteryEfficiency && this.getBatteryCount(current) >= 2
+            && Number(current.balanceDeadbandPct) < 2) this.setSetting('balanceDeadbandPct', 2);
+          if (['optimizeMultiBatteryEfficiency', 'batteryCount'].includes(String(key))) {
+            this.efficiencyDischargeStickyIndex = null;
+            this.efficiencyChargeStickyIndex = null;
+            this.efficiencyActiveCountSticky = null;
+          }
+        }
+        if (Object.values(DIAGNOSTIC_SETTING_KEYS).includes(String(key))) {
+          this.handleDiagnosticsSettingsChanged();
+          return;
+        }
+        if (String(key).startsWith('_diagnostics')) return;
+        // Internal persistence is already accompanied by the explicit state
+        // change that caused it. Never turn those bookkeeping writes into a
+        // second context pass or charge-plan invalidation.
+        if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_dynamicPriceCalibrations' || key === '_externalPriceCurves' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || key === '_hvacPermanent' || key === '_nightForecastHold' || String(key).startsWith('_autoTune')) return;
+        if (/^hvac/.test(String(key))) { this.hvacConfigRevision=(this.hvacConfigRevision||0)+1; hvacPermanent.cancel(this); }
+        this.markContextDirty(`setting:${key}`);
+        this.invalidatePlanningCache(true);
+        this.markFlexibleLoadsDirty();
+        // A battery-mode override changes which flexible load owns the shared
+        // Peak Guard headroom. Never let the fast loop reuse an EV allocation
+        // that was calculated for the previous battery mode.
+        if (key === 'forcedMode') this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
+        if (key === 'lowForecastAutoSunnyEnabled') {
+          this.lowForecastSunnyRuntime.aboveSince = 0;
+          if (!Boolean(this.getSettings().lowForecastAutoSunnyEnabled)) {
+            this.lowForecastSunnyOverrideDate = '';
+            this.setSetting('_lowForecastSunnyOverrideDate', '');
+          }
+        }
+        if (key === 'lowForecastAutoSunnySoc' || key === 'lowForecastAutoSunnyMinutes' || key === 'lowForecastSelfConsumptionMinKwh') {
+          this.lowForecastSunnyRuntime.aboveSince = 0;
+        }
+        if (key === 'batteryCount') {
+          if (this.getBatteryCount() === 0) {
+            this.state.lastTotalCommandW = 0;
+            this.lastEmittedCommands = [];
+            this.lastEmittedMode = '';
+            this.lastEmittedOverride = '';
+            this.pendingResult = null;
+            this.pendingCommandBypassInterval = false;
+            this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
+          }
+          if (this.getBatteryCount() === 0 && Boolean(this.getSettings().hybridEmsEnabled)) this.setSetting('hybridEmsEnabled', false);
+          this.resetHybridEmsRuntime('battery_count_changed');
+          await this.syncTokens();
+        } else if (key === 'evCount' || key === 'hvacCount') {
+          await this.syncTokens();
+        }
+        if (key === 'priorityEvaluationMinutes' || key === 'flexibleLoadPriorityOrder' || key === 'boilerEnabled' || key === 'boilerCount' || key === 'hvacCount' || /^hvac(?:[2-9]|10)?Enabled$/.test(String(key))) this.flexiblePriorityState.nextEvaluationAt = 0;
+        if (key === 'evEnabled' || key === 'evSocEnabled' || key === 'evCount' || /^ev[2-4](Enabled|SocEnabled)$/.test(String(key))) this.syncEvSocRequestSchedule();
+        if (key === 'evControlType') {
+          // Force one fresh output when switching between ampere control and
+          // charger-mode control so the newly selected Flow path is initialized.
+          this.forceEvOutput = true;
+          this.clearEvPeakGuardStopHold();
+          this.clearEvPvSession();
+        }
+        if (key === 'touRates' || key === 'contractType' || key === 'evMode' || key === 'evEnabled') {
+          this.clearEvPvSession();
+        }
+        if (key === 'evPeakGuardStopHoldSeconds' && Number(this.getSettings().evPeakGuardStopHoldSeconds) <= 0) {
+          this.clearEvPeakGuardStopHold();
+        }
+        // Plan-affecting settings and price rights invalidate goal planning;
+        // fast P1/control feedback never increments these revisions.
+        const evPolicySetting = /^ev([2-4])?(Enabled|SocEnabled|Mode|AfterSocTarget|TargetSoc|TargetTime|GuaranteeTarget|AllowUnselectedTariffForDeadline|BatteryCapacityKwh|FixedChargeWindowEnabled|DynamicCheapEnabled|DynamicNormalEnabled|DynamicExpensiveEnabled|Phases|Voltage|ControlType|MinCurrentA|MaxCurrentA)$/.exec(String(key));
+        if (previousSettingValue !== this.settingsCache?.[key]) {
+          if (evPolicySetting) this.markEvPlanChanged(evPolicySetting[1] ? Number(evPolicySetting[1]) - 1 : 0, `setting:${key}`);
+          else if (['evCount','contractType','touRates','dynamicPriceSource','dynamicPriceSources','cheapHours','expensiveHours','fixedChargeStart','fixedChargeEnd'].includes(String(key))) {
+            for (let index = 0; index < 4; index += 1) this.markEvPlanChanged(index, `setting:${key}`);
+          }
+        }
+        const evGoalSetting = /^ev([2-4])?(AfterSocTarget|TargetSoc|TargetTime|Mode|SocEnabled)$/.exec(String(key));
+        if (evGoalSetting && previousSettingValue !== this.settingsCache?.[key]) {
+          this.rearmEvCompletedTarget(evGoalSetting[1] ? Number(evGoalSetting[1]) - 1 : 0);
+        }
+        if (key === 'evSocEnabled') {
+          // Require a fresh SoC after re-enabling support; never silently reuse a
+          // value from before a charger/integration was configured without SoC.
+          this.inputSeen.ev.soc = false;
+          this.inputUpdatedAt.ev.soc = 0;
+          if (!Boolean(this.homey.settings.get('evSocEnabled')) && String(this.homey.settings.get('evMode') || 'smart') === 'soc_target') {
+            this.setSetting('evMode', 'smart');
+          }
+        }
+        const extraEvSetting = /^ev([2-4])(ControlType|Mode|Enabled|SocEnabled|PeakGuardStopHoldSeconds)$/.exec(String(key));
+        if (extraEvSetting) {
+          const index = Number(extraEvSetting[1]) - 1;
+          const runtime = this.getExtraEv(index);
+          const field = extraEvSetting[2];
+          if (runtime && field === 'ControlType') {
+            runtime.forceOutput = true;
+            runtime.stopHoldUntil = 0;
+            this.clearEvPvSessionFor(index);
+          }
+          if (runtime && ['Mode', 'Enabled'].includes(field)) this.clearEvPvSessionFor(index);
+          if (runtime && field === 'PeakGuardStopHoldSeconds' && Number(this.getSettings()[key]) <= 0) runtime.stopHoldUntil = 0;
+          if (runtime && field === 'SocEnabled') {
+            runtime.seen.soc = false;
+            runtime.updatedAt.soc = 0;
+            const current = this.getSettings();
+            if (!Boolean(current[key]) && String(current[this.getEvSettingKey(index, 'Mode')] || 'smart') === 'soc_target') {
+              this.setSetting(this.getEvSettingKey(index, 'Mode'), 'smart');
+            }
+          }
+        }
+        if (key === 'hybridEmsEnabled') {
+          const hybridSettings = this.getSettings();
+          if (Boolean(hybridSettings.hybridEmsEnabled) && this.getBatteryCount(hybridSettings) === 0) this.setSetting('hybridEmsEnabled', false);
+          this.resetHybridEmsRuntime('hybrid_setting_changed');
+        }
+        if (key === 'batteryCount' || key === 'invertBatteryCommand') {
+          await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
+        }
+        const splitMatch = /^splitCommandBattery([1-8])(Enabled|ChargePowerPositive|KeepMinimumPower|MinimumPowerW|ZeroMode|ChargeMinSwitchSeconds|DischargeMinSwitchSeconds|MinBetweenSwitchSeconds|DirectionConfirmSeconds|SafetyModeResendEnabled|SafetyModeResendSeconds)$/.exec(String(key));
+        if (splitMatch) {
+          const splitIndex = Number(splitMatch[1]) - 1;
+          const splitState = this.splitCommandState?.[splitIndex];
+          if (splitState && splitMatch[2] === 'Enabled') {
+            if (splitState.recheckTimer) clearTimeout(splitState.recheckTimer);
+            if (splitState.safetyTimer) clearTimeout(splitState.safetyTimer);
+            this.splitCommandState[splitIndex] = { currentMode: null, chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: null, lastSafetyModeResendAt: 0 };
+            if (!Boolean(this.homey.settings.get(key))) await this.setSplitOutputTokens(splitIndex, null, 0);
+          }
+          if (['Enabled', 'ChargePowerPositive', 'KeepMinimumPower', 'MinimumPowerW', 'ZeroMode'].includes(splitMatch[2])) {
+            await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
+          }
+          if (['SafetyModeResendEnabled', 'SafetyModeResendSeconds'].includes(splitMatch[2])) {
+            this.rescheduleSplitSafetyModeResend(splitIndex);
+          }
+        }
+        if ((key === 'contractType' || key === 'dynamicPriceSource' || key === 'dynamicPriceSources') && this.usesHomeyEnergyPrices()) {
+          this.refreshHomeyEnergyPrices(true).catch(err => this.error('Homey Energy refresh after settings change failed', err));
+        }
+        if (['contractType', 'cheapHours', 'expensiveHours', 'overrideResumeOnTariffChange'].includes(key)) {
+          this.armOverrideResume();
+        }
+        if (key === 'controlEnabled') {
+          const settings = this.getSettings();
+          if (Boolean(settings.controlEnabled) && !this.isChargeTestValid(settings)) {
+            this.setSetting('controlEnabled', false);
+            return;
+          }
+          // Recalculate immediately so the UI/status reflects the operator choice.
+          // Battery output still respects the normal minimum command interval.
+          // Disabling active output is handled as a safety stop to 0 W below.
+          this.lastControlEvalAt = 0;
+          if (this.controlTimer) {
+            clearTimeout(this.controlTimer);
+            this.controlTimer = null;
+          }
+          this.controlTimerForce = false;
+          this.requestContextEvaluate(true, 'control_enabled');
+          return;
+        }
+        this.requestContextEvaluate(true, `setting:${key}`);
+      } catch (err) {
+        this.error('Settings update failed', err);
+      }
+    });
+
+    // The one-minute heartbeat checks context boundaries and independently
+    // services EVs. The EV pass never runs battery/planning/HVAC/boiler work.
+    this.homey.on?.('cpuwarn', data => {
+      // Warning-boundary evidence survives in Homey's crash log. Do not build
+      // a full report, serialize settings or write persistent state here.
+      this.log('HomeFlux CPU warning', JSON.stringify({
+        at: Date.now(), count: data?.count, limit: data?.limit,
+        counters: this.diagnostics?.counters || {},
+        lastCpuSample: this.diagnostics?.cpuSamples?.at(-1) || null,
+        commandPublishing: Boolean(this.commandPublishing),
+        contextRunning: Boolean(this.contextEvaluationRunning), evPublishing: Boolean(this.evPortfolioPass),
+      }));
+    });
+    this.contextHeartbeatTimer = this.homey.setInterval(() => {
+      const diagnosticCpu = this.startDiagnosticCpuSection('heartbeat');
+      try {
+        this.sampleDiagnostics(Date.now());
+        this.runContextHeartbeat();
+        this.runEvHeartbeat().catch(err => this.error('EV heartbeat dispatch failed', err));
+      } finally {
+        this.endDiagnosticCpuSection(diagnosticCpu);
+      }
+    }, 60000);
+    this.checkNightPlanningFallback();
+    await this.runContextEvaluation(true);
+    this.appInitializedAt = Date.now();
+    this.log(`HomeFlux EMS v${this.homey?.manifest?.version || require('./app.json').version} initialized`);
+  }
+
+  invalidateEvPhysicalConfig(key = '') {
+    const name = String(key);
+    if (!name || (Object.prototype.hasOwnProperty.call(DEFAULTS, name)
+      && /^(ev|contractType|dynamic|cheapHours|expensiveHours|peak)/.test(name))) {
+      this.evDeadlineSettingsRevision = (this.evDeadlineSettingsRevision || 0) + 1;
+    }
+    const evSetting = /^ev(?:[2-4])?([A-Z].*)$/.exec(name);
+    if (name && name !== 'touRates' && name !== 'contractType'
+      && name !== 'evCount' && !(evSetting && EV_PHYSICAL_CONFIG_SUFFIXES.has(evSetting[1]))
+      && !/^_ev[1-4]ModeLoadTolerancePercent$/.test(name)) return;
+    this.evPhysicalConfigRevision = (this.evPhysicalConfigRevision || 0) + 1;
+    this.evPhysicalConfigMemo = Array(4).fill(null);
+  }
+
+  refreshSettingsCache() {
+    this.invalidateEvPhysicalConfig();
+    this.batteryFeedbackMemo = null;
+    // Declare private mode-only fields up front: adding them later can make
+    // this large cache expensive to copy on every getSettings() call.
+    const result = {
+      ...DEFAULTS,
+      timezone: this.homey.clock.getTimezone() || 'UTC',
+      _ev1ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(0, 'FeedbackTolerancePercent')),
+      _ev2ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(1, 'FeedbackTolerancePercent')),
+      _ev3ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(2, 'FeedbackTolerancePercent')),
+      _ev4ModeLoadTolerancePercent: this.homey.settings.get(this.getEvSettingKey(3, 'FeedbackTolerancePercent')),
+    };
+    for (const key of Object.keys(DEFAULTS)) {
+      const value = this.homey.settings.get(key);
+      if (value !== null && value !== undefined) result[key] = value;
+    }
+    this.settingsCache = result;
+    if (this.isDiagnosticEnabled('planning') && this.diagnostics.compact?.values) {
+      const previous = this.diagnostics.compact.values;
+      for (const key of new Set([...Object.keys(previous), ...Object.keys(result)])) {
+        this.recordDiagnosticSetting(key, result[key]);
+      }
+    }
+    return result;
+  }
+
+  refreshCachedSetting(key) {
+    if (!this.settingsCache || !Object.prototype.hasOwnProperty.call(DEFAULTS, key)) return;
+    const widgetPreference = evDashboard.isSetting(String(key));
+    if (!widgetPreference) this.batteryFeedbackMemo = null;
+    const value = this.homey.settings.get(key);
+    const nextValue = value !== null && value !== undefined ? value : DEFAULTS[key];
+    if (key === 'nightForecastHoldEnabled' && !Object.is(this.settingsCache[key], nextValue)) {
+      this.nightForecastMedian = null; this.setSetting('_nightForecastHold', null);
+    }
+    if (!widgetPreference && !Object.is(this.settingsCache[key], nextValue)) this.invalidateEvPhysicalConfig(key);
+    this.settingsCache[key] = nextValue;
+    this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
+    this.recordDiagnosticSetting(key, this.settingsCache[key]);
+  }
+
+  setSetting(key, value) {
+    // Internal bookkeeping does not change the control settings. Actual engine
+    // inputs still invalidate the memo through dependencies/context boundaries.
+    const widgetPreference = evDashboard.isSetting(String(key));
+    if (!widgetPreference && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) this.batteryFeedbackMemo = null;
+    const namedSource = Object.keys(NAME_SETTINGS).find(source => NAME_SETTINGS[source] === key);
+    if (namedSource) value = sourceName(namedSource, { [key]: value });
+    if (key === 'optimalBatteryPowerW' || /^battery[1-8]OptimalPowerW$/.test(key)) {
+      const watts = Number(value);
+      value = Number.isFinite(watts) && watts >= 50 && watts <= 10000 ? Math.round(watts)
+        : key === 'optimalBatteryPowerW' ? 1000 : null;
+    }
+    if (key === 'balanceDeadbandPct' && this.getSettings().optimizeMultiBatteryEfficiency
+      && this.getBatteryCount() >= 2) value = Math.max(2, Number(value) || 0);
+    // An internal settings write is visible to the control loop immediately;
+    // do not wait for Homey's asynchronous `set` event to invalidate the cache.
+    if (key === 'nightForecastHoldEnabled' && this.settingsCache && !Object.is(this.settingsCache[key], value)) {
+      this.nightForecastMedian = null; this.setSetting('_nightForecastHold', null);
+    }
+    if (!widgetPreference && this.settingsCache && !Object.is(this.settingsCache[key], value)) this.invalidateEvPhysicalConfig(key);
+    if (/^hvac/.test(String(key)) && this.settingsCache && !Object.is(this.settingsCache[key], value)) { this.hvacConfigRevision=(this.hvacConfigRevision||0)+1; hvacPermanent.cancel(this); }
+    this.homey.settings.set(key, value);
+    if (this.settingsCache && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
+      this.settingsCache[key] = value;
+      this.settingsCache.timezone = this.homey.clock.getTimezone() || 'UTC';
+      this.recordDiagnosticSetting(key, value);
+    }
+  }
+
+  displayLanguage() { return this.homey?.i18n?.getLanguage?.() || 'nl'; }
+
+  translateDisplay(value) {
+    return this.displayLanguage().toLowerCase().startsWith('nl') ? String(value ?? '') : translateDisplay(value);
+  }
+
+  localizeDisplay(value) { return localizeDisplay(value, this.displayLanguage()); }
+
+  localizeDisplayTokens(value) { return localizeTokens(value, this.displayLanguage()); }
+
+  getSettings() {
+    if (!this.settingsCache) this.refreshSettingsCache();
+    // Return a shallow snapshot so callers cannot mutate the shared cache.
+    const settings = { ...this.settingsCache, timezone: this.homey.clock.getTimezone() || 'UTC' };
+    for (const [source, key] of Object.entries(NAME_SETTINGS)) settings[key] = sourceName(source, settings);
+    return settings;
+  }
+
+  getBatteryCount(settings = this.getSettings()) {
+    const raw = settings?.batteryCount;
+    const configured = raw === null || raw === undefined || raw === ''
+      ? Number(DEFAULTS.batteryCount)
+      : Number(raw);
+    const fallback = Number.isFinite(Number(DEFAULTS.batteryCount)) ? Number(DEFAULTS.batteryCount) : 0;
+    return Math.max(0, Math.min(8, Math.round(Number.isFinite(configured) ? configured : fallback)));
+  }
+
+  getGridFreshness(settings = this.getSettings(), now = Date.now()) {
+    const timeoutMs = Math.max(60000, Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 6000);
+    const updatedAt = Number(this.inputUpdatedAt?.grid) || 0;
+    const value = parseFiniteInputNumber(this.state?.gridPowerW);
+    const seen = Boolean(this.inputSeen?.grid);
+    const ageMs = seen && updatedAt > 0 ? Math.max(0, Number(now) - updatedAt) : null;
+    return {
+      fresh: seen && value !== null && updatedAt > 0 && ageMs !== null && ageMs <= timeoutMs,
+      seen,
+      value,
+      updatedAt,
+      timeoutMs,
+      ageSeconds: ageMs === null ? null : Math.round(ageMs / 1000),
+    };
+  }
+
+  getNextLocalDateKey(at = Date.now()) {
+    return shiftDateKey(this.getLocalDateKey(new Date(Number(at) || Date.now())), 1);
+  }
+
+  getSavingsDateKey(at = Date.now()) {
+    return localParts(new Date(Number(at) || Date.now()), this.homey.clock.getTimezone() || 'UTC').dateKey;
+  }
+
+  getSavingsTariffSnapshot(settings = this.getSettings()) {
+    const type = String(settings.contractType || 'tou');
+    const tariff = this.latestResult?.tariff || null;
+    let importPrice = Number(tariff?.price);
+    let feedInPrice = 0;
+    let feedInSource = 'none';
+    let id = String(tariff?.rateId || tariff?.label || type || 'grid');
+    let label = String(tariff?.label || (type === 'fixed' ? 'Fixed tariff' : 'Grid'));
+
+    if (type === 'fixed') {
+      importPrice = Number(settings.fixedImportPrice);
+      feedInPrice = Number(settings.fixedFeedInPrice);
+      feedInSource = 'fixed';
+      id = 'fixed';
+      label = 'Fixed tariff';
+    } else if (type === 'tou') {
+      const rateId = String(tariff?.rateId || '');
+      const rate = (Array.isArray(settings.touRates) ? settings.touRates : [])
+        .find(item => String(item?.id || '') === rateId);
+      if (rate) {
+        if (!Number.isFinite(importPrice)) importPrice = Number(rate.importPrice);
+        feedInPrice = Number(rate.feedInPrice);
+        feedInSource = 'tariff';
+        id = String(rate.id || id);
+        label = String(rate.name || label);
+      }
+    } else if (isDynamicContract(settings)) {
+      const currentPrice = Number(this.latestResult?.homeyEnergy?.currentPrice);
+      if (Number.isFinite(currentPrice)) importPrice = currentPrice;
+      const externalExportPrice = Number(this.externalEnergy?.exportPrice);
+      if (Number.isFinite(externalExportPrice)) {
+        feedInPrice = externalExportPrice;
+        feedInSource = 'flow';
+      }
+      // Homey Energy currently supplies only the purchase price used by
+      // HomeFlux. Dynamic feed-in is therefore 0 until the dedicated Flow input
+      // supplies an actual export price. Positive = compensation received;
+      // negative = a cost to inject.
+      id = String(tariff?.rateId || this.latestResult?.homeyEnergy?.priceClass || 'dynamic');
+      label = String(tariff?.label || this.latestResult?.homeyEnergy?.priceClass || 'Dynamic');
+    }
+
+    return {
+      id: id || 'grid',
+      label: label || 'Grid',
+      importPrice: Number.isFinite(importPrice) ? importPrice : 0,
+      feedInPrice: Number.isFinite(feedInPrice) ? feedInPrice : 0,
+      feedInSource,
+    };
+  }
+
+  restoreSavingsState() {
+    const storedHistory = this.homey.settings.get('_savingsHistory');
+    const history = storedHistory && typeof storedHistory === 'object' && !Array.isArray(storedHistory)
+      ? storedHistory : {};
+    const normalizedHistory = {};
+    for (const [date, day] of Object.entries(history)) normalizedHistory[date] = savingsHistory.compactDay(day, date);
+
+    const todayKey = this.getSavingsDateKey();
+    const storedToday = normalizeDay(this.homey.settings.get('_savingsToday'), todayKey);
+    let rolloverSavingsAdjustment = 0;
+    if (storedToday.date && storedToday.date !== todayKey) {
+      const calibratedStoredToday = calibrateEnergy(storedToday);
+      if (!normalizedHistory[storedToday.date]) {
+        normalizedHistory[storedToday.date] = savingsHistory.compactDay(calibratedStoredToday, storedToday.date);
+        rolloverSavingsAdjustment = totalSavings(calibratedStoredToday) - totalSavings(storedToday);
+      }
+      this.savings.today = emptyDay(todayKey);
+    } else {
+      storedToday.date = todayKey;
+      this.savings.today = storedToday;
+    }
+    savingsHistory.pruneHistory(normalizedHistory, todayKey);
+    this.savings.history = normalizedHistory;
+    this.savingsHistoryCache = savingsHistory.createHistoryCache();
+    this.savings.inventory = normalizeInventory(this.homey.settings.get('_savingsInventory'));
+    this.savings.total = (Number(this.homey.settings.get('_savingsTotal')) || 0) + rolloverSavingsAdjustment;
+    this.savings.lastSampleAt = Date.now();
+  }
+
+  archiveSavingsDay(nextDateKey) {
+    const current = this.savings.today;
+    if (current?.date) {
+      const calibrated = calibrateEnergy(current);
+      if (!this.savings.history[current.date]) {
+        this.savings.total += totalSavings(calibrated) - totalSavings(current);
+        this.savings.history[current.date] = savingsHistory.compactDay(calibrated, current.date);
+      }
+      this.savingsHistoryCache?.clear();
+    }
+    savingsHistory.pruneHistory(this.savings.history, nextDateKey);
+    this.savings.today = emptyDay(nextDateKey);
+  }
+
+  recordSavingsSample(at = Date.now()) {
+    if (!this.savings) return;
+    const now = Number(at) || Date.now();
+    const currentDate = this.getSavingsDateKey(now);
+    if (!this.savings.today?.date) this.savings.today = emptyDay(currentDate);
+
+
+    const previousAt = Number(this.savings.lastSampleAt) || now;
+    this.savings.lastSampleAt = now;
+    try {
+      const seconds = Math.max(0, (now - previousAt) / 1000);
+      if (seconds <= 0 || seconds > 300) return;
+  
+      // Never extrapolate cost/savings from a dead P1 stream. lastSampleAt was
+      // advanced above on purpose so a later recovery cannot back-fill the stale
+      // gap with one old value. A stale non-zero PV sample is also unsafe for the
+      // source split; a stable 0 W PV value is allowed to age overnight.
+      const settings = this.getSettings();
+      const gridFreshness = this.getGridFreshness(settings, now);
+      const pvPowerW = parseFiniteInputNumber(this.state.pvPowerW);
+      const pvUpdatedAt = Number(this.inputUpdatedAt?.pv) || 0;
+      const pvFresh = pvPowerW === 0 || (pvUpdatedAt > 0 && (now - pvUpdatedAt) <= 5 * 60 * 1000);
+      const siteKnown = Boolean(this.inputSeen?.grid && this.inputSeen?.pv)
+        && gridFreshness.fresh && pvPowerW !== null && pvFresh;
+      // Charger telemetry remains usable when site telemetry cannot establish
+      // its source. The SAME interval records EV energy as unknown, while the
+      // existing site Savings buckets stay untouched for that interval.
+      if (!siteKnown && this.getEvCount(settings) === 0) return;
+  
+      const tariff = this.getSavingsTariffSnapshot(settings);
+      const evCount = this.getEvCount(settings);
+      let evPriceKnown = true;
+      if (evCount > 0) {
+        // Validate the EXISTING selected price; do not select a new tariff here.
+        const rawPrices = settings.contractType === 'fixed' ? [settings.fixedImportPrice]
+          : [this.latestResult?.tariff?.price, this.latestResult?.homeyEnergy?.currentPrice];
+        const knownPrice = value => value !== null && value !== undefined && value !== ''
+          && typeof value !== 'boolean' && Number.isFinite(Number(value)) && Number(value) === tariff.importPrice;
+        evPriceKnown = rawPrices.some(knownPrice) || (settings.contractType === 'tou'
+          && knownPrice((Array.isArray(settings.touRates) ? settings.touRates : [])
+            .find(rate => rate.id === this.latestResult?.tariff?.rateId)?.importPrice));
+      }
+      const midnight = localDateTimeUtcMs(currentDate, '00:00', settings.timezone || 'UTC');
+      const boundaries = previousAt < midnight && midnight < now ? [previousAt, midnight, now] : [previousAt, now];
+      for (let segment = 1; segment < boundaries.length; segment++) {
+        const start = boundaries[segment - 1], end = boundaries[segment];
+        const date = this.getSavingsDateKey(start);
+        if (this.savings.today.date !== date) this.archiveSavingsDay(date);
+        const before = totalSavings(this.savings.today);
+        integrateInterval({
+          day: this.savings.today,
+          inventory: this.savings.inventory,
+          seconds: (end - start) / 1000,
+          siteKnown,
+          evs: evCount > 0 ? this.getEvSavingsReadings(start, end, settings) : undefined,
+          evPriceKnown,
+          gridW: gridFreshness.value,
+          pvW: pvPowerW,
+          batteryW: Number(this.state.lastTotalCommandW) || 0,
+          importPrice: tariff.importPrice,
+          feedInPrice: tariff.feedInPrice,
+          tariff,
+          capacityKwh: configuredBatteryCapacityKwh(this.getSettings()),
+        });
+        const delta = totalSavings(this.savings.today) - before;
+        if (Number.isFinite(delta)) this.savings.total += delta;
+      }
+    } finally {
+      if (this.savings.today.date !== currentDate) this.archiveSavingsDay(currentDate);
+    }
+  }
+
+  persistSavingsState(at = Date.now(), alreadySampled = false) {
+    if (!this.savings) return;
+    if (!alreadySampled) this.recordSavingsSample(at);
+    this.homey.settings.set('_savingsToday', this.savings.today);
+    this.homey.settings.set('_savingsHistory', this.savings.history);
+    this.homey.settings.set('_savingsInventory', this.savings.inventory);
+    this.homey.settings.set('_savingsTotal', this.savings.total);
+    this.savings.lastPersistAt = Number(at) || Date.now();
+    this.syncEmsDevices().catch(err => this.error('EMS device savings sync failed', err));
+  }
+
+  getSavingsPeriodRange(period = 'day', at = Date.now()) {
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const parts = localParts(new Date(Number(at) || Date.now()), timezone);
+    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+    let start;
+    let end;
+    if (period === 'year') {
+      start = new Date(Date.UTC(parts.year, 0, 1));
+      end = new Date(Date.UTC(parts.year + 1, 0, 1));
+    } else if (period === 'month') {
+      start = new Date(Date.UTC(parts.year, parts.month - 1, 1));
+      end = new Date(Date.UTC(parts.year, parts.month, 1));
+    } else if (period === 'week') {
+      // localParts provides a local calendar date, not a weekday. Derive the
+      // ISO weekday from that date (Monday = 1, Sunday = 7).
+      const weekday = date.getUTCDay() || 7;
+      start = new Date(date.getTime() - ((weekday - 1) * 86400000));
+      end = new Date(start.getTime() + (7 * 86400000));
+    } else {
+      start = date;
+      end = new Date(date.getTime() + 86400000);
+    }
+    return { startKey: start.toISOString().slice(0, 10), endKey: end.toISOString().slice(0, 10) };
+  }
+
+  getSavingsHistoryInfo() {
+    const today = savingsHistory.compactDay(calibrateEnergy(this.savings.today), this.savings.today.date);
+    const dates = [...Object.keys(this.savings.history || {}), today.date].filter(Boolean).sort();
+    const bytes = Buffer.byteLength(JSON.stringify({ ...(this.savings.history || {}), [today.date]: today }), 'utf8');
+    return { bytes, count: dates.length, oldest: dates[0] || null, newest: dates[dates.length - 1] || null, options: savingsHistory.historicalOptions(this.savings.history || {}, this.savings.today?.date) };
+  }
+
+  getSavingsCsv() {
+    this.recordSavingsSample(Date.now());
+    return savingsHistory.toCsv({ ...(this.savings.history || {}), [this.savings.today.date]: savingsHistory.compactDay(calibrateEnergy(this.savings.today), this.savings.today.date) }, this.savings.today.date, this.settingsCache?.currencySymbol);
+  }
+
+  getEvSavingsReadings(start, end, settings = this.getSettings()) {
+    const readings = [];
+    for (let i = 0; i < this.getEvCount(settings); i++) {
+      if (!settings[this.getEvSettingKey(i, 'Enabled')]) continue;
+      const input = this.getEvInputSnapshot(i), updated = Number(input?.updatedAt?.chargeCurrent) || 0;
+      const scope = settings[this.getEvSettingKey(i, 'EnergyFeedbackScope')];
+      const connected = input?.seen?.connected && input.connected;
+      const knownOff = input?.seen?.connected && !input.connected;
+      if (this.getEvControlTypeFor(i, settings) === 'mode') {
+        // Use the SAME shared physical observation as Mode control. Flow
+        // amperes (including a repeated 0 A placeholder) are not this source.
+        // Integrate only its original time coverage, never backfill a gap or
+        // extend freshness on a widget/CSV read. A valid zero differs from an
+        // unavailable estimate. STOP can leave a last observed physical tail;
+        // no current command or session status is used to invent delivered W.
+        const reading = this.evSessionDetection?.modePowerSnapshot;
+        const usable = connected && reading?.usable && ['smart', 'standard'].includes(reading.modes?.[i])
+          && reading.revision === (this.evPhysicalConfigRevision || 0);
+        const seconds = knownOff ? (end - start) / 1000 : usable
+          ? Math.max(0, Math.min(end, reading.recordingValidUntil) - Math.max(start, reading.at)) / 1000 : 0;
+        const powerW = !knownOff && usable && seconds > 0
+          ? Math.max(0, Number(reading.watts[i]) || 0) * seconds / ((end - start) / 1000) : 0;
+        // Feedback scope describes a Flow meter, not the detector's already
+        // divided P1 pool. Multiple Mode EVs must not select that pool twice.
+        readings.push({ id: String(i + 1), powerW, coveredSeconds: seconds,
+          sourceUsable: seconds >= (end - start) / 1000, scope: 'individual' });
+        continue;
+      }
+      const seconds = knownOff ? (end - start) / 1000 : scope !== 'unavailable' && connected && input?.seen?.chargeCurrent
+        ? Math.max(0, Math.min(end, updated + 60000) - Math.max(start, updated)) / 1000 : 0;
+      const powerW = connected && updated > 0 && seconds > 0
+        ? Math.max(0, Number(input.chargeCurrentA) || 0) * evPowerPerAmp(this.getEvElectricalSettingsFor(i, settings))
+          * seconds / ((end - start) / 1000) : 0;
+      readings.push({ id: String(i + 1), powerW, coveredSeconds: seconds,
+        sourceUsable: seconds >= (end - start) / 1000,
+        scope });
+    }
+    return readings;
+  }
+
+  getEvDashboard(period = 'day') { return evDashboard.status(this, period); }
+  setEvDashboard(body) { return evDashboard.submit(this, body); }
+  notifyEvDashboard() {
+    // One small app event; subscribers fetch cached state, never run control.
+    try {
+      const sent = this.homey.api?.realtime?.('homeflux.ev.changed', null);
+      sent?.catch?.(() => {});
+    } catch (_) { /* dashboard transport is optional */ }
+  }
+
+  getSavingsStatus({ period = 'day', days = 30, selected = '' } = {}) {
+    this.recordSavingsSample(Date.now());
+    const normalizedPeriod = ['day', 'week', 'month', 'year', 'rolling', 'previous_month', 'calendar_month', 'calendar_year'].includes(String(period)) ? String(period) : 'day';
+    const todayKey = this.getSavingsDateKey();
+    const range = savingsHistory.rangeFor(normalizedPeriod, todayKey, days, selected)
+      || this.getSavingsPeriodRange(normalizedPeriod);
+    this.savingsHistoryCache ||= savingsHistory.createHistoryCache();
+    const aggregate = this.savingsHistoryCache.sum(this.savings.history || {}, range, todayKey);
+    const calibratedToday = calibrateEnergy(this.savings.today);
+    if (calibratedToday?.date >= range.startKey && calibratedToday?.date < range.endKey) addDays(aggregate, calibratedToday);
+
+    // Purchase prices are signed. During negative-price intervals importing
+    // energy is a credit, so the real import bill may legitimately be negative.
+    const grossImportCost = (Number(aggregate.directGridCost) || 0)
+      + (Number(aggregate.gridChargeCost) || 0);
+    const signedPvExportValue = pvExportValue(aggregate);
+    // Cost view is net of PV feed-in: positive feed-in compensation lowers the
+    // bill; a negative export price raises it because the user pays to inject.
+    const actualCost = grossImportCost - signedPvExportValue;
+    const avoidedCost = avoidedEnergyValue(aggregate);
+    const periodSavings = totalSavings(aggregate);
+    // Avoided-cost percentage stays based on the gross import bill plus positive
+    // savings. This remains meaningful even when feed-in makes the net bill
+    // negative for a very sunny period.
+    const positiveSavings = Math.max(0, Number(periodSavings) || 0);
+    const hypotheticalCost = grossImportCost + positiveSavings;
+    const avoidedCostsPercentage = hypotheticalCost > 0
+      ? (positiveSavings / hypotheticalCost) * 100
+      : 0;
+    const avoidedEnergyCostPercentage = avoidedCostsPercentage;
+    const totalPvExportKwh = pvExportKwh(aggregate);
+    const chartKwh = Math.max(0, Number(aggregate.directGridKwh) || 0)
+      + Math.max(0, Number(aggregate.gridChargeKwh) || 0)
+      + Math.max(0, Number(aggregate.directPvKwh) || 0)
+      + Math.max(0, Number(aggregate.pvChargeKwh) || 0)
+      + totalPvExportKwh;
+    const currentTariff = this.getSavingsTariffSnapshot();
+
+    return {
+      period: normalizedPeriod,
+      currencySymbol: String(this.settingsCache?.currencySymbol || '€').trim() || '€',
+      startDate: range.startKey,
+      endDate: range.endKey,
+      todaySavings: totalSavings(calibratedToday),
+      totalSavings: (Number(this.savings.total) || 0) + totalSavings(calibratedToday) - totalSavings(this.savings.today),
+      periodSavings,
+      actualCost,
+      grossImportCost,
+      pvExportValue: signedPvExportValue,
+      avoidedEnergyCost: avoidedCost,
+      avoidedEnergyCostPercentage,
+      avoidedCostsPercentage,
+      chartKwh,
+      directGrid: { kwh: aggregate.directGridKwh, value: aggregate.directGridCost },
+      directPv: { kwh: aggregate.directPvKwh, value: aggregate.directPvValue },
+      directPvExport: { kwh: aggregate.directPvExportKwh, value: aggregate.directPvExportValue },
+      pvBattery: { kwh: aggregate.pvBatteryKwh, value: aggregate.pvBatteryValue },
+      pvBatteryHome: { kwh: aggregate.pvBatteryHomeKwh, value: aggregate.pvBatteryHomeValue },
+      pvBatteryExport: { kwh: aggregate.pvBatteryExportKwh, value: aggregate.pvBatteryExportValue },
+      pvExport: { kwh: totalPvExportKwh, value: signedPvExportValue },
+      loadShift: { kwh: aggregate.shiftKwh, value: aggregate.shiftValue },
+      loadShiftExport: { kwh: aggregate.shiftExportKwh, value: aggregate.shiftExportValue },
+      batteryCharging: {
+        kwh: aggregate.batteryChargeKwh,
+        pvKwh: aggregate.pvChargeKwh,
+        gridKwh: aggregate.gridChargeKwh,
+        gridCost: aggregate.gridChargeCost,
+        byTariff: Object.values(aggregate.chargeCostsByTariff || {}).sort((a, b) => b.cost - a.cost),
+      },
+      importedEnergyToday: {
+        inputKwh: Number(this.savings.today?.importedEnergyKwh) || 0,
+        known: Boolean(this.savings.today?.importedEnergyKnown),
+        measuredKwh: rawImportedKwh(this.savings.today),
+      },
+      exportedEnergyToday: {
+        inputKwh: Number(this.savings.today?.exportedEnergyKwh) || 0,
+        known: Boolean(this.savings.today?.exportedEnergyKnown),
+        measuredKwh: rawExportedKwh(this.savings.today),
+      },
+      exportPrice: {
+        eurPerKwh: Number(currentTariff.feedInPrice) || 0,
+        source: String(currentTariff.feedInSource || 'none'),
+        // Sign convention: positive = compensation received, negative = cost.
+        positiveMeansCompensation: true,
+      },
+      trackedBatteryKwh: inventoryKwh(this.savings.inventory),
+    };
+  }
+
+  getSavingsCategory(args = {}) {
+    this.recordSavingsSample(Date.now());
+    const today = this.getSavingsDateKey();
+    const { rollingRange, readCategory, formatResult, isEvCategory, hasEvData, evMetric } = require('./lib/savings-flow');
+    const range = rollingRange(today, args.count, args.unit);
+    this.savingsHistoryCache ||= savingsHistory.createHistoryCache();
+    const aggregate = this.savingsHistoryCache.sum(this.savings.history || {}, range, today);
+    const calibratedToday = calibrateEnergy(this.savings.today);
+    if (today >= range.startKey && today < range.endKey) addDays(aggregate, calibratedToday);
+    const settings = this.getSettings(), selectedEv = args.ev || 'all', evCategory = isEvCategory(args.category);
+    const result = readCategory(aggregate, args.category, { ev: selectedEv, settings });
+    const dates = new Set(Object.keys(this.savings.history || {}).concat(this.savings.today?.date || [])
+      .filter(date => savingsHistory.isDateKey(date) && date >= range.startKey && date < range.endKey)
+      .filter(date => !evCategory || hasEvData(date === today ? calibratedToday : this.savings.history[date], selectedEv)));
+    const metric = evCategory ? evMetric(aggregate, selectedEv) : null;
+    const expectedSeconds = evCategory ? Math.max(0, (Date.now()
+      - localDateTimeUtcMs(range.startKey, '00:00', settings.timezone || 'UTC')) / 1000) : 0;
+    const evDataComplete = Boolean(metric && dates.size === range.days && aggregate.ev.seconds + 5 >= expectedSeconds
+      && metric.missingSeconds === 0 && metric.unknownKwh < 1e-9 && metric.unpricedKwh < 1e-9
+      && aggregate.ev.sharedKwh < 1e-9);
+    return { ev_data_available: false, ev_data_complete: evDataComplete,
+      solar_km: 0, solar_km_available: false, solar_share_percent: 0,
+      ...result, result: formatResult(result, args.format || 'kwh', settings.currencySymbol, this.displayLanguage()),
+      start_date: range.startKey, end_date: savingsHistory.shiftKey(range.endKey, -1),
+      available_days: dates.size, requested_days: range.days, complete: dates.size === range.days };
+  }
+
+  hasNumericInputChanged(previous, next, wasSeen = true, tolerance = 0.01) {
+    const value = Number(next);
+    if (!wasSeen || !Number.isFinite(Number(previous)) || !Number.isFinite(value)) return true;
+    return Math.abs(Number(previous) - value) >= Math.max(0, Number(tolerance) || 0);
+  }
+
+  hasTextInputChanged(previous, next, wasSeen = true) {
+    return !wasSeen || String(previous ?? '') !== String(next ?? '');
+  }
+
+  hasBooleanInputChanged(previous, next, wasSeen = true) {
+    return !wasSeen || Boolean(previous) !== Boolean(next);
+  }
+
+  getSettingsSnapshot() {
+    // v0.3.41: settings UI startup uses one local API call instead of roughly
+    // 194 individual Homey.get bridge round-trips. This is a read-only copy of
+    // the RAM cache and does not run the EMS engine or rebuild planning.
+    const settings = this.getSettings();
+    return this.getHvacCount(settings) ? { ...settings, hvacLearning: Array.from({length:this.getHvacCount(settings)}, (_,i)=>hvacPermanent.status(this,i)) } : settings;
+  }
+
+  recheckHvac(body = {}) { return body.action === 'learnNow' ? hvacCoordination.manualRequest(this, Number(body.instance)-1) : hvacPermanent.recheck(this, Number(body.instance)-1, body.direction || 'both'); }
+
+  createDiagnosticsRuntime({ startedAt = 0, expiresAt = 0, options = null } = {}) {
+    const now = Date.now();
+    const normalizedOptions = {
+      planning: Boolean(options?.planning),
+      cpu: Boolean(options?.cpu),
+      errors: Boolean(options?.errors),
+      memory: Boolean(options?.memory),
+    };
+    return {
+      startedAt: Math.max(0, Number(startedAt) || 0),
+      expiresAt: Math.max(0, Number(expiresAt) || 0),
+      runtimeStartedAt: now,
+      endedAt: 0,
+      endReason: '',
+      sessionActive: Object.values(normalizedOptions).some(Boolean),
+      options: normalizedOptions,
+      counters: {},
+      cpuSections: {},
+      cpuSamples: [],
+      memorySamples: [],
+      planningEvents: [],
+      batteryEfficiencyEvents: [],
+      batteryEfficiencyLatest: null,
+      planningConfigurations: [],
+      planningConfigSequence: 0,
+      lastPlanningConfigJson: '',
+      lastPlanningConfigId: '',
+      errors: [],
+      cpuSampleAt: now,
+      cpuSampleUsage: null,
+      diagnosticStatus: {
+        cpu: { available: null, failures: 0, lastError: '' },
+        memory: { available: null, failures: 0, lastError: '' },
+      },
+    };
+  }
+
+  getDiagnosticsOptions(settings = this.getSettings()) {
+    return {
+      planning: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.planning]),
+      cpu: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.cpu]),
+      errors: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.errors]),
+      memory: Boolean(settings[DIAGNOSTIC_SETTING_KEYS.memory]),
+    };
+  }
+
+  hasDiagnosticsEnabled(options = this.diagnostics?.options) {
+    return Boolean(options && Object.values(options).some(Boolean));
+  }
+
+  isDiagnosticEnabled(kind, now = 0) {
+    const runtime = this.diagnostics;
+    if (!runtime?.sessionActive || !runtime?.options?.[kind]) return false;
+    const at = Number(now) || Date.now();
+    return Number(runtime.expiresAt) > at;
+  }
+
+  restoreDiagnosticsSession() {
+    const now = Date.now();
+    const options = this.getDiagnosticsOptions();
+    const enabled = this.hasDiagnosticsEnabled(options);
+    const storedStartedAt = Math.max(0, Number(this.homey.settings.get('_diagnosticsStartedAt')) || 0);
+    const storedExpiresAt = Math.max(0, Number(this.homey.settings.get('_diagnosticsExpiresAt')) || 0);
+
+    if (!enabled) {
+      this.diagnostics = this.createDiagnosticsRuntime();
+      return;
+    }
+
+    if (storedExpiresAt > now) {
+      this.diagnostics = this.createDiagnosticsRuntime({
+        startedAt: storedStartedAt || now,
+        expiresAt: storedExpiresAt,
+        options,
+      });
+      if (Boolean(options.cpu)) {
+        this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
+        this.diagnostics.cpuSampleAt = now;
+      }
+      if (options.planning) this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), now);
+      this.armDiagnosticsExpiry();
+      return;
+    }
+
+    // A Homey/app restart after the 48-hour boundary must never revive logging.
+    for (const key of Object.values(DIAGNOSTIC_SETTING_KEYS)) this.setSetting(key, false);
+    this.setSetting('_diagnosticsStartedAt', 0);
+    this.setSetting('_diagnosticsExpiresAt', 0);
+    this.diagnostics = this.createDiagnosticsRuntime();
+  }
+
+  startDiagnosticsSession(options = this.getDiagnosticsOptions(), now = Date.now()) {
+    const at = Number(now) || Date.now();
+    const expiresAt = at + DIAGNOSTICS_MAX_MS;
+    this.diagnostics = this.createDiagnosticsRuntime({ startedAt: at, expiresAt, options });
+    if (Boolean(options?.cpu)) {
+      this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
+      this.diagnostics.cpuSampleAt = at;
+    }
+    if (options?.planning) this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), at);
+    this.setSetting('_diagnosticsStartedAt', at);
+    this.setSetting('_diagnosticsExpiresAt', expiresAt);
+    this.armDiagnosticsExpiry();
+  }
+
+  handleDiagnosticsSettingsChanged() {
+    const now = Date.now();
+    const options = this.getDiagnosticsOptions();
+    const enabled = this.hasDiagnosticsEnabled(options);
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+
+    if (!enabled) {
+      if (runtime.sessionActive) {
+        runtime.sessionActive = false;
+        runtime.options = options;
+        runtime.endedAt = now;
+        if (!runtime.endReason) runtime.endReason = 'manual';
+      }
+      this.clearDiagnosticsExpiryTimer();
+      this.setSetting('_diagnosticsStartedAt', 0);
+      this.setSetting('_diagnosticsExpiresAt', 0);
+      return;
+    }
+
+    if (!runtime.sessionActive || Number(runtime.expiresAt) <= now) {
+      this.startDiagnosticsSession(options, now);
+      return;
+    }
+
+    const planningWasEnabled = Boolean(runtime.options?.planning);
+    const cpuWasEnabled = Boolean(runtime.options?.cpu);
+    runtime.options = options;
+    if (!planningWasEnabled && options.planning) {
+      // Changes made while Planning was disabled are reconciled once here.
+      if (runtime.compact?.values) {
+        const settings = this.getSettings();
+        for (const key of new Set([...Object.keys(runtime.compact.values), ...Object.keys(settings)])) this.recordDiagnosticSetting(key, settings[key]);
+      }
+      this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), now);
+    }
+    if (!cpuWasEnabled && Boolean(options.cpu)) {
+      runtime.cpuSampleUsage = this.readDiagnosticCpuUsage();
+      runtime.cpuSampleAt = now;
+    } else if (cpuWasEnabled && !Boolean(options.cpu)) {
+      runtime.cpuSampleUsage = null;
+      runtime.cpuSampleAt = now;
+    }
+    this.armDiagnosticsExpiry();
+  }
+
+  clearDiagnosticsExpiryTimer() {
+    if (this.diagnosticsExpiryTimer) clearTimeout(this.diagnosticsExpiryTimer);
+    this.diagnosticsExpiryTimer = null;
+  }
+
+  armDiagnosticsExpiry() {
+    this.clearDiagnosticsExpiryTimer();
+    const expiresAt = Number(this.diagnostics?.expiresAt) || 0;
+    if (!this.diagnostics?.sessionActive || expiresAt <= 0) return;
+    const wait = Math.max(1, expiresAt - Date.now());
+    this.diagnosticsExpiryTimer = this.homey.setTimeout(() => {
+      this.diagnosticsExpiryTimer = null;
+      this.expireDiagnostics('48h_expired');
+    }, wait);
+  }
+
+  expireDiagnostics(reason = '48h_expired', now = Date.now()) {
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    if (!runtime.sessionActive) return false;
+    const at = Number(now) || Date.now();
+    runtime.sessionActive = false;
+    runtime.endedAt = at;
+    runtime.endReason = String(reason || 'expired');
+    runtime.options = { planning: false, cpu: false, errors: false, memory: false };
+    this.clearDiagnosticsExpiryTimer();
+    for (const key of Object.values(DIAGNOSTIC_SETTING_KEYS)) this.setSetting(key, false);
+    this.setSetting('_diagnosticsStartedAt', 0);
+    this.setSetting('_diagnosticsExpiresAt', 0);
+    return true;
+  }
+
+  checkDiagnosticsExpiry(now = Date.now()) {
+    if (!this.diagnostics?.sessionActive) return false;
+    if (Number(this.diagnostics.expiresAt) > Number(now)) return false;
+    return this.expireDiagnostics('48h_expired', now);
+  }
+
+  resetDiagnosticsReport() {
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    const active = runtime.sessionActive && Number(runtime.expiresAt) > Date.now();
+    const options = active ? { ...runtime.options } : { planning: false, cpu: false, errors: false, memory: false };
+    this.diagnostics = this.createDiagnosticsRuntime({
+      startedAt: active ? runtime.startedAt : 0,
+      expiresAt: active ? runtime.expiresAt : 0,
+      options,
+    });
+    if (active && Boolean(options.cpu)) {
+      this.diagnostics.cpuSampleUsage = this.readDiagnosticCpuUsage();
+      this.diagnostics.cpuSampleAt = Date.now();
+    }
+    if (active && options.planning) this.getOrCreateDiagnosticPlanningConfig(this.getSettings());
+    if (active) this.armDiagnosticsExpiry();
+    return this.getDiagnosticsReport();
+  }
+
+  recordDiagnosticCounter(name, amount = 1) {
+    try {
+      if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.cpu) return;
+      if (Number(this.diagnostics.expiresAt) <= Date.now()) return;
+      const key = String(name || 'unknown');
+      this.diagnostics.counters[key] = (Number(this.diagnostics.counters[key]) || 0) + (Number(amount) || 0);
+    } catch (_) {
+      // Diagnostics must never interfere with the EMS control loop.
+    }
+  }
+
+  noteDiagnosticAvailability(kind, available, error = '') {
+    try {
+      const runtime = this.diagnostics;
+      if (!runtime) return;
+      if (!runtime.diagnosticStatus || typeof runtime.diagnosticStatus !== 'object') runtime.diagnosticStatus = {};
+      const key = String(kind || 'unknown');
+      const current = runtime.diagnosticStatus[key] || { available: null, failures: 0, lastError: '' };
+      current.available = Boolean(available);
+      if (!available) {
+        current.failures = (Number(current.failures) || 0) + 1;
+        current.lastError = String(error || 'runtime_unavailable').slice(0, 500);
+      } else {
+        current.lastError = '';
+      }
+      runtime.diagnosticStatus[key] = current;
+    } catch (_) {
+      // Diagnostics status itself must never affect EMS operation.
+    }
+  }
+
+  readDiagnosticCpuUsage() {
+    try {
+      if (typeof process.cpuUsage !== 'function') {
+        this.noteDiagnosticAvailability('cpu', false, 'process.cpuUsage unavailable');
+        return null;
+      }
+      const usage = process.cpuUsage();
+      const user = Number(usage?.user);
+      const system = Number(usage?.system);
+      if (!Number.isFinite(user) || !Number.isFinite(system)) {
+        this.noteDiagnosticAvailability('cpu', false, 'invalid process.cpuUsage result');
+        return null;
+      }
+      this.noteDiagnosticAvailability('cpu', true);
+      return { user, system };
+    } catch (err) {
+      this.noteDiagnosticAvailability('cpu', false, err?.message || String(err));
+      return null;
+    }
+  }
+
+  readDiagnosticMemoryFallback() {
+    const mb = value => {
+      const bytes = Number(value);
+      return Number.isFinite(bytes) && bytes >= 0
+        ? Math.round((bytes / 1024 / 1024) * 100) / 100
+        : null;
+    };
+    const sample = {
+      rssMb: null,
+      heapUsedMb: null,
+      heapTotalMb: null,
+      externalMb: null,
+      arrayBuffersMb: null,
+      source: 'procfs_v8_fallback',
+    };
+    const errors = [];
+    let hasValue = false;
+
+    // Homey runs on Linux. Some Node/Homey builds expose process.memoryUsage()
+    // but throw from libuv while resolving RSS (uv_resident_set_memory). Read
+    // the current resident set directly from procfs so diagnostics can still
+    // report process memory without touching the failing libuv path.
+    try {
+      if (process.platform === 'linux') {
+        const fs = require('node:fs');
+        const status = fs.readFileSync('/proc/self/status', 'utf8');
+        const match = String(status || '').match(/^VmRSS:\s+(\d+)\s+kB$/mi);
+        if (match) {
+          sample.rssMb = mb(Number(match[1]) * 1024);
+          hasValue = sample.rssMb !== null;
+        }
+      }
+    } catch (err) {
+      errors.push(`procfs: ${err?.message || String(err)}`);
+    }
+
+    // Heap statistics come from V8 and do not use the libuv RSS helper. This
+    // keeps heap trend logging available even when process.memoryUsage() fails.
+    try {
+      const v8 = require('node:v8');
+      const stats = v8.getHeapStatistics();
+      if (stats && typeof stats === 'object') {
+        sample.heapUsedMb = mb(stats.used_heap_size);
+        sample.heapTotalMb = mb(stats.total_heap_size);
+        sample.externalMb = mb(stats.external_memory);
+        hasValue = hasValue
+          || sample.heapUsedMb !== null
+          || sample.heapTotalMb !== null
+          || sample.externalMb !== null;
+      }
+    } catch (err) {
+      errors.push(`v8: ${err?.message || String(err)}`);
+    }
+
+    return {
+      sample: hasValue ? sample : null,
+      error: errors.join('; '),
+    };
+  }
+
+  readDiagnosticMemoryUsage() {
+    const mb = value => {
+      const bytes = Number(value);
+      return Number.isFinite(bytes) && bytes >= 0
+        ? Math.round((bytes / 1024 / 1024) * 100) / 100
+        : null;
+    };
+    let primaryError = '';
+
+    try {
+      if (typeof process.memoryUsage !== 'function') {
+        primaryError = 'process.memoryUsage unavailable';
+      } else {
+        const memory = process.memoryUsage();
+        if (memory && typeof memory === 'object') {
+          const sample = {
+            rssMb: mb(memory.rss),
+            heapUsedMb: mb(memory.heapUsed),
+            heapTotalMb: mb(memory.heapTotal),
+            externalMb: mb(memory.external),
+            arrayBuffersMb: mb(memory.arrayBuffers),
+            source: 'process.memoryUsage',
+          };
+          const hasValue = [
+            sample.rssMb,
+            sample.heapUsedMb,
+            sample.heapTotalMb,
+            sample.externalMb,
+            sample.arrayBuffersMb,
+          ].some(value => value !== null);
+          if (hasValue) {
+            this.noteDiagnosticAvailability('memory', true);
+            return sample;
+          }
+          primaryError = 'invalid process.memoryUsage result';
+        } else {
+          primaryError = 'invalid process.memoryUsage result';
+        }
+      }
+    } catch (err) {
+      primaryError = err?.message || String(err);
+    }
+
+    try {
+      const fallback = this.readDiagnosticMemoryFallback();
+      if (fallback?.sample) {
+        this.noteDiagnosticAvailability('memory', true);
+        return fallback.sample;
+      }
+      const fallbackError = String(fallback?.error || '').trim();
+      this.noteDiagnosticAvailability(
+        'memory',
+        false,
+        [primaryError, fallbackError].filter(Boolean).join('; ') || 'memory diagnostics unavailable',
+      );
+      return null;
+    } catch (err) {
+      this.noteDiagnosticAvailability(
+        'memory',
+        false,
+        [primaryError, err?.message || String(err)].filter(Boolean).join('; '),
+      );
+      return null;
+    }
+  }
+
+  startDiagnosticCpuSection(name) {
+    try {
+      if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.cpu) return null;
+      if (Number(this.diagnostics.expiresAt) <= Date.now()) return null;
+      const token = {
+        name: String(name || 'unknown'),
+        wallAt: performance.now(),
+      };
+      // Process CPU can be attributed only to these synchronous scopes.
+      // Async Flow/publication scopes retain wall time, including I/O waiting.
+      if (['context_evaluation','fast_evaluation','fast_feedback_preflight','planning_calculation','heartbeat'].includes(token.name)) {
+        token.cpuAt = this.readDiagnosticCpuUsage();
+      }
+      return token;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  endDiagnosticCpuSection(token) {
+    try {
+      if (!token || !this.diagnostics) return;
+      const wallMs = Math.max(0, performance.now() - Number(token.wallAt || 0));
+      const name = String(token.name || 'unknown');
+      const bucket = this.diagnostics.cpuSections[name] || {
+        calls: 0,
+        wallMs: 0,
+        maxWallMs: 0,
+      };
+      bucket.calls += 1;
+      bucket.wallMs += wallMs;
+      bucket.maxWallMs = Math.max(bucket.maxWallMs, wallMs);
+      if (token.cpuAt) {
+        const current = this.readDiagnosticCpuUsage();
+        if (current) {
+          const cpuMs = Math.max(0, current.user - token.cpuAt.user + current.system - token.cpuAt.system) / 1000;
+          bucket.cpuCalls = (bucket.cpuCalls || 0) + 1;
+          bucket.cpuMs = (bucket.cpuMs || 0) + cpuMs;
+          bucket.maxCpuMs = Math.max(bucket.maxCpuMs || 0, cpuMs);
+        }
+      }
+      this.diagnostics.cpuSections[name] = bucket;
+    } catch (_) {
+      // Diagnostics must fail open and may never break battery control.
+    }
+  }
+
+  sampleDiagnostics(now = Date.now()) {
+    const runtime = this.diagnostics;
+    if (!runtime?.sessionActive) return;
+    const at = Number(now) || Date.now();
+    this.checkDiagnosticsExpiry(at);
+    if (!this.diagnostics?.sessionActive) return;
+
+    if (this.isDiagnosticEnabled('cpu', at)) {
+      const currentUsage = this.readDiagnosticCpuUsage();
+      const previousUsage = runtime.cpuSampleUsage;
+      const elapsedMs = Math.max(1, at - Number(runtime.cpuSampleAt || at));
+      if (currentUsage && previousUsage) {
+        const userUs = Math.max(0, currentUsage.user - Number(previousUsage.user || 0));
+        const systemUs = Math.max(0, currentUsage.system - Number(previousUsage.system || 0));
+        const cpuMs = (userUs + systemUs) / 1000;
+        const percent = Math.max(0, (cpuMs / elapsedMs) * 100);
+        runtime.cpuSamples.push({
+          at,
+          percent: Math.round(percent * 1000) / 1000,
+          userMs: Math.round((userUs / 1000) * 1000) / 1000,
+          systemMs: Math.round((systemUs / 1000) * 1000) / 1000,
+          elapsedMs,
+        });
+        if (runtime.cpuSamples.length > 3000) runtime.cpuSamples.splice(0, runtime.cpuSamples.length - 3000);
+      }
+      runtime.cpuSampleUsage = currentUsage;
+      runtime.cpuSampleAt = at;
+    } else {
+      // Do not poll process CPU while CPU diagnostics are disabled. The first
+      // enabled minute establishes a fresh baseline without attributing the
+      // disabled period to diagnostics.
+      runtime.cpuSampleUsage = null;
+      runtime.cpuSampleAt = at;
+    }
+
+    if (this.isDiagnosticEnabled('memory', at)) {
+      try {
+        const memory = this.readDiagnosticMemoryUsage();
+        if (memory) {
+          runtime.memorySamples.push({ at, ...memory });
+          if (runtime.memorySamples.length > 3000) runtime.memorySamples.splice(0, runtime.memorySamples.length - 3000);
+        }
+      } catch (err) {
+        // A diagnostic channel may become unavailable on a specific Homey
+        // runtime, but must never escape into the 60-second heartbeat.
+        this.noteDiagnosticAvailability('memory', false, err?.message || String(err));
+      }
+    }
+  }
+
+  cloneDiagnosticValue(value) {
+    try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+  }
+
+  getDiagnosticConfigurationSnapshot(settings = this.getSettings()) {
+    const snapshot = {};
+    const sensitive = /(token|secret|password|credential|api[_-]?key|authorization|cookie)/i;
+    const excluded = new Set(['dynamicSlots', ...Object.values(DIAGNOSTIC_SETTING_KEYS)]);
+    for (const [key, value] of Object.entries(settings || {})) {
+      if (excluded.has(key) || key.startsWith('_diagnostics')) continue;
+      if (sensitive.test(key)) snapshot[key] = '[redacted]';
+      else snapshot[key] = this.cloneDiagnosticValue(value);
+    }
+    return snapshot;
+  }
+
+  getCompactDiagnostics() {
+    if (!this.diagnostics.compact) this.diagnostics.compact = new CompactDiagnostics(this, this.diagnostics);
+    return this.diagnostics.compact;
+  }
+
+  getOrCreateDiagnosticPlanningConfig(settings, now = Date.now()) {
+    return this.getCompactDiagnostics().config(settings, now);
+  }
+
+  recordDiagnosticSetting(key, value) {
+    if (!this.isDiagnosticEnabled('planning') || !this.diagnostics.compact?.values) return;
+    try {
+      const normalized = Object.entries(NAME_SETTINGS).find(([, name]) => name === key);
+      this.diagnostics.compact.setting(String(key), normalized ? sourceName(normalized[0], { [key]: value }) : value);
+    } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  recordDiagnosticEvDecision(index, decision, settings, command) {
+    if (!this.isDiagnosticEnabled('planning')) return;
+    try { this.getCompactDiagnostics().decision(index, decision, settings, command); }
+    catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  createDiagnosticEvOutput(index, decision, command) {
+    if (!this.isDiagnosticEnabled('planning')) return null;
+    try {
+      const runtime = this.diagnostics, recorder = this.getCompactDiagnostics();
+      const request = recorder.output(index, decision, command, 'requested');
+      return (phase, detail = {}) => {
+        if (this.diagnostics !== runtime || !this.isDiagnosticEnabled('planning')) return;
+        try { recorder.output(index, decision, command, phase, detail, request); }
+        catch (_) { runtime.diagnosticRecordFailures = (runtime.diagnosticRecordFailures || 0) + 1; }
+      };
+    } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; return null; }
+  }
+
+  recordDiagnosticEvAllowance(control, settings, now, selectedGridW, controlGridSource) {
+    if (!this.isDiagnosticEnabled('planning', now) || (this.getEvCount(settings) <= 0
+      && !this.diagnostics.compact?.memos.has('allowance'))) return;
+    try { this.getCompactDiagnostics().allowance(control, settings, now, selectedGridW, controlGridSource); }
+    catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  recordDiagnosticBatteryOutput(result, phase, commandsW, error = null) {
+    if (!this.isDiagnosticEnabled('planning') || this.getEvCount(this.settingsCache || {}) <= 0) return;
+    try { this.getCompactDiagnostics().batteryOutput(result, phase, commandsW, error); }
+    catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+  }
+
+  recordDiagnosticPlanning(plan, now = Date.now(), settings = this.getSettings(), state = this.state) {
+    if (!this.isDiagnosticEnabled('planning', now) || !plan) return;
+    const configId = this.getOrCreateDiagnosticPlanningConfig(settings, now);
+    const event = {
+      at: Number(now) || Date.now(),
+      configId,
+      contextReasons: Array.isArray(this.activeContextDiagnosticReasons) ? [...this.activeContextDiagnosticReasons] : [],
+      priceSources: isDynamicContract(settings) ? (() => {
+        const selection = this.getDynamicPriceSelection(settings, new Date(now), { readOnly: true });
+        return { active: selection.source, activeName: selection.sources.find(item => item.source === selection.source)?.name || 'None', order: selection.sourceOrder, skipped: selection.skippedSources, sources: selection.sources };
+      })() : null,
+      inputs: {
+        gridPowerW: parseFiniteInputNumber(state?.gridPowerW),
+        pvPowerW: parseFiniteInputNumber(state?.pvPowerW),
+        forecastRemainingKwh: parseFiniteInputNumber(state?.forecastRemainingKwh),
+        forecastDailyMaxKwh: parseFiniteInputNumber(state?.forecastDailyMaxKwh),
+        forecastTomorrowKwh: parseFiniteInputNumber(state?.forecastTomorrowKwh),
+        batterySoc: Array.isArray(state?.batterySoc) ? state.batterySoc.slice(0, 8) : [],
+        nightPlanningActive: Boolean(state?.nightPlanningActive),
+        planningForecastDay: String(state?.planningForecastDay || ''),
+      },
+      plan: this.cloneDiagnosticValue(plan),
+    };
+    this.diagnostics.planningEvents.push(event);
+    if (this.diagnostics.planningEvents.length > 600) {
+      this.diagnostics.planningEvents.splice(0, this.diagnostics.planningEvents.length - 600);
+    }
+  }
+
+  recordDiagnosticBatteryEfficiency(result, actualCommands, previousCommands, now = Date.now()) {
+    if (!this.isDiagnosticEnabled('planning', now) || !result?.efficiencyOptimization?.enabled) return;
+    const details = result.efficiencyOptimization;
+    const previousActive = previousCommands.map((value, index) => Number(value) !== 0 ? index + 1 : null).filter(Boolean);
+    const active = actualCommands.map((value, index) => Number(value) !== 0 ? index + 1 : null).filter(Boolean);
+    const event = {
+      at: now,
+      optimalW: details.optimalW,
+      optimalPerBatteryW: details.optimalPerBatteryW,
+      requestedTotalW: details.requestedTotalW,
+      availableCount: details.availableCount,
+      activeCount: active.length,
+      availableSoc: details.availableSoc,
+      targetsW: details.targetsW,
+      idealTargetsW: Array.isArray(details.idealTargetsW) ? details.idealTargetsW.slice() : details.targetsW,
+      transitionPending: Boolean(details.transitionPending),
+      transitionStepW: Math.max(0, Number(details.transitionStepW) || 0),
+      actualCommandsW: actualCommands.slice(),
+      reason: details.reason,
+    };
+    this.diagnostics.batteryEfficiencyLatest = event;
+    if (active.length !== previousActive.length || active.some(index => !previousActive.includes(index))) {
+      event.rotation = { from: previousActive, to: active };
+      this.diagnostics.batteryEfficiencyEvents.push(event);
+      if (this.diagnostics.batteryEfficiencyEvents.length > 100) this.diagnostics.batteryEfficiencyEvents.shift();
+    }
+  }
+
+  recordDiagnosticError(args = []) {
+    if (!this.diagnostics?.sessionActive || !this.diagnostics?.options?.errors) return;
+    if (Number(this.diagnostics.expiresAt) <= Date.now()) return;
+    const parts = [];
+    let stack = '';
+    for (const value of args) {
+      if (value instanceof Error) {
+        parts.push(value.message || String(value));
+        if (!stack && value.stack) stack = String(value.stack);
+      } else if (typeof value === 'string') parts.push(value);
+      else {
+        try { parts.push(JSON.stringify(value)); } catch (_) { parts.push(String(value)); }
+      }
+    }
+    this.diagnostics.errors.push({
+      at: Date.now(),
+      message: parts.join(' ').slice(0, 4000),
+      stack: stack.slice(0, 8000),
+    });
+    if (this.diagnostics.errors.length > 200) this.diagnostics.errors.splice(0, this.diagnostics.errors.length - 200);
+  }
+
+  error(...args) {
+    try {
+      const message = args.map(value => value instanceof Error ? value.message : String(value)).join(' ').slice(0, 4000);
+      if (message !== this.lastEmsError) {
+        this.lastEmsError = message;
+        const token = this.tokens?.get('emslasterror');
+        if (token) Promise.resolve(token.setValue(message)).catch(() => {});
+      }
+      this.recordDiagnosticError(args);
+    } catch (_) {}
+    const baseError = Homey.App?.prototype?.error;
+    if (typeof baseError === 'function') return baseError.apply(this, args);
+    return undefined;
+  }
+
+  getDiagnosticsReport() {
+    this.checkDiagnosticsExpiry(Date.now());
+    const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    const generatedAt = Date.now();
+    if (this.isDiagnosticEnabled('planning', generatedAt) && !runtime.compact?.values) {
+      this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), generatedAt);
+    }
+    const cpuSections = {};
+    for (const [name, bucket] of Object.entries(runtime.cpuSections || {})) {
+      const calls = Math.max(0, Number(bucket.calls) || 0);
+      cpuSections[name] = {
+        calls,
+        wallMs: Math.round((Number(bucket.wallMs) || 0) * 1000) / 1000,
+        maxWallMs: Math.round((Number(bucket.maxWallMs) || 0) * 1000) / 1000,
+        avgWallMs: calls ? Math.round(((Number(bucket.wallMs) || 0) / calls) * 1000) / 1000 : 0,
+        ...(bucket.cpuCalls ? {
+          cpuCalls: bucket.cpuCalls, cpuMs: Math.round(bucket.cpuMs * 1000) / 1000,
+          avgCpuMs: Math.round(bucket.cpuMs / bucket.cpuCalls * 1000) / 1000,
+          maxCpuMs: Math.round(bucket.maxCpuMs * 1000) / 1000,
+        } : {}),
+      };
+    }
+    const report = {
+      schema: 'homeflux-diagnostics-v2',
+      version: this.homey?.manifest?.version || require('./app.json').version,
+      generatedAt,
+      session: {
+        active: Boolean(runtime.sessionActive),
+        appStartedAt: Number(this.appStartedAt) || 0,
+        appInitializedAt: Number(this.appInitializedAt) || 0,
+        startedAt: Number(runtime.startedAt) || 0,
+        runtimeStartedAt: Number(runtime.runtimeStartedAt) || 0,
+        expiresAt: Number(runtime.expiresAt) || 0,
+        endedAt: Number(runtime.endedAt) || 0,
+        endReason: String(runtime.endReason || ''),
+        autoDisableHours: 48,
+        options: { ...runtime.options },
+      },
+      environment: {
+        timezone: this.homey?.clock?.getTimezone?.() || 'UTC',
+        node: process.version,
+        platform: process.platform,
+        arch: process.arch,
+      },
+      cpu: {
+        measurementMode: 'process_cpu_60s_plus_sync_cpu_and_section_wall_time',
+        perSectionCpuSampling: true,
+        sectionCpuScope: 'synchronous process CPU deltas; inclusive/nested, not additive; async sections are wall time only',
+        status: this.cloneDiagnosticValue(runtime.diagnosticStatus?.cpu) || { available: null, failures: 0, lastError: '' },
+        counters: { ...runtime.counters },
+        sections: cpuSections,
+        samples: this.cloneDiagnosticValue(runtime.cpuSamples) || [],
+      },
+      memory: {
+        status: this.cloneDiagnosticValue(runtime.diagnosticStatus?.memory) || { available: null, failures: 0, lastError: '' },
+        samples: this.cloneDiagnosticValue(runtime.memorySamples) || [],
+      },
+      errors: this.cloneDiagnosticValue(runtime.errors) || [],
+      recordingFailures: runtime.diagnosticRecordFailures || 0,
+      ev: {
+        events: this.cloneDiagnosticValue(runtime.compact?.events) || [],
+        droppedEvents: runtime.compact?.droppedEvents || 0,
+        allocationChangeResolutionW: 100,
+        deferredContext: {
+          startedAt: this.evContextRefresh?.startedAt || 0,
+          deadlineAt: this.evContextRefresh?.deadlineAt || 0,
+          due: Boolean(this.evContextRefresh?.due),
+          reasons: [...(this.evContextRefresh?.requests || [])],
+        },
+      },
+      planning: {
+        configurationFormat: 'snapshot-and-changes-v1',
+        currentConfigId: runtime.compact?.id || null,
+        reconstruction: 'Apply the first snapshot, then each changes object and removed-key list in order. Each event references configId.',
+        droppedConfigurations: runtime.compact?.droppedConfigurations || 0,
+        droppedEvents: runtime.compact?.droppedPlanningEvents || 0,
+        configurations: this.cloneDiagnosticValue(runtime.planningConfigurations) || [],
+        events: this.cloneDiagnosticValue(runtime.planningEvents) || [],
+        batteryEfficiencyLatest: this.cloneDiagnosticValue(runtime.batteryEfficiencyLatest),
+        batteryEfficiencyEvents: this.cloneDiagnosticValue(runtime.batteryEfficiencyEvents) || [],
+      },
+    };
+    return report;
+  }
+
+  createAutoTuneRuntime() {
+    const signal = () => ({
+      lastAt: 0,
+      lastValue: null,
+      samples: 0,
+      ewmaAbsDelta: 0,
+      gapSamples: 0,
+      ewmaGapMs: 0,
+    });
+    const ev = () => ({
+      pendingCurrent: null,
+      responseSamples: 0,
+      responseEwmaMs: 0,
+      smartSamples: 0,
+      smartEwmaA: 0,
+      standardSamples: 0,
+      standardEwmaA: 0,
+      lastMode: '',
+      lastModeAt: 0,
+    });
+    return {
+      grid: signal(),
+      pv: signal(),
+      balance: { samples: 0, ewmaSpreadPct: 0 },
+      planning: { days: [], currentDay: null },
+      ev: Array.from({ length: 4 }, ev),
+      lastAutoManageCheckAt: 0,
+      permissions: null,
+    };
+  }
+
+  updateAutoTuneSignal(bucket, value, at = Date.now(), maxDelta = 1000) {
+    if (!bucket) return;
+    const numeric = Number(value);
+    const now = Number(at) || Date.now();
+    if (!Number.isFinite(numeric)) return;
+    if (Number.isFinite(Number(bucket.lastValue)) && Number(bucket.lastAt) > 0) {
+      const gap = Math.max(0, now - Number(bucket.lastAt));
+      const delta = Math.abs(numeric - Number(bucket.lastValue));
+      if (gap >= 150 && gap <= 60000) {
+        const gapCount = Number(bucket.gapSamples || 0);
+        const gapAlpha = gapCount < 10 ? 0.2 : 0.08;
+        bucket.ewmaGapMs = gapCount > 0
+          ? (Number(bucket.ewmaGapMs || 0) * (1 - gapAlpha)) + (gap * gapAlpha)
+          : gap;
+        bucket.gapSamples = Math.min(100000, gapCount + 1);
+      }
+      // Only rapid, bounded changes are useful as a proxy for control noise.
+      // Large appliance steps are intentionally ignored.
+      if (gap >= 150 && gap <= 15000 && delta <= maxDelta) {
+        const alpha = bucket.samples < 10 ? 0.2 : 0.08;
+        bucket.ewmaAbsDelta = bucket.samples > 0
+          ? (Number(bucket.ewmaAbsDelta) * (1 - alpha)) + (delta * alpha)
+          : delta;
+        bucket.samples = Math.min(100000, Number(bucket.samples || 0) + 1);
+      }
+    }
+    bucket.lastValue = numeric;
+    bucket.lastAt = now;
+  }
+
+  noteAutoTuneGridSample(value, at = Date.now()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.updateAutoTuneSignal(this.autoTuneRuntime.grid, value, at, 800);
+  }
+
+  noteAutoTunePvSample(value, at = Date.now()) {
+    const pvW = parseFiniteInputNumber(value);
+    if (pvW === null || pvW < 0) return;
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const bucket = this.autoTuneRuntime.pv;
+    const previousW = parseFiniteInputNumber(bucket.lastValue);
+    const previousAt = Number(bucket.lastAt) || 0;
+    const gapMs = previousAt > 0 ? Math.max(0, at - previousAt) : 0;
+    this.updateAutoTuneSignal(bucket, pvW, at, 2500);
+    // Reuse Autotune's input cadence. Slow (>60 s) inputs are outside its
+    // learning window, so use their observed gap instead. No extra timer/history.
+    const expectedGapMs = gapMs > 60000 ? gapMs : (Number(bucket.ewmaGapMs) || gapMs || 15000);
+    this.pvLiveObservation = {
+      deltaW: previousW !== null && previousAt > 0 && at >= previousAt ? pvW - previousW : 0,
+      expiresAt: at + 2 * Math.max(500, Math.min(300000, expectedGapMs)),
+    };
+  }
+
+
+  restoreAutoTuneLearning() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const raw = this.homey.settings.get('_autoTuneLearning');
+    const days = Array.isArray(raw?.days) ? raw.days : [];
+    // v0.6.4 persists only compact daily summaries. No second/minute/raw
+    // measurement history is stored. Fourteen days is enough for a useful
+    // planning trend while keeping storage tiny.
+    this.autoTuneRuntime.planning.days = days
+      .filter(day => day && typeof day === 'object' && String(day.dateKey || ''))
+      .slice(-14)
+      .map(day => ({ ...day }));
+    this.autoTuneRuntime.planning.currentDay = null;
+  }
+
+  persistAutoTuneLearning() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const days = Array.isArray(this.autoTuneRuntime.planning?.days)
+      ? this.autoTuneRuntime.planning.days.slice(-14)
+      : [];
+    this.setSetting('_autoTuneLearning', { days });
+  }
+
+  finalizeAutoTunePlanningDay(day) {
+    if (!day || !String(day.dateKey || '')) return;
+    const sampleHours = Math.max(0, Number(day.sampleMillis || 0) / 3600000);
+    const demandKwh = Math.max(0, Number(day.estimatedDemandKwh) || 0);
+    const optionalNumber = value => {
+      if (value === null || value === undefined || value === '') return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    const forecastKwh = optionalNumber(day.forecastKwh);
+    const peakSoc = optionalNumber(day.peakSoc);
+    const solarTargetSoc = optionalNumber(day.solarTargetSoc);
+    const nightTargetSoc = optionalNumber(day.nightTargetSoc);
+    const maxSocLimit = optionalNumber(day.maxSocLimit);
+    const minObservedSoc = optionalNumber(day.minObservedSoc);
+    const summary = {
+      dateKey: String(day.dateKey),
+      sampleHours: Math.round(sampleHours * 10) / 10,
+      estimatedDemandKwh: Math.round(demandKwh * 100) / 100,
+      forecastKwh: forecastKwh !== null && forecastKwh >= 0 ? Math.round(forecastKwh * 100) / 100 : null,
+      peakSoc: peakSoc !== null ? Math.round(peakSoc * 10) / 10 : null,
+      solarTargetSoc: solarTargetSoc !== null ? Math.round(solarTargetSoc * 10) / 10 : null,
+      nightTargetSoc: nightTargetSoc !== null ? Math.round(nightTargetSoc * 10) / 10 : null,
+      minObservedSoc: minObservedSoc !== null ? Math.round(minObservedSoc * 10) / 10 : null,
+      maxSocLimit: maxSocLimit !== null ? Math.round(maxSocLimit * 10) / 10 : null,
+      lowForecastPromoted: Boolean(day.lowForecastPromoted),
+    };
+    if (summary.forecastKwh === null && summary.peakSoc === null && sampleHours < 6) return;
+    const days = Array.isArray(this.autoTuneRuntime.planning?.days) ? this.autoTuneRuntime.planning.days : [];
+    const filtered = days.filter(item => String(item?.dateKey || '') !== summary.dateKey);
+    filtered.push(summary);
+    this.autoTuneRuntime.planning.days = filtered.slice(-14);
+    this.persistAutoTuneLearning();
+  }
+
+  getAutoTuneMeasuredEvPowerW(settings = this.getSettings(), now = Date.now()) {
+    let total = 0;
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const input = this.getEvInputSnapshot(index);
+      if (!input?.seen?.chargeCurrent) continue;
+      const updatedAt = Number(input.updatedAt?.chargeCurrent) || 0;
+      if (updatedAt > 0 && now - updatedAt > 15 * 60 * 1000) continue;
+      const currentA = Math.max(0, Number(input.chargeCurrentA) || 0);
+      if (currentA <= 0.05) continue;
+      total += currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
+    }
+    return Math.max(0, total);
+  }
+
+  recordAutoTunePlanningSample(now = Date.now(), settings = this.getSettings()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    if (!this.autoTuneRuntime.planning) this.autoTuneRuntime.planning = { days: [], currentDay: null };
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const parts = localParts(new Date(now), timezone);
+    const dateKey = String(parts.dateKey || '');
+    if (!dateKey) return;
+
+    let day = this.autoTuneRuntime.planning.currentDay;
+    if (!day || day.dateKey !== dateKey) {
+      if (day) this.finalizeAutoTunePlanningDay(day);
+      day = {
+        dateKey,
+        lastAt: Number(now) || Date.now(),
+        sampleMillis: 0,
+        estimatedDemandKwh: 0,
+        forecastKwh: null,
+        peakSoc: null,
+        solarTargetSoc: null,
+        nightTargetSoc: null,
+        minObservedSoc: null,
+        maxSocLimit: Math.max(0, Math.min(100, Number(settings.maxSoc) || 100)),
+        lowForecastPromoted: false,
+      };
+      this.autoTuneRuntime.planning.currentDay = day;
+    }
+
+    const dailyForecast = Number(this.state?.forecastDailyMaxKwh);
+    const dailyForecastDate = String(this.state?.forecastDailyMaxDate || '');
+    if (Number.isFinite(dailyForecast) && dailyForecast >= 0 && (!dailyForecastDate || dailyForecastDate === dateKey)) {
+      day.forecastKwh = Math.max(Number(day.forecastKwh) || 0, dailyForecast);
+    }
+    if (String(this.lowForecastSunnyOverrideDate || '') === dateKey) day.lowForecastPromoted = true;
+
+    const avgSoc = this.getAverageBatterySoc(settings);
+    if (avgSoc !== null && Number.isFinite(Number(avgSoc))) {
+      day.peakSoc = day.peakSoc === null ? Number(avgSoc) : Math.max(Number(day.peakSoc), Number(avgSoc));
+      day.minObservedSoc = day.minObservedSoc === null ? Number(avgSoc) : Math.min(Number(day.minObservedSoc), Number(avgSoc));
+      const minute = Number(parts.minuteOfDay);
+      const solarTarget = this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60);
+      const nightTarget = this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60);
+      const afterSolar = (minute - solarTarget + 1440) % 1440;
+      const afterNight = (minute - nightTarget + 1440) % 1440;
+      const beforeNight = (nightTarget - minute + 1440) % 1440;
+      if (day.solarTargetSoc === null && afterSolar <= 60) day.solarTargetSoc = Number(avgSoc);
+      // Prefer the latest quiet pre-target sample for the morning residual.
+      // In summer PV can already be producing at 07:00; learning from a SoC
+      // that solar has started raising would incorrectly conclude that night
+      // charging was excessive. If no pre-target sample exists, a quiet sample
+      // in the first hour after the target is still acceptable.
+      const pvNow = Number(this.state?.pvPowerW);
+      const pvQuiet = !this.inputSeen?.pv || !Number.isFinite(pvNow) || pvNow < 5;
+      if (pvQuiet && beforeNight <= 60) day.nightTargetSoc = Number(avgSoc);
+      else if (pvQuiet && day.nightTargetSoc === null && afterNight <= 60) day.nightTargetSoc = Number(avgSoc);
+    }
+
+    const batteryValues = [];
+    const batteryCount = this.getBatteryCount(settings);
+    for (let index = 0; index < batteryCount; index += 1) {
+      if (!this.inputSeen?.batterySoc?.[index]) continue;
+      const value = Number(this.state?.batterySoc?.[index]);
+      if (Number.isFinite(value)) batteryValues.push(value);
+    }
+    if (batteryValues.length >= 2) {
+      const spread = Math.max(...batteryValues) - Math.min(...batteryValues);
+      this.updateAutoTuneEwma(this.autoTuneRuntime.balance, 'samples', 'ewmaSpreadPct', spread, 0.08);
+    }
+
+    const previousAt = Number(day.lastAt) || 0;
+    day.lastAt = Number(now) || Date.now();
+    if (previousAt <= 0) return;
+    const gapMs = Math.max(0, day.lastAt - previousAt);
+    // Planning learning now follows slow housekeeping. Allow one heartbeat of
+    // scheduling jitter above the configured slow interval so a 300-second
+    // context cadence still contributes complete demand samples.
+    const maxPlanningSampleGapMs = Math.max(180000, this.getSlowControlIntervalMs(settings) + 90000);
+    if (gapMs < 30000 || gapMs > maxPlanningSampleGapMs) return;
+    if (!this.inputSeen?.grid || !this.inputSeen?.pv) return;
+    const gridUpdatedAt = Number(this.inputUpdatedAt?.grid) || 0;
+    const pvUpdatedAt = Number(this.inputUpdatedAt?.pv) || 0;
+    // Never integrate a frozen Flow value for hours. A missing timestamp is
+    // tolerated for legacy/test inputs, but known timestamps must be fresh.
+    if (gridUpdatedAt > 0 && day.lastAt - gridUpdatedAt > 5 * 60 * 1000) return;
+    if (pvUpdatedAt > 0 && day.lastAt - pvUpdatedAt > 10 * 60 * 1000) return;
+    const gridW = Number(this.state?.gridPowerW);
+    const pvW = Number(this.state?.pvPowerW);
+    if (!Number.isFinite(gridW) || !Number.isFinite(pvW)) return;
+
+    let batteryW = Number(this.state?.lastTotalCommandW) || 0; // + discharge, - charge
+    if (avgSoc !== null) {
+      const minSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
+      const maxSoc = Math.max(minSoc, Math.min(100, Number(settings.maxSoc) || 100));
+      if (batteryW < 0 && avgSoc >= maxSoc - 0.5) batteryW = 0;
+      if (batteryW > 0 && avgSoc <= minSoc + 0.5) batteryW = 0;
+    }
+    const evW = this.getAutoTuneMeasuredEvPowerW(settings, now);
+    // EV is excluded because it already has its own tariff/deadline planner.
+    // This is especially important when the EV charges from grid while the
+    // house itself remains supported by the home battery.
+    const siteWithoutEvW = Math.max(0, Math.min(100000, gridW + Math.max(0, pvW) + batteryW - evW));
+    day.estimatedDemandKwh += siteWithoutEvW * (gapMs / 3600000) / 1000;
+    day.sampleMillis += gapMs;
+  }
+
+  getAutoTuneEvRuntime(index) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    return this.autoTuneRuntime.ev?.[Math.max(0, Math.min(3, Number(index) || 0))] || null;
+  }
+
+  noteAutoTuneEvCurrentCommand(index, currentA, at = Date.now()) {
+    const runtime = this.getAutoTuneEvRuntime(index);
+    const desiredA = Math.max(0, Number(currentA) || 0);
+    if (!runtime) return;
+    runtime.pendingCurrent = desiredA > 0 ? { currentA: desiredA, at: Number(at) || Date.now() } : null;
+  }
+
+  noteAutoTuneEvModeCommand(index, mode, at = Date.now()) {
+    const runtime = this.getAutoTuneEvRuntime(index);
+    if (!runtime) return;
+    runtime.lastMode = String(mode || '');
+    runtime.lastModeAt = Number(at) || Date.now();
+  }
+
+  updateAutoTuneEwma(runtime, countKey, valueKey, value, alpha = 0.18) {
+    const numeric = Number(value);
+    if (!runtime || !Number.isFinite(numeric)) return;
+    const count = Number(runtime[countKey] || 0);
+    runtime[valueKey] = count > 0 ? (Number(runtime[valueKey] || 0) * (1 - alpha)) + (numeric * alpha) : numeric;
+    runtime[countKey] = Math.min(100000, count + 1);
+  }
+
+  noteAutoTuneEvFeedback(index, currentA, at = Date.now()) {
+    const runtime = this.getAutoTuneEvRuntime(index);
+    const actualA = Math.max(0, Number(currentA) || 0);
+    const now = Number(at) || Date.now();
+    if (!runtime) return;
+
+    const pending = runtime.pendingCurrent;
+    if (pending && now > Number(pending.at || 0)) {
+      const ageMs = now - Number(pending.at || 0);
+      // Learn feedback arrival time only. A measured current is consumption,
+      // not confirmation that the car adopted the published ampere ceiling.
+      if (actualA > 0 && ageMs <= 30 * 60 * 1000) {
+        this.updateAutoTuneEwma(runtime, 'responseSamples', 'responseEwmaMs', ageMs, 0.18);
+        runtime.pendingCurrent = null;
+      }
+      if (ageMs > 30 * 60 * 1000) runtime.pendingCurrent = null;
+    }
+
+    // EV feedback can arrive frequently. Read the control type directly from
+    // the RAM settings cache so finetuning adds no settings snapshot/allocation
+    // on every charger update.
+    const controlKey = this.getEvSettingKey(index, 'ControlType');
+    const cachedControlType = String(this.settingsCache?.[controlKey] ?? 'current');
+    if (cachedControlType === 'mode' && actualA > 0.5) {
+      const publishedMode = index === 0
+        ? String(this.lastPublishedEvChargeMode || runtime.lastMode || '')
+        : String(this.getExtraEv(index)?.lastPublishedChargeMode || runtime.lastMode || '');
+      const modeAt = Number(runtime.lastModeAt || 0);
+      if (['smart', 'standard'].includes(publishedMode) && modeAt > 0 && now - modeAt >= 1000 && now - modeAt <= 30 * 60 * 1000) {
+        const prefix = publishedMode === 'smart' ? 'smart' : 'standard';
+        this.updateAutoTuneEwma(runtime, `${prefix}Samples`, `${prefix}EwmaA`, actualA, 0.14);
+      }
+    }
+  }
+
+  getAutoTunePermissions() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    if (this.autoTuneRuntime.permissions && typeof this.autoTuneRuntime.permissions === 'object' && !Array.isArray(this.autoTuneRuntime.permissions)) {
+      return { ...this.autoTuneRuntime.permissions };
+    }
+    const raw = this.homey.settings.get('_autoTunePermissions');
+    const permissions = raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+    this.autoTuneRuntime.permissions = { ...permissions };
+    return permissions;
+  }
+
+  getAutoTuneLimits() {
+    const raw = this.homey.settings.get('_autoTuneLimits');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }
+
+  getDefaultAutoTuneLimit(settingKey, currentValue = null) {
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) return null;
+    const settings = this.getSettings();
+    const profile = this.getAutoTuneRangeProfile(settingKey, settings);
+    if (!profile) return null;
+    const hardMin = Number.isFinite(Number(profile.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile.hardMax)) ? Number(profile.hardMax) : Infinity;
+    let min = Math.max(hardMin, Number(profile.defaultMin));
+    let max = Math.min(hardMax, Number(profile.defaultMax));
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    if (min > max) min = max = Math.max(hardMin, Math.min(hardMax, Number(currentValue ?? settings[settingKey]) || 0));
+    const defaultConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const result = {
+      min,
+      max,
+      minConfidencePercent: defaultConfidence,
+      userDefined: false,
+    };
+    if (String(settingKey) === 'expectedEnergyNeedKwh') {
+      const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+      const targetMax = Math.max(targetMin, Math.min(100, Number(settings.maxSoc) || 100));
+      result.targetSocMin = targetMin;
+      result.targetSocMax = targetMax;
+      result.targetSoc = Math.max(targetMin, Math.min(targetMax, 95));
+    }
+    return result;
+  }
+
+  getAutoTuneLimitFor(settingKey, currentValue = null, limits = null) {
+    const settings = this.getSettings();
+    const stored = (limits || this.getAutoTuneLimits())[settingKey];
+    const fallbackConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const minConfidencePercent = Number.isFinite(Number(stored?.minConfidencePercent))
+      ? Math.max(0, Math.min(100, Number(stored.minConfidencePercent)))
+      : fallbackConfidence;
+    const profile = this.getAutoTuneRangeProfile(settingKey, settings);
+    const hardMin = Number.isFinite(Number(profile?.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
+    let min = Number(stored?.min);
+    let max = Number(stored?.max);
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      if (min > max) [min, max] = [max, min];
+      min = Math.max(hardMin, Math.min(hardMax, min));
+      max = Math.max(hardMin, Math.min(hardMax, max));
+      if (min > max) [min, max] = [max, min];
+      const allowedValues = this.getAutoTuneAllowedValues(settingKey);
+      const hasSelectableValue = !allowedValues.length || allowedValues.some(value => value >= min && value <= max);
+      if (hasSelectableValue) {
+        const result = { min, max, minConfidencePercent, userDefined: Boolean(stored?.userDefined) };
+        if (String(settingKey) === 'expectedEnergyNeedKwh') {
+          const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+          const targetMax = Math.max(targetMin, Math.min(100, Number(settings.maxSoc) || 100));
+          const storedTarget = Number(stored?.targetSoc);
+          result.targetSocMin = targetMin;
+          result.targetSocMax = targetMax;
+          result.targetSoc = Math.max(targetMin, Math.min(targetMax, Number.isFinite(storedTarget) ? storedTarget : 95));
+        }
+        return result;
+      }
+    }
+    const defaults = this.getDefaultAutoTuneLimit(settingKey, currentValue);
+    return defaults ? { ...defaults, minConfidencePercent } : null;
+  }
+
+  async setAutoTuneLimits(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
+    let min = Number(body.min);
+    let max = Number(body.max);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) throw new Error('Minimum en maximum moeten geldige getallen zijn.');
+    if (min > max) [min, max] = [max, min];
+    const settings = this.getSettings();
+    const profile = this.getAutoTuneRangeProfile(settingKey, settings);
+    const hardMin = Number.isFinite(Number(profile?.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
+    min = Math.max(hardMin, Math.min(hardMax, min));
+    max = Math.max(hardMin, Math.min(hardMax, max));
+    if (min > max) [min, max] = [max, min];
+    const allowedValues = this.getAutoTuneAllowedValues(settingKey);
+    if (allowedValues.length && !allowedValues.some(value => value >= min && value <= max)) {
+      throw new Error(`Dit bereik bevat geen geldige keuzewaarde. Toegestaan: ${allowedValues.join(', ')}.`);
+    }
+    const limits = this.getAutoTuneLimits();
+    const previous = this.getAutoTuneLimitFor(settingKey, settings[settingKey], limits) || {};
+    const requestedConfidence = Number(body.minConfidencePercent);
+    const minConfidencePercent = Number.isFinite(requestedConfidence)
+      ? Math.max(0, Math.min(100, requestedConfidence))
+      : Math.max(0, Math.min(100, Number(previous.minConfidencePercent) || Number(settings.autoTuneMinConfidencePercent) || 95));
+    const nextLimit = { min, max, minConfidencePercent, userDefined: true };
+    if (settingKey === 'expectedEnergyNeedKwh') {
+      const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+      const targetMax = Math.max(targetMin, Math.min(100, Number(settings.maxSoc) || 100));
+      const requestedTarget = Number(body.targetSoc);
+      const previousTarget = Number(previous.targetSoc);
+      const targetSoc = Number.isFinite(requestedTarget)
+        ? requestedTarget
+        : (Number.isFinite(previousTarget) ? previousTarget : 95);
+      nextLimit.targetSoc = Math.max(targetMin, Math.min(targetMax, targetSoc));
+    }
+    limits[settingKey] = nextLimit;
+    this.setSetting('_autoTuneLimits', limits);
+    return this.getAutoTuneStatus();
+  }
+
+  getAutoTuneIgnored() {
+    const raw = this.homey.settings.get('_autoTuneIgnored');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }
+
+  getAutoTuneHistory() {
+    const raw = this.homey.settings.get('_autoTuneHistory');
+    return Array.isArray(raw) ? raw.slice(-30) : [];
+  }
+
+  getAutoTuneLastApplied() {
+    const raw = this.homey.settings.get('_autoTuneLastAppliedAt');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }
+
+  getAutoTuneSettingDescriptor(settingKey) {
+    const key = String(settingKey || '');
+    const global = {
+      commandDeadbandW: { titleNl: 'Batterij-commandodeadband', titleEn: 'Battery command deadband', unit: 'W', scope: 'EMS' },
+      gridZeroMinW: { titleNl: 'Nulpunt ondergrens net', titleEn: 'Grid zero-band lower limit', unit: 'W', scope: 'EMS' },
+      gridZeroMaxW: { titleNl: 'Nulpunt bovengrens net', titleEn: 'Grid zero-band upper limit', unit: 'W', scope: 'EMS' },
+      gridControlWindowSeconds: { titleNl: 'P1-middelingsvenster', titleEn: 'P1 averaging window', unit: 'metingen', scope: 'EMS', allowedValues: [0, 3, 5, 7, 10] },
+      adaptiveSetpointDeltaW: { titleNl: 'Adaptieve grote-setpointdrempel', titleEn: 'Adaptive large-setpoint threshold', unit: 'W', scope: 'EMS' },
+      adaptiveSetpointWindowSeconds: { titleNl: 'Adaptief herhalingsvenster', titleEn: 'Adaptive repetition window', unit: 's', scope: 'EMS' },
+      commandIntervalSeconds: { titleNl: "Minimum tijd tussen batterijcommando's", titleEn: 'Minimum battery command interval', unit: 's', scope: 'Batterij' },
+      pvDeltaThresholdW: { titleNl: 'PV-deltadrempel', titleEn: 'PV delta threshold', unit: 'W', scope: 'PV' },
+      pvCommandIntervalSeconds: { titleNl: 'Minimum tijd tussen PV-setpoints', titleEn: 'Minimum PV command interval', unit: 's', scope: 'PV' },
+      lowForecastSelfConsumptionMinKwh: { titleNl: 'Lage-PV-drempel', titleEn: 'Low-PV threshold', unit: 'kWh', scope: 'Planning' },
+      expectedEnergyNeedKwh: { titleNl: 'Verwachte energiebehoefte', titleEn: 'Expected energy need', unit: 'kWh', scope: 'Planning' },
+      batterySaveDischargeAboveSoc: { titleNl: 'Batterij sparen: ontlaadgrens', titleEn: 'Battery Save discharge floor', unit: '%', scope: 'Planning' },
+      lowForecastAutoSunnySoc: { titleNl: 'SoC-drempel voor zonnedag', titleEn: 'Sunny-day SoC threshold', unit: '%', scope: 'Planning' },
+      lowForecastAutoSunnyMinutes: { titleNl: 'Bevestigingstijd zonnedag', titleEn: 'Sunny-day confirmation time', unit: 'min', scope: 'Planning' },
+      balanceDeadbandPct: { titleNl: 'Battery Balance deadband', titleEn: 'Battery Balance deadband', unit: '%', scope: 'Batterij' },
+      balanceStrength: { titleNl: 'Battery Balance correctie', titleEn: 'Battery Balance correction', unit: '', scope: 'Batterij' },
+    };
+    if (global[key]) return { settingKey: key, ...global[key] };
+    const match = /^ev([2-4])?(CommandIntervalSeconds|ModeSmartCurrentA|ModeStandardCurrentA)$/.exec(key);
+    if (!match) return null;
+    const index = match[1] ? Number(match[1]) - 1 : 0;
+    const name = this.getEvInstanceName(index);
+    const suffix = match[2];
+    const labels = {
+      CommandIntervalSeconds: ['minimum stuurtijd', 'minimum command interval', 's'],
+      ModeSmartCurrentA: ['geschatte stroom Slim-modus', 'estimated Smart mode current', 'A'],
+      ModeStandardCurrentA: ['geschatte stroom Standaard-modus', 'estimated Standard mode current', 'A'],
+    };
+    const label = labels[suffix];
+    return {
+      settingKey: key,
+      titleNl: `${name} · ${label[0]}`,
+      titleEn: `${name} · ${label[1]}`,
+      unit: label[2],
+      scope: name,
+    };
+  }
+
+  getAutoTuneRangeProfile(settingKey, settings = this.getSettings()) {
+    const key = String(settingKey || '');
+    const maxSoc = Math.max(0, Math.min(100, Number(settings.maxSoc) || 100));
+    const hardSocFloor = Math.max(0, Math.min(maxSoc, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
+    const batteryCapacityKwh = configuredBatteryCapacityKwh(settings);
+    const expectedNeedKwh = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
+    const planningUpperKwh = Math.max(10, Math.min(100, Math.max(expectedNeedKwh * 2, batteryCapacityKwh * 2, 20)));
+    const currentNeedUpperKwh = Math.max(20, Math.min(100, Math.max(expectedNeedKwh * 1.25, batteryCapacityKwh * 3, 30)));
+
+    const fixed = {
+      commandDeadbandW: { defaultMin: 25, defaultMax: 250, hardMin: 0, hardMax: 1000 },
+      gridControlWindowSeconds: { defaultMin: 0, defaultMax: 10, hardMin: 0, hardMax: 10 },
+      adaptiveSetpointDeltaW: { defaultMin: 300, defaultMax: 3000, hardMin: 100, hardMax: 10000 },
+      adaptiveSetpointWindowSeconds: { defaultMin: 8, defaultMax: 45, hardMin: 2, hardMax: 120 },
+      commandIntervalSeconds: { defaultMin: 4, defaultMax: 17, hardMin: 4, hardMax: 17 },
+      pvDeltaThresholdW: { defaultMin: 50, defaultMax: 500, hardMin: 0, hardMax: 10000 },
+      pvCommandIntervalSeconds: { defaultMin: 10, defaultMax: 120, hardMin: 1, hardMax: 300 },
+      lowForecastSelfConsumptionMinKwh: { defaultMin: 0, defaultMax: planningUpperKwh, hardMin: 0, hardMax: 100 },
+      expectedEnergyNeedKwh: { defaultMin: 0, defaultMax: currentNeedUpperKwh, hardMin: 0, hardMax: 100 },
+      batterySaveDischargeAboveSoc: { defaultMin: hardSocFloor, defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
+      lowForecastAutoSunnySoc: { defaultMin: Math.min(maxSoc, Math.max(hardSocFloor, 70)), defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
+      lowForecastAutoSunnyMinutes: { defaultMin: 5, defaultMax: 15, hardMin: 1, hardMax: 1440 },
+      balanceDeadbandPct: settings.optimizeMultiBatteryEfficiency && this.getBatteryCount(settings) >= 2
+        ? { defaultMin: 2, defaultMax: 3, hardMin: 2, hardMax: 10 }
+        : { defaultMin: 0.5, defaultMax: 1.5, hardMin: 0, hardMax: 10 },
+      balanceStrength: { defaultMin: 0.1, defaultMax: 0.35, hardMin: 0, hardMax: 0.5 },
+    };
+
+    if (key === 'gridZeroMinW' || key === 'gridZeroMaxW') {
+      const halfWidth = Math.max(75, Math.min(1000, 4 * Math.max(1, Number(settings.batteryCommandStepW) || 1)));
+      return key === 'gridZeroMinW'
+        ? { defaultMin: -1000, defaultMax: -halfWidth, hardMin: -1000, hardMax: -halfWidth }
+        : { defaultMin: halfWidth, defaultMax: 1000, hardMin: halfWidth, hardMax: 1000 };
+    }
+
+    if (fixed[key]) return fixed[key];
+
+    const match = /^ev([2-4])?(CommandIntervalSeconds|ModeSmartCurrentA|ModeStandardCurrentA)$/.exec(key);
+    if (!match) return null;
+    const index = match[1] ? Number(match[1]) - 1 : 0;
+    const suffix = match[2];
+    const evSettings = this.getEvInstanceSettings(index, settings);
+    const chargerMinA = Math.max(1, Math.min(64, Number(evSettings.evMinCurrentA) || 6));
+    const chargerMaxA = Math.max(chargerMinA, Math.min(64, Number(evSettings.evMaxCurrentA) || 32));
+    if (suffix === 'CommandIntervalSeconds') return { defaultMin: 5, defaultMax: 300, hardMin: 1, hardMax: 3600 };
+    if (suffix === 'ModeSmartCurrentA' || suffix === 'ModeStandardCurrentA') {
+      return { defaultMin: chargerMinA, defaultMax: chargerMaxA, hardMin: chargerMinA, hardMax: chargerMaxA };
+    }
+    return null;
+  }
+
+  getAutoTuneAllowedValues(settingKey) {
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!Array.isArray(descriptor?.allowedValues)) return [];
+    return [...new Set(descriptor.allowedValues.map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
+  }
+
+  normalizeAutoTuneValue(settingKey, value, allowedRange = null) {
+    let next = Number(value);
+    if (!Number.isFinite(next)) return null;
+    const profile = this.getAutoTuneRangeProfile(settingKey, this.getSettings());
+    const hardMin = Number.isFinite(Number(profile?.hardMin)) ? Number(profile.hardMin) : -Infinity;
+    const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
+    let effectiveMin = hardMin;
+    let effectiveMax = hardMax;
+    if (allowedRange) {
+      effectiveMin = Math.max(effectiveMin, Number(allowedRange.min));
+      effectiveMax = Math.min(effectiveMax, Number(allowedRange.max));
+    }
+    if (effectiveMin > effectiveMax) return null;
+
+    const allowedValues = this.getAutoTuneAllowedValues(settingKey);
+    if (allowedValues.length) {
+      const candidates = allowedValues.filter(candidate => candidate >= effectiveMin && candidate <= effectiveMax);
+      if (!candidates.length) return null;
+      return candidates.reduce((best, candidate) => (
+        Math.abs(candidate - next) < Math.abs(best - next) ? candidate : best
+      ), candidates[0]);
+    }
+
+    next = Math.max(effectiveMin, Math.min(effectiveMax, next));
+    return Number.isFinite(next) ? next : null;
+  }
+
+  getAutoTuneRecommendations() {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const settings = this.getSettings();
+    const permissions = this.getAutoTunePermissions();
+    const ignored = this.getAutoTuneIgnored();
+    const limits = this.getAutoTuneLimits();
+    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const recommendations = [];
+    const roundTo = (value, step = 1) => Math.round(Number(value) / step) * step;
+    const percentile = (values, q = 0.5) => {
+      const sorted = values.map(Number).filter(Number.isFinite).sort((a,b) => a-b);
+      if (!sorted.length) return null;
+      if (sorted.length === 1) return sorted[0];
+      const pos = Math.max(0, Math.min(1, Number(q) || 0)) * (sorted.length - 1);
+      const low = Math.floor(pos); const high = Math.ceil(pos);
+      if (low === high) return sorted[low];
+      return sorted[low] + ((sorted[high] - sorted[low]) * (pos - low));
+    };
+    const median = values => percentile(values, 0.5);
+    const optionalNumber = value => {
+      if (value === null || value === undefined || value === '') return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    // Fast telemetry and compact daily planning summaries earn confidence on
+    // different timescales. A few P1 samples can arrive within seconds, while
+    // planning observations represent complete days and must therefore not use
+    // the same sample-count curve.
+    const confidence = samples => Math.max(0.5, Math.min(0.97, 0.52 + Math.log10(Math.max(1, Number(samples) || 1)) * 0.2));
+    const planningConfidence = days => Math.max(0.5, Math.min(0.97, 0.52 + (0.45 * (1 - Math.exp(-Math.max(0, Number(days) || 0) / 3.0)))));
+    const push = (settingKey, titleNl, titleEn, current, recommended, unit, reasonNl, reasonEn, conf, samples, scope = 'EMS') => {
+      if (ignored[settingKey]) return;
+      const cur = Number(current);
+      const next = this.normalizeAutoTuneValue(settingKey, recommended);
+      if (!Number.isFinite(cur) || next === null || Math.abs(cur - next) < 1e-9) return;
+      const confidencePercent = Math.round(Math.max(0, Math.min(1, Number(conf) || 0)) * 100);
+      const allowedRange = this.getAutoTuneLimitFor(settingKey, cur, limits);
+      const parameterMinConfidence = Number(allowedRange?.minConfidencePercent ?? minConfidencePercent);
+      recommendations.push({
+        id: settingKey, settingKey, scope, titleNl, titleEn,
+        current: cur, recommended: next, unit: unit || '',
+        reasonNl, reasonEn, confidence: confidencePercent,
+        samples: Math.max(0, Math.round(Number(samples) || 0)),
+        autoManaged: Boolean(permissions[settingKey]), canAutoManage: true,
+        minConfidencePercent: parameterMinConfidence,
+        autoEligible: confidencePercent >= parameterMinConfidence,
+        allowedRange,
+      });
+    };
+
+    // Meter-driven regulator tuning.
+    const grid = this.autoTuneRuntime.grid || {};
+    if (Number(grid.samples) >= 24) {
+      const noise = Math.max(0, Number(grid.ewmaAbsDelta) || 0);
+      const currentDeadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
+      const desiredDeadband = Math.max(25, Math.min(250, roundTo(noise * 0.38, 5)));
+      if (desiredDeadband >= currentDeadband + Math.max(10, currentDeadband * 0.3)
+        || (Number(grid.samples) >= 160 && currentDeadband >= desiredDeadband * 2.2 && currentDeadband - desiredDeadband >= 25)) {
+        push('commandDeadbandW', 'Batterij-commandodeadband', 'Battery command deadband', currentDeadband, desiredDeadband, 'W',
+          `Snelle P1-variatie is gemiddeld ongeveer ${Math.round(noise)} W. Deze deadband vermindert onnodige kleine batterijcorrecties zonder Peak Guard te verzwakken.`,
+          `Rapid P1 variation averages about ${Math.round(noise)} W. This deadband reduces unnecessary small battery corrections without weakening Peak Guard.`,
+          confidence(grid.samples), grid.samples);
+      }
+
+      // Require sustained evidence before recommending a band. Coarse battery
+      // steps require wider margins; every proposed pair is centred on P1 zero.
+      const currentZeroMin = Number(settings.gridZeroMinW), currentZeroMax = Number(settings.gridZeroMaxW);
+      if (Number(grid.samples) >= 160 && Number.isFinite(currentZeroMin) && Number.isFinite(currentZeroMax)
+        && currentZeroMin <= currentZeroMax && !ignored.gridZeroMinW && !ignored.gridZeroMaxW) {
+        const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+        const minimum = Math.max(75, Math.min(1000, step * 4));
+        const desired = Math.max(minimum, Math.min(1000, roundTo(noise * 0.35, 25)));
+        const currentWidth = Math.max(Math.abs(currentZeroMin), Math.abs(currentZeroMax));
+        const biased = Math.abs((currentZeroMin + currentZeroMax) / 2) >= Math.max(25, minimum / 2);
+        const belowSuggestedMargin = currentZeroMin > -minimum || currentZeroMax < minimum;
+        const stepTooLarge = step >= 25 && (currentZeroMin > -step * 2 || currentZeroMax < step * 2);
+        const noiseExceedsBand = noise >= Math.max(25, currentWidth * 0.75);
+        const tooNarrow = belowSuggestedMargin && (stepTooLarge || noiseExceedsBand);
+        const noisy = noise >= 150 && desired > currentWidth * 1.5;
+        const excessive = Number(grid.samples) >= 400 && currentWidth > desired * 2 && noise < currentWidth / 2;
+        if (biased || tooNarrow || noisy || excessive) {
+          for (const [key, current, next, nl, en] of [
+            ['gridZeroMinW', currentZeroMin, -desired, 'ondergrens', 'lower limit'],
+            ['gridZeroMaxW', currentZeroMax, desired, 'bovengrens', 'upper limit'],
+          ]) push(key, `Nulpunt ${nl} net`, `Grid zero-band ${en}`, current, next, 'W',
+            `P1-variatie circa ${Math.round(noise)} W, batterijstap ${step} W. Advies: beide grenzen samen op −${desired}/+${desired} W, met 0 W als midden. Automatisch toepassen vereist toestemming voor beide grenzen.`,
+            `P1 variation about ${Math.round(noise)} W, battery step ${step} W. Recommendation: both limits together at −${desired}/+${desired} W, centred on 0 W. Automatic application requires permission for both limits.`,
+            confidence(grid.samples), grid.samples);
+        }
+      }
+
+      const currentWindow = Number(settings.gridControlWindowSeconds);
+      let desiredWindow = currentWindow;
+      if (noise >= 320 && currentWindow < 7) desiredWindow = 7;
+      else if (noise >= 180 && currentWindow < 5) desiredWindow = 5;
+      else if (noise >= 90 && currentWindow < 3) desiredWindow = 3;
+      else if (noise < 35 && Number(grid.samples) >= 200 && currentWindow > 3) desiredWindow = 3;
+      if ([0,3,5,7,10].includes(desiredWindow) && desiredWindow !== currentWindow) {
+        push('gridControlWindowSeconds', 'P1-middelingsvenster', 'P1 averaging window', currentWindow, desiredWindow, 'metingen',
+          `De gemeten snelle P1-variatie (${Math.round(noise)} W) past beter bij een gemiddelde over ${desiredWindow || 1} meting(en).`,
+          `Measured rapid P1 variation (${Math.round(noise)} W) fits better with an average over ${desiredWindow || 1} input sample(s).`,
+          confidence(grid.samples), grid.samples);
+      }
+
+      if (Number(grid.gapSamples || 0) >= 24) {
+        const gapSeconds = Math.max(0.2, Number(grid.ewmaGapMs || 0) / 1000);
+        const currentInterval = Math.max(1, Number(settings.commandIntervalSeconds) || 10);
+        const desiredInterval = Math.max(4, Math.min(17, Math.ceil(gapSeconds * 3)));
+        if (currentInterval < 4 || currentInterval > 17 || desiredInterval >= currentInterval + 3
+          || (Number(grid.gapSamples) >= 160 && currentInterval - desiredInterval >= 4)) {
+          push('commandIntervalSeconds', "Minimum tijd tussen batterijcommando's", 'Minimum battery command interval', currentInterval, desiredInterval, 's',
+            `P1 wordt gemiddeld elke ${gapSeconds.toFixed(1)} s bijgewerkt. Dit geeft de batterijregelkring voldoende verse feedback zonder vaker te sturen dan zinvol is.`,
+            `P1 updates arrive about every ${gapSeconds.toFixed(1)} s. This gives the battery controller enough fresh feedback without sending commands more often than useful.`,
+            confidence(grid.gapSamples), grid.gapSamples, 'Batterij');
+        }
+
+        if (Boolean(settings.adaptiveLiveControlEnabled)) {
+          const currentDelta = Math.max(100, Number(settings.adaptiveSetpointDeltaW) || 1000);
+          const desiredDelta = Math.max(300, Math.min(3000, roundTo(Math.max(300, noise * 4), 100)));
+          if (Math.abs(desiredDelta - currentDelta) >= Math.max(200, currentDelta * 0.35)) {
+            push('adaptiveSetpointDeltaW', 'Adaptieve grote-setpointdrempel', 'Adaptive large-setpoint threshold', currentDelta, desiredDelta, 'W',
+              `Normale snelle P1-variatie is ongeveer ${Math.round(noise)} W. De drempel hoort daar duidelijk boven te liggen zodat gewone ruis de tijdelijke live-sturing niet activeert.`,
+              `Normal rapid P1 variation is about ${Math.round(noise)} W. The threshold should sit clearly above that noise floor so ordinary variation does not trigger temporary live control.`,
+              confidence(grid.samples), grid.samples);
+          }
+          const currentAdaptiveWindow = Math.max(2, Number(settings.adaptiveSetpointWindowSeconds) || 15);
+          const desiredAdaptiveWindow = Math.max(8, Math.min(45, Math.round(Math.max(10, gapSeconds * 4))));
+          if (Math.abs(desiredAdaptiveWindow - currentAdaptiveWindow) >= Math.max(5, currentAdaptiveWindow * 0.4)) {
+            push('adaptiveSetpointWindowSeconds', 'Adaptief herhalingsvenster', 'Adaptive repetition window', currentAdaptiveWindow, desiredAdaptiveWindow, 's',
+              `Met een P1-cadans van ongeveer ${gapSeconds.toFixed(1)} s geeft ${desiredAdaptiveWindow} s genoeg nieuwe meetpunten om een herhalende vermogenssprong van één losse stap te onderscheiden.`,
+              `With a P1 cadence of about ${gapSeconds.toFixed(1)} s, ${desiredAdaptiveWindow} s gives enough fresh samples to distinguish repeating load steps from a single event.`,
+              confidence(grid.gapSamples), grid.gapSamples);
+          }
+        }
+      }
+    }
+
+    // PV control tuning.
+    const pv = this.autoTuneRuntime.pv || {};
+    if (Number(pv.samples) >= 24) {
+      const variation = Math.max(0, Number(pv.ewmaAbsDelta) || 0);
+      const currentThreshold = Math.max(0, Number(settings.pvDeltaThresholdW) || 0);
+      const desiredThreshold = Math.max(50, Math.min(500, roundTo(variation * 0.7, 10)));
+      if (desiredThreshold >= currentThreshold + Math.max(30, currentThreshold * 0.4)
+        || (Number(pv.samples) >= 160 && currentThreshold >= desiredThreshold * 2.4 && currentThreshold - desiredThreshold >= 50)) {
+        push('pvDeltaThresholdW', 'PV-deltadrempel', 'PV delta threshold', currentThreshold, desiredThreshold, 'W',
+          `Snelle PV-veranderingen zijn gemiddeld ongeveer ${Math.round(variation)} W. De voorgestelde drempel beperkt overreactie op kleine wolkenfluctuaties.`,
+          `Rapid PV changes average about ${Math.round(variation)} W. The suggested threshold limits overreaction to small cloud fluctuations.`,
+          confidence(pv.samples), pv.samples, 'PV');
+      }
+
+      if (Number(pv.gapSamples || 0) >= 24) {
+        const gapSeconds = Math.max(0.2, Number(pv.ewmaGapMs || 0) / 1000);
+        const currentInterval = Math.max(1, Number(settings.pvCommandIntervalSeconds) || 10);
+        let desiredInterval = Math.max(10, Math.min(120, Math.ceil(Math.max(10, gapSeconds * 2.5) / 5) * 5));
+        if (variation < 150) desiredInterval = Math.max(desiredInterval, 30);
+        else if (variation < 500) desiredInterval = Math.max(desiredInterval, 20);
+        else desiredInterval = Math.min(desiredInterval, 30);
+        if (desiredInterval >= currentInterval + 10
+          || (Number(pv.gapSamples) >= 160 && currentInterval >= desiredInterval * 2 && currentInterval - desiredInterval >= 15)) {
+          push('pvCommandIntervalSeconds', 'Minimum tijd tussen PV-setpoints', 'Minimum PV command interval', currentInterval, desiredInterval, 's',
+            `PV-feedback komt gemiddeld elke ${gapSeconds.toFixed(1)} s binnen en verandert snel ongeveer ${Math.round(variation)} W. Dit tempo vermijdt nutteloze tussencommando's en blijft snel genoeg voor echte overschotwijzigingen.`,
+            `PV feedback arrives about every ${gapSeconds.toFixed(1)} s and rapid changes average ${Math.round(variation)} W. This rate avoids pointless intermediate commands while remaining responsive to real surplus changes.`,
+            confidence(pv.gapSamples), pv.gapSamples, 'PV');
+        }
+      }
+
+      if (Boolean(settings.lowForecastAutoSunnyEnabled) && Number(pv.samples) >= 80) {
+        const currentMinutes = Math.max(1, Number(settings.lowForecastAutoSunnyMinutes) || 10);
+        const desiredMinutes = variation >= 1000 ? 15 : variation >= 500 ? 10 : 5;
+        if (Math.abs(desiredMinutes - currentMinutes) >= 5) {
+          push('lowForecastAutoSunnyMinutes', 'Bevestigingstijd zonnedag', 'Sunny-day confirmation time', currentMinutes, desiredMinutes, 'min',
+            `De gemeten PV-variatie is ongeveer ${Math.round(variation)} W. Deze bevestigingstijd voorkomt dat een korte zonnige piek een lage-PV-dag te snel vrijgeeft.`,
+            `Measured PV variation is about ${Math.round(variation)} W. This confirmation time prevents a short sunny spike from releasing a low-PV day too quickly.`,
+            confidence(pv.samples), pv.samples, 'Planning');
+        }
+      }
+    }
+
+    // Multi-battery balancing quality.
+    const balance = this.autoTuneRuntime.balance || {};
+    if (Boolean(settings.balanceEnabled) && !Boolean(settings.optimizeMultiBatteryEfficiency)
+      && this.getBatteryCount(settings) >= 2 && Number(balance.samples) >= 30) {
+      const spread = Math.max(0, Number(balance.ewmaSpreadPct) || 0);
+      const currentDeadband = Math.max(0, Math.min(10, Number(settings.balanceDeadbandPct) || 0));
+      const desiredDeadband = spread >= 4 ? 0.5 : spread >= 2 ? 1 : spread < 0.7 ? 1.5 : 1;
+      if (Math.abs(desiredDeadband - currentDeadband) >= 0.5) {
+        push('balanceDeadbandPct', 'Battery Balance deadband', 'Battery Balance deadband', currentDeadband, desiredDeadband, '%',
+          `De gemiddelde SoC-spreiding is ongeveer ${spread.toFixed(1)}%. De voorgestelde deadband reageert eerder op echte onbalans en rustiger wanneer de batterijen al gelijk lopen.`,
+          `Average SoC spread is about ${spread.toFixed(1)}%. The suggested deadband reacts earlier to real imbalance and stays calmer when batteries already track closely.`,
+          confidence(balance.samples), balance.samples, 'Batterij');
+      }
+      const currentStrength = Math.max(0, Math.min(0.5, Number(settings.balanceStrength) || 0));
+      const desiredStrength = spread >= 8 ? 0.35 : spread >= 4 ? 0.25 : spread >= 2 ? 0.2 : spread < 0.8 ? 0.1 : 0.15;
+      if (Math.abs(desiredStrength - currentStrength) >= 0.1) {
+        push('balanceStrength', 'Battery Balance correctie', 'Battery Balance correction', currentStrength, desiredStrength, '',
+          `Een blijvende SoC-spreiding van ongeveer ${spread.toFixed(1)}% past beter bij correctiefactor ${desiredStrength.toFixed(2)}. De totale laad-/ontlaadlimieten veranderen niet.`,
+          `A persistent SoC spread of about ${spread.toFixed(1)}% fits correction factor ${desiredStrength.toFixed(2)} better. Total charge/discharge limits remain unchanged.`,
+          confidence(balance.samples), balance.samples, 'Batterij');
+      }
+    }
+
+    // Planning learning. Daily summaries are deliberately capped at 14.
+    const planningDays = Array.isArray(this.autoTuneRuntime.planning?.days)
+      ? this.autoTuneRuntime.planning.days.slice(-14)
+      : [];
+    const currentDay = this.autoTuneRuntime.planning?.currentDay;
+    const batteryPresent = this.getBatteryCount(settings) > 0;
+    const lowForecastPolicyEnabled = Boolean(settings.lowForecastFixedEnabled)
+      || Boolean(settings.lowForecastDynamicCheapEnabled)
+      || Boolean(settings.lowForecastDynamicNormalEnabled)
+      || Boolean(settings.lowForecastDynamicExpensiveEnabled)
+      || (Array.isArray(settings.touRates) && settings.touRates.some(rate => Boolean(rate?.lowForecastBatterySave)));
+    const liveHours = Math.max(0, Number(currentDay?.sampleMillis || 0) / 3600000);
+    if (currentDay && (currentDay.solarTargetSoc !== null || liveHours >= 18)) {
+      planningDays.push({
+        dateKey: currentDay.dateKey,
+        sampleHours: liveHours,
+        estimatedDemandKwh: Math.max(0, Number(currentDay.estimatedDemandKwh) || 0),
+        forecastKwh: optionalNumber(currentDay.forecastKwh),
+        peakSoc: optionalNumber(currentDay.peakSoc),
+        solarTargetSoc: optionalNumber(currentDay.solarTargetSoc),
+        nightTargetSoc: optionalNumber(currentDay.nightTargetSoc),
+        minObservedSoc: optionalNumber(currentDay.minObservedSoc),
+        maxSocLimit: optionalNumber(currentDay.maxSocLimit) ?? Number(settings.maxSoc),
+      });
+    }
+
+    // Expected energy need: estimate non-EV site consumption. EV is removed
+    // from the integration because it has its own planner and may deliberately
+    // charge from grid while the home battery keeps supporting the house.
+    const demandDays = planningDays.filter(day => Number(day?.sampleHours) >= 18 && Number(day?.estimatedDemandKwh) > 0);
+    const normalizedDemand = demandDays.map(day => {
+      const coverage = Math.max(18, Math.min(24, Number(day.sampleHours) || 24));
+      return Number(day.estimatedDemandKwh) * (24 / coverage);
+    }).filter(value => Number.isFinite(value) && value > 0 && value <= 100);
+    if (batteryPresent && normalizedDemand.length >= 2) {
+      const learnedNeed = median(normalizedDemand);
+      const currentNeed = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
+      const energyNeedLimits = this.getAutoTuneLimitFor('expectedEnergyNeedKwh', currentNeed, limits) || {};
+      const storedEnergyNeedTarget = Number(limits?.expectedEnergyNeedKwh?.targetSoc);
+      const targetSocConfigured = Number.isFinite(storedEnergyNeedTarget);
+      const targetSoc = Math.max(0, Math.min(100, Number(energyNeedLimits.targetSoc) || 95));
+      let desiredNeed = Math.max(0, Math.min(100, roundTo(learnedNeed, 0.5)));
+      const capacity = configuredBatteryCapacityKwh(settings);
+
+      // The desired battery target only becomes active after the user grants
+      // Autotune management for this parameter (which stores the default 95%)
+      // or explicitly saves a target. Until then, recommendation behaviour stays
+      // compatible with the previous demand-only learner.
+      const daytimeSocValues = demandDays
+        .map(day => optionalNumber(day.solarTargetSoc) ?? optionalNumber(day.peakSoc))
+        .filter(value => value !== null);
+      const daytimeSoc = median(daytimeSocValues);
+      if (targetSocConfigured && daytimeSoc !== null && capacity > 0) {
+        const targetCorrectionKwh = capacity * ((targetSoc - daytimeSoc) / 100);
+        const maxCorrectionKwh = Math.max(0.5, desiredNeed * 0.2);
+        desiredNeed = Math.max(0, Math.min(100, roundTo(desiredNeed + Math.max(-maxCorrectionKwh, Math.min(maxCorrectionKwh, targetCorrectionKwh)), 0.5)));
+      }
+
+      const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
+      const morningSoc = median(morningSocValues);
+      const morningFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
+      if (morningSoc !== null && capacity > 0 && morningSoc > morningFloor + 5) {
+        const excessKwh = capacity * ((morningSoc - (morningFloor + 2)) / 100);
+        desiredNeed = Math.max(0, roundTo(desiredNeed - Math.min(excessKwh * 0.35, desiredNeed * 0.2), 0.5));
+      }
+
+      // Raising expected energy need is only justified after a usable learning
+      // day has shown a real shortage: average battery SoC below 20%. Legacy
+      // summaries without a measured minimum never authorize an increase.
+      const minSocValues = demandDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
+      const lowestObservedSoc = minSocValues.length ? Math.min(...minSocValues) : null;
+      const shortageObserved = minSocValues.some(value => value < 20);
+      const isIncrease = desiredNeed > currentNeed + 1e-9;
+      if ((!isIncrease || shortageObserved) && Math.abs(desiredNeed - currentNeed) >= Math.max(1, currentNeed * 0.08)) {
+        const residualNl = morningSoc !== null ? ` Gemiddelde SoC rond het ochtenddoel is ${morningSoc.toFixed(1)}%.` : '';
+        const residualEn = morningSoc !== null ? ` Average SoC around the morning target is ${morningSoc.toFixed(1)}%.` : '';
+        const targetNl = daytimeSoc !== null ? ` Gewenste batterij-SoC is ${targetSoc.toFixed(0)}%; rond het dagdoel werd gemiddeld ${daytimeSoc.toFixed(1)}% bereikt.` : ` Gewenste batterij-SoC is ${targetSoc.toFixed(0)}%.`;
+        const targetEn = daytimeSoc !== null ? ` Desired battery SoC is ${targetSoc.toFixed(0)}%; around the daytime target the average reached SoC is ${daytimeSoc.toFixed(1)}%.` : ` Desired battery SoC is ${targetSoc.toFixed(0)}%.`;
+        const shortageNl = lowestObservedSoc !== null ? ` Laagste gemeten SoC in deze leerdagen is ${lowestObservedSoc.toFixed(1)}%.` : '';
+        const shortageEn = lowestObservedSoc !== null ? ` Lowest measured SoC across these learning days is ${lowestObservedSoc.toFixed(1)}%.` : '';
+        push('expectedEnergyNeedKwh', 'Verwachte energiebehoefte', 'Expected energy need', currentNeed, desiredNeed, 'kWh',
+          `Het geschatte dagelijkse niet-EV-verbruik is ongeveer ${learnedNeed.toFixed(1)} kWh uit ${normalizedDemand.length} bruikbare dagen.${targetNl}${residualNl}${shortageNl} Een verhoging wordt alleen voorgesteld wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam.`,
+          `Estimated daily non-EV demand is about ${learnedNeed.toFixed(1)} kWh from ${normalizedDemand.length} usable days.${targetEn}${residualEn}${shortageEn} An increase is only suggested after the battery actually dropped below 20% SoC on a usable learning day.`,
+          planningConfidence(normalizedDemand.length), normalizedDemand.length, 'Planning');
+      }
+    }
+
+    // Battery Save discharge floor is not a hard SoC limit. If the battery
+    // repeatedly carries clearly unnecessary energy into the morning, suggest
+    // a lower save floor. Min/Safety SoC and peak-reserve floors remain fully
+    // authoritative, so this can never teach HomeFlux to cross a hard limit.
+    if (batteryPresent && lowForecastPolicyEnabled && demandDays.length >= 3) {
+      const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
+      const morningSoc = median(morningSocValues);
+      const hardFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
+      const currentSaveFloor = Math.max(hardFloor, Math.min(100, Number(settings.batterySaveDischargeAboveSoc) || 0));
+      if (morningSoc !== null && morningSoc > hardFloor + 8 && currentSaveFloor > hardFloor + 5) {
+        const learnedFloor = Math.max(hardFloor + 3, Math.min(100, roundTo(morningSoc - 5, 1)));
+        // One recommendation may move at most 20 percentage points. Planning
+        // parameters are also rate-limited to one automatic change per day.
+        const desiredSaveFloor = Math.max(learnedFloor, currentSaveFloor - 20);
+        if (currentSaveFloor - desiredSaveFloor >= 3) {
+          push('batterySaveDischargeAboveSoc', 'Batterij sparen: ontlaadgrens', 'Battery Save discharge floor', currentSaveFloor, desiredSaveFloor, '%',
+            `Rond het ochtenddoel blijft gemiddeld ${morningSoc.toFixed(1)}% SoC over, terwijl de harde veiligheidsvloer ${hardFloor.toFixed(0)}% is. Een iets lagere spaargrens kan meer opgeslagen energie 's nachts benutten; harde SoC- en piekreserves blijven beschermd.`,
+            `Average SoC around the morning target remains ${morningSoc.toFixed(1)}%, while the hard safety floor is ${hardFloor.toFixed(0)}%. A slightly lower save floor can use more stored energy overnight; hard SoC and peak reserves remain protected.`,
+            planningConfidence(morningSocValues.length), morningSocValues.length, 'Planning');
+        }
+      }
+    }
+
+    // Low-PV threshold: correlate the full-day forecast with whether the
+    // battery actually reached the desired 90%+ zone around the daytime target.
+    const outcomeDays = planningDays.filter(day => {
+      const forecast = optionalNumber(day?.forecastKwh);
+      const soc = optionalNumber(day?.solarTargetSoc) ?? optionalNumber(day?.peakSoc);
+      return forecast !== null && forecast >= 0 && soc !== null;
+    });
+    if (batteryPresent && lowForecastPolicyEnabled && outcomeDays.length >= 2) {
+      const successes = [];
+      const failures = [];
+      for (const day of outcomeDays) {
+        const maxLimit = optionalNumber(day.maxSocLimit) ?? Math.max(0, Number(settings.maxSoc) || 100);
+        const desiredFullZone = Math.min(maxLimit, 90);
+        const outcomeSoc = optionalNumber(day.solarTargetSoc) ?? optionalNumber(day.peakSoc);
+        const forecast = optionalNumber(day.forecastKwh);
+        if (outcomeSoc === null || forecast === null) continue;
+        (outcomeSoc >= desiredFullZone - 0.5 ? successes : failures).push(forecast);
+      }
+      const currentLowPv = Math.max(0, Number(settings.lowForecastSelfConsumptionMinKwh) || 0);
+      let desiredLowPv = null;
+      if (successes.length >= 1 && failures.length >= 1) {
+        const successMid = median(successes);
+        const failureMid = median(failures);
+        if (successMid !== null && failureMid !== null && successMid > failureMid + 0.25) desiredLowPv = (successMid + failureMid) / 2;
+      } else if (successes.length >= 3) {
+        const lowSuccess = percentile(successes, 0.25);
+        if (lowSuccess !== null && currentLowPv > lowSuccess * 1.12) desiredLowPv = lowSuccess * 0.95;
+      } else if (failures.length >= 3) {
+        const highFailure = percentile(failures, 0.75);
+        if (highFailure !== null && currentLowPv < highFailure * 0.9) desiredLowPv = highFailure * 1.05;
+      }
+      if (desiredLowPv !== null) {
+        desiredLowPv = Math.max(0, Math.min(100, roundTo(desiredLowPv, 0.5)));
+        // Raising the low-PV threshold makes Battery Save apply to more days.
+        // Only do that after a usable learning day has shown a real shortage:
+        // average battery SoC below 20%. Legacy summaries without a measured
+        // minimum never authorize an increase. Lowering the threshold remains
+        // allowed when the learned PV/outcome relation shows it is too high.
+        const lowPvMinSocValues = outcomeDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
+        const lowPvLowestObservedSoc = lowPvMinSocValues.length ? Math.min(...lowPvMinSocValues) : null;
+        const lowPvShortageObserved = lowPvMinSocValues.some(value => value < 20);
+        const lowPvIncrease = desiredLowPv > currentLowPv + 1e-9;
+        if ((!lowPvIncrease || lowPvShortageObserved)
+          && Math.abs(desiredLowPv - currentLowPv) >= Math.max(0.5, currentLowPv * 0.08)) {
+          const shortageNl = lowPvLowestObservedSoc !== null ? ` Laagste gemeten SoC in deze leerdagen is ${lowPvLowestObservedSoc.toFixed(1)}%.` : '';
+          const shortageEn = lowPvLowestObservedSoc !== null ? ` Lowest measured SoC across these learning days is ${lowPvLowestObservedSoc.toFixed(1)}%.` : '';
+          push('lowForecastSelfConsumptionMinKwh', 'Lage-PV-drempel', 'Low-PV threshold', currentLowPv, desiredLowPv, 'kWh',
+            `Van ${outcomeDays.length} dagen met forecast/SoC-data bereikten ${successes.length} dagen de 90%-zone rond het dagdoel en ${failures.length} dagen niet.${shortageNl} Deze grens onderscheidt beter wanneer PV waarschijnlijk voldoende is en wanneer Batterij sparen zinvol blijft. Een verhoging wordt alleen voorgesteld wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam.`,
+            `Across ${outcomeDays.length} days with forecast/SoC data, ${successes.length} days reached the 90% zone around the daytime target and ${failures.length} did not.${shortageEn} This threshold better distinguishes when PV is likely sufficient and when Battery Save remains useful. An increase is only suggested after the battery actually dropped below 20% SoC on a usable learning day.`,
+            planningConfidence(outcomeDays.length), outcomeDays.length, 'Planning');
+        }
+      }
+
+      if (Boolean(settings.lowForecastAutoSunnyEnabled)) {
+        const maxSoc = Math.max(0, Math.min(100, Number(settings.maxSoc) || 100));
+        const currentSunnySoc = Math.max(0, Math.min(100, Number(settings.lowForecastAutoSunnySoc) || 0));
+        const desiredSunnySoc = Math.min(maxSoc, 90);
+        if (Math.abs(desiredSunnySoc - currentSunnySoc) >= 3) {
+          push('lowForecastAutoSunnySoc', 'SoC-drempel voor zonnedag', 'Sunny-day SoC threshold', currentSunnySoc, desiredSunnySoc, '%',
+            `De vrijgave van een voorspelde lage-PV-dag hoort pas te gebeuren wanneer de batterij aantoonbaar in de gewenste 90–100%-zone zit. Maximum-SoC (${maxSoc.toFixed(0)}%) blijft onaangeroerd.`,
+            `A forecast low-PV day should only be released after the battery demonstrably reaches the desired 90–100% zone. Maximum SoC (${maxSoc.toFixed(0)}%) remains untouched.`,
+            planningConfidence(outcomeDays.length), outcomeDays.length, 'Planning');
+        }
+      }
+    }
+
+    // EV-specific response/feedback tuning.
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const evSettings = this.getEvInstanceSettings(index, settings);
+      if (!Boolean(evSettings.evEnabled)) continue;
+      const runtime = this.getAutoTuneEvRuntime(index) || {};
+      const name = this.getEvInstanceName(index, settings);
+      const key = suffix => this.getEvSettingKey(index, suffix);
+      const controlType = this.getEvControlType(evSettings);
+
+      if (['current','hybrid'].includes(controlType) && Number(runtime.responseSamples) >= 5) {
+        const responseSeconds = Math.max(1, Number(runtime.responseEwmaMs) / 1000);
+        const currentInterval = Math.max(1, Number(evSettings.evCommandIntervalSeconds) || 10);
+        const desiredInterval = Math.max(5, Math.min(300, Math.ceil((responseSeconds + 2) / 5) * 5));
+        if (desiredInterval >= currentInterval + Math.max(5, currentInterval * 0.35)
+          || (Number(runtime.responseSamples) >= 80 && currentInterval >= desiredInterval * 2 && currentInterval - desiredInterval >= 10)) {
+          push(key('CommandIntervalSeconds'), `${name} · minimum stuurtijd`, `${name} · minimum command interval`, currentInterval, desiredInterval, 's',
+            `Verse laadstroomfeedback komt gemiddeld ongeveer ${Math.round(responseSeconds)} s na een laadopdracht binnen. Veiligheidsverlagingen blijven onmiddellijk.`,
+            `Fresh charging-current feedback arrives about ${Math.round(responseSeconds)} s after a command on average. Safety reductions remain immediate.`,
+            confidence(runtime.responseSamples), runtime.responseSamples, name);
+        }
+      }
+
+      if (controlType === 'mode') {
+        const currentSmartA = Math.max(1, Math.min(64, Math.round(Number(evSettings.evModeSmartCurrentA) || 6)));
+        const currentStandardA = Math.max(currentSmartA, Math.min(64, Math.round(Number(evSettings.evModeStandardCurrentA) || 16)));
+        let recommendedSmartA = currentSmartA;
+        for (const mode of ['smart','standard']) {
+          const count = Number(runtime[`${mode}Samples`] || 0);
+          if (count < 6) continue;
+          const rawObserved = Math.max(1, Math.min(64, Math.round(Number(runtime[`${mode}EwmaA`]) || 0)));
+          const suffix = mode === 'smart' ? 'ModeSmartCurrentA' : 'ModeStandardCurrentA';
+          const current = mode === 'smart' ? currentSmartA : currentStandardA;
+          const observed = mode === 'smart' ? Math.min(rawObserved, currentStandardA) : Math.max(rawObserved, recommendedSmartA);
+          if (mode === 'smart') recommendedSmartA = observed;
+          if (Math.abs(observed - current) >= Math.max(1, current * 0.12)) {
+            const titleModeNl = mode === 'smart' ? 'Slim-modus' : 'Standaard-modus';
+            const titleModeEn = mode === 'smart' ? 'Smart mode' : 'Standard mode';
+            push(key(suffix), `${name} · geschatte stroom ${titleModeNl}`, `${name} · estimated ${titleModeEn} current`, current, observed, 'A',
+              `Tijdens ${titleModeNl} meet HomeFlux gemiddeld ongeveer ${Number(runtime[`${mode}EwmaA`]).toFixed(1)} A. Een betere schatting maakt Peak Guard en EV-planning nauwkeuriger.`,
+              `During ${titleModeEn}, HomeFlux measures about ${Number(runtime[`${mode}EwmaA`]).toFixed(1)} A on average. A better estimate improves Peak Guard and EV planning.`,
+              confidence(count), count, name);
+          }
+        }
+      }
+    }
+
+    return recommendations.sort((a,b) => b.confidence - a.confidence || a.scope.localeCompare(b.scope));
+  }
+
+  getAutoTuneStatus() {
+    const runtime = this.autoTuneRuntime || this.createAutoTuneRuntime();
+    const permissions = this.getAutoTunePermissions();
+    const ignored = this.getAutoTuneIgnored();
+    const limits = this.getAutoTuneLimits();
+    const settings = this.getSettings();
+    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const recommendations = this.getAutoTuneRecommendations();
+    const recommendationKeys = new Set(recommendations.map(item => item.settingKey));
+    const planningDays = Array.isArray(runtime.planning?.days) ? runtime.planning.days.slice(-14) : [];
+    const currentDay = runtime.planning?.currentDay || null;
+    const demandDays = planningDays.filter(day => Number(day?.sampleHours) >= 18 && Number(day?.estimatedDemandKwh) > 0);
+    const optionalNumber = value => {
+      if (value === null || value === undefined || value === '') return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    return {
+      recommendations,
+      permissions,
+      limits,
+      minConfidencePercent,
+      managed: Object.keys(permissions).filter(key => permissions[key] && !recommendationKeys.has(key)).map(key => {
+        const descriptor = this.getAutoTuneSettingDescriptor(key);
+        if (!descriptor) return null;
+        const allowedRange = this.getAutoTuneLimitFor(key, settings[key], limits);
+        return { ...descriptor, current: settings[key], autoManaged: true, allowedRange, minConfidencePercent: Number(allowedRange?.minConfidencePercent ?? minConfidencePercent) };
+      }).filter(Boolean),
+      ignored: Object.keys(ignored).filter(key => ignored[key]).map(key => {
+        const descriptor = this.getAutoTuneSettingDescriptor(key);
+        if (!descriptor) return null;
+        return { ...descriptor, current: settings[key], ignoredAt: Number(ignored[key]) || 0 };
+      }).filter(Boolean),
+      history: this.getAutoTuneHistory().slice().reverse(),
+      observations: {
+        gridSamples: Math.max(0, Number(runtime.grid?.samples) || 0),
+        gridVariationW: Math.round(Math.max(0, Number(runtime.grid?.ewmaAbsDelta) || 0)),
+        gridCadenceSeconds: Math.round(Math.max(0, Number(runtime.grid?.ewmaGapMs) || 0) / 100) / 10,
+        pvSamples: Math.max(0, Number(runtime.pv?.samples) || 0),
+        pvVariationW: Math.round(Math.max(0, Number(runtime.pv?.ewmaAbsDelta) || 0)),
+        pvCadenceSeconds: Math.round(Math.max(0, Number(runtime.pv?.ewmaGapMs) || 0) / 100) / 10,
+        balanceSamples: Math.max(0, Number(runtime.balance?.samples) || 0),
+        balanceSpreadPct: Math.round(Math.max(0, Number(runtime.balance?.ewmaSpreadPct) || 0) * 10) / 10,
+        planningDays: planningDays.length,
+        demandDays: demandDays.length,
+        currentPlanningHours: Math.round(Math.max(0, Number(currentDay?.sampleMillis || 0) / 3600000) * 10) / 10,
+        currentPlanningDemandKwh: Math.round(Math.max(0, Number(currentDay?.estimatedDemandKwh) || 0) * 10) / 10,
+        currentPlanningForecastKwh: optionalNumber(currentDay?.forecastKwh) !== null ? Math.round(optionalNumber(currentDay.forecastKwh) * 10) / 10 : null,
+        currentPlanningPeakSoc: optionalNumber(currentDay?.peakSoc) !== null ? Math.round(optionalNumber(currentDay.peakSoc) * 10) / 10 : null,
+        ev: Array.from({ length: this.getEvCount() }, (_, index) => {
+          const item = runtime.ev?.[index] || {};
+          return {
+            instance: index + 1,
+            name: this.getEvInstanceName(index),
+            responseSamples: Math.max(0, Number(item.responseSamples) || 0),
+            responseMs: Math.round(Math.max(0, Number(item.responseEwmaMs) || 0)),
+            smartSamples: Math.max(0, Number(item.smartSamples) || 0),
+            standardSamples: Math.max(0, Number(item.standardSamples) || 0),
+          };
+        }),
+      },
+      policy: {
+        extraPolling: false,
+        autoCheckMinutes: 30,
+        changeCooldownHours: 6,
+        planningChangeCooldownHours: 24,
+        dailySummariesMax: 14,
+        minConfidencePercent,
+        protected: ['Peak Guard','minimum/maximum/safety SoC','maximum charge/discharge power','tariffs','EV deadlines','comfort temperatures','priorities','manual time windows'],
+      },
+    };
+  }
+
+  appendAutoTuneHistory(entry) {
+    const history = this.getAutoTuneHistory();
+    history.push(entry);
+    while (history.length > 30) history.shift();
+    this.setSetting('_autoTuneHistory', history);
+  }
+
+  applyAutoTuneGridBand(recommendation, { automatic = false, force = false } = {}) {
+    const width = Math.abs(recommendation.recommended), settings = this.getSettings();
+    const permissions = this.getAutoTunePermissions(), limits = this.getAutoTuneLimits();
+    const lastApplied = this.getAutoTuneLastApplied(), now = Date.now();
+    const entries = [['gridZeroMinW', -width], ['gridZeroMaxW', width]];
+    for (const [key, value] of entries) {
+      const range = this.getAutoTuneLimitFor(key, settings[key], limits);
+      if (automatic && (!permissions[key] || recommendation.confidence < range.minConfidencePercent
+        || !force && now - Number(lastApplied[key] || 0) < 6 * 60 * 60 * 1000)) return 0;
+      // Incompatible user ranges must never turn the pair asymmetric.
+      if (this.normalizeAutoTuneValue(key, value, automatic ? range : null) !== value) return 0;
+    }
+    let applied = 0;
+    for (const [key, next] of entries) {
+      const current = Number(settings[key]);
+      if (current === next) continue;
+      this.setSetting(key, next); lastApplied[key] = now; applied++;
+      const descriptor = this.getAutoTuneSettingDescriptor(key);
+      this.appendAutoTuneHistory({ at: now, settingKey: key, scope: descriptor.scope,
+        titleNl: descriptor.titleNl, titleEn: descriptor.titleEn, from: current, to: next,
+        unit: 'W', confidence: recommendation.confidence, source: automatic ? 'automatic' : 'manual-once' });
+    }
+    if (applied) this.setSetting('_autoTuneLastAppliedAt', lastApplied);
+    return applied;
+  }
+
+  async applyAutoTuneRecommendations({ onlyKey = '', force = false } = {}) {
+    const permissions = this.getAutoTunePermissions();
+    const limits = this.getAutoTuneLimits();
+    const recommendations = this.getAutoTuneRecommendations();
+    const lastApplied = this.getAutoTuneLastApplied();
+    const now = Date.now();
+    const settings = this.getSettings();
+    const defaultMinConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    let lastAppliedChanged = false;
+    let applied = 0;
+    let bandHandled = false;
+    for (const recommendation of recommendations) {
+      const key = recommendation.settingKey;
+      if (onlyKey && key !== onlyKey) continue;
+      if (key === 'gridZeroMinW' || key === 'gridZeroMaxW') {
+        if (!bandHandled) applied += this.applyAutoTuneGridBand(recommendation, { automatic: true, force });
+        bandHandled = true;
+        const bandTimes = this.getAutoTuneLastApplied();
+        for (const bandKey of ['gridZeroMinW', 'gridZeroMaxW']) {
+          if (bandTimes[bandKey] !== undefined) lastApplied[bandKey] = bandTimes[bandKey];
+        }
+        continue;
+      }
+      const current = Number(this.getSettings()[key]);
+      const allowedRange = this.getAutoTuneLimitFor(key, current, limits);
+      const minConfidencePercent = Number(allowedRange?.minConfidencePercent ?? defaultMinConfidencePercent);
+      // force only bypasses the normal time cooldown. It never bypasses the
+      // user's confidence threshold or the per-parameter allowed range.
+      if (!recommendation.canAutoManage || !permissions[key] || recommendation.confidence < minConfidencePercent) continue;
+      const dailyLearnedKeys = new Set(['lowForecastSelfConsumptionMinKwh','expectedEnergyNeedKwh','batterySaveDischargeAboveSoc','lowForecastAutoSunnySoc']);
+      const cooldownMs = dailyLearnedKeys.has(key) ? 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
+      if (!force && now - Number(lastApplied[key] || 0) < cooldownMs) continue;
+      const next = this.normalizeAutoTuneValue(key, recommendation.recommended, allowedRange);
+      if (!Number.isFinite(current) || next === null || Math.abs(current - next) < 1e-9) continue;
+      this.setSetting(key, next);
+      lastApplied[key] = now;
+      lastAppliedChanged = true;
+      applied += 1;
+      this.appendAutoTuneHistory({
+        at: now, settingKey: key, scope: recommendation.scope,
+        titleNl: recommendation.titleNl, titleEn: recommendation.titleEn,
+        from: current, to: next, unit: recommendation.unit,
+        confidence: recommendation.confidence, source: 'automatic',
+      });
+    }
+    if (lastAppliedChanged) this.setSetting('_autoTuneLastAppliedAt', lastApplied);
+    return applied;
+  }
+
+  async setAutoTunePermission(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const allowed = Boolean(body.allowed);
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
+
+    // Permission belongs to the parameter, not to one transient recommendation.
+    // A recommendation may disappear between rendering the tab and clicking the
+    // checkbox; in that case the permission is still saved and becomes useful
+    // again if HomeFlux later detects a meaningful deviation for the same key.
+    const currentRecommendations = this.getAutoTuneRecommendations();
+    const recommendation = currentRecommendations.find(item => item.settingKey === settingKey);
+    const permissions = this.getAutoTunePermissions();
+    const ignored = this.getAutoTuneIgnored();
+    if (allowed) {
+      permissions[settingKey] = true;
+      const limits = this.getAutoTuneLimits();
+      if (!limits[settingKey]) {
+        const defaults = this.getDefaultAutoTuneLimit(settingKey, this.getSettings()[settingKey]);
+        if (defaults) {
+          const storedDefaults = { ...defaults };
+          delete storedDefaults.targetSocMin;
+          delete storedDefaults.targetSocMax;
+          limits[settingKey] = storedDefaults;
+          this.setSetting('_autoTuneLimits', limits);
+        }
+      }
+      if (ignored[settingKey]) {
+        delete ignored[settingKey];
+        this.setSetting('_autoTuneIgnored', ignored);
+      }
+    } else {
+      delete permissions[settingKey];
+    }
+    this.setSetting('_autoTunePermissions', permissions);
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.autoTuneRuntime.permissions = { ...permissions };
+    if (allowed && settingKey === 'commandIntervalSeconds') {
+      const currentInterval = Number(this.getSettings().commandIntervalSeconds);
+      if (Number.isFinite(currentInterval) && (currentInterval < 4 || currentInterval > 17)) {
+        const boundedInterval = Math.max(4, Math.min(17, currentInterval));
+        this.setSetting('commandIntervalSeconds', boundedInterval);
+        this.appendAutoTuneHistory({ at: Date.now(), settingKey, scope: descriptor.scope, titleNl: descriptor.titleNl, titleEn: descriptor.titleEn, from: currentInterval, to: boundedInterval, unit: descriptor.unit, confidence: 100, source: 'automatic-safety-floor' });
+      }
+    }
+    if (allowed && recommendation?.canAutoManage) await this.applyAutoTuneRecommendations({ onlyKey: settingKey, force: true });
+    return this.getAutoTuneStatus();
+  }
+
+  async applyAutoTuneRecommendationOnce(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
+    const recommendation = this.getAutoTuneRecommendations().find(item => item.settingKey === settingKey);
+    if (!recommendation) throw new Error('Deze aanbeveling is intussen niet meer actief. Vernieuw Autotune en probeer opnieuw.');
+
+    if (settingKey === 'gridZeroMinW' || settingKey === 'gridZeroMaxW') {
+      this.applyAutoTuneGridBand(recommendation);
+      return this.getAutoTuneStatus();
+    }
+    const current = Number(this.getSettings()[settingKey]);
+    const next = this.normalizeAutoTuneValue(settingKey, recommendation.recommended);
+    if (!Number.isFinite(current) || next === null) throw new Error('Deze Autotune-waarde kan niet veilig worden toegepast.');
+    if (Math.abs(current - next) < 1e-9) return this.getAutoTuneStatus();
+
+    const now = Date.now();
+    this.setSetting(settingKey, next);
+    const lastApplied = this.getAutoTuneLastApplied();
+    lastApplied[settingKey] = now;
+    this.setSetting('_autoTuneLastAppliedAt', lastApplied);
+    this.appendAutoTuneHistory({
+      at: now, settingKey, scope: recommendation.scope,
+      titleNl: recommendation.titleNl, titleEn: recommendation.titleEn,
+      from: current, to: next, unit: recommendation.unit,
+      confidence: recommendation.confidence, source: 'manual-once',
+    });
+    return this.getAutoTuneStatus();
+  }
+
+  async setAutoTuneIgnored(body = {}) {
+    const settingKey = String(body.settingKey || '').trim();
+    const shouldIgnore = Boolean(body.ignored);
+    const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
+    if (!descriptor) throw new Error('Onbekende of niet-beheerbare Autotune-parameter.');
+
+    const ignored = this.getAutoTuneIgnored();
+    const permissions = this.getAutoTunePermissions();
+    if (shouldIgnore) {
+      ignored[settingKey] = Date.now();
+      // "Do not check again" is stronger than automatic permission: stop both
+      // recommending and automatic management until the user re-enables checks.
+      delete permissions[settingKey];
+    } else {
+      delete ignored[settingKey];
+    }
+    this.setSetting('_autoTuneIgnored', ignored);
+    this.setSetting('_autoTunePermissions', permissions);
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    this.autoTuneRuntime.permissions = { ...permissions };
+    return this.getAutoTuneStatus();
+  }
+
+  isAutoTuneEvaluationDue(now = Date.now()) {
+    if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const permissions = this.getAutoTunePermissions();
+    if (!Object.values(permissions).some(Boolean)) return false;
+    return now - Number(this.autoTuneRuntime.lastAutoManageCheckAt || 0) >= 30 * 60 * 1000;
+  }
+
+  maybeRunAutoTune(now = Date.now()) {
+    if (!this.isAutoTuneEvaluationDue(now)) return false;
+    this.autoTuneRuntime.lastAutoManageCheckAt = now;
+    this.applyAutoTuneRecommendations().catch(err => this.error('Automatic Autotune failed', err));
+    return true;
+  }
+
+  scheduleAutoTuneContextIfDue(now = Date.now()) {
+    // Measurements keep feeding the tiny rolling Autotune aggregates live, but
+    // recommendation calculation is coalesced into the existing slow-context
+    // scheduler. The 30-minute lower bound remains in force, so Autotune cannot
+    // create a more frequent decision loop than before.
+    if (!this.isAutoTuneEvaluationDue(now)) return false;
+    this.requestContextEvaluate(false, 'autotune_due');
+    return true;
+  }
+
+  getSlowControlIntervalMs(settings = this.getSettings()) {
+    const seconds = Math.max(15, Math.min(300, Number(settings.slowControlIntervalSeconds) || 60));
+    return Math.round(seconds * 1000);
+  }
+
+  getPlanningMinIntervalMs(settings = this.getSettings()) {
+    const minutes = Math.max(1, Math.min(60, Number(settings.planningMinIntervalMinutes) || 5));
+    return Math.round(minutes * 60000);
+  }
+
+  markContextDirty(reason = 'input', invalidatesBatteryContext = true) {
+    this.contextDirty = true;
+    // A meter/module refresh still needs the slow pass, but does not itself
+    // disprove an unchanged battery output. Never clear an earlier structural
+    // invalidation; the normal dependency/preview checks remain authoritative.
+    if (invalidatesBatteryContext) this.markControlContextDirty();
+    this.flexibleLoadsDirty = true;
+    if (!this.contextDirtyReasons) this.contextDirtyReasons = new Set();
+    if (reason) this.contextDirtyReasons.add(String(reason));
+  }
+
+  clearContextTimer() {
+    if (this.contextTimer) clearTimeout(this.contextTimer);
+    this.contextTimer = null;
+    this.contextTimerAt = 0;
+  }
+
+  requestContextEvaluate(immediate = false, reason = 'context', requestedAt = 0, bypassInterval = false, invalidatesBatteryContext = true) {
+    if (this.inputMonitor?.active) this.inputMonitor.noteRequest('context');
+    if (this.contextTimer || this.contextEvaluationRunning) this.recordDiagnosticCounter('contextRequestsCoalesced');
+    this.markContextDirty(reason, invalidatesBatteryContext);
+    if (this.contextEvaluationRunning) {
+      this.contextEvaluationPending = true;
+      return;
+    }
+
+    const now = Date.now();
+    const settings = this.getSettings();
+    const normalAt = this.lastContextEvalAt > 0
+      ? this.lastContextEvalAt + this.getSlowControlIntervalMs(settings)
+      : now;
+    let targetAt = immediate ? now : Math.max(now, normalAt);
+    if (Number(requestedAt) > 0) {
+      targetAt = bypassInterval
+        ? Math.max(now, Number(requestedAt))
+        : Math.max(targetAt, Number(requestedAt));
+    }
+
+    this.scheduleContextEvaluationAt(targetAt, immediate);
+  }
+
+  scheduleContextEvaluationAt(targetAt, forceStatus = false) {
+    const now = Date.now();
+    if (targetAt <= now) {
+      this.clearContextTimer();
+      this.runContextEvaluation(forceStatus).catch(err => this.error('Slow EMS context evaluation failed', err));
+      return;
+    }
+
+    // One shared slow timer covers tariff boundaries, flexible-load safety,
+    // priority checks and ordinary context refreshes. A newly requested earlier
+    // deadline replaces a later one; duplicate/later requests add no timer.
+    if (this.contextTimer && this.contextTimerAt > 0 && this.contextTimerAt <= targetAt) return;
+    this.clearContextTimer();
+    this.contextTimerAt = targetAt;
+    this.contextTimer = this.homey.setTimeout(() => {
+      this.contextTimer = null;
+      this.contextTimerAt = 0;
+      this.runContextEvaluation(false).catch(err => this.error('Scheduled slow EMS context evaluation failed', err));
+    }, Math.max(1, targetAt - now));
+  }
+
+  async runContextEvaluation(forceStatus = false) {
+    if (this.contextEvaluationRunning) {
+      this.contextEvaluationPending = true;
+      return this.latestResult;
+    }
+    this.contextEvaluationRunning = true;
+    this.clearContextTimer();
+    const reasons = this.contextDirtyReasons ? [...this.contextDirtyReasons] : [];
+    this.contextDirty = false;
+    if (this.contextDirtyReasons) this.contextDirtyReasons.clear();
+    this.activeContextDiagnosticReasons = reasons;
+    if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('context');
+    this.recordDiagnosticCounter('contextEvaluations');
+    if (reasons.some(reason => /grid_|pv_context/.test(reason))) this.recordDiagnosticCounter('evContextFromMeter');
+    if (reasons.some(reason => /^ev\d_status|api_context_input/.test(reason))) this.recordDiagnosticCounter('evContextFromInput');
+    if (reasons.includes('battery_output_changed')) this.recordDiagnosticCounter('evContextFromBattery');
+    const diagnosticCpu = this.startDiagnosticCpuSection('context_evaluation');
+    try {
+      const result = this.evaluateContextNow(forceStatus);
+      const completedAt = Date.now();
+      this.lastContextEvalAt = completedAt;
+      // Automatic Autotune decisions run only as part of the slow context path.
+      // Incoming P1/PV/EV values continue to update their lightweight rolling
+      // statistics immediately, but never calculate recommendations themselves.
+      if (!forceStatus || reasons.includes('autotune_due') || reasons.includes('startup')) {
+        this.maybeRunAutoTune(completedAt);
+      }
+      return result;
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+      this.activeContextDiagnosticReasons = [];
+      this.contextEvaluationRunning = false;
+      if (this.contextEvaluationPending || this.contextDirty) {
+        this.contextEvaluationPending = false;
+        // Requests received during the pass already marked any real battery
+        // invalidation. Rescheduling must not promote a meter-only refresh.
+        this.requestContextEvaluate(false, reasons.length ? `pending:${reasons.join(',')}` : 'pending', 0, false, false);
+      } else if (this.planningCache?.dirty && this.planningCache?.value) {
+        this.requestContextEvaluate(false, 'planning_due', Number(this.planningCache.nextAllowedAt) || 0);
+      }
+      // Reuse the ONE context timer. Merely scheduling this deadline must not
+      // mark the context dirty and provoke an earlier heartbeat evaluation.
+      const budgetAt = Number(this.planningCache?.budgetNextAt) || 0;
+      const budgetSettings = this.getSettings();
+      if (budgetSettings.controlEnabled && this.getBatteryCount(budgetSettings) > 0 && budgetAt > Date.now()) {
+        this.scheduleContextEvaluationAt(budgetAt);
+      }
+    }
+  }
+
+  hasConfiguredFlexibleLoad(settings = this.getSettings()) {
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      if (Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) return true;
+    }
+    for (let index = 0; index < this.getHvacCount(settings); index += 1) {
+      if (Boolean(settings[this.getHvacSettingKey(index, 'Enabled')])) return true;
+    }
+    return this.getBoilerCount(settings) > 0 && Boolean(settings.boilerEnabled);
+  }
+
+  needsSlowMeterContext(settings = this.getSettings()) {
+    return Boolean(settings.exportLimitEnabled) || this.hasConfiguredFlexibleLoad(settings);
+  }
+
+  needsNonEvMeterContext(settings = this.getSettings()) {
+    if (Boolean(settings.exportLimitEnabled)) return true;
+    for (let index = 0; index < this.getHvacCount(settings); index += 1) {
+      if (Boolean(settings[this.getHvacSettingKey(index, 'Enabled')])) return true;
+    }
+    return this.getBoilerCount(settings) > 0 && Boolean(settings.boilerEnabled);
+  }
+
+  getEvContextMeterSnapshot(settings = this.getSettings()) {
+    const currents = [];
+    let connected = false;
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const input = this.getEvInputSnapshot(index);
+      currents.push(Number(input?.chargeCurrentA) || 0);
+      if (!settings[this.getEvSettingKey(index, 'Enabled')] || !input?.connected
+        || this.getEvSessionDetectionRuntime(index)?.endedLatched) continue;
+      connected = true;
+    }
+    return { connected, currents, pvW: Number(this.state.pvPowerW) || 0,
+      // Remove battery response from the meter comparison. No settings
+      // expansion, tariff calculation or EV allocation belongs in this check.
+      siteW: (Number(this.state.gridPowerW) || 0) + (Number(this.state.lastTotalCommandW) || 0) };
+  }
+
+  clearEvContextRefresh(cancelled = false) {
+    const pending = this.evContextRefresh;
+    if (!pending) return;
+    if (cancelled && (pending.timer || pending.due)) this.recordDiagnosticCounter('evContextTimersCancelled');
+    if (pending.timer) clearTimeout(pending.timer);
+    pending.timer = null;
+    pending.due = false;
+    pending.startedAt = 0;
+    pending.deadlineAt = 0;
+    pending.generation += 1;
+    pending.requests.clear();
+  }
+
+  setEvContextRefreshRequest(reason, needed) {
+    const pending = this.evContextRefresh;
+    if (!pending) return;
+    if (!needed) {
+      if (pending.requests.delete(reason)) this.recordDiagnosticCounter('evContextRequestsWithdrawn');
+      if (!pending.requests.size) this.clearEvContextRefresh(true);
+      return;
+    }
+    if (this.inputMonitor?.active) this.inputMonitor.noteRequest('evDeferred');
+    this.recordDiagnosticCounter('evContextRequests');
+    if (pending.timer || pending.due) this.recordDiagnosticCounter('evContextRequestsCoalesced');
+    pending.requests.add(reason);
+    if (pending.timer || pending.due) return;
+    this.recordDiagnosticCounter('evContextTimersStarted');
+    pending.startedAt = Date.now();
+    pending.deadlineAt = pending.startedAt + 15000;
+    const timer = this.homey.setTimeout(() => {
+      if (pending.timer !== timer) return;
+      pending.timer = null;
+      this.recordDiagnosticCounter('evContextTimersExpired');
+      if (!this.revalidateEvContextRequests()) return;
+      pending.due = true;
+      this.recordDiagnosticCounter('evSlowContextRequests');
+      this.requestContextEvaluate(false, 'ev_deferred_context', 0, false, false);
+      // The actual slow portfolio pass consumes the request. Do not clear it
+      // merely because its timer has handed work to the shared scheduler.
+    }, 15000);
+    pending.timer = timer;
+  }
+
+  revalidateEvContextRequests(settings = this.getSettings()) {
+    const pending = this.evContextRefresh;
+    if (!pending?.requests.size) return false;
+    const reference = pending.reference;
+    const current = reference ? this.getEvContextMeterSnapshot(settings) : null;
+    for (const reason of pending.requests) {
+      let needed = Boolean(current);
+      if (needed && reason === 'meter') {
+        needed = current.connected && (Math.abs(current.siteW - reference.siteW) >= 100
+          || Math.abs(current.pvW - reference.pvW) >= 100);
+      } else if (needed && /^feedback:[0-3]$/.test(reason)) {
+        const index = Number(reason.slice(-1));
+        needed = index < this.getEvCount(settings) && Boolean(this.getEvInputSnapshot(index)?.connected)
+          && Math.abs((current.currents[index] || 0) - (reference.currents[index] || 0)) >= 0.05;
+      }
+      // Future reason types keep their conservative pending behaviour until
+      // their own lightweight predicate is added here.
+      if (!needed) {
+        pending.requests.delete(reason);
+        this.recordDiagnosticCounter('evContextRequestsWithdrawn');
+        this.recordDiagnosticCounter('evContextReasonsResolved');
+      }
+    }
+    if (pending.requests.size) return true;
+    this.recordDiagnosticCounter('evContextDeferredSkipped');
+    this.clearEvContextRefresh(true);
+    return false;
+  }
+
+  updateEvMeterContextRequest(settings = this.getSettings()) {
+    const pending = this.evContextRefresh;
+    if (!pending?.reference) return;
+    const current = this.getEvContextMeterSnapshot(settings);
+    const reference = pending.reference;
+    // Keep the existing 100 W meter-context threshold. No strategy or
+    // portfolio calculation takes place in this P1 observation.
+    this.setEvContextRefreshRequest('meter', current.connected &&
+      (Math.abs(current.siteW - reference.siteW) >= 100 || Math.abs(current.pvW - reference.pvW) >= 100));
+  }
+
+  requestEvStatusContext(index, connectionChanged) {
+    if (connectionChanged || !this.evContextRefresh?.reference) {
+      this.requestContextEvaluate(connectionChanged, `ev${index + 1}_status`);
+      return;
+    }
+    const input = this.getEvInputSnapshot(index);
+    this.setEvContextRefreshRequest(`feedback:${index}`, Boolean(input?.connected) &&
+      Math.abs((Number(input.chargeCurrentA) || 0) - (this.evContextRefresh.reference.currents[index] || 0)) >= 0.05);
+  }
+
+  completeEvContextRefresh(settings) {
+    if (!this.evContextRefresh) return;
+    if (this.evContextRefresh.requests.size) this.recordDiagnosticCounter('evContextRequestsSatisfied');
+    this.clearEvContextRefresh();
+    this.evContextRefresh.reference = this.getEvContextMeterSnapshot(settings);
+  }
+
+  hasActiveFlexibleOutput(settings = this.getSettings()) {
+    const evCount = this.getEvCount(settings);
+    for (let index = 0; index < evCount; index += 1) {
+      if (this.isEvOutputActiveFor(index, settings)) return true;
+    }
+    const hvacCount = this.getHvacCount(settings);
+    for (let index = 0; index < hvacCount; index += 1) {
+      if (this.isHvacManagedActiveFor(index)) return true;
+    }
+    return Boolean(this.boilerState?.outputOn);
+  }
+
+  updateEvPvImportSafety(now = Date.now(), settings = this.getSettings()) {
+    const gridW = Number(this.state.gridPowerW);
+    if (!Number.isFinite(gridW)) return;
+    const evCount = this.getEvCount(settings);
+    let earliestDue = 0;
+    for (let index = 0; index < evCount; index += 1) {
+      const runtime = index === 0 ? { pvSession: this.evPvSession, latestDecision: this.latestEvDecision } : this.getExtraEv(index);
+      const session = runtime?.pvSession;
+      if (!session?.active) continue;
+      const decision = runtime?.latestDecision || null;
+      const threshold = Math.max(0, Number(decision?.pvTariffStopGridImportW) || 0);
+      const configuredDelaySeconds = Number(decision?.pvTariffStopDelaySeconds);
+      const delaySeconds = Math.max(0, Number.isFinite(configuredDelaySeconds) ? configuredDelaySeconds : 60);
+      if (gridW >= threshold) {
+        if (!Number(session.overImportSince)) session.overImportSince = now;
+        const due = Number(session.overImportSince) + (delaySeconds * 1000);
+        if (now >= due) {
+          this.requestContextEvaluate(true, `ev${index + 1}_pv_import_stop`);
+          return;
+        }
+        if (!earliestDue || due < earliestDue) earliestDue = due;
+      } else {
+        session.overImportSince = 0;
+      }
+    }
+    if (earliestDue > now) this.requestContextEvaluate(false, 'ev_pv_import_timer', earliestDue, true);
+  }
+
+  checkFlexibleSafetyFromGrid(now = Date.now(), settings = this.getSettings()) {
+    const gridW = Number(this.state.gridPowerW);
+    if (!Number.isFinite(gridW)) return;
+    this.updateEvPvImportSafety(now, settings);
+    const hvacPvReady = hvacCoordination.observeSurplus(this, now);
+
+    let reason = '';
+    if (this.hasActiveFlexibleOutput(settings) && Boolean(settings.peakShaveEnabled)) {
+      const peak = Math.max(0, Number(settings.peakLimitW) || 0);
+      if (gridW >= peak) reason = 'peak_guard';
+    }
+    if (!reason && hvacCoordination.budgetAlarm(this, now, settings)) reason = 'hvac_budget';
+    if (!reason) {
+      const hvacCount = this.getHvacCount(settings);
+      for (let index = 0; index < hvacCount; index += 1) {
+        if (!this.isHvacManagedActiveFor(index)) continue;
+        const hvacSettings = this.getHvacInstanceSettings(index, settings);
+        const configuredThreshold = Number(hvacSettings.hvacFastResetImportW);
+        const threshold = Math.max(0, Number.isFinite(configuredThreshold) ? configuredThreshold : 1000);
+        if (gridW >= threshold) { reason = `hvac${index + 1}_fast_reset`; break; }
+      }
+    }
+
+    if (!reason && hvacPvReady) reason = 'hvac_pv_direct';
+
+    // Only the transition into an urgent state requests an immediate slow pass.
+    // Remaining above the same threshold does not recalculate on every P1 value.
+    if (reason && reason !== this.flexibleSafetySignature) {
+      this.flexibleSafetySignature = reason;
+      this.requestContextEvaluate(true, reason);
+    } else if (!reason) {
+      this.flexibleSafetySignature = '';
+    }
+  }
+
+  isSlowHeartbeatDue(now = Date.now(), settings = this.getSettings()) {
+    const at = Number(now) || Date.now();
+    const last = Number(this.lastSlowHeartbeatAt) || 0;
+    return last <= 0 || (at - last) >= this.getSlowControlIntervalMs(settings);
+  }
+
+  runSlowHeartbeatHousekeeping(now = Date.now(), settings = this.getSettings()) {
+    const at = Number(now) || Date.now();
+    if (!this.isSlowHeartbeatDue(at, settings)) return false;
+    this.lastSlowHeartbeatAt = at;
+    this.notifyEvDashboard();
+
+    this.refreshBatteryChargeSourcePresentation(settings, at);
+
+    // Learning inputs remain live elsewhere. This compact planning/balance
+    // sample, Autotune due-check, savings housekeeping and EMS-device refresh
+    // are deliberately bounded by the same slow cadence as context decisions.
+    this.recordAutoTunePlanningSample(at, settings);
+    this.scheduleAutoTuneContextIfDue(at);
+    this.recordSavingsSample(at);
+    if ((at - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) {
+      this.persistSavingsState(at, true);
+    } else {
+      this.syncEmsDevices().catch(err => this.error('EMS device slow sync failed', err));
+    }
+    return true;
+  }
+
+  runContextHeartbeat() {
+    const now = Date.now();
+    const settings = this.getSettings();
+    this.runSlowHeartbeatHousekeeping(now, settings);
+    const activated = this.checkNightPlanningFallback(now);
+    if (activated) return;
+
+    // Reuse the existing one-minute heartbeat for the low-PV -> sunny-day
+    // timer. Until the deadline this is only a few comparisons; a full EMS
+    // context pass is requested exactly once when the day is promoted.
+    if (this.updateLowForecastSunnyPromotion(now, settings)) {
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(true, 'low_forecast_promoted_to_sunny');
+      return;
+    }
+
+    // Grid freshness is a hard battery-safety condition. The ordinary fast loop
+    // is meter-driven, so a stopped meter cannot trigger its own failsafe. This
+    // lightweight one-minute check requests exactly one immediate safety pass
+    // when the grid value becomes stale; it does not create a periodic full EMS
+    // evaluation while the meter remains healthy.
+    if (isDynamicContract(settings)) {
+      const selection = this.getDynamicPriceSelection(settings, new Date(now));
+      const signature = `${selection.source}|${selection.calibrationState}`;
+      if (this.priceSourceHeartbeatSignature !== signature) {
+        this.priceSourceHeartbeatSignature = signature;
+        this.invalidatePlanningCache();
+        this.requestContextEvaluate(true, 'dynamic_price_source_changed');
+      }
+    }
+    const readiness = this.getInputReadiness(settings);
+    if (!readiness.gridFresh && Boolean(this.latestResult?.inputReady)) {
+      this.requestContextEvaluate(true, 'grid_stale');
+      return;
+    }
+
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      if (!Boolean(settings[this.getEvSettingKey(index, 'Enabled')])
+        || settings[this.getEvSettingKey(index, 'SocEnabled')] === false) continue;
+      const fresh = this.getEvSocFreshness(index, {
+        evSocFreshnessMinutes: settings[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+      }, now);
+      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      if (decision && Boolean(decision.socFresh) !== Boolean(fresh.fresh)) {
+        this.requestContextEvaluate(true, `ev${index + 1}_soc_freshness_changed`);
+        return;
+      }
+    }
+
+    if (this.planningCache?.value && this.planningCache.phaseKey !== this.getPlanningPhaseKey(now)) {
+      this.invalidatePlanningCache(true);
+      this.requestContextEvaluate(true, 'planning_date_changed');
+      return;
+    }
+
+    const nextEventAt = Number(this.latestResult?.nextEventAt) || 0;
+    if (nextEventAt > 0 && now >= nextEventAt) this.invalidatePlanningCache();
+    if ((this.getHvacCount(settings) > 0 || this.getBoilerCount(settings) > 0)
+      && this.isFlexiblePriorityEvaluationDue(now, settings)) this.markContextDirty('flexible_priority_due', false);
+    if (this.hasActiveFlexibleOutput(settings)
+      && (now - Number(this.lastContextEvalAt || 0)) >= this.getSlowControlIntervalMs(settings)) {
+      this.markContextDirty('active_flexible_load', false);
+    }
+
+    if ((!this.lastHvacContextEvalAt || now-this.lastHvacContextEvalAt>=this.getSlowControlIntervalMs(settings))
+      && Array.from({length:this.getHvacCount(settings)},(_,i)=>settings[this.getHvacSettingKey(i,'Enabled')]).some(Boolean)) {
+      this.markContextDirty('hvac_slow_due', false);
+    }
+    const warmNow = this.isBoilerCompletedToday(now, settings);
+    if (this.boilerState?.latestDecision && Boolean(this.boilerState.latestDecision.warm) !== warmNow) {
+      this.markContextDirty('boiler_reset_boundary');
+    }
+
+    this.updateEvPvImportSafety(now, settings);
+    if (this.contextDirty && !this.contextTimer) this.requestContextEvaluate(false, 'heartbeat', 0, false, false);
+  }
+
+  markEvPlanChanged(index, reason = 'input') {
+    if (!Number.isInteger(index) || index < 0 || index >= 4) return;
+    if (!Array.isArray(this.evPlanRevision)) this.evPlanRevision = [0, 0, 0, 0];
+    this.evPlanRevision[index] = (this.evPlanRevision[index] || 0) + 1;
+    // Progress feedback invalidates a decision, not the chosen price window.
+    // Capacity/energy drift is checked by the EV planner itself.
+    if (!['soc_feedback', 'api_soc'].includes(reason)) {
+      if (!Array.isArray(this.evDeadlineGoalRevision)) this.evDeadlineGoalRevision = [0, 0, 0, 0];
+      this.evDeadlineGoalRevision[index] = (this.evDeadlineGoalRevision[index] || 0) + 1;
+    }
+    if (!Array.isArray(this.evPlanRequestReasons)) this.evPlanRequestReasons = ['', '', '', ''];
+    this.evPlanRequestReasons[index] = String(reason);
+    if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('requested', index + 1);
+  }
+
+  getEvPlanPending(index) {
+    return Number(this.evPlanHandledRevision?.[index] ?? -1) !== Number(this.evPlanRevision?.[index] ?? 0);
+  }
+
+  getEvCount(settings = this.getSettings()) {
+    const configured = Number(settings.evCount);
+    if (Number.isFinite(configured)) return Math.max(0, Math.min(4, Math.round(configured)));
+    // Backwards-compatible fallback for installations/settings snapshots from
+    // before multi-EV support introduced the explicit evCount setting.
+    return Boolean(settings.evEnabled) ? 1 : 0;
+  }
+
+  getHvacCount(settings = this.getSettings()) {
+    return Math.max(0, Math.min(10, Math.round(Number(settings.hvacCount) || 0)));
+  }
+
+  getBoilerCount(settings = this.getSettings()) {
+    return Math.max(0, Math.min(1, Math.round(Number(settings.boilerCount) || 0)));
+  }
+
+
+  getEvSettingKey(index, suffix) {
+    return index === 0 ? `ev${suffix}` : `ev${index + 1}${suffix}`;
+  }
+
+  getHvacSettingKey(index, suffix) {
+    return index === 0 ? `hvac${suffix}` : `hvac${index + 1}${suffix}`;
+  }
+
+  getEvInstanceName(index, settings = this.getSettings()) {
+    const raw = String(settings[this.getEvSettingKey(index, 'Name')] || '').trim();
+    return raw || `EV ${index + 1}`;
+  }
+
+  getHvacInstanceName(index, settings = this.getSettings()) {
+    const raw = String(settings[this.getHvacSettingKey(index, 'Name')] || '').trim();
+    return raw || `HVAC ${index + 1}`;
+  }
+
+  getEvControlTypeFor(index, settings = this.getSettings()) {
+    return this.getEvControlType({ evControlType: settings[this.getEvSettingKey(index, 'ControlType')] });
+  }
+
+  getEvElectricalSettingsFor(index, source = this.getSettings()) {
+    // These physical accounting helpers only require five electrical/current
+    // preferences. Expanding plans, sessions and TOU tariffs is unnecessary.
+    const read = suffix => source[this.getEvSettingKey(index, suffix)];
+    return {
+      evControlType: read('ControlType'), evPhases: read('Phases'),
+      evVoltage: read('Voltage'), evVoltageReference: read('VoltageReference'),
+      evMinCurrentA: read('MinCurrentA'), evStandardCurrentA: read('StandardCurrentA'),
+      evModeSmartCurrentA: read('ModeSmartCurrentA'),
+      evModeStandardCurrentA: read('ModeStandardCurrentA'),
+    };
+  }
+
+  getEvPhysicalAccountingSettingsFor(index, source = this.getSettings(), origin = 'physical', trustedSnapshot = false) {
+    // Only the internal synchronous P1 request (which just called
+    // getSettings() itself) may use the app-wide memo. Public helpers,
+    // customized snapshots, Live status and async contexts always get a
+    // fresh projection, preserving their existing snapshot semantics.
+    const eligible = trustedSnapshot === true;
+    const memo = eligible ? this.evPhysicalConfigMemo?.[index] : null;
+    if (memo && memo.revision === this.evPhysicalConfigRevision) {
+      this.recordDiagnosticCounter('evPhysicalConfigCacheHits');
+      if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('physical_config_reused', index + 1);
+      return memo.value;
+    }
+    return this.measurePlanningCalculation('evPhysicalSettingsRead', origin, index + 1, () => {
+    const read = suffix => source[this.getEvSettingKey(index, suffix)];
+    const projected = {
+      ...this.getEvElectricalSettingsFor(index, source),
+      contractType: source.contractType,
+      evEnabled: read('Enabled'),
+      evWeight: read('Weight'), evSmartGridPriority: read('SmartGridPriority'),
+      evDynamicCheapEnabled: read('DynamicCheapEnabled'),
+      evDynamicNormalEnabled: read('DynamicNormalEnabled'),
+      evDynamicExpensiveEnabled: read('DynamicExpensiveEnabled'),
+      evFixedChargeWindowEnabled: read('FixedChargeWindowEnabled'),
+      evPvStartSurplusW: read('PvStartSurplusW'),
+      evPvStopSurplusW: read('PvStopSurplusW'),
+      evPvStopDelaySeconds: read('PvStopDelaySeconds'),
+    };
+    if (this.getEvControlType(projected) === 'mode') {
+      projected.evModeLoadTolerancePercent = source[`_ev${index + 1}ModeLoadTolerancePercent`]
+        ?? read('FeedbackTolerancePercent');
+    }
+    if (source.contractType === 'tou') {
+      const stem = index === 0 ? 'ev' : `ev${index + 1}`;
+      projected.touRates = (Array.isArray(source.touRates) ? source.touRates : []).map(rate => ({
+        id: rate?.id, avoidGridImport: rate?.avoidGridImport,
+        evChargeAllowed: Boolean(rate?.[`${stem}ChargeAllowed`]),
+        evPvChargeAllowed: rate?.[`${stem}PvChargeAllowed`] !== false,
+        evPvMinSurplusW: Math.max(0, Number(rate?.[`${stem}PvMinSurplusW`]) || 0),
+        evPvStopGridImportW: Math.max(0, Number(rate?.[`${stem}PvStopGridImportW`] ?? 1000) || 0),
+        evPvGridTopUpAllowed: Boolean(rate?.[`${stem}PvGridTopUpAllowed`]),
+      }));
+    }
+    this.recordDiagnosticCounter('evPhysicalSettingsReads');
+    if (eligible) {
+      this.evPhysicalConfigMemo[index] = { revision: this.evPhysicalConfigRevision, value: projected };
+      if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('physical_config_built', index + 1);
+    }
+    return projected;
+    });
+  }
+
+  getEvPhysicalObservationSettings(index, settings, now, observation = null, origin = 'physical') {
+    if (!observation || observation.settings !== settings || observation.at !== now) {
+      return this.getEvPhysicalAccountingSettingsFor(index, settings, origin);
+    }
+    if (!observation.physicalInstances) observation.physicalInstances = [];
+    if (!observation.physicalInstances[index]) {
+      observation.physicalInstances[index] = this.getEvPhysicalAccountingSettingsFor(index, settings, origin, observation.trustedPhysicalConfig === true);
+    } else this.recordDiagnosticCounter('evPhysicalSettingsReused');
+    return observation.physicalInstances[index];
+  }
+
+  getEvObservationSettings(index, settings, now, observation = null, origin = 'runtime') {
+    if (!observation || observation.settings !== settings || observation.at !== now) {
+      return this.getEvInstanceSettings(index, settings, origin);
+    }
+    if (!observation.instances[index]) {
+      observation.instances[index] = this.getEvInstanceSettings(index, settings, origin);
+    } else this.recordDiagnosticCounter('evInstanceSettingsReused');
+    return observation.instances[index];
+  }
+
+  getEvGridImportObservation(settings, now, observation = null) {
+    if (!observation || observation.settings !== settings || observation.at !== now) {
+      return this.getEvGridImportControlStatus(settings, now);
+    }
+    if (!observation.control) {
+      observation.control = this.getEvGridImportControlStatus(settings, now, observation);
+    } else this.recordDiagnosticCounter('evPhysicalAccountingReused');
+    return observation.control;
+  }
+
+  getEvSocPlanDeadlineAt(now, time, timezone, instanceIndex = null) {
+    if (!this.inputMonitor?.active) {
+      const remainder = now >= Date.UTC(2000, 0, 1) ? now % 60000 : 0;
+      return findNextLocalTime(new Date(now - remainder), time, timezone).getTime() + remainder;
+    }
+    return this.measurePlanningCalculation('evSocDeadline', instanceIndex === null ? 'summary' : 'settings',
+      instanceIndex === null ? 0 : instanceIndex + 1, () => {
+    // Current Homey dates have minute-aligned timezone offsets/transitions.
+    // Resolve the calendar minute through the existing bounded pure cache,
+    // then restore the scan's exact seconds/milliseconds. This keeps the old
+    // rolling deadline, DST handling and 26-hour fallback byte-for-byte equal.
+    // Historical sub-minute offsets retain the original exact-timestamp path.
+    const remainder = now >= Date.UTC(2000, 0, 1) ? now % 60000 : 0;
+    return findNextLocalTime(new Date(now - remainder), time, timezone).getTime() + remainder;
+    });
+  }
+
+  getEvInstanceSettings(index, source = this.getSettings(), origin = 'runtime') {
+    // This *preceded* some EV portfolio evaluations in earlier CPU traces.
+    // Count every real settings expansion, even when no EV decision follows.
+    const monitor = this.inputMonitor?.active ? this.inputMonitor : null;
+    const buildStarted = monitor ? process.hrtime.bigint() : null;
+    const buildCpu = monitor ? process.cpuUsage() : null;
+    try {
+    this.recordDiagnosticCounter('evInstanceSettingsBuilds');
+    const fields = [
+      'Enabled','SocEnabled','SocFreshnessMinutes','Mode','EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','ControlType','SmartPvPriority','SmartPvExportTargetW','SmartGridPriority','Weight',
+      'BatteryCapacityKwh','TargetSoc','AfterSocTarget','TargetTime','GuaranteeTarget','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA',
+      'StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled',
+      'PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled',
+    ];
+    const settings = { ...source };
+    for (const suffix of fields) settings[`ev${suffix}`] = source[this.getEvSettingKey(index, suffix)];
+    if (this.getEvControlType(settings) === 'mode') {
+      settings.evModeLoadTolerancePercent = source[`_ev${index + 1}ModeLoadTolerancePercent`]
+        ?? source[this.getEvSettingKey(index, 'FeedbackTolerancePercent')];
+    }
+    const stem = index === 0 ? 'ev' : `ev${index + 1}`;
+    settings.touRates = (Array.isArray(source.touRates) ? source.touRates : []).map(rate => ({
+      ...rate,
+      evChargeAllowed: Boolean(rate?.[`${stem}ChargeAllowed`]),
+      evEmergencyChargeAllowed: rate?.[`${stem}EmergencyChargeAllowed`] !== false,
+      evPvChargeAllowed: rate?.[`${stem}PvChargeAllowed`] !== false,
+      evPvMinSurplusW: Math.max(0, Number(rate?.[`${stem}PvMinSurplusW`]) || 0),
+      evPvStopGridImportW: Math.max(0, Number(rate?.[`${stem}PvStopGridImportW`] ?? 1000) || 0),
+      evPvGridTopUpAllowed: Boolean(rate?.[`${stem}PvGridTopUpAllowed`]),
+    }));
+    const override = index === 0 ? this.evSessionOverride : this.extraEvInstances[index - 1]?.sessionOverride;
+    if (override?.mode) settings.evMode = this.normalizeEvOperatingMode(override.mode);
+    settings.evSessionOverrideActive = Boolean(override?.mode);
+    const energyPlan = this.evEnergyPlans?.[index];
+    const socPlan = this.evSocPlans?.[index];
+    const now = Date.now();
+
+    // The last Flow target remains authoritative until another target is sent
+    // or the existing clear-override card is used. Reaching the SoC/kWh goal
+    // follows the per-EV completion preference for SoC; kWh still ends the session.
+    // Reconnecting arms the persistent target.
+    if (energyPlan?.active) {
+      let energyDeadlineAt = Math.max(0, Number(energyPlan.deadlineAt) || 0);
+      if (!energyPlan.widgetPlan && !(energyDeadlineAt > now)) {
+        const nextDeadline = findNextLocalTime(new Date(now), String(energyPlan.targetTime || settings.evTargetTime || '07:00'), settings.timezone || 'Europe/Brussels');
+        energyDeadlineAt = nextDeadline.getTime();
+        energyPlan.deadlineAt = energyDeadlineAt;
+      }
+      settings.evEnergyPlanActive = true;
+      settings.evEnergyNeedKwh = Math.max(0, Number(energyPlan.remainingKwh) || 0);
+      settings.evEnergyDeadlineAt = energyDeadlineAt;
+      settings.evTargetTime = String(energyPlan.targetTime || settings.evTargetTime || '07:00');
+      // A Flow deadline always enables deadline pacing. Its own guarantee choice
+      // decides whether HomeFlux may use every tariff when that is required to
+      // reach the minimum target. Peak Guard remains absolute.
+      settings.evGuaranteeTarget = true;
+      settings.evAllowUnselectedTariffForDeadline = Boolean(energyPlan.guarantee);
+      settings.evPlanningSource = 'flow_energy';
+      settings.evPlanningFlowInputReceived = true;
+      settings.evPlanningGuarantee = Boolean(energyPlan.guarantee);
+      settings.evPlanningTargetKwh = Math.max(0, Number(energyPlan.targetKwh) || 0);
+      settings.evPlanningRemainingKwh = Math.max(0, Number(energyPlan.remainingKwh) || 0);
+      settings.evPlanningTargetSoc = null;
+      settings.evPlanningTargetTime = settings.evTargetTime;
+    } else if (settings.evSocEnabled !== false && socPlan?.active) {
+      // A persistent Flow SoC goal uses the same per-EV completion preference
+      // as the configured SoC target. Its deadline authority ends at the goal.
+      settings.evEnergyPlanActive = false;
+      settings.evEnergyNeedKwh = 0;
+      settings.evEnergyDeadlineAt = 0;
+      settings.evSocPlanActive = true;
+      settings.evSocPlanOverrideActive = true;
+      settings.evTargetSoc = Math.max(0, Math.min(100, Number(socPlan.targetSoc) || 0));
+      settings.evTargetTime = String(socPlan.targetTime || settings.evTargetTime || '07:00');
+      // A persistent Flow deadline is anchored to a local calendar minute.
+      // Within that minute the original resolver's exact-millisecond answer
+      // differs only by now % 60000. Resolve once, then restore the remainder.
+      // Minute / target / timezone changes always force an exact fresh lookup.
+      const timezone = settings.timezone || 'Europe/Brussels';
+      const minute = now >= Date.UTC(2000, 0, 1) ? Math.floor(now / 60000) : null;
+      const cached = socPlan._deadlineMinuteMemo;
+      if (socPlan.widgetPlan) {
+        // Absolute widget goal survives midnight, expired deadlines and restart.
+      } else if (minute !== null && cached?.minute === minute
+        && cached?.time === settings.evTargetTime && cached?.timezone === timezone) {
+        socPlan.deadlineAt = cached.base + (now % 60000);
+        this.recordDiagnosticCounter('evSocDeadlineMinuteReused');
+        if (monitor) monitor.notePlanningEvent('soc_deadline_reused', index + 1);
+      } else {
+        const base = this.getEvSocPlanDeadlineAt(minute === null ? now : minute * 60000,
+          settings.evTargetTime, timezone, index);
+        socPlan.deadlineAt = minute === null ? base : base + (now % 60000);
+        socPlan._deadlineMinuteMemo = minute === null ? null
+          : { minute, time: settings.evTargetTime, timezone, base };
+      }
+      settings.evSocDeadlineAt = socPlan.deadlineAt;
+      settings.evGuaranteeTarget = true;
+      settings.evAllowUnselectedTariffForDeadline = Boolean(socPlan.guarantee);
+      settings.evPlanningSource = 'flow_soc';
+      settings.evPlanningFlowInputReceived = true;
+      settings.evPlanningGuarantee = Boolean(socPlan.guarantee);
+      settings.evPlanningTargetKwh = null;
+      settings.evPlanningRemainingKwh = null;
+      settings.evPlanningTargetSoc = settings.evTargetSoc;
+      settings.evPlanningTargetTime = settings.evTargetTime;
+    } else {
+      settings.evEnergyPlanActive = false;
+      settings.evEnergyNeedKwh = 0;
+      settings.evEnergyDeadlineAt = 0;
+      settings.evSocPlanActive = false;
+      settings.evSocPlanOverrideActive = Boolean(socPlan?.active);
+      settings.evSocDeadlineAt = 0;
+      settings.evPlanningSource = 'settings';
+      settings.evPlanningFlowInputReceived = false;
+      settings.evPlanningGuarantee = Boolean(settings.evGuaranteeTarget) && Boolean(settings.evAllowUnselectedTariffForDeadline);
+      settings.evPlanningTargetKwh = null;
+      settings.evPlanningRemainingKwh = null;
+      settings.evPlanningTargetSoc = settings.evSocEnabled !== false ? Math.max(0, Math.min(100, Number(settings.evTargetSoc) || 0)) : null;
+      settings.evPlanningTargetTime = String(settings.evTargetTime || '07:00');
+    }
+    const widgetMeta = evPlanOptions.widget(this, index);
+    if (widgetMeta) {
+      settings.evWidgetPlan = { ...widgetMeta };
+      settings.evAfterSocTarget = 'stop';
+      if (!widgetMeta.flowExtended) settings.evMode = 'smart';
+    }
+    const socUpdatedAt = index === 0 ? this.inputUpdatedAt?.ev?.soc : this.extraEvInstances?.[index - 1]?.updatedAt?.soc;
+    settings.evSocTargetCompletionFresh = Number(socUpdatedAt || 0)
+      >= Number(this.getEvSessionDetectionRuntime(index)?.connectedAt || 0);
+    settings.evAfterSocTarget = settings.evAfterSocTarget === 'preferences' ? 'preferences' : 'stop';
+    settings.evSocTargetReached = settings.evAfterSocTarget === 'preferences'
+      && !energyPlan?.active && Boolean(this.getEvSessionDetectionRuntime(index)?.socTargetReached);
+    if (settings.evSocTargetReached) {
+      settings.evMode = 'smart';
+      settings.evGuaranteeTarget = false;
+      settings.evAllowUnselectedTariffForDeadline = false;
+      settings.evSocDeadlineAt = 0;
+      settings.evPlanningGuarantee = false;
+    }
+    return settings;
+    } finally {
+      if (monitor) {
+        const wall = Number(process.hrtime.bigint() - buildStarted) / 1e6;
+        const cpu = process.cpuUsage(buildCpu);
+        try { monitor.noteCalculation('evSettingsBuild', origin, index + 1, wall, (cpu.user + cpu.system) / 1000); }
+        catch (_) { /* Optional monitor cannot alter EV settings. */ }
+      }
+    }
+  }
+
+  async setHvacAutomaticControlFor(index, args = {}) {
+    if (index >= this.getHvacCount()) return true;
+    const enabled = String(args.enabled || 'yes') === 'yes';
+    const temperature = args.standby_temperature;
+    const hasTemperature = temperature !== undefined && temperature !== null && temperature !== '';
+    if (hasTemperature && (!Number.isFinite(Number(temperature)) || Number(temperature) < 5 || Number(temperature) > 99)) throw new Error('Stand-bytemperatuur moet tussen 5 en 99 °C liggen.');
+    const key = this.getHvacSettingKey(index, 'AutomaticControlEnabled');
+    const standbyKey = 'hvacCoordination';
+    // Missing optional arguments preserve saved settings and old Flows.
+    if (hasTemperature) {
+      const saved=this.getSettings()[standbyKey]||[];const config=saved[index]||{};const standby=Math.round(Number(temperature)*2)/2;
+      if(config.StandbyTemperatureC!==standby)this.setSetting(standbyKey,Array.from({length:10},(_,i)=>i===index?{...config,StandbyTemperatureC:standby}:saved[i]||{...hvacPermanent.fields.Coordination}));
+    }
+    if ((this.getSettings()[key] !== false) !== enabled) this.setSetting(key, enabled);
+    if (!enabled) {
+      hvacPermanent.cancel(this);
+      const d = this.calculateHvacControlFor(index, this.latestResult, this.latestEvDecision, this.state.lastTotalCommandW, this.state.lastTotalCommandW, { allowStart: false });
+      await this.publishHvacDecisionFor(index, d);
+    } else this.requestContextEvaluate(true, 'hvac_automatic_control');
+    return true;
+  }
+
+  getHvacInstanceSettings(index, source = this.getSettings()) {
+    const fields = [
+      ...Object.keys(hvacPermanent.fields),
+      'Enabled','AutomaticControlEnabled','AllowOnBattery','UsePvSurplus','ComfortMinC','ComfortMaxC','EnergyDeviationC',
+      'HeatingActivationBelowC','CoolingActivationAboveC','Priority','CoolingFanProfile','HeatingFanProfile',
+      'ControlIntervalMinutes','SurplusStartW','SurplusStopW','MinBatterySoc','StopBatterySoc','FastResetImportW',
+      'AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl','FanMinValue','FanMaxValue','FanStepValue',
+    ];
+    const settings = { ...source };
+    for (const suffix of fields) if(suffix!=='Coordination')settings[`hvac${suffix}`] = source[this.getHvacSettingKey(index, suffix)];
+    settings.hvacCoordination=source.hvacCoordination?.[index]||hvacPermanent.fields.Coordination;
+    return settings;
+  }
+
+  getExtraEv(index) {
+    return index > 0 && index <= 3 ? this.extraEvInstances[index - 1] : null;
+  }
+
+  getExtraHvac(index) {
+    return index > 0 && index <= 9 ? this.extraHvacInstances[index - 1] : null;
+  }
+
+  getEvInputSnapshot(index) {
+    if (index === 0) return {
+      soc: this.state.evSoc,
+      connected: this.state.evConnected,
+      chargeCurrentA: this.state.evChargeCurrentA,
+      seen: this.inputSeen.ev,
+      updatedAt: this.inputUpdatedAt.ev,
+    };
+    const runtime = this.getExtraEv(index);
+    return runtime ? { ...runtime.state, seen: runtime.seen, updatedAt: runtime.updatedAt } : null;
+  }
+
+  getHvacInputSnapshot(index) {
+    if (index === 0) return {
+      roomTemperatureC: this.state.hvacRoomTemperatureC,
+      outdoorTemperatureC: this.state.hvacOutdoorTemperatureC,
+      mode: this.state.hvacMode,
+      setpointC: this.state.hvacSetpointC,
+      fanSpeed: this.state.hvacFanSpeed,
+      seen: this.inputSeen.hvac,
+      updatedAt: this.inputUpdatedAt.hvac,
+    };
+    const runtime = this.getExtraHvac(index);
+    if (!runtime) return null;
+    return {
+      ...runtime.state,
+      // Outdoor temperature is global, not an HVAC-instance input.
+      outdoorTemperatureC: this.state.hvacOutdoorTemperatureC,
+      seen: { ...runtime.seen, outdoorTemperature: Boolean(this.inputSeen.hvac?.outdoorTemperature) },
+      updatedAt: { ...runtime.updatedAt, outdoorTemperature: Number(this.inputUpdatedAt.hvac?.outdoorTemperature) || 0 },
+    };
+  }
+
+  getFlexibleLoadPriorityOrder(settings = this.getSettings()) {
+    const allowed = [];
+    if (this.getBoilerCount(settings) > 0 && Boolean(settings.boilerEnabled)) allowed.push('boiler');
+    const count = this.getHvacCount(settings);
+    for (let index = 0; index < count; index += 1) {
+      if (Boolean(this.getHvacInstanceSettings(index, settings).hvacEnabled)) allowed.push(`hvac${index + 1}`);
+    }
+    const configured = Array.isArray(settings.flexibleLoadPriorityOrder) ? settings.flexibleLoadPriorityOrder.map(String) : [];
+    const result = configured.filter(id => allowed.includes(id));
+    for (const id of allowed) if (!result.includes(id)) result.push(id);
+    return result;
+  }
+
+  getPriorityEvaluationIntervalMs(settings = this.getSettings()) {
+    const minutes = Math.max(1, Math.min(30, Number(settings.priorityEvaluationMinutes) || 5));
+    return minutes * 60000;
+  }
+
+  isFlexiblePriorityEvaluationDue(now = Date.now(), settings = this.getSettings()) {
+    return now >= Number(this.flexiblePriorityState?.nextEvaluationAt || 0);
+  }
+
+  finishFlexiblePriorityEvaluation(now = Date.now(), settings = this.getSettings(), startedId = '') {
+    this.flexiblePriorityState.lastEvaluationAt = now;
+    this.flexiblePriorityState.lastStartedId = String(startedId || '');
+    this.flexiblePriorityState.nextEvaluationAt = now + this.getPriorityEvaluationIntervalMs(settings);
+  }
+
+  restoreBoilerRuntime() {
+    const get = key => this.homey.settings.get(key);
+    const now = Date.now();
+    this.boilerState.outputOn = Boolean(get('_boilerOutputOn'));
+    this.boilerState.cycleAccumulatedMs = Math.max(0, Number(get('_boilerCycleAccumulatedMs')) || 0);
+    this.boilerState.lastTickAt = Math.max(0, Number(get('_boilerLastTickAt')) || now);
+    this.boilerState.lastCompletedAt = Math.max(0, Number(get('_boilerLastCompletedAt')) || 0);
+    this.boilerState.lastCompletedDate = String(get('_boilerLastCompletedDate') || '');
+    this.boilerState.lastCompletedSource = String(get('_boilerLastCompletedSource') || '');
+    this.boilerState.activeSource = String(get('_boilerActiveSource') || '');
+    this.boilerState.trackingStartedAt = Math.max(0, Number(get('_boilerTrackingStartedAt')) || now);
+    this.boilerState.lastPublishedOutput = null;
+    if (!get('_boilerTrackingStartedAt')) this.homey.settings.set('_boilerTrackingStartedAt', this.boilerState.trackingStartedAt);
+    // If Homey restarted while the boolean output was still ON, count that
+    // elapsed time as part of the cumulative cycle. This mirrors the persisted
+    // dashboard/control state instead of silently losing a long heat interval.
+    if (this.boilerState.outputOn && this.boilerState.lastTickAt > 0 && now > this.boilerState.lastTickAt) {
+      this.boilerState.cycleAccumulatedMs += now - this.boilerState.lastTickAt;
+    }
+    this.boilerState.lastTickAt = now;
+    this.boilerState.lastPersistAt = now;
+  }
+
+  updateBoilerRuntimeClock(now = Date.now(), forcePersist = false) {
+    if (!this.boilerState) return;
+    const last = Number(this.boilerState.lastTickAt) || now;
+    if (this.boilerState.outputOn && now > last) this.boilerState.cycleAccumulatedMs += now - last;
+    this.boilerState.lastTickAt = now;
+    if (forcePersist || now - Number(this.boilerState.lastPersistAt || 0) >= 60000) this.persistBoilerRuntime();
+  }
+
+  persistBoilerRuntime() {
+    if (!this.boilerState) return;
+    this.boilerState.lastPersistAt = Date.now();
+    const values = {
+      _boilerOutputOn: Boolean(this.boilerState.outputOn),
+      _boilerCycleAccumulatedMs: Math.round(Number(this.boilerState.cycleAccumulatedMs) || 0),
+      _boilerLastTickAt: Math.round(Number(this.boilerState.lastTickAt) || Date.now()),
+      _boilerLastCompletedAt: Math.round(Number(this.boilerState.lastCompletedAt) || 0),
+      _boilerLastCompletedDate: String(this.boilerState.lastCompletedDate || ''),
+      _boilerLastCompletedSource: String(this.boilerState.lastCompletedSource || ''),
+      _boilerActiveSource: String(this.boilerState.activeSource || ''),
+      _boilerTrackingStartedAt: Math.round(Number(this.boilerState.trackingStartedAt) || Date.now()),
+    };
+    for (const [key, value] of Object.entries(values)) this.homey.settings.set(key, value);
+  }
+
+  getBoilerColdResetTime(settings = this.getSettings()) {
+    const value = String(settings.boilerColdResetTime || '07:00').trim();
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : '07:00';
+  }
+
+  getBoilerWarmUntil(settings = this.getSettings()) {
+    const completedAt = Number(this.boilerState?.lastCompletedAt || 0);
+    if (completedAt <= 0) return 0;
+    const resetTime = this.getBoilerColdResetTime(settings);
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const key = `${completedAt}|${resetTime}|${timezone}`;
+    if (this.boilerState?.warmUntilCache?.key === key) return Number(this.boilerState.warmUntilCache.value) || 0;
+
+    // Calculate this only when the completed cycle, reset time or timezone changes.
+    // Starting at the beginning of the completion minute makes the returned
+    // boundary exactly HH:MM:00 instead of preserving arbitrary seconds.
+    const completedMinute = new Date(Math.floor(completedAt / 60000) * 60000);
+    const warmUntil = findNextLocalTime(completedMinute, resetTime, timezone).getTime();
+    if (this.boilerState) this.boilerState.warmUntilCache = { key, value: warmUntil };
+    return warmUntil;
+  }
+
+  isBoilerCompletedToday(now = Date.now(), settings = this.getSettings()) {
+    const completedAt = Number(this.boilerState?.lastCompletedAt || 0);
+    if (completedAt <= 0 || completedAt > now) return false;
+    // A boiler day runs from the configured daily cold-reset time to the next
+    // reset, not from midnight to midnight. This also means a tariff cycle
+    // completed before 07:00 may be followed by a new PV cycle after 07:00.
+    return now < this.getBoilerWarmUntil(settings);
+  }
+
+  getBoilerSolarDayWindow(dateKey, settings = this.getSettings()) {
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const parse = value => {
+      const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+      if (!match) return null;
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      return hour >= 0 && hour < 24 && minute >= 0 && minute < 60 ? (hour * 60) + minute : null;
+    };
+    const startValue = String(settings.boilerDayStartTime || this.getBoilerColdResetTime(settings) || '07:00');
+    const endValue = String(settings.boilerDayEndTime || '23:00');
+    const startMinute = parse(startValue);
+    const endMinute = parse(endValue);
+    if (startMinute === null || endMinute === null) return null;
+    const endDateKey = endMinute <= startMinute ? shiftDateKey(dateKey, 1) : dateKey;
+    const startAt = localDateTimeUtcMs(dateKey, startValue, timezone);
+    const endAt = localDateTimeUtcMs(endDateKey, endValue, timezone);
+    if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || endAt <= startAt) return null;
+    return { dateKey, startAt, endAt, startMinute, endMinute };
+  }
+
+  getBoilerSolarFallbackStatus(now = Date.now(), settings = this.getSettings()) {
+    const fallbackDays = Math.max(0, Math.min(30, Math.round(Number(settings.boilerFallbackDays) || 0)));
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const currentDateKey = localParts(new Date(now), timezone).dateKey;
+    const lastCompletedAt = Number(this.boilerState?.lastCompletedAt || 0);
+    // A completed boiler remains warm until the fixed cold-reset boundary. The
+    // next *full* solar day starts after that boundary, independent of the exact
+    // completion clock time. This prevents a 06:06 completion from making the
+    // fallback drift to 06:06 on following days.
+    const eligibleFrom = lastCompletedAt > 0
+      ? this.getBoilerWarmUntil(settings)
+      : Math.max(0, Number(this.boilerState?.trackingStartedAt || now));
+
+    // The full solar-day scan changes only at a window end, a local date
+    // boundary or a relevant boiler setting/completion change. Cache its small
+    // result, not the 71 calendar windows; runtime accounting still runs above
+    // every decision, including disabled modules and pending stop commands.
+    const startValue = String(settings.boilerDayStartTime || this.getBoilerColdResetTime(settings) || '07:00');
+    const endValue = String(settings.boilerDayEndTime || '23:00');
+    const cached = this.boilerState?.solarFallbackCache;
+    if (cached && cached.dateKey === currentDateKey && cached.timezone === timezone
+      && cached.startValue === startValue && cached.endValue === endValue
+      && cached.eligibleFrom === eligibleFrom && cached.fallbackDays === fallbackDays
+      && now >= cached.at && now < cached.validUntil) {
+      this.recordDiagnosticCounter('boilerSolarFallbackReuses');
+      return { ...cached.value };
+    }
+    this.recordDiagnosticCounter('boilerSolarFallbackBuilds');
+    let validUntil = Infinity;
+    let missedSolarDays = 0;
+    const futureWindows = [];
+    // Fallback is capped at 30 days. A small margin on either side is enough to
+    // cover the persisted tracking start and the next possible fallback day.
+    for (let offset = -35; offset <= 35; offset += 1) {
+      const dateKey = shiftDateKey(currentDateKey, offset);
+      const window = this.getBoilerSolarDayWindow(dateKey, settings);
+      if (!window || window.startAt < eligibleFrom) continue;
+      if (window.endAt <= now) missedSolarDays += 1;
+      else {
+        futureWindows.push(window);
+        validUntil = Math.min(validUntil, window.endAt);
+      }
+    }
+
+    const fallbackDue = fallbackDays > 0 && missedSolarDays >= fallbackDays;
+    const remainingSolarDays = fallbackDays > 0 ? Math.max(0, fallbackDays - missedSolarDays) : 0;
+    let nextFallbackAt = 0;
+    if (!fallbackDue && remainingSolarDays > 0 && futureWindows.length >= remainingSolarDays) {
+      futureWindows.sort((a, b) => a.endAt - b.endAt);
+      nextFallbackAt = Number(futureWindows[remainingSolarDays - 1]?.endAt) || 0;
+    }
+    const value = {
+      fallbackDays,
+      missedSolarDays,
+      remainingSolarDays,
+      fallbackDue,
+      nextFallbackAt,
+      eligibleFrom,
+    };
+    if (this.boilerState) this.boilerState.solarFallbackCache = {
+      dateKey: currentDateKey, timezone, startValue, endValue, eligibleFrom,
+      fallbackDays, at: now, validUntil, value,
+    };
+    return { ...value };
+  }
+
+  getBoilerDaysWithoutCycle(now = Date.now(), settings = this.getSettings()) {
+    // Legacy method name kept for API/widget compatibility. Since v0.7.6 this
+    // is an integer count of fully missed solar-day windows, not elapsed 24h.
+    return this.getBoilerSolarFallbackStatus(now, settings).missedSolarDays;
+  }
+
+  isBoilerTariffSelected(settings = this.getSettings(), tariff = null) {
+    if (!tariff) return false;
+    const type = String(settings.contractType || '');
+    if (type === 'tou') {
+      const rate = (Array.isArray(settings.touRates) ? settings.touRates : []).find(item => String(item?.id || '') === String(tariff.rateId || ''));
+      if (Boolean(rate?.avoidGridImport)) return false;
+      return Boolean(rate?.boilerChargeAllowed);
+    }
+    if (isDynamicContract(settings)) {
+      if (tariff.className === 'cheap') return Boolean(settings.boilerDynamicCheapEnabled);
+      if (tariff.className === 'expensive') return Boolean(settings.boilerDynamicExpensiveEnabled);
+      return Boolean(settings.boilerDynamicNormalEnabled);
+    }
+    return Boolean(settings.boilerFixedChargeWindowEnabled) && tariff.className === 'cheap';
+  }
+
+  getBoilerPeakGuardReserveW(settings = this.getSettings(), now = Date.now()) {
+    // v0.6.5: tariff boiler heating is an essential flexible load. When it is
+    // due to start, reserve its expected grid power BEFORE calculating the
+    // battery setpoint. Peak Guard can then reduce planned grid charging first
+    // instead of starting the boiler and immediately switching it off again.
+    // Once the boiler is running its load is already present in P1, so no extra
+    // virtual reserve is added. Hard Peak Guard remains authoritative.
+    if (this.getBoilerCount(settings) <= 0 || !Boolean(settings.boilerEnabled)) return 0;
+    if (Boolean(this.boilerState?.outputOn)) return 0;
+    if (this.isBoilerCompletedToday(now, settings)) return 0;
+
+    const fallbackDays = Math.max(0, Math.min(30, Number(settings.boilerFallbackDays) || 0));
+    if (fallbackDays <= 0 || this.getBoilerDaysWithoutCycle(now, settings) < fallbackDays) return 0;
+    if (!this.isBoilerTariffPeriodAllowed(settings, now)) return 0;
+
+    const tariff = findCurrentTariff(new Date(now), settings);
+    if (!this.isBoilerTariffSelected(settings, tariff)) return 0;
+
+    const batteryCount = this.getBatteryCount(settings);
+    if (batteryCount > 0) {
+      const avgSoc = this.getAverageBatterySoc(settings);
+      const minSoc = Math.max(0, Math.min(100, Number.isFinite(Number(settings.boilerTariffMinBatterySoc)) ? Number(settings.boilerTariffMinBatterySoc) : 40));
+      if (avgSoc === null || avgSoc < minSoc) return 0;
+    }
+
+    return Math.max(0, Math.min(20000, Number(settings.boilerPowerW) || 1800));
+  }
+
+  getPlanningBlockMs(settings = this.getSettings()) {
+    return this.getPlanningMinIntervalMs(settings);
+  }
+
+  markControlContextDirty() {
+    this.controlContextDirty = true;
+    // A pending slow pass must not invalidate every subsequent fast result.
+    // Distinguish a NEW structural change from one already evaluated fast.
+    this.controlContextRevision = (Number(this.controlContextRevision) || 0) + 1;
+  }
+
+  markFlexibleLoadsDirty() {
+    this.flexibleLoadsDirty = true;
+  }
+
+  invalidatePlanningCache(force = false) {
+    if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
+    this.planningCache.generation += 1;
+    this.planningCache.dirty = true;
+    this.markControlContextDirty();
+    this.markContextDirty('planning');
+    // No independent timer or calculation here. Ordinary changes retain the
+    // last valid plan and its deadline; structural changes may bypass the block.
+    if (force) {
+      this.planningCache.nextAllowedAt = 0;
+      this.planningCache.budgetNextAt = 0;
+    }
+  }
+
+  async migrateSettings() {
+    const schema = Number(this.homey.settings.get('settingsSchemaVersion') || 0);
+
+    if (schema < 3) {
+      const count = this.getBatteryCount({ batteryCount: this.homey.settings.get('batteryCount') });
+      const oldChargeRaw = this.homey.settings.get('maxChargePerBatteryW');
+      const oldCharge = oldChargeRaw == null ? NaN : Number(oldChargeRaw);
+      const oldDischargeRaw = this.homey.settings.get('maxDischargePerBatteryW');
+      const oldDischarge = oldDischargeRaw == null ? NaN : Number(oldDischargeRaw);
+
+      if (Number.isFinite(oldCharge) && oldCharge > 3000) {
+        this.setSetting('maxTotalChargeW', oldCharge);
+        this.setSetting('maxChargePerBatteryW', 2300);
+      } else if (Number.isFinite(oldCharge) && oldCharge >= 0) {
+        this.setSetting('maxTotalChargeW', Math.round(oldCharge * count));
+      }
+
+      if (Number.isFinite(oldDischarge) && oldDischarge > 3000) {
+        this.setSetting('maxTotalDischargeW', oldDischarge);
+        this.setSetting('maxDischargePerBatteryW', 2400);
+      } else if (Number.isFinite(oldDischarge) && oldDischarge >= 0) {
+        this.setSetting('maxTotalDischargeW', Math.round(oldDischarge * count));
+      }
+      this.setSetting('dynamicPriceSource', this.homey.settings.get('dynamicPriceSource') || 'manual');
+    }
+
+    if (schema < 4) {
+      // v0.2.0 splits dynamic quarter-hour and hourly control into two explicit choices.
+      if (String(this.homey.settings.get('contractType') || '') === 'dynamic') {
+        this.setSetting('contractType', 'dynamic_quarter');
+      }
+      if (this.homey.settings.get('dynamicNormalChargeEnabled') == null) this.setSetting('dynamicNormalChargeEnabled', false);
+      if (this.homey.settings.get('dynamicNormalChargeMaxSoc') == null) this.setSetting('dynamicNormalChargeMaxSoc', 50);
+      if (this.homey.settings.get('dynamicUseBatteryNormalHours') === null) this.setSetting('dynamicUseBatteryNormalHours', false);
+      if (this.homey.settings.get('overrideResumeOnTariffChange') === null) this.setSetting('overrideResumeOnTariffChange', true);
+      if (this.homey.settings.get('forcedModeResumeAt') === null) this.setSetting('forcedModeResumeAt', 0);
+      if (this.homey.settings.get('controlProfile') === null) this.setSetting('controlProfile', 'normal');
+    }
+
+    if (schema < 5) {
+      // 100% preserves the original battery-save behaviour: capture PV but do
+      // not use stored energy for normal self-consumption unless the user lowers it.
+      if (this.homey.settings.get('batterySaveDischargeAboveSoc') === null) {
+        this.setSetting('batterySaveDischargeAboveSoc', 100);
+      }
+    }
+
+    if (schema < 6) {
+      // v0.2.5: controlEnabled is a persistent user choice. A blank install still
+      // starts disabled through DEFAULTS/ensureDefaults(), but upgrades and app
+      // restarts must never silently switch an enabled EMS back off.
+      if (this.homey.settings.get('controlEnabled') === null) {
+        this.setSetting('controlEnabled', false);
+      }
+    }
+
+    if (schema < 7) {
+      if (this.homey.settings.get('gridZeroMinW') === null) this.setSetting('gridZeroMinW', -5);
+      if (this.homey.settings.get('gridZeroMaxW') === null) this.setSetting('gridZeroMaxW', 25);
+    }
+
+    if (schema < 8) {
+      // Preserve existing behaviour on upgrade. The user must explicitly choose
+      // Battery Save for low-forecast moments before this strategy can activate.
+      if (this.homey.settings.get('lowForecastMode') === null) this.setSetting('lowForecastMode', 'self_consumption');
+      if (this.homey.settings.get('lowForecastSelfConsumptionMinKwh') === null) this.setSetting('lowForecastSelfConsumptionMinKwh', 5);
+    }
+
+    if (schema < 9) {
+      if (this.homey.settings.get('pvDeltaThresholdW') === null) this.setSetting('pvDeltaThresholdW', 100);
+      if (this.homey.settings.get('invertBatteryCommand') === null) this.setSetting('invertBatteryCommand', false);
+      // v0.2.19 introduces an explicit direction test before real EMS output may
+      // be enabled. Upgrades therefore start safely disabled until that one-time
+      // test has been confirmed for the current battery count/sign convention.
+      this.setSetting('chargeTestPassed', false);
+      this.setSetting('_chargeTestSignature', '');
+      this.setSetting('controlEnabled', false);
+    }
+
+    if (schema < 10) {
+      // v0.2.20: low-forecast Battery Save is configured per price category.
+      // Migrate the old global choice as closely as possible: all non-high TOU
+      // categories were eligible before, while dynamic High/Duur was excluded.
+      const oldEnabled = String(this.homey.settings.get('lowForecastMode') || 'self_consumption') === 'solar_capture';
+      if (this.homey.settings.get('lowForecastFixedEnabled') === null) {
+        this.setSetting('lowForecastFixedEnabled', oldEnabled);
+      }
+      if (this.homey.settings.get('lowForecastDynamicCheapEnabled') === null) {
+        this.setSetting('lowForecastDynamicCheapEnabled', oldEnabled);
+      }
+      if (this.homey.settings.get('lowForecastDynamicNormalEnabled') === null) {
+        this.setSetting('lowForecastDynamicNormalEnabled', oldEnabled);
+      }
+      if (this.homey.settings.get('lowForecastDynamicExpensiveEnabled') === null) {
+        this.setSetting('lowForecastDynamicExpensiveEnabled', false);
+      }
+
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        const prices = rates.map(rate => Number(rate.importPrice)).filter(Number.isFinite);
+        const minPrice = prices.length ? Math.min(...prices) : 0;
+        const maxPrice = prices.length ? Math.max(...prices) : 0;
+        const migrated = rates.map(rate => {
+          if (rate.lowForecastBatterySave !== undefined && rate.lowForecastBatterySave !== null) return rate;
+          const price = Number(rate.importPrice);
+          const isOnlyPrice = maxPrice <= minPrice;
+          const wasEligible = oldEnabled && (isOnlyPrice || !Number.isFinite(price) || price < maxPrice);
+          return { ...rate, lowForecastBatterySave: wasEligible };
+        });
+        this.setSetting('touRates', migrated);
+      }
+    }
+
+    if (schema < 11) {
+      if (this.homey.settings.get('safetySoc') === null) this.setSetting('safetySoc', this.homey.settings.get('minSoc') ?? 10);
+    }
+
+    if (schema < 12) {
+      if (this.homey.settings.get('batteryCommandStepW') === null) this.setSetting('batteryCommandStepW', 1);
+      if (this.homey.settings.get('exportLimitEnabled') === null) this.setSetting('exportLimitEnabled', false);
+      if (this.homey.settings.get('minimumExportW') === null) this.setSetting('minimumExportW', 50);
+    }
+
+    if (schema < 13) {
+      // Keep upgrade behaviour unchanged: the new PV output interval initially
+      // follows the previously configured battery command interval. Users can
+      // then slow only the inverter/PV Flow without slowing battery control.
+      if (this.homey.settings.get('pvCommandIntervalSeconds') === null) {
+        this.setSetting('pvCommandIntervalSeconds', this.homey.settings.get('commandIntervalSeconds') ?? 10);
+      }
+    }
+
+    if (schema < 14) {
+      // v0.2.26 changes only runtime planning behavior; no user setting needs migration.
+    }
+
+    if (schema < 15) {
+      // v0.2.27 removes deliberate overshoot. The old 'aggressive' profile is
+      // renamed to 'exact' and now means a 1.00 correction gain.
+      if (String(this.homey.settings.get('controlProfile') || '') === 'aggressive') {
+        this.setSetting('controlProfile', 'exact');
+      }
+    }
+
+    if (schema < 16) {
+      // v0.3.0 adds optional EV/HVAC modules. Both remain disabled on upgrade.
+      // Existing TOU tariffs gain an explicit EV-standard-charge flag; only the
+      // conventional Superdal rate is selected automatically when present.
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => ({
+          ...rate,
+          evChargeAllowed: rate.evChargeAllowed !== undefined
+            ? Boolean(rate.evChargeAllowed)
+            : String(rate.id || '').toLowerCase() === 'superdal',
+        })));
+      }
+    }
+
+    if (schema < 17) {
+      // v0.3.6 adds an optional daily battery-command pause. It is disabled by
+      // default for existing users; Marstek users can enable 23:59–00:00.
+      if (this.homey.settings.get('batteryCommandPauseEnabled') === null) this.setSetting('batteryCommandPauseEnabled', false);
+      if (this.homey.settings.get('batteryCommandPauseStart') === null) this.setSetting('batteryCommandPauseStart', '23:59');
+      if (this.homey.settings.get('batteryCommandPauseEnd') === null) this.setSetting('batteryCommandPauseEnd', '00:00');
+    }
+
+    if (schema < 18) {
+      // v0.3.7: PV curtailment is only allowed once the configured average
+      // battery SoC is reached. Dynamic contracts now always use Homey Energy
+      // instead of the old manual test-price source.
+      if (this.homey.settings.get('pvCurtailMinBatterySoc') === null) this.setSetting('pvCurtailMinBatterySoc', 95);
+      this.setSetting('dynamicPriceSource', 'homey');
+    }
+
+    if (schema < 19) {
+      // v0.3.8 separates EV SoC from the generic EV status input. Existing users
+      // keep SoC support enabled and retain the previous smart/battery-first behaviour.
+      if (this.homey.settings.get('evSocEnabled') === null) this.setSetting('evSocEnabled', true);
+      if (this.homey.settings.get('evMode') === null) this.setSetting('evMode', 'smart');
+      if (this.homey.settings.get('evSmartPvPriority') === null) this.setSetting('evSmartPvPriority', 'battery_first');
+      if (this.homey.settings.get('evSmartGridPriority') === null) this.setSetting('evSmartGridPriority', 'battery_first');
+    }
+
+    if (schema < 20) {
+      // v0.3.9 adds charger-mode control for integrations such as Smappee.
+      // Existing users stay on the original ampere-setpoint output.
+      if (this.homey.settings.get('evControlType') === null) this.setSetting('evControlType', 'current');
+    }
+
+    if (schema < 21) {
+      // v0.3.11: Battery Save may be relaxed per tariff down to the calculated
+      // forecast target SoC. Preserve existing behaviour by keeping it off.
+      if (this.homey.settings.get('lowForecastFixedDischargeToTarget') === null) this.setSetting('lowForecastFixedDischargeToTarget', false);
+      if (this.homey.settings.get('lowForecastDynamicCheapDischargeToTarget') === null) this.setSetting('lowForecastDynamicCheapDischargeToTarget', false);
+      if (this.homey.settings.get('lowForecastDynamicNormalDischargeToTarget') === null) this.setSetting('lowForecastDynamicNormalDischargeToTarget', false);
+      if (this.homey.settings.get('lowForecastDynamicExpensiveDischargeToTarget') === null) this.setSetting('lowForecastDynamicExpensiveDischargeToTarget', false);
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => ({
+          ...rate,
+          lowForecastDischargeToTarget: Boolean(rate.lowForecastDischargeToTarget),
+        })));
+      }
+    }
+
+    if (schema < 22) {
+      // v0.3.16: forward energy planning uses remaining PV today while day
+      // classification keeps the full-day forecast. Peak-period reserve is an
+      // optional extra target floor and defaults to 0 to preserve upgrades.
+      if (this.homey.settings.get('peakReserveKwh') === null) this.setSetting('peakReserveKwh', 0);
+      if (this.homey.settings.get('peakReservePercent') === null) this.setSetting('peakReservePercent', 0);
+    }
+
+    if (schema < 23) {
+      // v0.3.18: the next-peak reserve becomes a solar-day protection layer
+      // with selectable seasons. Summer defaults off; night planning remains
+      // solely responsible for overnight / next-day energy planning.
+      if (this.homey.settings.get('peakReserveSeasonWinter') === null) this.setSetting('peakReserveSeasonWinter', true);
+      if (this.homey.settings.get('peakReserveSeasonSpring') === null) this.setSetting('peakReserveSeasonSpring', true);
+      if (this.homey.settings.get('peakReserveSeasonSummer') === null) this.setSetting('peakReserveSeasonSummer', false);
+      if (this.homey.settings.get('peakReserveSeasonAutumn') === null) this.setSetting('peakReserveSeasonAutumn', true);
+    }
+
+    if (schema < 24) {
+      // v0.3.20 adds an opt-in split command path per battery. Defaults are
+      // created by ensureDefaults(); no existing single-command output changes.
+    }
+
+    if (schema < 25) {
+      // v0.3.26 removes the legacy manual dynamic-price test data completely.
+      // Dynamic/variable contracts always use Homey Energy price slots.
+      this.setSetting('dynamicPriceSource', 'homey');
+      this.setSetting('dynamicSlots', []);
+    }
+
+    if (schema < 26) {
+      // v0.3.31 adds optional per-battery split-mode safety resend. Defaults are
+      // supplied by ensureDefaults(); existing installations remain disabled.
+    }
+
+    if (schema < 27) {
+      // v0.3.34: when Smart PV priority is EV-first and the EV is already
+      // charging, keep a small configurable export margin so a smart charger
+      // can continue to see PV headroom instead of closing the home battery
+      // completely. The margin is inactive while measured EV current is 0 A.
+      if (this.homey.settings.get('evSmartPvExportTargetW') === null) this.setSetting('evSmartPvExportTargetW', 500);
+    }
+
+    if (schema < 28) {
+      // v0.3.35: mode-controlled chargers get a minimum STOP hold after Peak
+      // Guard intervenes, avoiding rapid stop/start cycling.
+      if (this.homey.settings.get('evPeakGuardStopHoldSeconds') === null) this.setSetting('evPeakGuardStopHoldSeconds', 60);
+    }
+
+
+    if (schema < 29) {
+      // v0.3.36: TOU tariff categories can independently allow Smart EV
+      // charging from PV surplus and define the minimum surplus that may start
+      // it. Preserve historical behaviour on upgrade: PV charging stays allowed
+      // in every existing tariff and the threshold defaults to 0 W.
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => ({
+          ...rate,
+          evPvChargeAllowed: rate.evPvChargeAllowed !== false,
+          evPvMinSurplusW: Math.max(0, Number(rate.evPvMinSurplusW) || 0),
+        })));
+      }
+    }
+
+    if (schema < 30) {
+      // v0.3.38: PV charging uses hysteresis per TOU tariff. Starting still
+      // requires the PV-surplus threshold, while stopping requires sustained
+      // measured grid import. Existing installs receive conservative defaults.
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => ({
+          ...rate,
+          evPvStopGridImportW: Math.max(0, Number(rate.evPvStopGridImportW ?? 1000) || 0),
+        })));
+      }
+    }
+
+    if (schema < 31) {
+      // v0.3.40: opposite split-battery directions must remain requested for a
+      // configurable confirmation period before a real mode switch is allowed.
+      // This adds only timestamp state and a single existing recheck, no polling.
+      for (let battery = 1; battery <= 8; battery += 1) {
+        const key = `splitCommandBattery${battery}DirectionConfirmSeconds`;
+        if (this.homey.settings.get(key) === null) this.setSetting(key, 15);
+      }
+    }
+
+    if (schema < 32) {
+      // v0.3.43: daytime peak-reserve activation is selectable per calendar
+      // month instead of per meteorological season. Preserve the user's exact
+      // previous behavior by expanding each season choice to its three months.
+      const winter = this.homey.settings.get('peakReserveSeasonWinter') !== false;
+      const spring = this.homey.settings.get('peakReserveSeasonSpring') !== false;
+      const summer = Boolean(this.homey.settings.get('peakReserveSeasonSummer'));
+      const autumn = this.homey.settings.get('peakReserveSeasonAutumn') !== false;
+      const monthDefaults = {
+        1: winter, 2: winter,
+        3: spring, 4: spring, 5: spring,
+        6: summer, 7: summer, 8: summer,
+        9: autumn, 10: autumn, 11: autumn,
+        12: winter,
+      };
+      for (let month = 1; month <= 12; month += 1) {
+        const key = `peakReserveMonth${month}`;
+        if (this.homey.settings.get(key) === null) this.setSetting(key, monthDefaults[month]);
+      }
+    }
+
+    if (schema < 33) {
+      // v0.3.48: HVAC mode selection moves from outdoor temperature to a room
+      // comfort/activation band. Keep the new controller conservative by
+      // default: comfort first, normal fan response, automatic control enabled.
+      if (this.homey.settings.get('hvacAutomaticControlEnabled') === null) this.setSetting('hvacAutomaticControlEnabled', true);
+      if (this.homey.settings.get('hvacComfortMinC') === null) this.setSetting('hvacComfortMinC', 21);
+      if (this.homey.settings.get('hvacComfortMaxC') === null) this.setSetting('hvacComfortMaxC', 23);
+      if (this.homey.settings.get('hvacHeatingActivationBelowC') === null) this.setSetting('hvacHeatingActivationBelowC', 20);
+      if (this.homey.settings.get('hvacCoolingActivationAboveC') === null) this.setSetting('hvacCoolingActivationAboveC', 24);
+      if (this.homey.settings.get('hvacPriority') === null) this.setSetting('hvacPriority', 'comfort');
+      if (this.homey.settings.get('hvacCoolingFanProfile') === null) this.setSetting('hvacCoolingFanProfile', 'normal');
+      if (this.homey.settings.get('hvacHeatingFanProfile') === null) this.setSetting('hvacHeatingFanProfile', 'normal');
+    }
+
+
+    if (schema < 34) {
+      // v0.3.49: multiple EV/HVAC instances, boiler cycles and a low-frequency
+      // priority manager. Instance 1 keeps every legacy key; new instances are
+      // disabled until the user raises the configured count.
+      if (this.homey.settings.get('evCount') === null) this.setSetting('evCount', 1);
+      if (this.homey.settings.get('hvacCount') === null) this.setSetting('hvacCount', 1);
+      if (this.homey.settings.get('evName') === null) this.setSetting('evName', '');
+      if (this.homey.settings.get('hvacName') === null) this.setSetting('hvacName', '');
+      if (this.homey.settings.get('hvacStopBatterySoc') === null) this.setSetting('hvacStopBatterySoc', 50);
+      if (this.homey.settings.get('priorityEvaluationMinutes') === null) this.setSetting('priorityEvaluationMinutes', 5);
+      if (this.homey.settings.get('flexibleLoadPriorityOrder') === null) this.setSetting('flexibleLoadPriorityOrder', ['boiler', 'hvac1', 'hvac2', 'hvac3', 'hvac4']);
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => {
+          const next = { ...rate, boilerChargeAllowed: Boolean(rate.boilerChargeAllowed) };
+          for (let instance = 2; instance <= 4; instance += 1) {
+            if (next[`ev${instance}ChargeAllowed`] === undefined) next[`ev${instance}ChargeAllowed`] = false;
+            if (next[`ev${instance}PvChargeAllowed`] === undefined) next[`ev${instance}PvChargeAllowed`] = true;
+            if (next[`ev${instance}PvMinSurplusW`] === undefined) next[`ev${instance}PvMinSurplusW`] = 0;
+            if (next[`ev${instance}PvStopGridImportW`] === undefined) next[`ev${instance}PvStopGridImportW`] = 1000;
+          }
+          return next;
+        }));
+      }
+    }
+
+    if (schema < 35) {
+      // v0.3.50: optional flexible-load modules can be configured as zero.
+      // Preserve configured/active modules, but collapse the default inactive
+      // instance-1 placeholders from v0.3.49 to zero for a cleaner first setup.
+      const currentEvCount = Math.max(0, Math.min(4, Math.round(Number(this.homey.settings.get('evCount')) || 0)));
+      if (currentEvCount <= 1 && this.homey.settings.get('evEnabled') !== true) this.setSetting('evCount', 0);
+      const currentHvacCount = Math.max(0, Math.min(4, Math.round(Number(this.homey.settings.get('hvacCount')) || 0)));
+      if (currentHvacCount <= 1 && this.homey.settings.get('hvacEnabled') !== true) this.setSetting('hvacCount', 0);
+      if (this.homey.settings.get('boilerCount') === null) this.setSetting('boilerCount', this.homey.settings.get('boilerEnabled') === true ? 1 : 0);
+    }
+
+    if (schema < 36) {
+      // v0.3.56: the boiler warm state resets at a fixed local clock time,
+      // rather than a duration measured from the last completed cycle.
+      if (this.homey.settings.get('boilerColdResetTime') === null) this.setSetting('boilerColdResetTime', '07:00');
+    }
+
+    if (schema < 37) {
+      // v0.3.56: tariff fallback may only use the boiler once the home
+      // batteries have reached a configurable minimum reserve.
+      if (this.homey.settings.get('boilerTariffMinBatterySoc') === null) this.setSetting('boilerTariffMinBatterySoc', 40);
+    }
+
+    if (schema < 38) {
+      // v0.3.56: tariff-heating hysteresis. The boiler may start once the
+      // battery reserve reaches 40% by default, but only stops again at 30%.
+      if (this.homey.settings.get('boilerTariffStopBatterySoc') === null) this.setSetting('boilerTariffStopBatterySoc', 30);
+    }
+
+    if (schema < 39) {
+      // v0.3.57: separate fast battery regulation from slow context work and
+      // throttle charge-plan rebuilds without delaying the first valid plan.
+      if (this.homey.settings.get('slowControlIntervalSeconds') === null) this.setSetting('slowControlIntervalSeconds', 60);
+      if (this.homey.settings.get('planningMinIntervalMinutes') === null) this.setSetting('planningMinIntervalMinutes', 5);
+    }
+
+    if (schema < 40) {
+      // v0.3.59: the former comfort minimum/maximum become independent heating
+      // and cooling targets. Keep activation thresholds separate and derive the
+      // new PV energy deviation from the old comfort-band width where possible.
+      for (let instance = 1; instance <= 4; instance += 1) {
+        const stem = instance === 1 ? 'hvac' : `hvac${instance}`;
+        const key = `${stem}EnergyDeviationC`;
+        if (this.homey.settings.get(key) === null) {
+          const heatingTargetRaw = this.homey.settings.get(`${stem}ComfortMinC`);
+          const heatingTarget = heatingTargetRaw == null ? NaN : Number(heatingTargetRaw);
+          const coolingTargetRaw = this.homey.settings.get(`${stem}ComfortMaxC`);
+          const coolingTarget = coolingTargetRaw == null ? NaN : Number(coolingTargetRaw);
+          const legacyWidth = Number.isFinite(heatingTarget) && Number.isFinite(coolingTarget)
+            ? Math.abs(coolingTarget - heatingTarget)
+            : 2;
+          this.setSetting(key, Math.max(0, Math.min(10, legacyWidth)));
+        }
+      }
+    }
+
+    if (schema < 41) {
+      // v0.3.80: non-selected (typically sunny) months can optionally use a
+      // separate PV-first minimum SoC. Keep it disabled on every upgrade so the
+      // previously configured month strategy cannot change without user action.
+      if (this.homey.settings.get('sunnyMonthsMinSocEnabled') === null) this.setSetting('sunnyMonthsMinSocEnabled', false);
+      if (this.homey.settings.get('sunnyMonthsMinSoc') === null) this.setSetting('sunnyMonthsMinSoc', 20);
+    }
+
+    if (schema < 42) {
+      // v0.3.84: monthly minimum/reserve values can optionally also influence
+      // night planning. Keep disabled on upgrade to preserve existing charging.
+      if (this.homey.settings.get('peakReserveNightEnabled') === null) this.setSetting('peakReserveNightEnabled', false);
+    }
+
+    if (schema < 43) {
+      // v0.3.85: explicit per-tariff EMS policies replace implicit price-class
+      // choices for TOU charging/import avoidance. Migration mirrors the old
+      // behaviour: cheapest tariff(s) may charge day and night, most expensive
+      // tariff(s) avoid import. The user can then independently refine both
+      // charge planners without changing behaviour merely by upgrading.
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        const prices = rates.map(rate => Number(rate?.importPrice)).filter(Number.isFinite);
+        const minPrice = prices.length ? Math.min(...prices) : null;
+        const maxPrice = prices.length ? Math.max(...prices) : null;
+        const distinctPrices = new Set(prices.map(value => String(value))).size > 1;
+        this.setSetting('touRates', rates.map(rate => {
+          const price = Number(rate?.importPrice);
+          const oldCheap = distinctPrices && Number.isFinite(price) && price === minPrice;
+          const oldExpensive = distinctPrices && Number.isFinite(price) && price === maxPrice;
+          const avoidGridImport = rate.avoidGridImport !== undefined ? Boolean(rate.avoidGridImport) : oldExpensive;
+          const next = {
+            ...rate,
+            nightChargeAllowed: rate.nightChargeAllowed !== undefined ? Boolean(rate.nightChargeAllowed) : oldCheap,
+            dayChargeAllowed: rate.dayChargeAllowed !== undefined ? Boolean(rate.dayChargeAllowed) : oldCheap,
+            avoidGridImport,
+          };
+          if (avoidGridImport) {
+            next.nightChargeAllowed = false;
+            next.dayChargeAllowed = false;
+            next.lowForecastBatterySave = false;
+            next.lowForecastDischargeToTarget = false;
+            next.boilerChargeAllowed = false;
+            for (let instance = 1; instance <= 4; instance += 1) {
+              const stem = instance === 1 ? 'ev' : `ev${instance}`;
+              next[`${stem}ChargeAllowed`] = false;
+            }
+          }
+          return next;
+        }));
+      }
+    }
+
+    if (schema < 44) {
+      // v0.3.86: TOU charging policy can differ between weekdays and weekends.
+      // Derive both new selectors from the v0.3.85 day/night booleans so an
+      // upgrade keeps the exact same charging behaviour until the user changes it.
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        const toMode = rate => {
+          const night = Boolean(rate?.nightChargeAllowed);
+          const day = Boolean(rate?.dayChargeAllowed);
+          if (night && day) return 'always';
+          if (night) return 'night';
+          if (day) return 'day';
+          return 'never';
+        };
+        this.setSetting('touRates', rates.map(rate => {
+          const fallback = toMode(rate);
+          const validModes = new Set(['never', 'night', 'day', 'always']);
+          const next = {
+            ...rate,
+            weekdayChargeMode: validModes.has(String(rate?.weekdayChargeMode || '').toLowerCase()) ? String(rate.weekdayChargeMode).toLowerCase() : fallback,
+            weekendChargeMode: validModes.has(String(rate?.weekendChargeMode || '').toLowerCase()) ? String(rate.weekendChargeMode).toLowerCase() : fallback,
+          };
+          if (Boolean(next.avoidGridImport)) {
+            next.weekdayChargeMode = 'never';
+            next.weekendChargeMode = 'never';
+          }
+          return next;
+        }));
+      }
+    }
+
+
+    if (schema < 45) {
+      // v0.3.88: replace the coupled kWh / reserve-percentage setting with one
+      // absolute selected-month minimum SoC. Convert the old reserve above
+      // Minimum SoC into the equivalent absolute SoC so upgrades keep the same
+      // effective target (e.g. 88% reserve above 12% Minimum SoC -> 100%).
+      if (this.homey.settings.get('peakReserveTargetSoc') === null) {
+        const capacityRaw = Number(this.homey.settings.get('totalCapacityKwh'));
+        const minSocRaw = Number(this.homey.settings.get('minSoc'));
+        const maxSocRaw = Number(this.homey.settings.get('maxSoc'));
+        const capacity = Math.max(0, Number.isFinite(capacityRaw) ? capacityRaw : Number(DEFAULTS.totalCapacityKwh) || 0);
+        const minSoc = Math.max(0, Math.min(100, Number.isFinite(minSocRaw) ? minSocRaw : Number(DEFAULTS.minSoc) || 0));
+        const maxSoc = Math.max(minSoc, Math.min(100, Number.isFinite(maxSocRaw) ? maxSocRaw : Number(DEFAULTS.maxSoc) || 100));
+        const legacyKwh = Math.max(0, Number(this.homey.settings.get('peakReserveKwh')) || 0);
+        const legacyPercent = Math.max(0, Number(this.homey.settings.get('peakReservePercent')) || 0);
+        let targetSoc = 0;
+        if (capacity > 0 && legacyKwh > 0) targetSoc = minSoc + ((legacyKwh / capacity) * 100);
+        else if (legacyPercent > 0) targetSoc = minSoc + legacyPercent;
+        if (targetSoc > 0) targetSoc = Math.max(0, Math.min(maxSoc, targetSoc));
+        this.setSetting('peakReserveTargetSoc', Math.round(targetSoc * 10) / 10);
+      }
+    }
+
+    if (schema < 46) {
+      // v0.4.0: optional low-PV day promotion. Disabled on every upgrade so
+      // existing Battery Save behaviour cannot change without user action.
+      if (this.homey.settings.get('lowForecastAutoSunnyEnabled') === null) this.setSetting('lowForecastAutoSunnyEnabled', false);
+      if (this.homey.settings.get('lowForecastAutoSunnySoc') === null) this.setSetting('lowForecastAutoSunnySoc', 90);
+      if (this.homey.settings.get('lowForecastAutoSunnyMinutes') === null) this.setSetting('lowForecastAutoSunnyMinutes', 10);
+    }
+
+    if (schema < 47) {
+      // v0.4.2: split the former single planning horizon into a configurable
+      // morning target for night planning and a configurable daytime target.
+      // Existing users keep the familiar 07:00 / 17:00 defaults.
+      if (this.homey.settings.get('nightTargetTime') === null) this.setSetting('nightTargetTime', '07:00');
+      if (this.homey.settings.get('solarTargetTime') === null) this.setSetting('solarTargetTime', '17:00');
+    }
+
+    if (schema < 48) {
+      // v0.4.4: optional heterogeneous battery power limits. Keep this off on
+      // upgrade and seed each battery from the existing shared maxima so merely
+      // enabling the option never changes a user's configured hardware ceiling.
+      if (this.homey.settings.get('individualBatteryPowerLimitsEnabled') === null) this.setSetting('individualBatteryPowerLimitsEnabled', false);
+      const storedSharedChargeRaw = this.homey.settings.get('maxChargePerBatteryW');
+      const storedSharedCharge = storedSharedChargeRaw == null ? NaN : Number(storedSharedChargeRaw);
+      const storedSharedDischargeRaw = this.homey.settings.get('maxDischargePerBatteryW');
+      const storedSharedDischarge = storedSharedDischargeRaw == null ? NaN : Number(storedSharedDischargeRaw);
+      const sharedCharge = Math.max(0, Number.isFinite(storedSharedCharge) ? storedSharedCharge : (Number(DEFAULTS.maxChargePerBatteryW) || 2300));
+      const sharedDischarge = Math.max(0, Number.isFinite(storedSharedDischarge) ? storedSharedDischarge : (Number(DEFAULTS.maxDischargePerBatteryW) || 2400));
+      for (let battery = 1; battery <= 8; battery += 1) {
+        if (this.homey.settings.get(`battery${battery}MaxChargeW`) === null) this.setSetting(`battery${battery}MaxChargeW`, sharedCharge);
+        if (this.homey.settings.get(`battery${battery}MaxDischargeW`) === null) this.setSetting(`battery${battery}MaxDischargeW`, sharedDischarge);
+      }
+    }
+
+    if (schema < 49) {
+      // v0.4.10: optional home-battery support for EV charging. The historical
+      // setting keys are preserved for compatibility; v0.4.18 clarifies that
+      // they add EV charging budget and do not rewrite battery control.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}PeakGuardBatteryAssistNormal`) === null) this.setSetting(`${stem}PeakGuardBatteryAssistNormal`, false);
+        if (this.homey.settings.get(`${stem}PeakGuardBatteryAssistEmergency`) === null) this.setSetting(`${stem}PeakGuardBatteryAssistEmergency`, false);
+      }
+    }
+
+    if (schema < 50) {
+      // v0.4.18: battery regulation keeps using the real P1 measurement. EV power
+      // is controlled through EV setpoints; an explicitly permitted EV grid
+      // share only shifts the battery meter target and never subtracts estimated
+      // EV consumption from P1. Grid-import allowances default to 0 W so an
+      // upgrade keeps aiming at a zero meter. Add configurable meter smoothing,
+      // adaptive live control and weighted EV sharing.
+      if (this.homey.settings.get('gridControlWindowSeconds') === null) this.setSetting('gridControlWindowSeconds', 5);
+      if (this.homey.settings.get('adaptiveLiveControlEnabled') === null) this.setSetting('adaptiveLiveControlEnabled', true);
+      if (this.homey.settings.get('adaptiveSetpointDeltaW') === null) this.setSetting('adaptiveSetpointDeltaW', 1000);
+      if (this.homey.settings.get('adaptiveSetpointWindowSeconds') === null) this.setSetting('adaptiveSetpointWindowSeconds', 15);
+      if (this.homey.settings.get('evFixedMaxGridImportW') === null) this.setSetting('evFixedMaxGridImportW', 0);
+      if (this.homey.settings.get('evDynamicCheapMaxGridImportW') === null) this.setSetting('evDynamicCheapMaxGridImportW', 0);
+      if (this.homey.settings.get('evDynamicNormalMaxGridImportW') === null) this.setSetting('evDynamicNormalMaxGridImportW', 0);
+      if (this.homey.settings.get('evDynamicExpensiveMaxGridImportW') === null) this.setSetting('evDynamicExpensiveMaxGridImportW', 0);
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}Weight`) === null) this.setSetting(`${stem}Weight`, 1);
+      }
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => ({
+          ...rate,
+          evMaxGridImportW: Math.max(0, Number(rate?.evMaxGridImportW) || 0),
+        })));
+      }
+    }
+
+    if (schema < 51) {
+      // v0.5.3: replace the per-EV binary PV priority with one global PV share
+      // for the complete EV pool. Preserve the historical EV1 choice on upgrade:
+      // EV first becomes 80% EV / 20% battery, battery first becomes 20% / 80%.
+      if (this.homey.settings.get('evPvSharePercent') === null) {
+        const legacyPriority = String(this.homey.settings.get('evSmartPvPriority') || 'battery_first');
+        this.setSetting('evPvSharePercent', legacyPriority === 'ev_first' ? 90 : 10);
+      }
+    }
+
+    if (schema < 52) {
+      // v0.5.5: Homey Energy stays the default/primary dynamic price source.
+      // External fallback is opt-in so upgrades never change price behaviour.
+      const source = String(this.homey.settings.get('dynamicPriceSource') || 'homey');
+      if (!['homey', 'homey_external_fallback', 'external_homey_fallback', 'external'].includes(source)) this.setSetting('dynamicPriceSource', 'homey');
+    }
+
+    if (schema < 53) {
+      // v0.6.1: move EV/boiler policy controls to their own tabs while retaining
+      // compatible setting keys. New deadline override is intentionally off.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}AllowUnselectedTariffForDeadline`) === null) this.setSetting(`${stem}AllowUnselectedTariffForDeadline`, false);
+        if (this.homey.settings.get(`${stem}PvGridTopUpMode`) === null) this.setSetting(`${stem}PvGridTopUpMode`, 'full');
+        if (this.homey.settings.get(`${stem}PvStartSurplusW`) === null) this.setSetting(`${stem}PvStartSurplusW`, 1500);
+        if (this.homey.settings.get(`${stem}PvStopSurplusW`) === null) this.setSetting(`${stem}PvStopSurplusW`, 800);
+        if (this.homey.settings.get(`${stem}PvStopDelaySeconds`) === null) this.setSetting(`${stem}PvStopDelaySeconds`, 60);
+      }
+      if (this.homey.settings.get('boilerTariffPeriod') === null) this.setSetting('boilerTariffPeriod', 'always');
+      if (this.homey.settings.get('boilerDayStartTime') === null) this.setSetting('boilerDayStartTime', '07:00');
+      if (this.homey.settings.get('boilerDayEndTime') === null) this.setSetting('boilerDayEndTime', '23:00');
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => {
+          const next = { ...rate };
+          for (let ev = 1; ev <= 4; ev += 1) {
+            const stem = ev === 1 ? 'ev' : `ev${ev}`;
+            const key = `${stem}PvGridTopUpAllowed`;
+            if (next[key] === undefined) next[key] = Boolean(next[`${stem}ChargeAllowed`]);
+          }
+          return next;
+        }));
+      }
+    }
+
+    if (schema < 54) {
+      // v0.6.1: EV SoC freshness/fallback and persistent Flow target overrides.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}SocFreshnessMinutes`) === null) this.setSetting(`${stem}SocFreshnessMinutes`, 15);
+      }
+      if (this.homey.settings.get('evSocDeadlineOverrides') === null) this.setSetting('evSocDeadlineOverrides', []);
+    }
+
+    if (schema < 55) {
+      // v0.6.1: mode-only chargers need explicit Smart/Standard current estimates
+      // so Peak Guard, target feasibility and multi-EV allocation can reason
+      // about their physical load before fresh current feedback is available.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}ModeSmartCurrentA`) === null) {
+          const legacyMinA = Math.max(1, Math.min(64, Math.round(Number(this.homey.settings.get(`${stem}MinCurrentA`)) || 6)));
+          this.setSetting(`${stem}ModeSmartCurrentA`, legacyMinA);
+        }
+        if (this.homey.settings.get(`${stem}ModeStandardCurrentA`) === null) {
+          const legacyStandardA = Math.max(1, Math.min(64, Math.round(Number(this.homey.settings.get(`${stem}StandardCurrentA`)) || 16)));
+          this.setSetting(`${stem}ModeStandardCurrentA`, legacyStandardA);
+        }
+      }
+    }
+
+    if (schema < 56) {
+      // v0.6.3: Automatic Finetuning permissions are opt-in. Observation uses
+      // RAM-only aggregates and therefore requires no migration of sample data.
+      if (this.homey.settings.get('_autoTunePermissions') === null) this.setSetting('_autoTunePermissions', {});
+      if (this.homey.settings.get('_autoTuneHistory') === null) this.setSetting('_autoTuneHistory', []);
+      if (this.homey.settings.get('_autoTuneLastAppliedAt') === null) this.setSetting('_autoTuneLastAppliedAt', {});
+    }
+
+    if (schema < 57) {
+      // v0.6.4: persist only compact daily planning outcomes so low-PV and
+      // expected-energy recommendations can learn across restarts. Raw meter,
+      // PV, battery and EV samples remain RAM-only.
+      if (this.homey.settings.get('_autoTuneLearning') === null) this.setSetting('_autoTuneLearning', { days: [] });
+    }
+
+    if (schema < 58) {
+      // v0.6.6: optional battery support keeps essential tariff boiler heating
+      // running while Peak Guard asks the battery to absorb the excess import.
+      // Disabled by default so existing installations keep their previous behaviour.
+      if (this.homey.settings.get('boilerPeakGuardBatterySupportEnabled') === null) this.setSetting('boilerPeakGuardBatterySupportEnabled', false);
+    }
+
+    if (schema < 59) {
+      // v0.6.7: users can permanently suppress individual finetuning checks.
+      // Store only parameter keys + timestamp; no observation history is added.
+      if (this.homey.settings.get('_autoTuneIgnored') === null) this.setSetting('_autoTuneIgnored', {});
+    }
+
+    if (schema < 60) {
+      // v0.7.1: Hybrid EMS is opt-in and requires at least one configured battery.
+      if (this.homey.settings.get('hybridEmsEnabled') === null) this.setSetting('hybridEmsEnabled', false);
+    }
+
+    if (schema < 61) {
+      // v0.7.2: Flow-fed EV energy/deadline targets become persistent minimum
+      // targets, just like the existing SoC/deadline override. Only compact
+      // target/session state is stored; raw EV measurements remain RAM-only.
+      if (this.homey.settings.get('evEnergyDeadlineOverrides') === null) this.setSetting('evEnergyDeadlineOverrides', []);
+    }
+
+    if (schema < 62) {
+      // v0.7.3: every opt-in Autotune parameter can be fenced by a persistent
+      // user-defined minimum/maximum. Existing permissions remain valid and
+      // receive a lazy +/-50% default range from their current value.
+      if (this.homey.settings.get('_autoTuneLimits') === null) this.setSetting('_autoTuneLimits', {});
+    }
+
+    if (schema < 63) {
+      // v0.7.4: Autotune may only write values that exist in select/dropdown
+      // controls. Keep legacy mode-only tolerance values on their supported steps.
+      const normalizeStoredChoice = (key, allowedValues) => {
+        const raw = this.homey.settings.get(key);
+        if (raw === null || raw === undefined || raw === '') return;
+        const current = Number(raw);
+        if (!Number.isFinite(current) || allowedValues.includes(current)) return;
+        const next = allowedValues.reduce((best, candidate) => (
+          Math.abs(candidate - current) < Math.abs(best - current) ? candidate : best
+        ), allowedValues[0]);
+        this.setSetting(key, next);
+      };
+      normalizeStoredChoice('gridControlWindowSeconds', [0, 3, 5, 7, 10]);
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        normalizeStoredChoice(`${stem}FeedbackTolerancePercent`, [5, 10, 15, 20]);
+      }
+    }
+
+    if (schema < 64) {
+      // v0.7.4: replace the temporary +/-50% Autotune fences from v0.7.3 with
+      // parameter-specific realistic defaults. Preserve ranges that were
+      // clearly edited by the user; old automatically generated ranges are
+      // recognizable because they are symmetric +/-50% around their center.
+      const limits = this.homey.settings.get('_autoTuneLimits');
+      const permissions = this.homey.settings.get('_autoTunePermissions');
+      const existing = limits && typeof limits === 'object' && !Array.isArray(limits) ? { ...limits } : {};
+      const permitted = permissions && typeof permissions === 'object' && !Array.isArray(permissions) ? permissions : {};
+      const looksLikeLegacyPercentRange = range => {
+        const min = Number(range?.min);
+        const max = Number(range?.max);
+        if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return false;
+        const center = (min + max) / 2;
+        const halfWidth = (max - min) / 2;
+        const expected = Math.abs(center) < 1e-9 ? 1 : Math.abs(center) * 0.5;
+        return Math.abs(halfWidth - expected) <= Math.max(1e-9, expected * 1e-6);
+      };
+      const keys = new Set([...Object.keys(existing), ...Object.keys(permitted).filter(key => permitted[key])]);
+      const migrated = { ...existing };
+      for (const key of keys) {
+        if (!this.getAutoTuneSettingDescriptor(key)) continue;
+        const oldRange = existing[key];
+        const legacyGenerated = !oldRange
+          || looksLikeLegacyPercentRange(oldRange)
+          || (key === 'commandIntervalSeconds' && Number(oldRange?.min) === 3 && Number(oldRange?.max) === 3);
+        if (legacyGenerated) {
+          const defaults = this.getDefaultAutoTuneLimit(key, this.getSettings()[key]);
+          if (defaults) migrated[key] = defaults;
+        } else {
+          const effective = this.getAutoTuneLimitFor(key, this.getSettings()[key], { [key]: { ...oldRange, userDefined: true } });
+          if (effective) migrated[key] = { ...effective, userDefined: true };
+        }
+      }
+      this.setSetting('_autoTuneLimits', migrated);
+    }
+
+    if (schema < 65) {
+      // v0.7.6: optional settings-only EV base-load estimate. It is never used
+      // by live control; it only helps Settings show which EV current/mode can
+      // physically fit below Peak Guard when there is no PV or battery reserve.
+      if (this.homey.settings.get('evIdleHouseLoadW') === null) this.setSetting('evIdleHouseLoadW', 0);
+    }
+
+    if (schema < 66) {
+      // v0.7.10 maintenance: make TOU EV tariff intent unambiguous. Standard
+      // charging already uses available PV before grid energy, so its separate
+      // PV/top-up flags must be cleared. Grid top-up is meaningful only when PV
+      // charging itself is enabled. This also normalizes installations that had
+      // already saved the formerly overlapping choices.
+      const rates = this.homey.settings.get('touRates');
+      if (Array.isArray(rates) && rates.length) {
+        this.setSetting('touRates', rates.map(rate => {
+          const next = { ...rate };
+          for (let ev = 1; ev <= 4; ev += 1) {
+            const stem = ev === 1 ? 'ev' : `ev${ev}`;
+            const standardKey = `${stem}ChargeAllowed`;
+            const pvKey = `${stem}PvChargeAllowed`;
+            const topUpKey = `${stem}PvGridTopUpAllowed`;
+            next[standardKey] = Boolean(next[standardKey]);
+            next[pvKey] = next[pvKey] !== false;
+            next[topUpKey] = Boolean(next[topUpKey]);
+            if (next[standardKey]) {
+              next[pvKey] = false;
+              next[topUpKey] = false;
+            } else if (!next[pvKey] || Boolean(next.avoidGridImport)) {
+              next[topUpKey] = false;
+            }
+          }
+          return next;
+        }));
+      }
+    }
+
+    if (schema < 67) {
+      // Initialize EVs without a voltage choice to the 230 V supply default.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        if (this.homey.settings.get(`${stem}Voltage`) == null) this.setSetting(`${stem}Voltage`, 230);
+        if (this.homey.settings.get(`${stem}VoltageReference`) == null) this.setSetting(`${stem}VoltageReference`, Number(this.homey.settings.get(`${stem}Phases`)) === 1 ? 'phase' : 'line');
+      }
+      // Seed equal capacities from the existing group total, preserving its
+      // energy and setpoint distribution until actual capacities are entered.
+      const count = Math.max(1, Number(this.homey.settings.get('batteryCount') ?? DEFAULTS.batteryCount));
+      const total = Math.max(0, Number(this.homey.settings.get('totalCapacityKwh') ?? DEFAULTS.totalCapacityKwh));
+      for (let battery = 1; battery <= 8; battery += 1) {
+        if (this.homey.settings.get(`battery${battery}CapacityKwh`) == null) this.setSetting(`battery${battery}CapacityKwh`, total / count);
+      }
+    }
+    if (schema < 68) {
+      // 0.7.16 UI refinement: three-phase voltage always means line-to-line.
+      // Also upgrades the first 0.7.16 build without changing the app version.
+      for (let ev = 1; ev <= 4; ev += 1) {
+        const stem = ev === 1 ? 'ev' : `ev${ev}`;
+        const phases = Number(this.homey.settings.get(`${stem}Phases`)) === 1 ? 1 : 3;
+        const voltage = migrateVoltage(phases, this.homey.settings.get(`${stem}Voltage`), this.homey.settings.get(`${stem}VoltageReference`) || 'phase');
+        this.setSetting(`${stem}Voltage`, voltage);
+        this.setSetting(`${stem}VoltageReference`, phases === 1 ? 'phase' : 'line');
+      }
+    }
+    if (schema < 69) {
+      // Refine 0.8.4 emergency charging into independent per-tariff permissions.
+      // Preserve an enabled legacy restriction; otherwise retain unrestricted emergency charging.
+      const rates = this.homey.settings.get('touRates');
+      const migrated = Array.isArray(rates) ? rates.map(rate => ({ ...rate })) : null;
+      for (let index = 1; index <= 4; index++) {
+        const stem = index === 1 ? 'ev' : `ev${index}`;
+        const restricted = this.homey.settings.get(`${stem}EmergencyUseTariff`) === true;
+        if (migrated) for (const rate of migrated) {
+          const key = `${stem}EmergencyChargeAllowed`;
+          if (rate[key] == null) rate[key] = restricted ? Boolean(rate[`${stem}ChargeAllowed`]) && !rate.avoidGridImport : true;
+        }
+        const permissions = {
+          EmergencyDynamicCheapEnabled: !restricted || this.homey.settings.get(`${stem}DynamicCheapEnabled`) === true,
+          EmergencyDynamicNormalEnabled: !restricted || this.homey.settings.get(`${stem}DynamicNormalEnabled`) === true,
+          EmergencyDynamicExpensiveEnabled: !restricted || this.homey.settings.get(`${stem}DynamicExpensiveEnabled`) === true,
+          EmergencyFixedWindowEnabled: !restricted || this.homey.settings.get(`${stem}FixedChargeWindowEnabled`) === true,
+          EmergencyFixedOutsideWindowEnabled: !restricted,
+        };
+        for (const [suffix, value] of Object.entries(permissions)) {
+          if (this.homey.settings.get(`${stem}${suffix}`) == null) this.setSetting(`${stem}${suffix}`, value);
+        }
+      }
+      if (migrated) this.setSetting('touRates', migrated);
+    }
+    if (!Array.isArray(this.homey.settings.get('dynamicPriceSources'))) {
+      this.setSetting('dynamicPriceSources', sourceOrder(this.homey.settings.get('dynamicPriceSource')).filter(Boolean));
+    }
+    if (schema < 71) {
+      // v1.1.10: separate keys make the unit conversion idempotent, including
+      // interrupted upgrades. Never multiply a seconds value on a later boot.
+      for (let battery = 1; battery <= 8; battery += 1) {
+        const secondsKey = `splitCommandBattery${battery}SafetyModeResendSeconds`;
+        const seconds = this.homey.settings.get(secondsKey);
+        const validSeconds = seconds !== null && seconds !== undefined && seconds !== '' && Number.isFinite(Number(seconds));
+        const minutes = this.homey.settings.get(`splitCommandBattery${battery}SafetyModeResendMinutes`);
+        const legacyMinutes = minutes === null || minutes === undefined || !Number.isFinite(Number(minutes)) ? 10 : Math.max(1, Number(minutes));
+        const nextSeconds = validSeconds ? Number(seconds) : legacyMinutes * 60;
+        this.setSetting(secondsKey, Math.max(1, Math.min(86400, Math.round(nextSeconds))));
+      }
+    }
+    this.setSetting('settingsSchemaVersion', 71);
+  }
+
+  async pauseHvacSettingsMigration() {
+    await new Promise(resolve => this.homey.setTimeout(resolve, 2000));
+  }
+
+  async ensureDefaults() {
+    // Spread only missing HVAC 5–10 settings over startup. Fully initialized
+    // installations incur no delays, and interrupted upgrades resume safely.
+    const extraHvac = new Map();
+    for (const [key, value] of Object.entries(DEFAULTS)) {
+      const existing = this.homey.settings.get(key);
+      if (existing === null || existing === undefined) {
+        const slot = /^hvac([5-9]|10)[A-Z]/.exec(key);
+        if (slot) {
+          const index = Number(slot[1]);
+          if (!extraHvac.has(index)) extraHvac.set(index, []);
+          extraHvac.get(index).push([key, value]);
+        } else this.setSetting(key, value);
+      }
+    }
+    let initialized = false;
+    for (const [index, entries] of [...extraHvac].sort((a, b) => a[0] - b[0])) {
+      if (initialized) await this.pauseHvacSettingsMigration();
+      for (const [key, value] of entries) {
+        // Preserve values supplied while the preceding batch was waiting.
+        if (this.homey.settings.get(key) == null) this.setSetting(key, value);
+      }
+      this.log(`HVAC ${index} missing settings initialized`);
+      initialized = true;
+    }
+  }
+
+  async getOrCreateToken(id, opts) {
+    if (this.tokens.has(id)) return this.tokens.get(id);
+    let token = null;
+    try {
+      token = this.homey.flow.getToken(id);
+    } catch (err) {
+      token = null;
+    }
+    if (!token) token = await this.homey.flow.createToken(id, opts);
+    this.tokens.set(id, token);
+    return token;
+  }
+
+  async syncTokens() {
+    const settings = this.getSettings();
+    const count = this.getBatteryCount(settings);
+
+    for (let i = 1; i <= 8; i += 1) {
+      const ids = [
+        [`battery${i}command`, `HomeFlux EMS - Battery ${i} Command (W)`],
+        [`splitbattery${i}chargepower`, `HomeFlux EMS - Battery ${i} Split Charge Power (W)`],
+        [`splitbattery${i}dischargepower`, `HomeFlux EMS - Battery ${i} Split Discharge Power (W)`],
+      ];
+      if (i <= count) {
+        for (const [id, title] of ids) {
+          const token = await this.getOrCreateToken(id, { type: 'number', title });
+          if (id === `battery${i}command`) {
+            if (this.lastEmittedCommands[i - 1] === undefined) await token.setValue(0);
+          } else {
+            const splitState = this.splitCommandState?.[i - 1];
+            if (!splitState?.currentMode) await token.setValue(0);
+          }
+        }
+      } else {
+        for (const [id] of ids) {
+          if (!this.tokens.has(id)) continue;
+          try {
+            await this.tokens.get(id).unregister();
+          } catch (err) {
+            this.error(`Could not unregister ${id}`, err);
+          }
+          this.tokens.delete(id);
+        }
+      }
+    }
+
+    const fixedTokens = [
+      ['emstotalcommand', 'number', 'HomeFlux EMS - Total Command (W)', 0],
+      ['emsmode', 'string', 'HomeFlux EMS - Mode', 'Stand-by'],
+      ['emsoverride', 'string', 'HomeFlux EMS - Override', ''],
+      ['emsstatus', 'string', 'HomeFlux EMS - Status', 'Stand-by'],
+      ['emsnextchange', 'string', 'HomeFlux EMS - Next Change', ''],
+      ['emstargetsoc', 'number', 'HomeFlux EMS - Target SoC (%)', 0],
+      ['emsgridchargeassist', 'number', 'HomeFlux EMS - Grid Charge Assist (W)', 0],
+      ['emscalculatedcommand', 'number', 'HomeFlux EMS - Calculated Total Command (W)', 0],
+      ['emswarning', 'string', 'HomeFlux EMS - Warning', ''],
+      ['emserrors', 'string', 'HomeFlux EMS - Errors', ''],
+      ['emslasterror', 'string', 'HomeFlux EMS - Last Error', ''],
+      ['emswaf', 'number', 'HomeFlux EMS - WAF Energy Balance (kWh)', 0],
+      ['emswafavailable', 'boolean', 'HomeFlux EMS - WAF Available', false],
+      ['emsaction', 'string', 'HomeFlux EMS - Current Action', 'Rust'],
+      ['emspvcharge', 'number', 'HomeFlux EMS - PV Charge (W)', 0],
+      ['emspvlimit', 'number', 'HomeFlux EMS - PV Power Limit (%)', 100],
+      ['emscurrentprice', 'number', 'HomeFlux EMS - Homey Energy Current Price', 0],
+      ['emspriceclass', 'string', 'HomeFlux EMS - Homey Energy Price Class', ''],
+      ['emscheapesthours', 'string', 'HomeFlux EMS - Cheapest Hours', ''],
+      ['emsexpensivehours', 'string', 'HomeFlux EMS - Most Expensive Hours', ''],
+      ['emscheapestblock', 'string', 'HomeFlux EMS - Cheapest Consecutive Block', ''],
+      ['emshomeypricerank', 'number', 'HomeFlux EMS - Homey Energy Price Rank', 0],
+      ['emshomeypriceinterval', 'number', 'HomeFlux EMS - Homey Energy Price Interval (min)', 0],
+      ['emschargeplan', 'string', 'HomeFlux EMS - Charge Plan', ''],
+      ['emsevcurrent', 'number', 'HomeFlux EMS - EV Charge Current (A)', 0],
+      ['emsevallowed', 'string', 'HomeFlux EMS - EV Charging Allowed', 'Nee'],
+      ['emsevmode', 'string', 'HomeFlux EMS - EV Charge Mode', 'stop'],
+      ['emshvacsetpoint', 'number', 'HomeFlux EMS - HVAC Setpoint (C)', 0],
+      ['emshvacmode', 'string', 'HomeFlux EMS - HVAC Mode', ''],
+    ];
+    fixedTokens.push(...emsStatusTags.definitions);
+    for (const [id, type, title, value] of fixedTokens) {
+      const token = await this.getOrCreateToken(id, { type, title });
+      if (!this.latestResult) {
+        await token.setValue(value);
+        if (emsStatusTags.ids.has(id)) this.lastStatusTokenValues.set(id, value);
+      }
+    }
+  }
+
+  registerEmsDevice(device) {
+    if (!this.emsDevices) this.emsDevices = new Set();
+    this.emsDevices.add(device);
+  }
+
+  unregisterEmsDevice(device) {
+    if (this.emsDevices) this.emsDevices.delete(device);
+  }
+
+  getChargeTestSignature(settings = this.getSettings()) {
+    const count = this.getBatteryCount(settings);
+    const split = Array.from({ length: count }, (_, index) => {
+      const battery = index + 1;
+      if (!Boolean(settings[`splitCommandBattery${battery}Enabled`])) return 'single';
+      return [
+        'split',
+        Boolean(settings[`splitCommandBattery${battery}ChargePowerPositive`]) ? 'pos' : 'signed',
+        Boolean(settings[`splitCommandBattery${battery}KeepMinimumPower`]) ? 'min' : 'raw',
+        Math.max(0, Math.round(Number(settings[`splitCommandBattery${battery}MinimumPowerW`]) || 0)),
+        String(settings[`splitCommandBattery${battery}ZeroMode`] || 'discharge'),
+      ].join('-');
+    }).join('|');
+    return `${count}:${Boolean(settings.invertBatteryCommand) ? 'inverted' : 'normal'}:${split}`;
+  }
+
+  isChargeTestValid(settings = this.getSettings()) {
+    // With no home battery there is no battery direction to validate. Flexible
+    // loads and optional PV limiting must remain usable without a dummy test.
+    if (this.getBatteryCount(settings) === 0) return true;
+    if (!Boolean(settings.chargeTestPassed)) return false;
+    const storedSignature = String(this.homey.settings.get('_chargeTestSignature') || '');
+    return storedSignature === this.getChargeTestSignature(settings);
+  }
+
+  toPublishedCommand(value, settings = this.getSettings()) {
+    const numeric = Math.round(Number(value) || 0);
+    return Boolean(settings.invertBatteryCommand) ? -numeric : numeric;
+  }
+
+  ensureSplitCommandState() {
+    if (!Array.isArray(this.splitCommandState) || this.splitCommandState.length !== 8) {
+      this.splitCommandState = Array.from({ length: 8 }, () => ({ currentMode: null, chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: null, lastSafetyModeResendAt: 0 }));
+    }
+    if (!Array.isArray(this.splitCommandTriggers) || this.splitCommandTriggers.length !== 8) {
+      this.splitCommandTriggers = Array.from({ length: 8 }, () => ({ chargeMode: null, dischargeMode: null, chargePower: null, dischargePower: null }));
+    }
+  }
+
+  getSplitBatteryConfig(index, settings = this.getSettings()) {
+    const battery = index + 1;
+    const rawResendSeconds = settings[`splitCommandBattery${battery}SafetyModeResendSeconds`];
+    const resendSeconds = rawResendSeconds == null || rawResendSeconds === '' ? NaN : Number(rawResendSeconds);
+    return {
+      battery,
+      enabled: Boolean(settings[`splitCommandBattery${battery}Enabled`]),
+      dischargeBlocked: this.getEvBatteryDischargePolicy(settings).blocked,
+      chargePowerPositive: Boolean(settings[`splitCommandBattery${battery}ChargePowerPositive`]),
+      keepMinimumPower: settings[`splitCommandBattery${battery}KeepMinimumPower`] !== false,
+      minimumPowerW: Number.isFinite(Number(settings[`splitCommandBattery${battery}MinimumPowerW`])) ? Math.max(0, Math.round(Number(settings[`splitCommandBattery${battery}MinimumPowerW`]))) : 100,
+      zeroMode: String(settings[`splitCommandBattery${battery}ZeroMode`] || 'discharge') === 'charge' ? 'charge' : 'discharge',
+      chargeMinSwitchSeconds: Number.isFinite(Number(settings[`splitCommandBattery${battery}ChargeMinSwitchSeconds`])) ? Math.max(0, Number(settings[`splitCommandBattery${battery}ChargeMinSwitchSeconds`])) : 60,
+      dischargeMinSwitchSeconds: Number.isFinite(Number(settings[`splitCommandBattery${battery}DischargeMinSwitchSeconds`])) ? Math.max(0, Number(settings[`splitCommandBattery${battery}DischargeMinSwitchSeconds`])) : 60,
+      minBetweenSwitchSeconds: Number.isFinite(Number(settings[`splitCommandBattery${battery}MinBetweenSwitchSeconds`])) ? Math.max(0, Number(settings[`splitCommandBattery${battery}MinBetweenSwitchSeconds`])) : 60,
+      directionConfirmSeconds: Number.isFinite(Number(settings[`splitCommandBattery${battery}DirectionConfirmSeconds`])) ? Math.max(0, Number(settings[`splitCommandBattery${battery}DirectionConfirmSeconds`])) : 15,
+      safetyModeResendEnabled: Boolean(settings[`splitCommandBattery${battery}SafetyModeResendEnabled`]),
+      safetyModeResendSeconds: Number.isFinite(resendSeconds) ? Math.max(1, Math.min(86400, Math.round(resendSeconds))) : 600,
+    };
+  }
+
+  getSplitDesiredMode(internalCommandW, config) {
+    const value = Math.round(Number(internalCommandW) || 0);
+    if (value < 0) return 'charge';
+    if (value > 0) return 'discharge';
+    return config.zeroMode;
+  }
+
+  getSplitPowerValue(mode, internalCommandW, config) {
+    if (mode === 'discharge' && config.dischargeBlocked) return 0;
+    const requested = Math.abs(Math.round(Number(internalCommandW) || 0));
+    let magnitude = requested;
+    if (requested === 0) magnitude = config.minimumPowerW;
+    else if (config.keepMinimumPower) magnitude = Math.max(config.minimumPowerW, requested);
+    if (mode === 'charge') return config.chargePowerPositive ? magnitude : -magnitude;
+    return magnitude;
+  }
+
+  getEffectiveSplitCommands(commands, settings) {
+    if (!commands.some((_, index) => settings[`splitCommandBattery${index + 1}Enabled`])) return commands;
+    return commands.map((value, index) => {
+      const config = this.getSplitBatteryConfig(index, settings);
+      if (!config.enabled) return value;
+      const desiredMode = this.getSplitDesiredMode(value, config);
+      const currentMode = this.splitCommandState?.[index]?.currentMode;
+      // splitModeChangeNeeded already handles/schedules the direction change.
+      // A blocked change physically retains the old mode at its minimum power.
+      const mode = currentMode || desiredMode;
+      const power = Math.abs(this.getSplitPowerValue(mode, mode === desiredMode ? value : 0, config));
+      return mode === 'charge' ? -power : power;
+    });
+  }
+
+  getSplitModeHoldUntil(index) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    if (!state?.currentMode) return 0;
+    return state.currentMode === 'charge' ? Number(state.chargeHoldUntil) || 0 : Number(state.dischargeHoldUntil) || 0;
+  }
+
+  getSplitNextModeSwitchAt(index, config) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    if (!state?.currentMode) return 0;
+    const activeModeHoldUntil = this.getSplitModeHoldUntil(index);
+    const betweenSwitchesUntil = (Number(state.lastModeSwitchAt) || 0) + ((Number(config?.minBetweenSwitchSeconds) || 0) * 1000);
+    return Math.max(activeModeHoldUntil, betweenSwitchesUntil);
+  }
+
+  clearSplitPendingDirection(index) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    if (!state) return;
+    state.pendingMode = null;
+    state.pendingModeSince = 0;
+  }
+
+  getSplitConfirmedSwitchAt(index, desiredMode, config, now = Date.now()) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    if (!state?.currentMode || state.currentMode === desiredMode) {
+      this.clearSplitPendingDirection(index);
+      return 0;
+    }
+
+    // Start the confirmation window only when the opposite direction first
+    // becomes desirable. If the request flips back, the caller clears it.
+    if (state.pendingMode !== desiredMode || !(Number(state.pendingModeSince) > 0)) {
+      state.pendingMode = desiredMode;
+      state.pendingModeSince = now;
+    }
+    const confirmUntil = Number(state.pendingModeSince) + ((Number(config?.directionConfirmSeconds) || 0) * 1000);
+    return Math.max(this.getSplitNextModeSwitchAt(index, config), confirmUntil);
+  }
+
+  scheduleSplitCommandRecheck(index, at) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    if (!state) return;
+    const requestedAt = Math.max(Date.now(), Number(at) || Date.now());
+    // Keep the already scheduled one-shot recheck when it fires at the same or
+    // an earlier useful moment. Repeated P1/control passes must not churn timers.
+    if (state.recheckTimer && Number(state.recheckAt) > 0 && Number(state.recheckAt) <= requestedAt + 20) return;
+    if (state.recheckTimer) clearTimeout(state.recheckTimer);
+    state.recheckAt = requestedAt;
+    const wait = Math.max(0, requestedAt - Date.now()) + 10;
+    state.recheckTimer = this.homey.setTimeout(() => {
+      state.recheckTimer = null;
+      state.recheckAt = 0;
+      this.lastControlEvalAt = 0;
+      this.requestEvaluate(true);
+    }, wait);
+  }
+
+  splitModeChangeNeeded(result, settings = this.getSettings(), now = Date.now()) {
+    this.ensureSplitCommandState();
+    const count = this.getBatteryCount(settings);
+    const commands = result?.candidateCommands || [];
+    let switchNeededNow = false;
+
+    for (let index = 0; index < count; index += 1) {
+      const config = this.getSplitBatteryConfig(index, settings);
+      if (!config.enabled) continue;
+      const desiredMode = this.getSplitDesiredMode(commands[index] || 0, config);
+      const state = this.splitCommandState[index];
+
+      if (!state.currentMode) {
+        switchNeededNow = true;
+        continue;
+      }
+
+      if (state.currentMode === desiredMode) {
+        // A previously requested opposite mode may have disappeared again before
+        // its confirmation/lock window expired. Forget it immediately.
+        this.clearSplitPendingDirection(index);
+        if (state.recheckTimer) {
+          clearTimeout(state.recheckTimer);
+          state.recheckTimer = null;
+          state.recheckAt = 0;
+        }
+        continue;
+      }
+
+      const switchAt = this.getSplitConfirmedSwitchAt(index, desiredMode, config, now);
+      if (now >= switchAt) {
+        // A mode transition is a control change in its own right. It must pass
+        // even when the wattage delta is 0 W or below commandDeadbandW.
+        switchNeededNow = true;
+      } else {
+        // v0.3.30: remember a BLOCKED mode transition independently from the
+        // normal power deadband. When the lock expires, recalculate from the
+        // newest grid/PV input instead of blindly replaying this old request.
+        this.scheduleSplitCommandRecheck(index, switchAt);
+      }
+    }
+    return switchNeededNow;
+  }
+
+  clearSplitSafetyModeResend(index) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    if (!state?.safetyTimer) return;
+    clearTimeout(state.safetyTimer);
+    state.safetyTimer = null;
+  }
+
+  scheduleSplitSafetyModeResend(index) {
+    this.ensureSplitCommandState();
+    const state = this.splitCommandState[index];
+    const settings = this.getSettings();
+    const config = this.getSplitBatteryConfig(index, settings);
+    if (!state || state.safetyTimer || !config.enabled || !config.safetyModeResendEnabled || !state.currentMode) return;
+    const intervalMs = config.safetyModeResendSeconds * 1000;
+    state.safetyTimer = this.homey.setTimeout(async () => {
+      state.safetyTimer = null;
+      try {
+        const latestSettings = this.getSettings();
+        const latestConfig = this.getSplitBatteryConfig(index, latestSettings);
+        if (!latestConfig.enabled || !latestConfig.safetyModeResendEnabled || !state.currentMode) return;
+
+        // Safety resend is deliberately mode-only. It never changes the active
+        // mode, never resets anti-chatter timers and never replays an old power
+        // value. It is only a periodic retry of the currently active mode Flow.
+        const outputActive = Boolean(latestSettings.controlEnabled) && this.isChargeTestValid(latestSettings);
+        const pauseInfo = this.getBatteryCommandPauseInfo(Date.now(), latestSettings);
+        if (outputActive && !pauseInfo.active && !this.isHybridExternalControlActive(latestSettings)) {
+          const triggers = this.splitCommandTriggers[index] || {};
+          const modeTrigger = state.currentMode === 'charge' ? triggers.chargeMode : triggers.dischargeMode;
+          if (modeTrigger) {
+            await modeTrigger.trigger(this.localizeDisplayTokens({}), {
+              battery: latestConfig.battery,
+              mode: state.currentMode,
+              safety_resend: true,
+            });
+            state.lastSafetyModeResendAt = Date.now();
+          }
+        }
+      } catch (err) {
+        this.error(`Split battery ${index + 1} safety mode resend failed`, err);
+      } finally {
+        this.scheduleSplitSafetyModeResend(index);
+      }
+    }, intervalMs);
+  }
+
+  rescheduleSplitSafetyModeResend(index) {
+    this.clearSplitSafetyModeResend(index);
+    this.scheduleSplitSafetyModeResend(index);
+  }
+
+  async setSplitOutputTokens(index, mode, power) {
+    const battery = index + 1;
+    const chargeToken = this.tokens.get(`splitbattery${battery}chargepower`);
+    const dischargeToken = this.tokens.get(`splitbattery${battery}dischargepower`);
+    const numericPower = Math.round(Number(power) || 0);
+    const chargeValue = mode === 'charge' ? numericPower : 0;
+    const dischargeValue = mode === 'discharge' ? numericPower : 0;
+
+    // Update the persistent Logic tags before the matching Flow trigger fires,
+    // so any action card can safely consume the same value as the trigger token.
+    if (chargeToken) await chargeToken.setValue(chargeValue);
+    if (dischargeToken) await dischargeToken.setValue(dischargeValue);
+  }
+
+  getSplitPowerDelayMs() {
+    return 1000;
+  }
+
+  async waitSplitPowerDelay() {
+    const delay = Math.max(0, Number(this.getSplitPowerDelayMs()) || 0);
+    if (delay <= 0) return;
+    await new Promise(resolve => this.homey.setTimeout(resolve, delay));
+  }
+
+  async publishSplitBatteryCommands(internalCommands, settings = this.getSettings(), options = {}) {
+    this.ensureSplitCommandState();
+    const count = this.getBatteryCount(settings);
+    // Defense in depth: split-command cards are a separate physical battery
+    // output surface. Even a future/direct caller must not bypass Hybrid
+    // ownership just because emitPending() already has its own guard.
+    if (this.isHybridExternalControlActive(settings)) {
+      return Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0);
+    }
+    const now = Date.now();
+    const effectiveInternalCommands = internalCommands.slice(0, count);
+    const publishJobs = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const config = this.getSplitBatteryConfig(index, settings);
+      if (!config.enabled) continue;
+      const state = this.splitCommandState[index];
+      const triggers = this.splitCommandTriggers[index] || {};
+      const requestedInternal = Math.round(Number(internalCommands[index]) || 0);
+      const desiredMode = this.getSplitDesiredMode(requestedInternal, config);
+      let outputMode = desiredMode;
+      let outputInternal = requestedInternal;
+
+      if (state.currentMode === desiredMode) {
+        this.clearSplitPendingDirection(index);
+      } else if (state.currentMode && state.currentMode !== desiredMode && !options.bypassSwitchLock) {
+        const switchAt = this.getSplitConfirmedSwitchAt(index, desiredMode, config, now);
+        if (now < switchAt) {
+          outputMode = state.currentMode;
+          outputInternal = 0;
+          this.scheduleSplitCommandRecheck(index, switchAt);
+        }
+      }
+
+      const power = this.getSplitPowerValue(outputMode, outputInternal, config);
+      // Split Command can deliberately turn an internal 0 W or a value below
+      // its configured minimum into a real non-zero hardware command. Feed the
+      // actual output back into HomeFlux in the controller's internal sign
+      // convention, so Peak Guard, live status and Savings all see what the
+      // battery is really being asked to do.
+      effectiveInternalCommands[index] = outputMode === 'charge'
+        ? -Math.abs(Number(power) || 0)
+        : Math.abs(Number(power) || 0);
+      const powerTrigger = outputMode === 'charge' ? triggers.chargePower : triggers.dischargePower;
+      const modeNeedsSwitch = !state.currentMode || state.currentMode !== outputMode;
+      const publishPower = async () => {
+        // Recheck after the existing one-second mode delay as well: an EV can
+        // start while this publication is awaiting I/O. Never restore a split
+        // discharge minimum through a stale configuration snapshot.
+        const safePower = outputMode === 'discharge'
+          && this.getEvBatteryDischargePolicy(this.getSettings()).blocked ? 0 : power;
+        effectiveInternalCommands[index] = outputMode === 'charge' ? -Math.abs(safePower) : Math.abs(safePower);
+        await this.setSplitOutputTokens(index, outputMode, safePower);
+        if (powerTrigger) await powerTrigger.trigger(this.localizeDisplayTokens({ power: safePower }), { battery: config.battery, mode: outputMode });
+        state.lastPower = safePower;
+        this.scheduleSplitSafetyModeResend(index);
+      };
+
+      if (modeNeedsSwitch) {
+        // A real mode command is itself the latest successful refresh point.
+        // Restart the optional safety interval from this transition, so the
+        // safety resend never fires a few seconds after a fresh mode switch.
+        this.clearSplitSafetyModeResend(index);
+        const modeTrigger = outputMode === 'charge' ? triggers.chargeMode : triggers.dischargeMode;
+        publishJobs.push((async () => {
+          if (modeTrigger) await modeTrigger.trigger(this.localizeDisplayTokens({}), { battery: config.battery, mode: outputMode });
+
+          // Start the anti-chatter timer only after the mode Flow has actually
+          // been triggered. The matching power Flow is then delayed by a fixed
+          // one second from this exact handover point.
+          const switchedAt = Date.now();
+          state.currentMode = outputMode;
+          state.lastModeSwitchAt = switchedAt;
+          this.clearSplitPendingDirection(index);
+          if (outputMode === 'charge') state.chargeHoldUntil = switchedAt + (config.chargeMinSwitchSeconds * 1000);
+          else state.dischargeHoldUntil = switchedAt + (config.dischargeMinSwitchSeconds * 1000);
+
+          await this.waitSplitPowerDelay();
+          await publishPower();
+        })());
+      } else {
+        publishJobs.push((async () => {
+          await publishPower();
+        })());
+      }
+    }
+
+    await Promise.all(publishJobs);
+    return effectiveInternalCommands;
+  }
+
+  async invalidateChargeTest() {
+    this.chargeTestAwaitingConfirmation = false;
+    if (Boolean(this.homey.settings.get('chargeTestPassed'))) this.setSetting('chargeTestPassed', false);
+    if (String(this.homey.settings.get('_chargeTestSignature') || '')) this.setSetting('_chargeTestSignature', '');
+    // Going from 0 -> one or more batteries must lock battery output until a new
+    // direction test passes. Going to 0 batteries has nothing left to validate.
+    if (this.getBatteryCount() > 0 && Boolean(this.homey.settings.get('controlEnabled'))) this.setSetting('controlEnabled', false);
+  }
+
+  async publishChargeTestCommands(internalCommands, statusText) {
+    if (this.commandPublishing) throw new Error('Er wordt momenteel al een batterijcommando gepubliceerd.');
+    const settings = this.getSettings();
+    const count = this.getBatteryCount(settings);
+    const internal = Array.from({ length: count }, (_, index) => Math.round(Number(internalCommands[index]) || 0));
+    const commands = internal.map(value => this.toPublishedCommand(value, settings));
+    const total = commands.reduce((sum, value) => sum + value, 0);
+
+    this.commandPublishing = true;
+    let firstError = null;
+    try {
+      // Best effort every output even when one Homey token write fails. This is
+      // especially important for the automatic 0 W at the end of the test.
+      for (let i = 1; i <= count; i += 1) {
+        const token = this.tokens.get(`battery${i}command`);
+        if (!token) continue;
+        try {
+          await token.setValue(commands[i - 1] || 0);
+        } catch (err) {
+          firstError = firstError || err;
+          this.error(`Laadtest token batterij ${i} kon niet worden bijgewerkt`, err);
+        }
+      }
+      const totalToken = this.tokens.get('emstotalcommand');
+      if (totalToken) {
+        try {
+          await totalToken.setValue(total);
+        } catch (err) {
+          firstError = firstError || err;
+          this.error('Laadtest totaal-token kon niet worden bijgewerkt', err);
+        }
+      }
+
+      const triggerTokens = {
+        battery_count: count,
+        total_command: total,
+        mode: 'Laadtest',
+        override: '',
+        status: statusText,
+        next_change: '',
+      };
+      for (let i = 1; i <= 8; i += 1) triggerTokens[`battery${i}command`] = commands[i - 1] || 0;
+      try {
+        await this.commandTrigger.trigger(this.localizeDisplayTokens(triggerTokens), { mode: 'charge_test', override: '' });
+      } catch (err) {
+        firstError = firstError || err;
+        this.error('Laadtest Flow-trigger kon niet worden gepubliceerd', err);
+      }
+      try {
+        await this.publishSplitBatteryCommands(internal, settings, { bypassSwitchLock: true });
+      } catch (err) {
+        firstError = firstError || err;
+        this.error('Laadtest split-command Flow-trigger kon niet worden gepubliceerd', err);
+      }
+    } finally {
+      this.commandPublishing = false;
+    }
+
+    if (firstError) throw firstError;
+    return { commands, total };
+  }
+
+  async startChargeTest() {
+    const settings = this.getSettings();
+    if (this.getBatteryCount(settings) === 0) throw new Error('Geen thuisbatterij geconfigureerd. Een batterijtest is niet nodig.');
+    if (Boolean(settings.controlEnabled)) {
+      if (!this.isChargeTestValid(settings)) {
+        this.setSetting('controlEnabled', false);
+        settings.controlEnabled = false;
+      } else {
+        throw new Error('Schakel EMS-uitvoer eerst uit voordat je de batterijtest start.');
+      }
+    }
+    if (this.chargeTestRunning) throw new Error('De batterijtest is al actief.');
+    if (this.commandPublishing) throw new Error('Er wordt momenteel al een batterijcommando gepubliceerd. Probeer opnieuw zodra dat klaar is.');
+
+    await this.invalidateChargeTest();
+    // A battery direction test is an explicit manual diagnostic and must own
+    // the battery output while it runs. Drop any active Hybrid delegation first
+    // so the test command path (including split command) cannot be suppressed
+    // or compete with the external-control ownership latch.
+    this.resetHybridEmsRuntime('battery_test');
+    this.pendingResult = null;
+    this.pendingCommandBypassInterval = false;
+    if (this.emitTimer) { clearTimeout(this.emitTimer); this.emitTimer = null; }
+    if (this.controlTimer) { clearTimeout(this.controlTimer); this.controlTimer = null; }
+    this.controlTimerForce = false;
+    if (this.chargeTestTimer) { clearTimeout(this.chargeTestTimer); this.chargeTestTimer = null; }
+
+    await this.syncTokens();
+    const current = this.getSettings();
+    const count = this.getBatteryCount(current);
+    this.chargeTestRunning = true;
+    this.chargeTestAwaitingConfirmation = true;
+    this.chargeTestStage = 'charge';
+    this.chargeTestLastRunAt = Date.now();
+    this.chargeTestSignatureAtRun = this.getChargeTestSignature(current);
+    let published;
+    try {
+      published = await this.publishChargeTestCommands(Array(count).fill(-100), 'Batterijtest · laadtest 100 W per batterij · wacht op bevestiging');
+    } catch (err) {
+      try { await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest afgebroken · 0 W'); } catch (_) {}
+      this.chargeTestRunning = false;
+      this.chargeTestAwaitingConfirmation = false;
+      this.chargeTestStage = '';
+      throw err;
+    }
+    return { ok: true, running: true, stage: 'charge', batteryCount: count, commandPerBatteryW: published.commands[0] || 0, inverted: Boolean(current.invertBatteryCommand) };
+  }
+
+  async confirmChargeTest(body = {}) {
+    const accepted = body.ok !== false;
+    if (!this.chargeTestRunning || !this.chargeTestAwaitingConfirmation || !['charge','discharge'].includes(this.chargeTestStage)) {
+      throw new Error('Start eerst de batterijtest.');
+    }
+    const settings = this.getSettings();
+    const count = this.getBatteryCount(settings);
+    const currentSignature = this.getChargeTestSignature(settings);
+    if (!this.chargeTestSignatureAtRun || this.chargeTestSignatureAtRun !== currentSignature) {
+      try { await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest afgebroken · configuratie gewijzigd'); } catch (_) {}
+      this.chargeTestRunning = false;
+      this.chargeTestAwaitingConfirmation = false;
+      this.chargeTestStage = '';
+      throw new Error('De batterijconfiguratie of tekenrichting wijzigde tijdens de test. Voer de batterijtest opnieuw uit.');
+    }
+
+    if (!accepted) {
+      await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest niet geslaagd · 0 W');
+      this.chargeTestRunning = false;
+      this.chargeTestAwaitingConfirmation = false;
+      const failedStage = this.chargeTestStage;
+      this.chargeTestStage = 'failed';
+      return { ok: true, passed: false, failed: true, stage: failedStage };
+    }
+
+    if (this.chargeTestStage === 'charge') {
+      let published;
+      try {
+        published = await this.publishChargeTestCommands(Array(count).fill(100), 'Batterijtest · ontlaadtest 100 W per batterij · wacht op bevestiging');
+      } catch (err) {
+        try { await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest afgebroken · 0 W'); } catch (_) {}
+        this.chargeTestRunning = false;
+        this.chargeTestAwaitingConfirmation = false;
+        this.chargeTestStage = '';
+        throw err;
+      }
+      this.chargeTestStage = 'discharge';
+      return { ok: true, running: true, passed: false, stage: 'discharge', commandPerBatteryW: published.commands[0] || 0 };
+    }
+
+    await this.publishChargeTestCommands(Array(count).fill(0), 'Batterijtest geslaagd · 0 W');
+    this.setSetting('_chargeTestSignature', currentSignature);
+    this.setSetting('chargeTestPassed', true);
+    this.chargeTestRunning = false;
+    this.chargeTestAwaitingConfirmation = false;
+    this.chargeTestStage = 'passed';
+    return { ok: true, passed: true, stage: 'passed' };
+  }
+
+  normalizeForcedMode(mode) {
+    const allowed = new Set([
+      'auto',
+      'self_consumption',
+      'solar_capture',
+      'avoid_import',
+      'manual_charge',
+      'standby',
+    ]);
+    const value = String(mode || 'auto');
+    return allowed.has(value) ? value : 'auto';
+  }
+
+  async setForcedMode(mode, source = 'app') {
+    const normalized = this.normalizeForcedMode(mode);
+    // Clear this synchronously as well as in the settings event. A P1 update may
+    // arrive before Homey dispatches that event, and must never reuse the EV
+    // headroom allocation from the previous battery mode.
+    this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
+    this.setSetting('forcedMode', normalized);
+    if (normalized === 'auto') {
+      this.setSetting('forcedModeResumeAt', 0);
+      this.clearOverrideResumeTimer();
+    } else {
+      this.armOverrideResume();
+    }
+    this.requestContextEvaluate(true, `forced_mode:${source}`);
+    await this.syncEmsDevices().catch(err => this.error(`EMS device sync after ${source} mode change failed`, err));
+    return normalized;
+  }
+
+  getBatteryCommandDeviceStatus() {
+    const total = Math.round(Number(this.state.lastTotalCommandW) || 0);
+    if (total < 0) return `Laden ${Math.abs(total)} W`;
+    if (total > 0) return `Ontladen ${total} W`;
+    return 'Rust · 0 W';
+  }
+
+  getCompactChargePlanDeviceStatus() {
+    let plan;
+    try {
+      plan = this.getPlanningStatus();
+    } catch (err) {
+      return this.lastChargePlanText ? String(this.lastChargePlanText) : 'Wachten op planning';
+    }
+    if (!plan || plan.currentSoc === null || plan.currentSoc === undefined) return 'Wachten op batterij-SoC';
+
+    const target = Number(plan.targetSoc);
+    const targetText = Number.isFinite(target) ? `${target.toFixed(1).replace('.0', '')}%` : '';
+    const energyNeed = Number(plan.energyNeedKwh) || 0;
+    if (!(energyNeed > 0.001)) return targetText ? `Geen netladen · doel ${targetText}` : 'Geen netladen gepland';
+
+    const rows = Array.isArray(plan.rows) ? plan.rows.filter(row => row && row.plannedNetCharge) : [];
+    if (!rows.length) {
+      if (plan.dynamicPriceReady === false) return 'Laden nodig · geen prijsdata';
+      return 'Laden nodig · geen laadvenster';
+    }
+
+    const now = Date.now();
+    const row = rows.find(item => Number(item.endAt) > now) || rows[0];
+    const start = this.formatPlanningTime(row.startAt);
+    const end = this.formatPlanningTime(row.endAt);
+    const power = Math.max(0, Math.round(Number(row.plannedChargeW) || 0));
+    const parts = [`${start}–${end}`];
+    if (power > 0) parts.push(`${power} W`);
+    if (targetText) parts.push(`doel ${targetText}`);
+    return parts.join(' · ');
+  }
+
+  getWidgetNextChargeStatus(now = Date.now()) {
+    const plan = this.planningCache?.value?.plan || null;
+    if (!plan || plan.currentSoc === null || plan.currentSoc === undefined) {
+      return { state: 'waiting', startAt: 0, endAt: 0, powerW: 0, targetSoc: null };
+    }
+
+    const targetSoc = Number.isFinite(Number(plan.targetSoc)) ? Number(plan.targetSoc) : null;
+    const energyNeed = Number(plan.energyNeedKwh) || 0;
+    if (!(energyNeed > 0.001)) {
+      return { state: 'not_needed', startAt: 0, endAt: 0, powerW: 0, targetSoc };
+    }
+
+    const rows = Array.isArray(plan.rows)
+      ? plan.rows.filter(row => row && row.plannedNetCharge && Number(row.endAt) > Number(now))
+      : [];
+    if (!rows.length) {
+      return {
+        state: plan.dynamicPriceReady === false ? 'no_price_data' : 'no_window',
+        startAt: 0, endAt: 0, powerW: 0, targetSoc,
+      };
+    }
+
+    const row = rows[0];
+    const startAt = Number(row.startAt) || 0;
+    const endAt = Number(row.endAt) || 0;
+    return {
+      state: startAt > 0 && Number(now) >= startAt && Number(now) < endAt ? 'active' : 'planned',
+      startAt,
+      endAt,
+      powerW: Math.max(0, Math.round(Number(row.plannedChargeW) || 0)),
+      targetSoc,
+    };
+  }
+
+  getWidgetPlanningSummary(now = Date.now()) {
+    const plan = this.planningCache?.value?.plan || null;
+    if (!plan || plan.currentSoc === null || plan.currentSoc === undefined) {
+      return {
+        ready: false,
+        phase: '',
+        forecastSource: 'none',
+        forecastKwh: null,
+        energyNeedKwh: null,
+        gridPlannedKwh: null,
+        targetAt: 0,
+      };
+    }
+
+    const rows = Array.isArray(plan.rows) ? plan.rows : [];
+    const gridPlannedKwh = rows
+      .filter(row => row && row.plannedNetCharge && Number(row.endAt) > Number(now))
+      .reduce((sum, row) => sum + Math.max(0, Number(row.plannedEnergyKwh) || 0), 0);
+    const forecastRaw = plan.forecastUsedKwh ?? plan.forecastKwh;
+    const forecastKwh = Number.isFinite(Number(forecastRaw)) ? Math.max(0, Number(forecastRaw)) : null;
+    const energyNeedRaw = plan.energyNeedKwh;
+    const energyNeedKwh = Number.isFinite(Number(energyNeedRaw)) ? Math.max(0, Number(energyNeedRaw)) : null;
+
+    return {
+      ready: true,
+      phase: String(plan.planningPhase || (plan.forecastDay === 'tomorrow' ? 'night' : 'day')),
+      forecastSource: String(plan.forecastUsedSource || (plan.forecastDay === 'tomorrow' ? 'tomorrow' : 'today_remaining')),
+      forecastKwh: forecastKwh === null ? null : Math.round(forecastKwh * 100) / 100,
+      energyNeedKwh: energyNeedKwh === null ? null : Math.round(energyNeedKwh * 100) / 100,
+      gridPlannedKwh: Math.round(gridPlannedKwh * 100) / 100,
+      targetAt: Number(plan.planningPeakStartAt) || Number(plan.planningChargeDeadlineAt) || 0,
+    };
+  }
+
+  getEvInstanceDeviceStatus(index, settings = this.getSettings()) {
+    const name = this.getEvInstanceName(index, settings);
+    if (!Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) return `${name}: uit`;
+    const input = this.getEvInputSnapshot(index);
+    const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+    const mode = this.getEffectiveEvModeFor(index, settings);
+    const override = this.getEvSessionOverrideFor(index);
+    const modeLabel = `${mode === 'emergency' ? 'Emergency' : mode === 'soc_target' ? 'SoC' : 'Slim'}${override?.mode ? ' · Flow override' : ''}`;
+    const session = this.getEvSessionDetectionRuntime(index);
+    const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
+    const isNl = language.startsWith('nl');
+    const sessionTime = value => {
+      const at = Number(value) || 0;
+      if (!at) return '';
+      return new Date(at).toLocaleTimeString(isNl ? 'nl-BE' : 'en-GB', {
+        timeZone: this.homey.clock.getTimezone() || settings.timezone || 'Europe/Brussels',
+        hour: '2-digit', minute: '2-digit',
+      });
+    };
+    if (session?.state === 'ended' && Number(session.endedAt) > 0) {
+      return `${name}: ${isNl ? 'sessie beëindigd' : 'session ended'} ${sessionTime(session.endedAt)}`;
+    }
+    if (!Boolean(input?.seen?.connected)) return `${name}: ${modeLabel} · wacht op EV`;
+    if (!Boolean(input?.connected)) return `${name}: ${modeLabel} · niet verbonden`;
+    if (session?.state === 'charging' && Number(session.startedAt) > 0) {
+      return `${name}: ${isNl ? 'laden gestart' : 'charging started'} ${sessionTime(session.startedAt)}`;
+    }
+    if (session?.state === 'paused') {
+      return `${name}: ${isNl ? 'laden gepauzeerd' : 'charging paused'} · ${Number(session.startedAt) > 0 ? `${isNl ? 'gestart' : 'started'} ${sessionTime(session.startedAt)}` : (isNl ? 'wacht op hervatten' : 'waiting to resume')}`;
+    }
+    const runtime = index === 0 ? null : this.getExtraEv(index);
+    const desiredA = Math.max(0, Math.round(Number(decision?.desiredCurrentA) || 0));
+    const actualA = input?.seen?.chargeCurrent ? Math.max(0, Math.round(Number(input.chargeCurrentA) || 0)) : 0;
+    const outputA = index === 0 ? Number(this.lastPublishedEvCurrentA || 0) : Number(runtime?.lastPublishedCurrentA || 0);
+    const currentA = desiredA > 0 ? desiredA : outputA > 0 ? outputA : actualA;
+    if (currentA > 0 && (Boolean(decision?.allowed) || actualA > 0)) return `${name}: ${modeLabel} · ${currentA} A`;
+    return `${name}: ${modeLabel} · wacht`;
+  }
+
+  getEvDeviceStatus(settings = this.getSettings()) {
+    const count = this.getEvCount(settings);
+    const enabled = [];
+    for (let index = 0; index < count; index += 1) {
+      if (Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) enabled.push(index);
+    }
+    if (!enabled.length) return 'Uit';
+    if (enabled.length === 1) return this.getEvInstanceDeviceStatus(enabled[0], settings).replace(/^EV \d+: /, '');
+    return enabled.map(index => this.getEvInstanceDeviceStatus(index, settings)).join(' | ');
+  }
+
+  getEvPlanningDeviceStatus(settings = this.getSettings()) {
+    const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
+    const isNl = language.startsWith('nl');
+    const rows = [];
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      if (!Boolean(settings[this.getEvSettingKey(index, 'Enabled')])) continue;
+      const energy = this.evEnergyPlans?.[index];
+      const soc = this.evSocPlans?.[index];
+      const socEnabled = settings[this.getEvSettingKey(index, 'SocEnabled')] !== false;
+      const source = energy?.active ? 'flow_energy' : socEnabled && soc?.active ? 'flow_soc' : 'settings';
+      const targetTime = settings[this.getEvSettingKey(index, 'TargetTime')];
+      const time = String(source === 'flow_energy' ? energy.targetTime : source === 'flow_soc'
+        ? soc.targetTime : targetTime || '07:00');
+      const completed = settings[this.getEvSettingKey(index, 'AfterSocTarget')] === 'preferences'
+        && !energy?.active && Boolean(this.getEvSessionDetectionRuntime(index)?.socTargetReached);
+      const guarantee = !completed && (source === 'flow_energy' ? Boolean(energy.guarantee)
+        : source === 'flow_soc' ? Boolean(soc.guarantee)
+          : Boolean(settings[this.getEvSettingKey(index, 'GuaranteeTarget')])
+            && Boolean(settings[this.getEvSettingKey(index, 'AllowUnselectedTariffForDeadline')]));
+      let target = '';
+      if (source === 'flow_energy') {
+        const kwh = Math.max(0, Number(energy.targetKwh) || 0);
+        target = `${kwh.toFixed(1).replace('.0', '')} kWh`;
+      } else if (source === 'flow_soc') {
+        target = `${Math.max(0, Number(soc.targetSoc) || 0).toFixed(0)}%`;
+      } else if (socEnabled) {
+        target = `${Math.max(0, Number(settings[this.getEvSettingKey(index, 'TargetSoc')]) || 0).toFixed(0)}%`;
+      } else {
+        target = isNl ? 'geen SoC-doel' : 'no SoC target';
+      }
+      const sourceLabel = source === 'settings'
+        ? (isNl ? 'geen Flow-doel · instellingen' : 'no Flow target · settings')
+        : (isNl ? 'Flow-doel' : 'Flow target');
+      const policy = source === 'settings'
+        ? ''
+        : (guarantee ? (isNl ? 'gegarandeerd' : 'guaranteed') : (isNl ? 'gunstige momenten' : 'favourable moments'));
+      const name = this.getEvInstanceName(index, settings);
+      rows.push(`${name}: ${sourceLabel} · ${target}${target.includes('doel') || target.includes('target') ? '' : ` ${isNl ? 'tegen' : 'by'} ${time}`}${policy ? ` · ${policy}` : ''}`);
+    }
+    if (!rows.length) return isNl ? 'Geen EV actief' : 'No EV enabled';
+    if (rows.length === 1 && this.getEvCount(settings) === 1) return rows[0].replace(/^EV 1: /, '');
+    return rows.join(' | ');
+  }
+
+  getEvOverrideDeviceStatus(settings = this.getSettings()) {
+    const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
+    const isNl = language.startsWith('nl');
+    const active = [];
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const override = this.getEvSessionOverrideFor(index);
+      if (!override?.mode) continue;
+      const mode = this.normalizeEvOperatingMode(override.mode);
+      const modeLabel = mode === 'emergency' ? 'Emergency' : mode === 'soc_target' ? (isNl ? 'SoC-doel' : 'SoC target') : (isNl ? 'Slim' : 'Smart');
+      const phase = override.sessionStarted ? (isNl ? 'actief' : 'active') : (isNl ? 'wacht op EV' : 'waiting for EV');
+      active.push(`${this.getEvInstanceName(index, settings)}: ${modeLabel} · ${phase}`);
+    }
+    if (active.length === 1 && this.getEvCount(settings) === 1) return active[0].replace(/^EV 1: /, '');
+    return active.length ? active.join(' | ') : (isNl ? 'Geen' : 'None');
+  }
+
+  getHvacInstanceDeviceStatus(index, settings = this.getSettings()) {
+    const instanceSettings = this.getHvacInstanceSettings(index, settings);
+    const name = this.getHvacInstanceName(index, settings);
+    if (!Boolean(instanceSettings.hvacEnabled)) return `${name}: uit`;
+    const input = this.getHvacInputSnapshot(index);
+    const runtime = index === 0 ? null : this.getExtraHvac(index);
+    const decision = index === 0 ? this.latestHvacDecision : runtime?.latestDecision;
+    const power=index===0?this.lastPublishedHvacPower:runtime?.lastPublishedPower;
+    const rawMode = power===false?'off':String((index === 0 ? this.lastPublishedHvacMode : runtime?.lastPublishedMode) || input?.mode || decision?.modeCommand || '');
+    const modeLabels = { cool: 'Koelen', heat: 'Verwarmen', auto: 'Auto', fan: 'Ventileren', dry: 'Ontvochtigen', off: 'Uit' };
+    const modeLabel = modeLabels[rawMode.toLowerCase()] || (rawMode || 'Wachten op data');
+    const commanded = decision?.setpointCommand !== null && decision?.setpointCommand !== undefined ? Number(decision.setpointCommand) : NaN;
+    const currentRaw = input?.setpointC;
+    const publishedRaw = index === 0 ? this.lastPublishedHvacSetpoint : runtime?.lastPublishedSetpoint;
+    const current = currentRaw === null || currentRaw === undefined ? NaN : Number(currentRaw);
+    const published = publishedRaw === null || publishedRaw === undefined ? NaN : Number(publishedRaw);
+    const setpoint = Number.isFinite(published) ? published : Number.isFinite(current) ? current : Number.isFinite(commanded) ? commanded : null;
+    const boost = Boolean(decision?.boostActive || (index === 0 ? this.hvacBaselineSetpoint !== null : runtime?.baselineSetpoint !== null));
+    const boostLabel = decision?.energySource === 'battery' ? 'Batterij-boost' : 'PV-boost';
+    return `${name}: ${boost ? `${boostLabel} · ` : ''}${modeLabel}${setpoint !== null ? ` · ${setpoint.toFixed(1).replace('.0', '')} °C` : ''}`;
+  }
+
+  getHvacDeviceStatus(settings = this.getSettings()) {
+    const count = this.getHvacCount(settings);
+    const enabled = [];
+    for (let index = 0; index < count; index += 1) {
+      if (Boolean(this.getHvacInstanceSettings(index, settings).hvacEnabled)) enabled.push(index);
+    }
+    if (!enabled.length) return 'Uit';
+    if (enabled.length === 1) return this.getHvacInstanceDeviceStatus(enabled[0], settings).replace(/^HVAC \d+: /, '');
+    const active = enabled.filter(index => this.isHvacManagedActiveFor(index)).length;
+    return `${active}/${enabled.length} actief · ${enabled.map(index => this.getHvacInstanceName(index, settings)).join(', ')}`;
+  }
+
+  getHybridControlOwnerDeviceStatus(settings = this.getSettings()) {
+    const language = String(this.homey?.i18n?.getLanguage?.() || 'nl').toLowerCase();
+    const isNl = language.startsWith('nl');
+    const hybrid = this.getHybridEmsStatus(settings);
+    if (!hybrid.available) return isNl ? 'Geen thuisbatterij' : 'No home battery';
+    if (hybrid.owner === 'external') {
+      const mode = hybrid.mode === 'avoid_import'
+        ? (isNl ? 'netimport vermijden' : 'avoid grid import')
+        : (isNl ? 'zelfconsumptie' : 'self-consumption');
+      return `${isNl ? 'Externe EMS' : 'External EMS'} · ${mode}`;
+    }
+    const status = String(hybrid.status || 'inactive');
+    if (!hybrid.enabled) return `HomeFlux · ${isNl ? 'Hybrid uit' : 'Hybrid off'}`;
+    if (status === 'homeflux_peak_guard') return 'HomeFlux · Peak Guard';
+    if (status === 'homeflux_peak_guard_cooldown') {
+      const seconds = Math.max(0, Number(hybrid.peakGuardCooldownRemainingSeconds) || 0);
+      const mm = Math.floor(seconds / 60);
+      const ss = String(Math.floor(seconds % 60)).padStart(2, '0');
+      return `HomeFlux · Peak Guard cooldown ${mm}:${ss}`;
+    }
+    if (status === 'homeflux_fallback') return `HomeFlux · ${isNl ? 'Hybrid fallback' : 'Hybrid fallback'}`;
+    if (status === 'handover_wait') return `HomeFlux · ${isNl ? 'overdracht wacht' : 'handover waiting'}`;
+    if (status === 'homeflux_priority') return `HomeFlux · ${isNl ? 'planning/veiligheid' : 'planning/safety'}`;
+    return 'HomeFlux';
+  }
+
+  getEmsDeviceSnapshot(result = this.latestResult) {
+    const settings = this.getSettings();
+    const readiness = this.getInputReadiness(settings);
+    const forcedMode = this.normalizeForcedMode(settings.forcedMode);
+    const tariff = result?.tariff?.label || 'Geen tarief';
+    const action = result?.workingModeLabel || result?.modeLabel || 'Wachten op data';
+    const status = result?.statusText || (readiness.ready ? 'HomeFlux EMS gereed' : `Wachten op data: ${readiness.missing.join(', ')}`);
+    return {
+      mode: forcedMode,
+      status: this.translateDisplay(status),
+      tariff: String(tariff),
+      action: this.translateDisplay(action),
+      batteryCommand: this.translateDisplay(this.getBatteryCommandDeviceStatus()),
+      chargePlan: this.translateDisplay(this.getCompactChargePlanDeviceStatus()),
+      controlOwner: this.getHybridControlOwnerDeviceStatus(settings),
+      evStatus: this.translateDisplay(this.getEvDeviceStatus(settings)),
+      evPlan: this.translateDisplay(this.getEvPlanningDeviceStatus(settings)),
+      evOverride: this.translateDisplay(this.getEvOverrideDeviceStatus(settings)),
+      hvacStatus: this.translateDisplay(this.getHvacDeviceStatus(settings)),
+      savingsToday: Number(this.savings ? totalSavings(this.savings.today) : 0) || 0,
+      savingsTotal: Number(this.savings?.total) || 0,
+      overrideActive: forcedMode !== 'auto',
+      inputAlarm: !readiness.ready,
+      balanceAlarm: Boolean(this.balanceMonitor?.warningActive),
+    };
+  }
+
+  async syncEmsDevices(result = this.latestResult) {
+    if (!this.emsDevices || this.emsDevices.size === 0) return;
+    this.recordDiagnosticCounter('emsDeviceSyncs');
+    const diagnosticCpu = this.startDiagnosticCpuSection('ems_device_sync');
+    try {
+      const snapshot = this.getEmsDeviceSnapshot(result);
+      await Promise.all([...this.emsDevices].map(async device => {
+        try {
+          await device.syncFromApp(snapshot);
+        } catch (err) {
+          this.error('Could not sync HomeFlux EMS device', err);
+        }
+      }));
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
+  }
+
+  getConfiguredFlowSlots(kind) {
+    const settings = this.getSettings();
+    const nl = String(this.homey.i18n?.getLanguage?.() || 'en').toLowerCase().startsWith('nl');
+    const count = kind === 'battery' ? this.getBatteryCount(settings)
+      : kind === 'ev' ? this.getEvCount(settings)
+        : kind === 'hvac' ? this.getHvacCount(settings) : 0;
+    const label = kind === 'battery' ? (nl ? 'Batterij' : 'Battery') : kind.toUpperCase();
+    return Array.from({ length: count }, (_, index) => {
+      const baseName = `${label} ${index + 1}`;
+      const customName = kind === 'ev' ? this.getEvInstanceName(index, settings)
+        : kind === 'hvac' ? this.getHvacInstanceName(index, settings) : baseName;
+      // Counts define configured slots. A disconnected EV, or HVAC with its
+      // automatic control temporarily disabled, must remain selectable.
+      return {
+        id: String(index + 1), kind,
+        name: customName === baseName ? baseName : `${baseName} - ${customName}`,
+      };
+    });
+  }
+
+  getInputMonitor() {
+    if (!this.inputMonitor) this.inputMonitor = new InputMonitor({
+      definitions: (this.homey.manifest || require('./app.json')).flow?.actions || [],
+      version: this.homey?.manifest?.version || require('./app.json').version,
+      now: () => Date.now(),
+      setTimeout: (fn, ms) => this.homey.setTimeout(fn, ms),
+      clearTimeout: timer => clearTimeout(timer),
+    });
+    return this.inputMonitor;
+  }
+
+  // Passive observer, activated only by the existing 15-minute monitor.
+  // Synchronous only: no timers, settings writes, awaits or controller changes.
+  measurePlanningCalculation(kind, origin, instance, calculate) {
+    const monitor = this.inputMonitor;
+    if (!monitor?.active) return calculate();
+    const started = process.hrtime.bigint();
+    const cpuStart = process.cpuUsage();
+    let failed = false;
+    try { return calculate(); }
+    catch (error) { failed = true; throw error; }
+    finally {
+      const wallMs = Number(process.hrtime.bigint() - started) / 1e6;
+      const cpu = process.cpuUsage(cpuStart);
+      try { monitor.noteCalculation(kind, origin, instance, wallMs, (cpu.user + cpu.system) / 1000, failed); }
+      catch (_) { /* Diagnostics must never affect regulation. */ }
+    }
+  }
+
+  getEvDeadlinePriceCurve(settings, now) {
+    // Source readiness is checked in the slow EV path. Never called from P1.
+    const identity = [Math.floor(now / 60000), this.homeyEnergy?.slots,
+      this.homeyEnergy?.lastUpdatedAt, this.homeyEnergy?.available,
+      this.externalEnergy?.slots, this.externalEnergy2?.slots,
+      this.dynamicPriceCalibrations, this.evDeadlineSettingsRevision, this.evDeadlinePriceSelection?.selection.source];
+    const memo = this.evDeadlineCurveRead;
+    if (memo && identity.every((v, i) => v === memo.identity[i])) return memo.curve;
+    const snapshot = this.evDeadlinePriceSelection;
+    const selection = snapshot && snapshot.revision === this.evDeadlineSettingsRevision
+      && now >= snapshot.at && now - snapshot.at < 1000 ? snapshot.selection
+      : this.getDynamicPriceSelection(settings, new Date(now), { readOnly: true });
+    if (selection.source === 'none') {
+      this.evDeadlineCurveRead = { identity, curve: null };
+      return null;
+    }
+    const source = selection.source;
+    const state = source === 'homey' ? this.homeyEnergy : source === 'external2' ? this.externalEnergy2 : this.externalEnergy;
+    const calibration = selection.calibration;
+    const rawKey = [source, state?.slots, settings.timezone, this.getDynamicTargetInterval(settings),
+      calibration?.scale, calibration?.offset, calibration?.learnedAt];
+    const prepared = this.evDeadlinePreparedCurve;
+    let curve = prepared?.curve;
+    if (!prepared || !rawKey.every((v, i) => v === prepared.rawKey[i])) {
+      const next = prepareEvPriceCurve(selection.slots, settings.timezone, this.getDynamicTargetInterval(settings));
+      // Identical price publications do not invalidate an existing EV plan.
+      curve = curve?.fingerprint === next.fingerprint ? curve : next;
+      this.evDeadlinePreparedCurve = { rawKey, curve };
+      this.recordDiagnosticCounter('evDeadlinePriceCurveBuilds');
+    }
+    this.evDeadlineCurveRead = { identity, curve };
+    return curve;
+  }
+
+  planEvDeadline(index, input, target) {
+    const settings = input.settings, now = input.now.getTime();
+    const advanced = settings.evWidgetPlan && (settings.evWidgetPlan.days > 0 || settings.evWidgetPlan.maxPv);
+    if ((!isDynamicContract(settings) && !advanced) || (!settings.evEnergyPlanActive && !settings.evSocPlanActive
+      && !settings.evGuaranteeTarget && settings.evMode !== 'soc_target')
+      || this.getEvSessionDetectionRuntime(index)?.endedLatched) return null;
+    let curve = isDynamicContract(settings) ? this.getEvDeadlinePriceCurve(settings, now)
+      : evPlanResources.configuredCurve(this, index, settings, now);
+    if (!curve?.intervals?.length) {
+      if (!advanced) return null; // Preserve the legacy missing-price fallback.
+      // Advanced widget goals never repeat a known daily tariff into unknown
+      // future days. An empty curve can still retain the existing safe-start
+      // deadline; it does not create a cheap interval or bypass input safety.
+      curve = this.evUnknownDeadlineCurve ||= { intervals: [], fingerprint: 'unpublished' };
+    }
+    const stored = this.getSettings();
+    let evPowerW = 0, totalWeight = 0;
+    const weight = Math.max(1, Number(settings.evWeight) || 1);
+    for (let i = 0; i < this.getEvCount(stored); i++) {
+      const physical = this.getEvInputSnapshot(i);
+      if (!physical?.connected || !stored[this.getEvSettingKey(i, 'Enabled')]
+        || this.getEvSessionDetectionRuntime(i)?.endedLatched) continue;
+      evPowerW += this.getEvControlCurrentA(i, physical, stored) * evPowerPerAmp(this.getEvElectricalSettingsFor(i, stored));
+      totalWeight += Math.max(1, Number(stored[this.getEvSettingKey(i, 'Weight')]) || 1);
+    }
+    // Conservative physical house/battery demand; queued battery reductions
+    // never finance EV capacity. Multiple connected EVs share this estimate.
+    const baselineW = Math.max(0, Number(input.gridPowerW) + Math.max(0, Number(input.currentBatteryCommandW) || 0) - evPowerW);
+    const share = Math.min(1, weight / Math.max(weight, totalWeight));
+    const peakRoomW = stored.peakShaveEnabled
+      ? Math.max(0, Number(stored.peakLimitW) - (Number(stored.peakSoftMarginW) || 0) - baselineW) * share : Infinity;
+    const perAmp = evPowerPerAmp(settings);
+    const modeOnly = this.getEvControlType(settings) === 'mode';
+    const modeStandardW = this.getEvModeEstimatedCurrentA('standard', settings) * perAmp;
+    const modeSmartW = this.getEvModeEstimatedCurrentA('smart', settings) * perAmp;
+    const controllablePower = watts => modeOnly
+      ? watts + 0.001 >= modeStandardW ? modeStandardW : watts + 0.001 >= modeSmartW ? modeSmartW : 0
+      : Math.floor(Math.max(0, watts) / perAmp) * perAmp;
+    // A persistently slower vehicle must not finance a plan at commanded
+    // amperes. Ignore startup ramps; use only fresh positive measured feedback
+    // after one minute of underdelivery. This never changes physical setpoints.
+    this.evDeadlineDelivery ||= [];
+    const measured = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index), now);
+    const actualW = Math.max(0, Number(measured.currentA) || 0) * perAmp;
+    const outputState = index === 0 ? null : this.getExtraEv(index);
+    const publishedA = index === 0 ? this.lastPublishedEvCurrentA : outputState?.lastPublishedCurrentA;
+    const publishedMode = index === 0 ? this.lastPublishedEvChargeMode : outputState?.lastPublishedChargeMode;
+    const commandedW = this.isEvOutputPermittedFor(index)
+      ? (modeOnly ? this.getEvModeEstimatedCurrentA(publishedMode, settings) : Math.max(0, Number(publishedA) || 0)) * perAmp : 0;
+    const throttled = measured.fresh && actualW > 0 && commandedW > actualW * 1.1;
+    let delivery = this.evDeadlineDelivery[index];
+    const connectedAt = this.getEvSessionDetectionRuntime(index)?.connectedAt || 0;
+    if (delivery && (delivery.connectedAt !== connectedAt || delivery.settingsRevision !== this.evDeadlineSettingsRevision
+      || now < delivery.at)) delivery = null;
+    if (throttled) {
+      if (!delivery || (!delivery.capW && now - delivery.at > 90000)
+        || Math.abs(actualW - delivery.watts) > Math.max(perAmp * 0.5, delivery.watts * 0.1)) {
+        delivery = { since: now, at: now, watts: actualW, capW: delivery?.capW,
+          connectedAt, settingsRevision: this.evDeadlineSettingsRevision };
+      }
+      delivery.at = now;
+      delivery.watts = Math.min(delivery.watts, actualW);
+      if (now - delivery.since >= 60000) delivery.capW = delivery.watts;
+    } else if (delivery && (!delivery.capW || (measured.fresh && commandedW > 0
+      && actualW >= commandedW * 0.9 && actualW > delivery.capW * 1.1))) delivery = null;
+    // Keep a learned limit through planned pauses in the same connection.
+    this.evDeadlineDelivery[index] = delivery;
+    const observedCapW = delivery?.capW || Infinity;
+    const commandPowerW = controllablePower(Math.min(target.standardPowerW, peakRoomW));
+    const maxPowerW = Math.min(controllablePower(Math.min(target.maxPowerW, peakRoomW)), observedCapW);
+    const powerW = Math.min(commandPowerW, observedCapW);
+    const limitsW = {};
+    for (const className of ['cheap', 'normal', 'expensive']) {
+      const room = Math.max(0, this.getEvGridImportLimitW({ className }, stored) - baselineW) * share;
+      const watts = controllablePower(Math.min(commandPowerW, room));
+      limitsW[className] = watts >= target.minPowerW ? Math.min(watts, observedCapW) : 0;
+    }
+    const rateLimitsW = {};
+    if (curve.configured) for (const row of curve.intervals) {
+      if (Object.hasOwn(rateLimitsW, row.rateId || row.className)) continue;
+      const room = Math.max(0, this.getEvGridImportLimitW(row, stored) - baselineW) * share;
+      const watts = controllablePower(Math.min(commandPowerW, room));
+      rateLimitsW[row.rateId || row.className] = watts >= target.minPowerW ? Math.min(watts, observedCapW) : 0;
+    }
+    const pvBudget = settings.evWidgetPlan?.maxPv ? evPlanResources.pvCredits(this, now) : null;
+    this.evDeadlinePlanner ||= new EvDeadlinePlanner();
+    const before = this.evDeadlinePlanner.builds;
+    const plan = this.evDeadlinePlanner.evaluate({ index, now, curve,
+      observeBuild: calculate => this.measurePlanningCalculation('evDeadlinePlan', 'context', index + 1, calculate),
+      deadlineAt: target.deadlineAt, needKwh: target.energyNeedKwh,
+      powerW, maxPowerW, limitsW, allowUnknownHorizon: Boolean(advanced), excludeExpensive: Boolean(settings.evWidgetPlan?.maxPv && !target.guarantee), rateLimitsW: curve.configured ? rateLimitsW : null,
+      pvCreditKwh: pvBudget ? pvBudget.credits[index] : 0,
+      cheap: Boolean(settings.evDynamicCheapEnabled), normal: Boolean(settings.evDynamicNormalEnabled),
+      expensive: Boolean(settings.evDynamicExpensiveEnabled), cheapHours: Number(settings.cheapHours) || 3,
+      expensiveHours: Number(settings.expensiveHours) || 3, guarantee: target.guarantee,
+      signature: [this.evDeadlineGoalRevision?.[index] || 0, this.evDeadlineSettingsRevision || 0,
+        settings.evPlanningSource, settings.evTargetSoc, settings.evTargetTime, settings.timezone].join('|') });
+    this.recordDiagnosticCounter(this.evDeadlinePlanner.builds > before ? 'evDeadlinePlanBuilds' : 'evDeadlinePlanReuses');
+    return plan ? { ...plan, provisional: Boolean(pvBudget?.provisional || plan.knownMinutes + .01 < (target.deadlineAt - now) / 60000), revision: this.evPlanRevision?.[index] || 0,
+      goalRevision: this.evDeadlineGoalRevision?.[index] || 0,
+      settingsRevision: this.evDeadlineSettingsRevision || 0, evaluatedAt: now } : null;
+  }
+
+  getEvDeadlinePolicy(index, decision, settings, now) {
+    if (!decision?.deadlinePlanning) return null;
+    const valid = now >= decision.deadlinePlanEvaluatedAt && now < decision.deadlinePlanNextAt
+      && decision.deadlinePlanGoalRevision === (this.evDeadlineGoalRevision?.[index] || 0)
+      && decision.deadlinePlanSettingsRevision === (this.evDeadlineSettingsRevision || 0);
+    const selected = valid && Boolean(decision.selectedTariff);
+    return { selected, limitW: selected
+      ? this.getEvGridImportLimitW({ className: decision.deadlinePlanClass, rateId: decision.deadlinePlanRateId }, settings) : 0 };
+  }
+
+  getEvDecisionGridImportLimitW(decision, tariff, settings) {
+    return decision?.deadlinePlanning && decision.selectedTariff
+      ? this.getEvGridImportLimitW({ className: decision.deadlinePlanClass, rateId: decision.deadlinePlanRateId }, settings)
+      : this.getEvGridImportLimitW(tariff, settings);
+  }
+
+  scheduleEvDeadlineWakeup(decisions) {
+    const now = Date.now();
+    const events = decisions.filter(d => d?.deadlinePlanning && d.enabled && d.connected
+      && !d.targetCompleted && !d.socTargetReached).map(d => Number(d.deadlinePlanNextAt)).filter(t => t > now);
+    const at = events.length ? Math.min(...events) : 0;
+    if (this.evDeadlineWakeup?.at === at) return;
+    if (this.evDeadlineWakeup?.timer) clearTimeout(this.evDeadlineWakeup.timer);
+    this.evDeadlineWakeup = null;
+    if (!at) return;
+    const timer = this.homey.setTimeout(() => {
+      if (this.evDeadlineWakeup?.timer !== timer) return;
+      this.evDeadlineWakeup = null;
+      this.refreshEvOnlyContext({ deadlineEvContext: true, heartbeatEv: true }).catch(err => this.error('EV deadline interval failed', err));
+    }, Math.max(1, at - now));
+    this.evDeadlineWakeup = { at, timer };
+  }
+
+  measureEvPlanningDecision(instanceIndex, origin, input) {
+    if (origin !== 'simulation' && (isDynamicContract(input.settings) || (input.settings.evWidgetPlan && (input.settings.evWidgetPlan.days > 0 || input.settings.evWidgetPlan.maxPv)))) {
+      input = { ...input, planDeadline: target => this.planEvDeadline(instanceIndex, input, target) };
+    }
+    const instance = instanceIndex + 1;
+    if (!this.inputMonitor?.active) return calculateEvDecision(input);
+    return this.measurePlanningCalculation('evDecision', origin, instance, () => calculateEvDecision({
+      ...input,
+      observeTariffScan: calculate => this.measurePlanningCalculation('evTariffScan', origin, instance, calculate),
+      observeTariffReuse: () => this.inputMonitor?.notePlanningEvent('tariff_suffix_reused', instance),
+    }));
+  }
+
+  getInputMonitorReport() { return this.getInputMonitor().snapshot(); }
+  startInputMonitor() { return this.getInputMonitor().start(); }
+  stopInputMonitor() { return this.getInputMonitor().stop(); }
+  clearInputMonitor() { return this.getInputMonitor().clear(); }
+
+  registerFlowCards() {
+    const flow = this.getInputMonitor().observeFlow(this.homey.flow);
+    this.configuredFlowCards = new ConfiguredFlowCards(flow, {
+      getSlots: kind => this.getConfiguredFlowSlots(kind),
+      getLanguage: () => this.homey.i18n?.getLanguage?.() || 'en',
+    });
+    this.slotFlowCards = new SlotFlowCards(this.configuredFlowCards);
+    this.commandTrigger = flow.getTriggerCard('battery_commands_updated');
+    this.calculatedSetpointTrigger = flow.getTriggerCard('battery_setpoint_calculated');
+    this.balanceWarningTrigger = flow.getTriggerCard('battery_balance_warning');
+    this.statusChangedTrigger = flow.getTriggerCard('ems_status_changed');
+    this.pvLimitTrigger = flow.getTriggerCard('pv_power_limit_updated');
+    this.chargePlanTrigger = flow.getTriggerCard('charge_plan_updated');
+    this.evCurrentTrigger = this.slotFlowCards.getTriggerCard('ev1_charge_current_updated');
+    this.evAllowedTrigger = this.slotFlowCards.getTriggerCard('ev1_charging_allowed_updated');
+    this.evModeTrigger = this.slotFlowCards.getTriggerCard('ev1_charge_mode_updated');
+    this.evTargetWarningTrigger = flow.getTriggerCard('ev_target_cannot_be_reached');
+    this.hvacPowerTrigger = this.slotFlowCards.getTriggerCard('hvac1_power_updated');
+    this.hvacModeTrigger = this.slotFlowCards.getTriggerCard('hvac1_mode_updated');
+    this.hvacSetpointTrigger = this.slotFlowCards.getTriggerCard('hvac1_setpoint_updated');
+    this.hvacFanTrigger = this.slotFlowCards.getTriggerCard('hvac1_fan_updated');
+    this.boilerTrigger = flow.getTriggerCard('boiler_power_updated');
+    this.boilerWarmedTrigger = flow.getTriggerCard('boiler_warmed_updated');
+    this.externalEmsSelfConsumptionTrigger = flow.getTriggerCard('external_ems_self_consumption_requested');
+    this.extraEvTriggers = Array.from({ length: 3 }, (_, offset) => {
+      const instance = offset + 2;
+      return {
+        current: this.slotFlowCards.getTriggerCard(`ev${instance}_charge_current_updated`),
+        allowed: this.slotFlowCards.getTriggerCard(`ev${instance}_charging_allowed_updated`),
+        mode: this.slotFlowCards.getTriggerCard(`ev${instance}_charge_mode_updated`),
+        requestSoc: this.slotFlowCards.getTriggerCard(`request_ev${instance}_soc_needed`),
+      };
+    });
+    this.extraHvacTriggers = Array.from({ length: 9 }, (_, offset) => {
+      const instance = offset + 2;
+      return {
+        power: this.slotFlowCards.getTriggerCard(`hvac${instance}_power_updated`),
+        mode: this.slotFlowCards.getTriggerCard(`hvac${instance}_mode_updated`),
+        setpoint: this.slotFlowCards.getTriggerCard(`hvac${instance}_setpoint_updated`),
+        fan: this.slotFlowCards.getTriggerCard(`hvac${instance}_fan_updated`),
+      };
+    });
+    this.splitCommandTriggers = Array.from({ length: 8 }, (_, index) => {
+      const battery = index + 1;
+      return {
+        chargeMode: this.slotFlowCards.getTriggerCard(`split_command_battery${battery}_charge_mode`),
+        dischargeMode: this.slotFlowCards.getTriggerCard(`split_command_battery${battery}_discharge_mode`),
+        chargePower: this.slotFlowCards.getTriggerCard(`split_command_battery${battery}_charge_power`),
+        dischargePower: this.slotFlowCards.getTriggerCard(`split_command_battery${battery}_discharge_power`),
+      };
+    });
+    this.inputRequestTriggers = {
+      pv: flow.getTriggerCard('request_pv_power_needed'),
+      forecast: flow.getTriggerCard('request_forecast_needed'),
+      forecastTomorrow: flow.getTriggerCard('request_forecast_tomorrow_needed'),
+      evSoc: this.slotFlowCards.getTriggerCard('request_ev1_soc_needed'),
+      batterySoc: Array.from({ length: 8 }, (_, index) =>
+        this.slotFlowCards.getTriggerCard(`request_battery${index + 1}_soc_needed`)),
+    };
+
+    flow.getActionCard('set_external_ems_setpoint').registerRunListener(async args =>
+      this.handleExternalEmsSetpoint(args.power));
+
+    flow.getActionCard('set_grid_power').registerRunListener(async args => {
+      const value = parseFiniteInputNumber(args.power);
+      if (value === null) return false;
+      this.recordDiagnosticCounter('gridInputs');
+      const inputSettings = this.getSettings();
+      const wasGridReady = this.getInputReadiness(inputSettings).ready;
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      this.state.gridPowerW = value;
+      this.inputSeen.grid = true;
+      this.inputUpdatedAt.grid = now;
+      this.recordGridSample(value, now);
+      this.recordEvHouseLoadSample(value, now, inputSettings);
+      hvacPermanent.observe(this, now);
+      this.recordEvBatteryHouseReference(now, inputSettings);
+      const evLoadProtectionChanged = this.updateEvPortfolioLoadDetection(value, now, inputSettings);
+      this.updateAdaptiveSetpointDetection(value, inputSettings, now);
+      this.checkFlexibleSafetyFromGrid(now, inputSettings);
+      // Do not even enter the Hybrid watchdog while HomeFlux owns the battery.
+      // The external EMS may keep publishing feedback in the background, but
+      // that must not add Hybrid work to the normal HomeFlux control loop.
+      if (this.hybridEmsRuntime?.delegated && !this.hybridEmsRuntime?.takeover) {
+        this.monitorHybridExternalControl(inputSettings, now);
+      }
+      const contextGridDelta = this.lastContextGridInputW === null ? Infinity : Math.abs(value - this.lastContextGridInputW);
+      if (this.needsSlowMeterContext(inputSettings)
+        && (contextGridDelta >= 100 || this.hasActiveFlexibleOutput(inputSettings))) {
+        this.lastContextGridInputW = value;
+        if (this.needsNonEvMeterContext(inputSettings) || !this.contextDirtyReasons?.has('grid_context')) {
+          this.requestContextEvaluate(false, 'grid_context', 0, false, false);
+        }
+      }
+      this.updateEvMeterContextRequest(inputSettings);
+      if (!wasGridReady && Boolean(inputSettings.controlEnabled)) {
+        this.requestContextEvaluate(true, 'grid_recovered');
+      } else if (evLoadProtectionChanged) {
+        // The one-minute house-load confirmation changed the ownership of the
+        // meter load. Re-evaluate immediately so battery control is restored
+        // without waiting for the normal slow context cadence.
+        this.requestContextEvaluate(true, 'ev_house_load_protection');
+      } else {
+        this.requestEvaluate();
+      }
+      return true;
+    });
+
+    flow.getActionCard('set_imported_energy_today').registerRunListener(async args => {
+      const value = Number(args.energy);
+      if (!Number.isFinite(value) || value < 0) return false;
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      const todayKey = this.getSavingsDateKey(now);
+      if (!this.savings.today?.date) this.savings.today = emptyDay(todayKey);
+      if (this.savings.today.date !== todayKey) this.archiveSavingsDay(todayKey);
+      this.savings.today.importedEnergyKwh = value;
+      this.savings.today.importedEnergyKnown = true;
+      return true;
+    });
+
+    flow.getActionCard('set_exported_energy_today').registerRunListener(async args => {
+      const value = Number(args.energy);
+      if (!Number.isFinite(value) || value < 0) return false;
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      const todayKey = this.getSavingsDateKey(now);
+      if (!this.savings.today?.date) this.savings.today = emptyDay(todayKey);
+      if (this.savings.today.date !== todayKey) this.archiveSavingsDay(todayKey);
+      this.savings.today.exportedEnergyKwh = value;
+      this.savings.today.exportedEnergyKnown = true;
+      return true;
+    });
+
+    flow.getActionCard('set_pv_power').registerRunListener(async args => {
+      const value = parseFiniteInputNumber(args.power);
+      if (value === null) return false;
+      this.recordDiagnosticCounter('pvInputs');
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      this.state.pvPowerW = Math.max(0, value);
+      this.inputSeen.pv = true;
+      this.inputUpdatedAt.pv = now;
+      this.updatePvPlanningState(this.state.pvPowerW, now);
+      this.noteAutoTunePvSample(this.state.pvPowerW, now);
+      this.requestEvaluate();
+      const contextPvDelta = this.lastContextPvInputW === null ? Infinity : Math.abs(this.state.pvPowerW - this.lastContextPvInputW);
+      const pvSettings = this.getSettings();
+      if (this.evContextRefresh?.requests.size) this.revalidateEvContextRequests(pvSettings);
+      if (this.needsSlowMeterContext(pvSettings) && contextPvDelta >= 100) {
+        this.lastContextPvInputW = this.state.pvPowerW;
+        if (this.needsNonEvMeterContext(pvSettings) || !this.contextDirtyReasons?.has('pv_context')) {
+          this.requestContextEvaluate(false, 'pv_context', 0, false, false);
+        }
+      }
+      return true;
+    });
+
+    this.configuredFlowCards.getActionCard('set_battery_soc').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(8, Number(args.battery))) - 1;
+      const value = Number(args.soc);
+      if (!Number.isFinite(value)) return false;
+      const normalized = Math.max(0, Math.min(100, value));
+      const changed = this.hasNumericInputChanged(
+        this.state.batterySoc[index], normalized, Boolean(this.inputSeen.batterySoc[index]), 0.01,
+      );
+      this.state.batterySoc[index] = normalized;
+      this.inputSeen.batterySoc[index] = true;
+      this.inputUpdatedAt.batterySoc[index] = Date.now();
+      if (!changed) return true;
+      this.invalidatePlanningCache();
+      this.requestEvaluate(true);
+      this.requestContextEvaluate(false, `battery${index + 1}_soc`);
+      return true;
+    });
+
+    flow.getActionCard('set_sun_chance_forecast').registerRunListener(async args => {
+      const today = sunChance.number(args.today);
+      const tomorrow = sunChance.number(args.tomorrow);
+      if (today === null || tomorrow === null || today < 0 || today > 100 || tomorrow < 0 || tomorrow > 100) return false;
+      this.updateSunChanceForecast(today, tomorrow);
+      return true;
+    });
+
+    flow.getActionCard('set_forecast_remaining').registerRunListener(async args => {
+      const value = parseFiniteInputNumber(args.energy);
+      if (value === null) return false;
+      if (!this.updateForecastInput(value)) return true;
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'forecast_remaining');
+      return true;
+    });
+
+    flow.getActionCard('set_forecast_tomorrow').registerRunListener(async args => {
+      const value = parseFiniteInputNumber(args.energy);
+      if (value === null) return false;
+      if (!this.updateForecastTomorrowInput(value)) return true;
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'forecast_tomorrow');
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('set_ev1_status', async args => {
+      if (this.getEvCount() < 1) return true;
+      const current = parseFiniteInputNumber(args.charge_current);
+      if (current === null || current < 0) return false;
+      const connected = String(args.connected || 'no') === 'yes';
+      this.recordSavingsSample(Date.now());
+      const connectionChanged = this.hasBooleanInputChanged(this.state.evConnected, connected, Boolean(this.inputSeen.ev?.connected));
+      if (this.updateEvStatusInput(0, connected, current)) this.requestEvStatusContext(0, connectionChanged);
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('end_ev1_charging_session', async () => {
+      if (this.getEvCount() < 1) return true;
+      return this.markEvSessionEnded(0, 'flow');
+    });
+
+    this.slotFlowCards.registerAction('set_ev1_session_override', async args => {
+      if (this.getEvCount() < 1) return true;
+      return this.setEvSessionOverride(args.mode, 'flow') !== false;
+    });
+    this.slotFlowCards.registerAction('set_ev1_energy_deadline', async args => {
+      if (this.getEvCount() < 1) return true;
+      return this.setEvEnergyPlan(0, args.energy, args.time, args.guarantee, args._widgetPlan);
+    });
+    this.slotFlowCards.registerAction('set_ev1_soc_deadline', async args => {
+      if (this.getEvCount() < 1) return true;
+      return this.setEvSocPlan(0, args.target_soc, args.time, args.guarantee, args._widgetPlan);
+    });
+
+    this.slotFlowCards.registerAction('clear_ev1_soc_deadline_override', async () => {
+      if (this.getEvCount() < 1) return true;
+      return this.clearEvSocPlan(0);
+    });
+
+    this.slotFlowCards.registerAction('set_ev1_soc', async args => {
+      if (this.getEvCount() < 1) return true;
+      const soc = Number(args.soc);
+      if (!Number.isFinite(soc)) return false;
+      if (!Boolean(this.getSettings().evSocEnabled)) return true;
+      const normalized = Math.max(0, Math.min(100, soc));
+      const wasFresh = this.getEvSocFreshness(0, {
+        evSocFreshnessMinutes: this.getSettings().evSocFreshnessMinutes,
+      }).fresh;
+      const changed = this.hasNumericInputChanged(this.state.evSoc, normalized, Boolean(this.inputSeen.ev?.soc), 0.01);
+      this.state.evSoc = normalized;
+      this.inputSeen.ev.soc = true;
+      this.inputUpdatedAt.ev.soc = Date.now();
+      if (changed || !wasFresh) {
+        this.markEvPlanChanged(0, 'soc_feedback');
+        this.requestContextEvaluate(false, 'ev1_soc');
+      }
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('set_hvac1_room_temperature', async args => {
+      if (this.getHvacCount() < 1) return true;
+      const value = Number(args.temperature);
+      if (!Number.isFinite(value)) return false;
+      const changed = this.hasNumericInputChanged(
+        this.state.hvacRoomTemperatureC, value, Boolean(this.inputSeen.hvac?.roomTemperature), 0.05,
+      );
+      this.state.hvacRoomTemperatureC = value;
+      this.inputSeen.hvac.roomTemperature = true;
+      this.inputUpdatedAt.hvac.roomTemperature = Date.now();
+      if (changed) this.requestContextEvaluate(false, 'hvac1_room');
+      return true;
+    });
+
+    flow.getActionCard('set_hvac_outdoor_temperature').registerRunListener(async args => {
+      if (this.getHvacCount() < 1) return true;
+      const value = Number(args.temperature);
+      if (!Number.isFinite(value)) return false;
+      const now = Date.now();
+      const changed = this.hasNumericInputChanged(
+        this.state.hvacOutdoorTemperatureC, value, Boolean(this.inputSeen.hvac?.outdoorTemperature), 0.05,
+      );
+      // Outdoor temperature is a single shared HVAC input. Every configured
+      // HVAC uses the same climate value for fan-speed decisions.
+      this.state.hvacOutdoorTemperatureC = value;
+      this.inputSeen.hvac.outdoorTemperature = true;
+      this.inputUpdatedAt.hvac.outdoorTemperature = now;
+      if (changed) this.requestContextEvaluate(false, 'hvac_outdoor');
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('set_hvac1_mode', async args => {
+      if (this.getHvacCount() < 1) return true;
+      const nextMode = String(args.mode || 'off');
+      const changed = this.hasTextInputChanged(this.state.hvacMode, nextMode, Boolean(this.inputSeen.hvac?.mode));
+      this.state.hvacMode = nextMode;
+      this.inputSeen.hvac.mode = true;
+      this.inputUpdatedAt.hvac.mode = Date.now();
+      if (changed) { hvacPermanent.inputChanged(this, 0, 'mode', nextMode); this.requestContextEvaluate(false, 'hvac1_mode'); }
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('set_hvac1_setpoint', async args => {
+      if (this.getHvacCount() < 1) return true;
+      const value = Number(args.setpoint);
+      if (!Number.isFinite(value)) return false;
+      const changed = this.hasNumericInputChanged(
+        this.state.hvacSetpointC, value, Boolean(this.inputSeen.hvac?.setpoint), 0.05,
+      );
+      this.state.hvacSetpointC = value;
+      this.inputSeen.hvac.setpoint = true;
+      this.inputUpdatedAt.hvac.setpoint = Date.now();
+      // Once the physical device confirms the commanded setpoint, use that as
+      // the new effective value for the next 0.5 C step.
+      if (Number.isFinite(Number(this.lastPublishedHvacSetpoint))
+        && Math.abs(value - Number(this.lastPublishedHvacSetpoint)) < 0.11) {
+        this.lastPublishedHvacSetpoint = value;
+      }
+      if (changed) { hvacPermanent.inputChanged(this, 0, 'setpoint', value); this.requestContextEvaluate(false, 'hvac1_setpoint'); }
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('set_hvac1_fan_speed', async args => {
+      if (this.getHvacCount() < 1) return true;
+      const value = Number(args.speed);
+      if (!Number.isFinite(value)) return false;
+      const normalized = Math.max(0, value);
+      const changed = this.hasNumericInputChanged(
+        this.state.hvacFanSpeed, normalized, Boolean(this.inputSeen.hvac?.fanSpeed), 0.5,
+      );
+      this.state.hvacFanSpeed = normalized;
+      this.inputSeen.hvac.fanSpeed = true;
+      this.inputUpdatedAt.hvac.fanSpeed = Date.now();
+      if (changed) { hvacPermanent.inputChanged(this, 0, 'fan', normalized); this.requestContextEvaluate(false, 'hvac1_fan'); }
+      return true;
+    });
+
+    this.slotFlowCards.registerAction('set_hvac1_automatic_control', args => this.setHvacAutomaticControlFor(0, args));
+
+
+
+    // Keep the original numbered input handlers for compatibility. The generic
+    // cards route to these same handlers through SlotFlowCards. Outdoor
+    // temperature remains a single shared input for every configured HVAC.
+    for (let index = 1; index < 4; index += 1) {
+      const instance = index + 1;
+      this.slotFlowCards.registerAction(`set_ev${instance}_status`, async args => {
+        if (index >= this.getEvCount()) return true;
+        const runtime = this.getExtraEv(index);
+        const current = parseFiniteInputNumber(args.charge_current);
+        if (!runtime || current === null || current < 0) return false;
+        const connected = String(args.connected || 'no') === 'yes';
+        this.recordSavingsSample(Date.now());
+        const connectionChanged = this.hasBooleanInputChanged(runtime.state.connected, connected, Boolean(runtime.seen.connected));
+        if (this.updateEvStatusInput(index, connected, current)) this.requestEvStatusContext(index, connectionChanged);
+        return true;
+      });
+
+      this.slotFlowCards.registerAction(`end_ev${instance}_charging_session`, async () => {
+        if (index >= this.getEvCount()) return true;
+        return this.markEvSessionEnded(index, 'flow');
+      });
+
+      this.slotFlowCards.registerAction(`set_ev${instance}_session_override`, async args => {
+        if (index >= this.getEvCount()) return true;
+        return this.setEvSessionOverrideFor(index, args.mode, 'flow') !== false;
+      });
+      this.slotFlowCards.registerAction(`set_ev${instance}_energy_deadline`, async args => {
+        if (index >= this.getEvCount()) return true;
+        return this.setEvEnergyPlan(index, args.energy, args.time, args.guarantee, args._widgetPlan);
+      });
+      this.slotFlowCards.registerAction(`set_ev${instance}_soc_deadline`, async args => {
+        if (index >= this.getEvCount()) return true;
+        return this.setEvSocPlan(index, args.target_soc, args.time, args.guarantee, args._widgetPlan);
+      });
+
+      this.slotFlowCards.registerAction(`clear_ev${instance}_soc_deadline_override`, async () => {
+        if (index >= this.getEvCount()) return true;
+        return this.clearEvSocPlan(index);
+      });
+
+      this.slotFlowCards.registerAction(`set_ev${instance}_soc`, async args => {
+        if (index >= this.getEvCount()) return true;
+        const runtime = this.getExtraEv(index);
+        const soc = Number(args.soc);
+        if (!runtime || !Number.isFinite(soc)) return false;
+        const source = this.getSettings();
+        if (!Boolean(source[this.getEvSettingKey(index, 'SocEnabled')])) return true;
+        const normalized = Math.max(0, Math.min(100, soc));
+        const wasFresh = this.getEvSocFreshness(index, {
+          evSocFreshnessMinutes: source[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+        }).fresh;
+        const changed = this.hasNumericInputChanged(runtime.state.soc, normalized, Boolean(runtime.seen.soc), 0.01);
+        runtime.state.soc = normalized;
+        runtime.seen.soc = true;
+        runtime.updatedAt.soc = Date.now();
+        if (changed || !wasFresh) {
+          this.markEvPlanChanged(index, 'soc_feedback');
+          this.requestContextEvaluate(false, `ev${instance}_soc`);
+        }
+        return true;
+      });
+
+
+    }
+
+    for (let index = 1; index < 10; index += 1) {
+      const instance = index + 1;
+      this.slotFlowCards.registerAction(`set_hvac${instance}_room_temperature`, async args => {
+        if (index >= this.getHvacCount()) return true;
+        const runtime = this.getExtraHvac(index);
+        const value = Number(args.temperature);
+        if (!runtime || !Number.isFinite(value)) return false;
+        const changed = this.hasNumericInputChanged(
+          runtime.state.roomTemperatureC, value, Boolean(runtime.seen.roomTemperature), 0.05,
+        );
+        runtime.state.roomTemperatureC = value;
+        runtime.seen.roomTemperature = true;
+        runtime.updatedAt.roomTemperature = Date.now();
+        if (changed) this.requestContextEvaluate(false, `hvac${instance}_room`);
+        return true;
+      });
+      this.slotFlowCards.registerAction(`set_hvac${instance}_mode`, async args => {
+        if (index >= this.getHvacCount()) return true;
+        const runtime = this.getExtraHvac(index);
+        if (!runtime) return false;
+        const nextMode = String(args.mode || 'off');
+        const changed = this.hasTextInputChanged(runtime.state.mode, nextMode, Boolean(runtime.seen.mode));
+        runtime.state.mode = nextMode;
+        runtime.seen.mode = true;
+        runtime.updatedAt.mode = Date.now();
+        if (changed) { hvacPermanent.inputChanged(this, index, 'mode', nextMode); this.requestContextEvaluate(false, `hvac${instance}_mode`); }
+        return true;
+      });
+      this.slotFlowCards.registerAction(`set_hvac${instance}_setpoint`, async args => {
+        if (index >= this.getHvacCount()) return true;
+        const runtime = this.getExtraHvac(index);
+        const value = Number(args.setpoint);
+        if (!runtime || !Number.isFinite(value)) return false;
+        const changed = this.hasNumericInputChanged(
+          runtime.state.setpointC, value, Boolean(runtime.seen.setpoint), 0.05,
+        );
+        runtime.state.setpointC = value;
+        runtime.seen.setpoint = true;
+        runtime.updatedAt.setpoint = Date.now();
+        if (Number.isFinite(Number(runtime.lastPublishedSetpoint)) && Math.abs(value - Number(runtime.lastPublishedSetpoint)) < 0.11) {
+          runtime.lastPublishedSetpoint = value;
+        }
+        if (changed) { hvacPermanent.inputChanged(this, index, 'setpoint', value); this.requestContextEvaluate(false, `hvac${instance}_setpoint`); }
+        return true;
+      });
+      this.slotFlowCards.registerAction(`set_hvac${instance}_fan_speed`, async args => {
+        if (index >= this.getHvacCount()) return true;
+        const runtime = this.getExtraHvac(index);
+        const value = Number(args.speed);
+        if (!runtime || !Number.isFinite(value)) return false;
+        const normalized = Math.max(0, value);
+        const changed = this.hasNumericInputChanged(runtime.state.fanSpeed, normalized, Boolean(runtime.seen.fanSpeed), 0.5);
+        runtime.state.fanSpeed = normalized;
+        runtime.seen.fanSpeed = true;
+        runtime.updatedAt.fanSpeed = Date.now();
+        if (changed) { hvacPermanent.inputChanged(this, index, 'fan', normalized); this.requestContextEvaluate(false, `hvac${instance}_fan`); }
+        return true;
+      });
+      this.slotFlowCards.registerAction(`set_hvac${instance}_automatic_control`, args => this.setHvacAutomaticControlFor(index, args));
+    }
+
+    flow.getActionCard('set_forced_mode').registerRunListener(async args => {
+      await this.setForcedMode(String(args.mode || 'auto'), 'flow');
+      return true;
+    });
+
+    flow.getActionCard('set_external_electricity_price').registerRunListener(async args => {
+      const price = Number(args.price);
+      if (!Number.isFinite(price)) throw new Error('External electricity price must be a valid number');
+      this.externalEnergy.currentPrice = price;
+      this.externalEnergy.currentUpdatedAt = Date.now();
+      this.externalEnergy.error = '';
+      this.homeyEnergyAnalysisCache = { key: '', value: null };
+      this.cachedRuntimeSettings = null;
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'external_electricity_price');
+      return true;
+    });
+
+    flow.getActionCard('set_external_export_price').registerRunListener(async args => {
+      const price = Number(args.price);
+      if (!Number.isFinite(price)) throw new Error('External export price must be a valid number');
+      const now = Date.now();
+      // Close the previous accounting interval at the old export price before
+      // switching price. This input is accounting-only and never triggers EMS
+      // control or planning by itself.
+      this.recordSavingsSample(now);
+      this.externalEnergy.exportPrice = price;
+      this.externalEnergy.exportUpdatedAt = now;
+      return true;
+    });
+
+    flow.getActionCard('set_external_electricity_price_curve').registerRunListener(async args =>
+      this.readExternalPrices('external', args.curve, { legacy: true }));
+    flow.getActionCard('set_pbth_electricity_price_curve').registerRunListener(async args =>
+      this.readExternalPrices('external', args.curve, { period: args.period || 'this_day', sequentialOnly: true }));
+    flow.getActionCard('read_external_prices_json').registerRunListener(async args =>
+      this.readExternalPrices(String(args.source), args.curve, { period: args.period || 'next_hours' }));
+    const namedPriceCard = flow.getActionCard('read_external_prices_json_named');
+    namedPriceCard.registerArgumentAutocompleteListener('source', async query => {
+      const settings = this.getSettings(), text = String(query || '').trim().toLocaleLowerCase();
+      return ['external', 'external2'].map(id => ({ id, name: sourceName(id, settings),
+        description: sourceName(id) })).filter(item => `${item.name} ${item.description}`.toLocaleLowerCase().includes(text));
+    });
+    namedPriceCard.registerRunListener(async args => {
+      const id = args.source && typeof args.source === 'object' ? args.source.id : null;
+      if (!['external', 'external2'].includes(id)) throw new Error(this.displayLanguage().startsWith('nl')
+        ? 'Kies een externe prijsbron uit de lijst.' : 'Select an external price source from the list.');
+      return this.readExternalPrices(id, args.curve, { period: args.period || 'next_hours' });
+    });
+
+    flow.getActionCard('get_savings_category').registerRunListener(async args =>
+      this.getSavingsCategory(args));
+
+    flow.getActionCard('get_ems_status').registerRunListener(async () => {
+      const result = this.latestResult || await this.runContextEvaluation(true);
+      return this.localizeDisplayTokens({
+        status: String(result?.statusText || 'Stand-by'),
+        tariff: String(result?.tariff?.label || ''),
+        action: String(result?.workingModeLabel || result?.actionLabel || result?.modeLabel || 'Rust'),
+        next_change: String(result?.nextEventText || ''),
+      });
+    });
+
+    flow.getActionCard('refresh_homey_energy_prices').registerRunListener(async () => {
+      await this.refreshHomeyEnergyPrices(true);
+      return true;
+    });
+
+    flow.getActionCard('recalculate_now').registerRunListener(async () => {
+      await this.runContextEvaluation(true);
+      return true;
+    });
+
+    flow.getConditionCard('homey_energy_cheapest_now').registerRunListener(async args => {
+      await this.ensureHomeyEnergyFresh();
+      return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'cheap');
+    });
+    flow.getConditionCard('homey_energy_expensive_now').registerRunListener(async args => {
+      await this.ensureHomeyEnergyFresh();
+      return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'expensive');
+    });
+    flow.getConditionCard('homey_energy_cheapest_block_now').registerRunListener(async args => {
+      await this.ensureHomeyEnergyFresh();
+      return currentMatches(this.getEffectiveHomeySlots(this.getSettings()), new Date(), this.homey.clock.getTimezone() || 'UTC', Number(args.hours) || 3, 'cheapest_block');
+    });
+
+    // Read-only EMS condition cards for Advanced Flow. They expose existing
+    // runtime state and never change control outputs.
+    flow.getConditionCard('ems_control_is_enabled').registerRunListener(async () => {
+      const settings = this.getSettings();
+      return Boolean(settings.controlEnabled) && this.isChargeTestValid(settings);
+    });
+    flow.getConditionCard('ems_mode_is').registerRunListener(async args =>
+      String(this.latestResult?.baseMode || '') === String(args.mode || ''));
+    flow.getConditionCard('ems_action_is').registerRunListener(async args =>
+      String(this.latestResult?.action || 'idle') === String(args.action || ''));
+    flow.getConditionCard('ems_current_tariff_is').registerRunListener(async args => {
+      const actual = String(this.latestResult?.tariff?.label || '').trim().toLocaleLowerCase();
+      const expected = String(args.tariff || '').trim().toLocaleLowerCase();
+      return Boolean(expected) && actual === expected;
+    });
+    flow.getConditionCard('ems_peak_guard_is_active').registerRunListener(async () =>
+      String(this.latestResult?.override || '') === 'peak_shave');
+    flow.getConditionCard('ems_battery_state_is').registerRunListener(async args => {
+      const commandW = Number(this.state.lastTotalCommandW) || 0;
+      const state = commandW < -1 ? 'charging' : (commandW > 1 ? 'discharging' : 'idle');
+      return state === String(args.state || '');
+    });
+    flow.getConditionCard('ems_planning_phase_is').registerRunListener(async args =>
+      (this.isNightPlanningPhase() ? 'night' : 'day') === String(args.phase || ''));
+    flow.getConditionCard('ems_price_data_is_fresh').registerRunListener(async () => {
+      const settings = this.getSettings();
+      if (!isDynamicContract(settings)) return true;
+      const lastUpdatedAt = Number(this.homeyEnergy?.lastUpdatedAt) || 0;
+      const ready = this.getInputReadiness(settings).priceDataReady !== false;
+      return ready && lastUpdatedAt > 0 && (Date.now() - lastUpdatedAt) <= 20 * 60 * 1000;
+    });
+    flow.getConditionCard('ems_pv_power_above').registerRunListener(async args =>
+      Boolean(this.inputSeen.pv) && Number(this.state.pvPowerW) > Number(args.power || 0));
+    flow.getConditionCard('ems_average_battery_soc_above').registerRunListener(async args => {
+      const soc = this.getAverageBatterySoc(this.getSettings());
+      return soc !== null && Number(soc) > Number(args.soc || 0);
+    });
+    this.configuredFlowCards.getConditionCard('ev_is_connected').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      const input = this.getEvInputSnapshot(index);
+      return Boolean(input?.seen?.connected) && Boolean(input?.connected);
+    });
+    this.configuredFlowCards.getConditionCard('ev_is_charging').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      const input = this.getEvInputSnapshot(index);
+      return Boolean(input?.seen?.chargeCurrent) && Number(input?.chargeCurrentA || 0) > 0.05;
+    });
+    this.configuredFlowCards.getConditionCard('ev_charging_is_allowed').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      return Boolean(decision?.allowed);
+    });
+    this.configuredFlowCards.getConditionCard('ev_mode_is').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(4, Number(args.ev) || 1)) - 1;
+      if (index >= this.getEvCount()) return false;
+      return String(this.getEffectiveEvModeFor(index, this.getSettings())) === String(args.mode || '');
+    });
+    this.configuredFlowCards.getConditionCard('hvac_is_active').registerRunListener(async args => {
+      const index = Math.max(1, Math.min(args._configuredHvac ? 10 : 4, Number(args.hvac) || 1)) - 1;
+      if (index >= this.getHvacCount()) return false;
+      return this.isHvacManagedActiveFor(index);
+    });
+    flow.getConditionCard('boiler_is_on').registerRunListener(async () => Boolean(this.boilerState?.outputOn));
+    flow.getConditionCard('boiler_is_warm').registerRunListener(async () => Boolean(this.boilerState?.latestDecision?.warm));
+  }
+
+  setupInputRequestSchedule() {
+    // These triggers deliberately request source values from user-created Flows.
+    // Grid power is excluded: it must be pushed from the user's own "power changed"
+    // Flow so the control loop always follows the real meter event stream.
+    const safeTrigger = (card, label) => {
+      if (!card) return;
+      card.trigger().catch(err => this.error(`${label} request trigger failed`, err));
+    };
+
+    const requestPv = () => safeTrigger(this.inputRequestTriggers?.pv, 'PV power');
+    const requestForecast = () => safeTrigger(this.inputRequestTriggers?.forecast, 'Forecast');
+    const requestForecastTomorrow = () => safeTrigger(this.inputRequestTriggers?.forecastTomorrow, 'Forecast tomorrow');
+    const requestBatterySoc = () => {
+      const count = this.getBatteryCount(this.getSettings());
+      for (let index = 0; index < count; index += 1) {
+        safeTrigger(this.inputRequestTriggers?.batterySoc?.[index], `Battery ${index + 1} SoC`);
+      }
+    };
+
+    // Initial request shortly after app start so values do not have to change first.
+    this.inputRequestInitialTimer = this.homey.setTimeout(() => {
+      requestPv();
+      requestForecast();
+      requestForecastTomorrow();
+      requestBatterySoc();
+    }, 1000);
+
+    // Keep external source values fresh without polling devices directly from EMS.
+    this.inputRequestTimers.push(this.homey.setInterval(requestPv, 15 * 1000));
+    this.inputRequestTimers.push(this.homey.setInterval(requestBatterySoc, 3 * 60 * 1000));
+    this.inputRequestTimers.push(this.homey.setInterval(() => { requestForecast(); requestForecastTomorrow(); }, 30 * 60 * 1000));
+  }
+
+  clearEvSocRequestSchedule() {
+    if (this.evSocRequestInitialTimer) {
+      clearTimeout(this.evSocRequestInitialTimer);
+      this.evSocRequestInitialTimer = null;
+    }
+    if (this.evSocRequestTimer) {
+      clearInterval(this.evSocRequestTimer);
+      this.evSocRequestTimer = null;
+    }
+    for (const timer of this.extraEvSocRequestInitialTimers || []) if (timer) clearTimeout(timer);
+    for (const timer of this.extraEvSocRequestTimers || []) if (timer) clearInterval(timer);
+    this.extraEvSocRequestInitialTimers = [];
+    this.extraEvSocRequestTimers = [];
+  }
+
+  syncEvSocRequestSchedule() {
+    this.clearEvSocRequestSchedule();
+    const stored = this.getSettings();
+    const count = this.getEvCount(stored);
+    for (let index = 0; index < count; index += 1) {
+      if (!Boolean(stored[this.getEvSettingKey(index, 'Enabled')])
+        || !Boolean(stored[this.getEvSettingKey(index, 'SocEnabled')])) continue;
+      const card = index === 0 ? this.inputRequestTriggers?.evSoc : this.extraEvTriggers[index - 1]?.requestSoc;
+      if (!card) continue;
+      const request = () => {
+        const currentStored = this.getSettings();
+        if (index >= this.getEvCount(currentStored)) return;
+        if (!Boolean(currentStored[this.getEvSettingKey(index, 'Enabled')])
+          || !Boolean(currentStored[this.getEvSettingKey(index, 'SocEnabled')])) return;
+        card.trigger().catch(err => this.error(`EV ${index + 1} SoC request trigger failed`, err));
+      };
+      const initial = this.homey.setTimeout(request, 1000 + (index * 100));
+      const timer = this.homey.setInterval(request, 3 * 60 * 1000);
+      if (index === 0) {
+        this.evSocRequestInitialTimer = initial;
+        this.evSocRequestTimer = timer;
+      } else {
+        this.extraEvSocRequestInitialTimers[index - 1] = initial;
+        this.extraEvSocRequestTimers[index - 1] = timer;
+      }
+    }
+  }
+
+  clearInputRequestSchedule() {
+    if (this.inputRequestInitialTimer) {
+      clearTimeout(this.inputRequestInitialTimer);
+      this.inputRequestInitialTimer = null;
+    }
+    for (const timer of this.inputRequestTimers || []) clearInterval(timer);
+    this.inputRequestTimers = [];
+  }
+
+  async onUninit() {
+    // Retain the current kWh remainder on a graceful restart, rather than the
+    // last five-minute checkpoint. Never overwrite saved goals after a failed
+    // startup that did not finish restoring both sets of Flow plans.
+    if (this.evFlowPlansRestored) {
+      this.persistEvEnergyPlanOverrides(true);
+      this.persistEvSocPlanOverrides();
+    }
+    this.inputMonitor?.destroy();
+    this.clearEvContextRefresh();
+    this.persistSavingsState(Date.now());
+    this.clearInputRequestSchedule();
+    this.clearEvSocRequestSchedule();
+    this.clearOverrideResumeTimer();
+    this.clearContextTimer();
+    if (this.contextHeartbeatTimer) {
+      clearInterval(this.contextHeartbeatTimer);
+      this.contextHeartbeatTimer = null;
+    }
+    if (this.controlTimer) {
+      clearTimeout(this.controlTimer);
+      this.controlTimer = null;
+    }
+    this.controlTimerForce = false;
+    if (this.batteryEfficiencyTransitionTimer) {
+      clearTimeout(this.batteryEfficiencyTransitionTimer);
+      this.batteryEfficiencyTransitionTimer = null;
+    }
+    if (this.statusTimer) {
+      clearTimeout(this.statusTimer);
+      this.statusTimer = null;
+    }
+    if (this.emitTimer) {
+      clearTimeout(this.emitTimer);
+      this.emitTimer = null;
+    }
+    if (this.batteryCommandPauseTimer) {
+      clearTimeout(this.batteryCommandPauseTimer);
+      this.batteryCommandPauseTimer = null;
+    }
+    if (this.pvLimitTimer) {
+      clearTimeout(this.pvLimitTimer);
+      this.pvLimitTimer = null;
+    }
+    if (this.pvStopTimer) {
+      clearTimeout(this.pvStopTimer);
+      this.pvStopTimer = null;
+    }
+    if (this.evTimer) {
+      clearTimeout(this.evTimer);
+      this.evTimer = null;
+    }
+    if (this.evPeakGuardStopHoldTimer) {
+      clearTimeout(this.evPeakGuardStopHoldTimer);
+      this.evPeakGuardStopHoldTimer = null;
+    }
+    for (const runtime of this.extraEvInstances || []) {
+      if (runtime?.timer) clearTimeout(runtime.timer);
+      runtime.timer = null;
+    }
+    this.updateBoilerRuntimeClock(Date.now(), true);
+    for (const splitState of this.splitCommandState || []) {
+      if (splitState?.recheckTimer) clearTimeout(splitState.recheckTimer);
+      if (splitState?.safetyTimer) clearTimeout(splitState.safetyTimer);
+    }
+  }
+
+  clearOverrideResumeTimer() {
+    if (!this.overrideResumeTimer) return;
+    clearTimeout(this.overrideResumeTimer);
+    this.overrideResumeTimer = null;
+  }
+
+  armOverrideResume() {
+    const settings = this.getSettings();
+    this.clearOverrideResumeTimer();
+    const forcedMode = String(settings.forcedMode || 'auto');
+    if (forcedMode === 'auto' || !settings.overrideResumeOnTariffChange) {
+      if (forcedMode === 'auto') this.setSetting('forcedModeResumeAt', 0);
+      return;
+    }
+
+    const runtime = this.getRuntimeSettings({ ...settings, forcedMode: 'auto' });
+    const tariff = findCurrentTariff(new Date(), runtime);
+    const resumeAt = tariff && tariff.nextAt ? tariff.nextAt.getTime() : 0;
+    this.setSetting('forcedModeResumeAt', resumeAt || 0);
+    this.scheduleOverrideResume();
+  }
+
+  scheduleOverrideResume() {
+    this.clearOverrideResumeTimer();
+    const settings = this.getSettings();
+    const forcedMode = String(settings.forcedMode || 'auto');
+    const resumeAt = Number(settings.forcedModeResumeAt) || 0;
+    if (forcedMode === 'auto' || !settings.overrideResumeOnTariffChange || !resumeAt) return;
+
+    const delay = resumeAt - Date.now();
+    if (delay <= 0) {
+      this.setSetting('forcedMode', 'auto');
+      this.setSetting('forcedModeResumeAt', 0);
+      this.requestContextEvaluate(true, 'forced_mode_resume');
+      return;
+    }
+
+    this.overrideResumeTimer = this.homey.setTimeout(() => {
+      this.overrideResumeTimer = null;
+      this.setSetting('forcedMode', 'auto');
+      this.setSetting('forcedModeResumeAt', 0);
+      this.requestContextEvaluate(true, 'forced_mode_resume');
+    }, Math.min(delay, 24 * 60 * 60 * 1000));
+  }
+
+  getLocalMinuteOfDay(at = Date.now()) {
+    return localParts(new Date(at), this.homey.clock.getTimezone() || 'UTC').minuteOfDay;
+  }
+
+
+  parseBatteryPauseTime(value, fallback = 0) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || ''));
+    if (!match) return fallback;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return fallback;
+    return (hour * 60) + minute;
+  }
+
+  getBatteryCommandPauseInfo(at = Date.now(), settings = this.getSettings()) {
+    const enabled = Boolean(settings.batteryCommandPauseEnabled);
+    const start = this.parseBatteryPauseTime(settings.batteryCommandPauseStart, (23 * 60) + 59);
+    const end = this.parseBatteryPauseTime(settings.batteryCommandPauseEnd, 0);
+    const minute = this.getLocalMinuteOfDay(at);
+    // Equal start/end means a zero-length pause, never an all-day lockout.
+    const active = enabled && start !== end && (start < end
+      ? minute >= start && minute < end
+      : minute >= start || minute < end);
+    let remainingMs = 0;
+    if (active) {
+      const minuteDelta = (end - minute + 1440) % 1440;
+      const now = new Date(at);
+      const elapsedInMinuteMs = (now.getUTCSeconds() * 1000) + now.getUTCMilliseconds();
+      remainingMs = Math.max(1, (minuteDelta * 60000) - elapsedInMinuteMs);
+    }
+    return {
+      enabled,
+      active,
+      startMinute: start,
+      endMinute: end,
+      start: String(settings.batteryCommandPauseStart || '23:59'),
+      end: String(settings.batteryCommandPauseEnd || '00:00'),
+      remainingMs,
+    };
+  }
+
+  scheduleBatteryCommandPauseResume(pauseInfo, at = Date.now()) {
+    if (!pauseInfo?.active || this.batteryCommandPauseTimer) return;
+    const wait = Math.max(50, Number(pauseInfo.remainingMs) || 1) + 75;
+    this.batteryCommandPauseTimer = this.homey.setTimeout(() => {
+      this.batteryCommandPauseTimer = null;
+      this.requestContextEvaluate(true, 'battery_pause_ended');
+    }, wait);
+  }
+
+  clearPvStopTimer() {
+    if (!this.pvStopTimer) return;
+    clearTimeout(this.pvStopTimer);
+    this.pvStopTimer = null;
+  }
+
+  resetExpiredNightPlanning(at = Date.now()) {
+    if (!this.state.nightPlanningActive) return false;
+    // v0.3.80: a night plan deliberately survives midnight and the former
+    // charge-deadline boundary. It is replaced only when real PV production
+    // starts (or when a later PV-end decision starts the next night plan).
+    // This prevents the daytime forecast from running underneath a stale night
+    // phase and guarantees that exactly one planning phase is authoritative.
+    void at;
+    return false;
+  }
+
+  updateSunChanceForecast(today, tomorrow, at = Date.now()) {
+    const date = this.getLocalDateKey(new Date(at));
+    const next = shiftDateKey(date, 1);
+    if (this.state.sunChanceForecasts?.[date] === today && this.state.sunChanceForecasts?.[next] === tomorrow) return;
+    this.state.sunChanceForecasts = { [date]: today, [next]: tomorrow };
+    this.setSetting('_sunChanceForecasts', this.state.sunChanceForecasts);
+    this.invalidatePlanningCache();
+    this.requestContextEvaluate(false, 'sun_chance_forecast');
+  }
+
+  getSunChanceReserveStatus(settings = this.getSettings(), at = Date.now()) {
+    const tariff = settings.sunChanceReserveEnabled ? findCurrentTariff(new Date(at), this.getRuntimeSettings(settings), this.state) : null;
+    return sunChance.reserve({ ...this.state, nightPlanningActive: this.isNightPlanningPhase(at), planningForecastDay: this.getPlanningForecastDay(at) }, settings, this.getLocalDateKey(new Date(at)), tariff);
+  }
+
+  getPlanningForecastDay(at = Date.now(), today = '') {
+    if (!today) today = this.getLocalDateKey(new Date(at));
+    // An observed night keeps its original target day, including dark mornings
+    // after the charging deadline. Midnight only changes tomorrow -> today.
+    if (this.state.nightPlanningActive) return String(this.state.nightPlanningStartedDate || '') === today ? 'tomorrow' : 'today';
+    if (String(this.state.pvProducingDate || '') === today && this.state.pvSeenProducingToday) return 'today';
+
+    // After a restart no PV start/end may have been observed. The existing
+    // phase selector already calls this a night. After the daytime target and
+    // an elapsed morning target, that inferred night must refer to TOMORROW,
+    // rather than an expired 07:00 today. A real PV sample still owns the day
+    // transition; this does not invent an observed sunset or bypass its timer.
+    const settings = this.getSettings(), bucket = Math.floor(Number(at) / 60000);
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const cached = this.inferredNightForecastDay;
+    if (cached && cached.bucket === bucket && cached.today === today && cached.timezone === timezone
+      && cached.dayTarget === settings.solarTargetTime && cached.nightTarget === settings.nightTargetTime) return cached.day;
+    const minute = this.getLocalMinuteOfDay(at);
+    const dayTarget = this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60);
+    const nightTarget = this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60);
+    const day = minute >= dayTarget && minute >= nightTarget ? 'tomorrow' : 'today';
+    this.inferredNightForecastDay = { bucket, today, timezone, dayTarget: settings.solarTargetTime,
+      nightTarget: settings.nightTargetTime, day };
+    return day;
+  }
+
+  isNightPlanningPhase(at = Date.now(), today = '') {
+    if (this.state.nightPlanningActive) return true;
+    if (!today) today = this.getLocalDateKey(new Date(at));
+    const pvStartedToday = String(this.state.pvProducingDate || '') === today
+      && Boolean(this.state.pvSeenProducingToday);
+    // The solar-day phase starts on observed PV, not at a clock boundary. Until
+    // then the continuing night plan remains authoritative, including after the
+    // configured charging deadline on dark winter mornings.
+    return !pvStartedToday;
+  }
+
+  getNightForecastRuntime(at = Date.now()) {
+    if (!this.isNightPlanningPhase(at)) return null;
+    const today = this.getLocalDateKey(new Date(at));
+    const forecastDay = this.getPlanningForecastDay(at);
+    const targetDate = forecastDay === 'tomorrow' ? shiftDateKey(today, 1) : today;
+    if (this.nightForecastMedian?.targetDate === targetDate) {
+      this.updateNightForecastHold(this.nightForecastMedian, null, at);
+      return this.nightForecastMedian;
+    }
+    const runtime = { targetDate, samples: [], value: null };
+    this.nightForecastMedian = runtime;
+    // Seed a new night with at most the one valid forecast already available.
+    // Midnight promotion is not a new observation of the same forecast day.
+    const seed = forecastDay === 'tomorrow'
+      ? (this.inputSeen.forecastTomorrow && this.state.forecastTomorrowDate === targetDate
+        ? this.state.forecastTomorrowKwh : null)
+      : (this.state.forecastDailyMaxDate === targetDate
+        ? (this.inputSeen.forecast ? this.state.forecastRemainingKwh : this.state.forecastDailyMaxKwh) : null);
+    this.addNightForecastSample(runtime, seed, at, false);
+    this.updateNightForecastHold(runtime, null, at);
+    return runtime;
+  }
+
+  getNightForecastInputRuntime(forecastDay, at) {
+    return this.isNightPlanningPhase(at) && this.getPlanningForecastDay(at) === forecastDay
+      ? this.getNightForecastRuntime(at) : null;
+  }
+
+  updateNightForecastHold(runtime, observation = null, at = Date.now()) {
+    if (!runtime) return false;
+    if (!this.getSettings().nightForecastHoldEnabled) {
+      runtime.hold = null;
+      return false;
+    }
+    if (!runtime.hold) {
+      const stored = this.homey.settings.get('_nightForecastHold');
+      runtime.hold = stored?.targetDate === runtime.targetDate && stored.version === 1
+        ? { ...stored, samples: Array.isArray(stored.samples) ? stored.samples.slice(-120) : [] }
+        : { version: 1, targetDate: runtime.targetDate, samples: [], frozen: false, value: null };
+    }
+    const hold = runtime.hold;
+    const today = this.getLocalDateKey(new Date(at)), minute = this.getLocalMinuteOfDay(at);
+    let changed = false;
+    if (!hold.frozen && today === runtime.targetDate && minute < 120
+      && observation !== null && Number.isFinite(observation) && observation >= 0) {
+      // One latest forecast observation per local minute bounds storage and
+      // prevents a high-frequency Flow from dominating this two-hour median.
+      const last = hold.samples.findIndex(sample => sample.minute === minute);
+      if (last < 0) { hold.samples.push({ minute, value: observation }); changed = true; }
+      else if (hold.samples[last].value !== observation) { hold.samples[last] = { minute, value: observation }; changed = true; }
+    }
+    if (!hold.frozen && today === runtime.targetDate && minute >= 120 && hold.samples.length) {
+      const values = hold.samples.map(sample => sample.value).sort((a,b) => a-b), mid = values.length >>> 1;
+      hold.value = values.length % 2 ? values[mid] : (values[mid-1] + values[mid]) / 2;
+      hold.frozen = true;
+      this.invalidatePlanningCache(true);
+      this.requestContextEvaluate(true, 'night_forecast_frozen');
+      changed = true;
+    }
+    if (changed) this.setSetting('_nightForecastHold', hold);
+    if (hold.frozen && Number.isFinite(hold.value)) runtime.value = hold.value;
+    return hold.frozen;
+  }
+
+  addNightForecastSample(runtime, value, at = Date.now(), observation = true) {
+    const numeric = parseFiniteInputNumber(value);
+    if (!runtime || numeric === null || numeric < 0) return false;
+    const previous = runtime.value;
+    if (this.updateNightForecastHold(runtime, observation ? numeric : null, at)) return previous !== runtime.value;
+    // Maintain sorted observations only on actual forecast input. Reading P1,
+    // status or planning neither adds a sample nor sorts the history again.
+    const samples = runtime.samples;
+    let low = 0, high = samples.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (samples[middle] <= numeric) low = middle + 1;
+      else high = middle;
+    }
+    samples.splice(low, 0, numeric);
+    const middle = samples.length >>> 1;
+    runtime.value = samples.length % 2 ? samples[middle] : (samples[middle - 1] + samples[middle]) / 2;
+    return previous !== runtime.value;
+  }
+
+  updatePvPlanningState(pvPowerW, at = Date.now()) {
+    const value = Math.max(0, Number(pvPowerW) || 0);
+    this.resetExpiredNightPlanning(at);
+    const today = this.getLocalDateKey(new Date(at));
+    if (String(this.state.pvProducingDate || '') !== today) {
+      this.state.pvProducingDate = today;
+      this.state.pvSeenProducingToday = false;
+    }
+    const wasNightPlanning = this.isNightPlanningPhase(at);
+
+    if (value >= 5) {
+      this.state.pvSeenProducingToday = true;
+      this.clearPvStopTimer();
+
+      // Any observed PV start is the single authoritative transition to the
+      // daytime plan. Clear an explicit night marker regardless of whether it
+      // was created before or after midnight; the previous date check caused
+      // the old overlap between remaining-PV day logic and night planning.
+      this.state.nightPlanningActive = false;
+      this.state.nightPlanningStartedDate = '';
+      this.state.nightPlanningDecisionSource = '';
+      this.nightForecastMedian = null;
+      if (wasNightPlanning) {
+        this.invalidatePlanningCache(true);
+        this.requestContextEvaluate(true, 'pv_started_day_planning');
+      }
+      return;
+    }
+
+    if (this.state.nightPlanningActive || this.pvStopTimer) return;
+    // A 0 W value before HomeFlux has observed production on this local day is
+    // not enough to declare PV ended (for example 02:00 after an app restart).
+    // If no end can be observed, the 20:00 fallback below still makes the plan.
+    if (!this.state.pvSeenProducingToday) return;
+    // Never interpret pre-dawn 0 W as the end of the new solar day. From the
+    // configured morning boundary onward, <5 W for 10 minutes is authoritative.
+    const deadline = String(this.getSettings().chargeDeadline || '07:00');
+    const match = /^(\d{1,2}):(\d{2})$/.exec(deadline);
+    const earliestMinute = match ? (Number(match[1]) * 60) + Number(match[2]) : 7 * 60;
+    if (this.getLocalMinuteOfDay(at) < earliestMinute) return;
+
+    const pvEndCandidateDate = today;
+    this.pvStopTimer = this.homey.setTimeout(() => {
+      this.pvStopTimer = null;
+      const latest = Number(this.state.pvPowerW);
+      if (!this.inputSeen.pv || !Number.isFinite(latest) || latest >= 5) return;
+      this.activateNightPlanning('pv_below_5w_10m', Date.now(), pvEndCandidateDate);
+    }, 10 * 60 * 1000);
+  }
+
+  checkNightPlanningFallback(at = Date.now()) {
+    this.resetExpiredNightPlanning(at);
+    if (this.getLocalMinuteOfDay(at) < 20 * 60) return false;
+    // Once a real PV end candidate has armed the 10-minute debounce, that
+    // timer remains authoritative even if the last PV input becomes stale.
+    if (!this.state.nightPlanningActive && this.pvStopTimer) return false;
+
+    // If PV is still genuinely producing, wait for the normal <5 W / 10 min
+    // boundary. Otherwise 20:00 is the safety fallback, including when no PV
+    // Flow data exists at all or HomeFlux started after today's PV had ended.
+    const pv = Number(this.state.pvPowerW);
+    const lastPvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    const pvFresh = Boolean(this.inputSeen.pv) && lastPvAt > 0 && (Number(at) - lastPvAt) <= 5 * 60 * 1000;
+    const today = this.getLocalDateKey(new Date(at));
+    if (pvFresh && Number.isFinite(pv)) {
+      if (pv >= 5) return false;
+      const pvSeenToday = String(this.state.pvProducingDate || '') === today
+        && Boolean(this.state.pvSeenProducingToday);
+      // Fresh low PV after real production must always finish the normal
+      // 10-minute stop debounce. The 20:00 safety fallback may not bypass it;
+      // if the timer was lost, re-arm it from the latest fresh PV value.
+      if (!this.state.nightPlanningActive && pvSeenToday) {
+        if (!this.pvStopTimer) this.updatePvPlanningState(pv, at);
+        return false;
+      }
+    }
+
+    if (this.state.nightPlanningActive) {
+      // v0.3.80: on a completely dark day the previous night's phase must stay
+      // active (never fall through to daytime logic), but at 20:00 it still has
+      // to roll forward so tomorrow's forecast becomes authoritative. Re-arm
+      // the same night phase once per local day instead of creating overlap.
+      if (String(this.state.nightPlanningStartedDate || '') === today) return false;
+      this.activateNightPlanning(pvFresh ? '20h_pv_end_fallback' : '20h_no_pv_data', at, today);
+      return true;
+    }
+
+    this.activateNightPlanning(pvFresh ? '20h_pv_end_fallback' : '20h_no_pv_data', at, today);
+    return true;
+  }
+
+  activateNightPlanning(source, at = Date.now(), planningStartedDate = '') {
+    const today = this.getLocalDateKey(new Date(at));
+    const wasNightPlanning = this.isNightPlanningPhase(at);
+    this.state.nightPlanningActive = true;
+    this.state.nightPlanningStartedDate = String(planningStartedDate || today);
+    this.state.nightPlanningDecisionSource = String(source || 'pv_end');
+    if (!wasNightPlanning) this.nightForecastMedian = null;
+    this.getNightForecastRuntime(at);
+    this.invalidatePlanningCache(true);
+    this.forceChargePlanPublication = true;
+    this.clearPvStopTimer();
+    this.requestContextEvaluate(true, `night_planning:${source}`);
+  }
+
+  formatPlanningTime(at) {
+    if (!at) return '';
+    const lp = localParts(new Date(Number(at)), this.homey.clock.getTimezone() || 'UTC');
+    return `${String(lp.hour).padStart(2, '0')}:${String(lp.minute).padStart(2, '0')}`;
+  }
+
+  buildChargePlanText(plan) {
+    if (!plan || plan.currentSoc === null || plan.currentSoc === undefined) return 'Laadplan: wachten op batterij-SoC.';
+    const target = Number(plan.targetSoc);
+    const targetText = Number.isFinite(target) ? `${target.toFixed(1).replace('.0', '')}%` : '—';
+    const rows = Array.isArray(plan.rows) ? plan.rows.filter(row => row && row.plannedNetCharge) : [];
+    const energyNeed = Number(plan.energyNeedKwh) || 0;
+    if (!(energyNeed > 0.001)) {
+      return `SoC-doel ${targetText} · genoeg batterijreserve, er wordt niet geladen.`;
+    }
+    if (!rows.length) {
+      if (plan.dynamicPriceReady === false) return `SoC-doel ${targetText} · laden is nodig, maar prijsdata ontbreekt.`;
+      return `SoC-doel ${targetText} · laden is nodig, maar er is geen bruikbaar laadvenster.`;
+    }
+    const windows = rows.map(row => `${this.formatPlanningTime(row.startAt)}–${this.formatPlanningTime(row.endAt)}`).join(', ');
+    const energy = rows.reduce((sum, row) => sum + Math.max(0, Number(row.plannedEnergyKwh) || 0), 0);
+    const powers = rows.map(row => Math.max(0, Math.round(Number(row.plannedChargeW) || 0))).filter(value => value > 0);
+    const powerText = powers.length ? ` · ca. ${Math.max(...powers)} W` : '';
+    return `SoC-doel ${targetText} · laden tijdens ${windows}${powerText} · ${energy.toFixed(2)} kWh gepland.`;
+  }
+
+  async publishChargePlanIfChanged(force = false) {
+    if (!this.chargePlanTrigger && !this.tokens.get('emschargeplan')) return null;
+    const plan = this.getPlanningStatus();
+    if (plan.currentSoc === null || plan.currentSoc === undefined) return { plan, text: '', changed: false };
+    const text = this.buildChargePlanText(plan);
+    const windows = Array.isArray(plan.rows)
+      ? plan.rows.filter(row => row && row.plannedNetCharge).map(row => `${this.formatPlanningTime(row.startAt)}–${this.formatPlanningTime(row.endAt)}`).join(', ')
+      : '';
+    // Only publish when the human-readable decision changes. SoC refreshes
+    // every few minutes must not retrigger a Flow if the decided plan is still
+    // exactly the same.
+    const signature = text;
+    if (!force && signature === this.lastChargePlanSignature) return { plan, text, changed: false };
+
+    // Reserve the decision signature before the first asynchronous write. Several
+    // inputs can arrive in the same second; without this reservation concurrent
+    // calls all saw the old signature and fired duplicate notifications.
+    const previousSignature = this.lastChargePlanSignature;
+    const previousText = this.lastChargePlanText;
+    this.lastChargePlanSignature = signature;
+    this.lastChargePlanText = text;
+    try {
+      const token = this.tokens.get('emschargeplan');
+      if (token) await token.setValue(this.translateDisplay(text));
+      if (this.chargePlanTrigger) {
+        await this.chargePlanTrigger.trigger(this.localizeDisplayTokens({
+          plan: text,
+          target_soc: Number(plan.targetSoc) || 0,
+          current_soc: Number(plan.currentSoc) || 0,
+          charge_window: windows,
+          forecast_energy: Number(plan.forecastKwh) || 0,
+        }));
+      }
+    } catch (err) {
+      // Allow a later retry if the actual publication failed.
+      if (this.lastChargePlanSignature === signature) {
+        this.lastChargePlanSignature = previousSignature;
+        this.lastChargePlanText = previousText;
+      }
+      throw err;
+    }
+    return { plan, text, changed: true };
+  }
+
+  getLocalDateKey(date = new Date()) {
+    return localParts(date, this.homey.clock.getTimezone() || 'UTC').dateKey;
+  }
+
+  describeApiValue(value) {
+    if (Array.isArray(value)) return `array(${value.length})`;
+    if (value && typeof value === 'object') return `object(${Object.keys(value).slice(0, 8).join(',')})`;
+    return typeof value;
+  }
+
+  extractScalar(value) {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+    if (typeof value === 'object') {
+      for (const key of ['value', 'type', 'id', 'name', 'zoneId', 'interval', 'priceInterval']) {
+        if (value[key] !== undefined && value[key] !== null && typeof value[key] !== 'object') return value[key];
+      }
+    }
+    return value;
+  }
+
+  async ensureHomeyWebApi() {
+    if (this.homeyApi) return this.homeyApi;
+    if (!this.homeyApiPromise) {
+      this.homeyApiPromise = HomeyAPI.createAppAPI({ homey: this.homey })
+        .then(api => {
+          this.homeyApi = api;
+          return api;
+        })
+        .catch(err => {
+          this.homeyApiPromise = null;
+          throw err;
+        });
+    }
+    return this.homeyApiPromise;
+  }
+
+  compactApiError(err) {
+    const text = err && err.message ? err.message : String(err || 'Onbekende fout');
+    return text.replace(/\s+/g, ' ').slice(0, 90);
+  }
+
+  async ensureHomeyEnergyFresh() {
+    const age = Date.now() - (this.homeyEnergy.lastUpdatedAt || 0);
+    if (!this.homeyEnergy.slots.length || age > 20 * 60 * 1000) {
+      await this.refreshHomeyEnergyPrices(false);
+    }
+  }
+
+  async refreshHomeyEnergyPrices(force = false) {
+    if (this.homeyEnergy.refreshing) return this.getHomeyEnergyStatus();
+    const nowMs = Date.now();
+    if (!force && nowMs - (this.homeyEnergy.lastAttemptAt || 0) < 5 * 60 * 1000) {
+      return this.getHomeyEnergyStatus();
+    }
+
+    this.homeyEnergy.refreshing = true;
+    this.homeyEnergy.lastAttemptAt = nowMs;
+    this.homeyEnergy.error = '';
+    try {
+      const timezone = this.homey.clock.getTimezone() || 'UTC';
+      const homeyApi = await this.ensureHomeyWebApi();
+      const energy = homeyApi.energy;
+      let typeResponse = null;
+      let zoneResponse = null;
+      let intervalResponse = null;
+      try { typeResponse = await energy.getElectricityPriceType(); } catch (err) { /* optional metadata */ }
+      try { zoneResponse = await energy.getDynamicPricesElectricityZone(); } catch (err) { /* optional metadata */ }
+      try {
+        if (typeof energy.getOptionElectricityPriceDynamicPreferredInterval === 'function') {
+          intervalResponse = await energy.getOptionElectricityPriceDynamicPreferredInterval();
+        }
+      } catch (err) { /* optional metadata */ }
+
+      let userCosts = null;
+      if (typeof energy.getDynamicElectricityPriceUserCosts === 'function') {
+        userCosts = await energy.getDynamicElectricityPriceUserCosts();
+      }
+      const formulaKey = extractMathExpression(userCosts);
+      this.homeyEnergy.formulaKey = formulaKey;
+      this.homeyEnergy.formulaKnown = true;
+
+      this.homeyEnergy.priceType = this.extractScalar(typeResponse);
+      this.homeyEnergy.zone = this.extractScalar(zoneResponse);
+      this.homeyEnergy.interval = this.extractScalar(intervalResponse);
+
+      const today = this.getLocalDateKey(new Date(nowMs));
+      const tomorrow = this.getNextLocalDateKey(nowMs);
+      const dates = [...new Set([today, tomorrow])];
+      const allSlots = [];
+      const shapes = [];
+      this.homeyEnergy.priceImportError = '';
+      for (const date of dates) {
+        try {
+          const response = await energy.fetchDynamicElectricityPrices({ date });
+          shapes.push(`${date}:${this.describeApiValue(response)}`);
+          allSlots.push(...normalizeDynamicPriceResponse(response, { dateHint: date, timezone, userCosts }));
+        } catch (err) {
+          shapes.push(`${date}:error(${this.compactApiError(err)})`);
+          // Keep today's failure visible; tomorrow may legitimately be unpublished.
+          if (!this.homeyEnergy.priceImportError) this.homeyEnergy.priceImportError = `${date}: ${err.message || String(err)}`;
+        }
+      }
+
+      const unique = new Map();
+      for (const slot of allSlots) {
+        const key = slot.startMs !== null && slot.startMs !== undefined
+          ? `ms:${slot.startMs}`
+          : `local:${slot.dateKey}:${slot.minute}`;
+        if (!unique.has(key)) unique.set(key, slot);
+      }
+      this.homeyEnergy.slots = [...unique.values()];
+      this.homeyEnergy.available = this.homeyEnergy.slots.length > 0;
+      this.homeyEnergy.lastUpdatedAt = Date.now();
+      this.homeyEnergy.responseShape = shapes.join(' · ');
+      if (!this.homeyEnergy.slots.length) {
+        const typeText = this.homeyEnergy.priceType === null || this.homeyEnergy.priceType === undefined
+          ? ''
+          : String(this.homeyEnergy.priceType);
+        if (this.homeyEnergy.priceImportError) {
+          this.homeyEnergy.error = this.homeyEnergy.priceImportError;
+        } else if (typeText && !typeText.toLowerCase().includes('dynamic')) {
+          this.homeyEnergy.error = `Homey Energy gebruikt prijstype “${typeText}”. De HomeFlux EMS-contractkeuze staat hier los van; zet Homey Energy zelf op Dynamisch om Homey's dynamische prijs-slots te gebruiken.`;
+        } else if (typeText.toLowerCase().includes('dynamic')) {
+          this.homeyEnergy.error = `Homey Energy staat op Dynamisch, maar HomeFlux EMS herkent nog geen prijs-slots. API-vorm: ${this.homeyEnergy.responseShape || 'onbekend'}.`;
+        } else {
+          this.homeyEnergy.error = `Homey Energy API bereikbaar, maar geen dynamische prijs-slots beschikbaar. API-vorm: ${this.homeyEnergy.responseShape || 'onbekend'}.`;
+        }
+      }
+      this.homeyEnergyAnalysisCache = { key: '', value: null };
+      this.homeyEnergyResampleCache = { key: '', value: [] };
+      this.invalidatePlanningCache();
+      this.armOverrideResume();
+      this.requestContextEvaluate(false, 'homey_energy_prices');
+      return this.getHomeyEnergyStatus();
+    } catch (err) {
+      this.homeyEnergy.available = false;
+      this.homeyEnergy.error = err && err.message ? err.message : String(err);
+      this.error('Could not read Homey Energy prices', err);
+      this.invalidatePlanningCache();
+      this.requestContextEvaluate(false, 'homey_energy_prices_unavailable');
+      return this.getHomeyEnergyStatus();
+    } finally {
+      this.homeyEnergy.refreshing = false;
+    }
+  }
+
+  getDynamicTargetInterval(settings = this.getSettings()) {
+    return String(settings.contractType || '') === 'dynamic_hour' ? 60 : 15;
+  }
+
+  isExternalPriceFallbackEnabled(settings = this.getSettings()) {
+    return Boolean(sourceOrder(settings.dynamicPriceSource, settings.dynamicPriceSources)[1]);
+  }
+
+  getEffectiveHomeySlots(settings = this.getSettings()) {
+    const target = this.getDynamicTargetInterval(settings);
+    const key = `${this.homeyEnergy?.lastUpdatedAt || 0}|${target}`;
+    if (this.homeyEnergyResampleCache?.key === key && this.homeyEnergyResampleCache.sourceRows === this.homeyEnergy?.slots) return this.homeyEnergyResampleCache.value;
+    const value = resamplePriceSlots(this.homeyEnergy?.slots || [], target);
+    this.homeyEnergyResampleCache = { key, value, sourceRows: this.homeyEnergy?.slots };
+    return value;
+  }
+
+  getExternalPriceState(source = 'external') {
+    return source === 'external2' ? (this.externalEnergy2 ||= { slots: [], curveUpdatedAt: 0, error: '', responseShape: '' })
+      : (this.externalEnergy ||= { slots: [], curveUpdatedAt: 0, error: '', responseShape: '' });
+  }
+
+  readExternalPrices(source, text, options = {}) {
+    if (!['external', 'external2'].includes(source)) throw new Error('Unknown external price source');
+    const state = this.getExternalPriceState(source);
+    const settings = this.getSettings();
+    let parsed;
+    try {
+      parsed = parseExternalPrices(text, { ...options, previous: state.slots || [],
+        intervalMinutes: this.getDynamicTargetInterval(settings), timezone: this.homey.clock.getTimezone() || settings.timezone || 'UTC' });
+    } catch (err) {
+      // Reject the update atomically; the last valid curve remains authoritative.
+      state.error = err.message;
+      throw err;
+    }
+    Object.assign(state, parsed, { curveUpdatedAt: Date.now(), error: '' });
+    const saved = {};
+    for (const id of ['external', 'external2']) {
+      const value = this.getExternalPriceState(id);
+      saved[id] = { slots: value.slots, curveUpdatedAt: value.curveUpdatedAt, responseShape: value.responseShape, error: '' };
+    }
+    this.homey.settings.set('_externalPriceCurves', saved);
+    this.externalEnergyResampleCache = null;
+    this.externalEnergy2ResampleCache = null;
+    this.homeyEnergyAnalysisCache = { key: '', value: null };
+    this.cachedRuntimeSettings = null;
+    this.invalidatePlanningCache();
+    this.requestContextEvaluate(false, `${source}_electricity_price_curve`);
+    return true;
+  }
+
+  getEffectiveExternalPriceSlots(settings = this.getSettings(), source = 'external') {
+    const target = this.getDynamicTargetInterval(settings);
+    const state = source === 'external2' ? this.externalEnergy2 : this.externalEnergy;
+    const cacheName = source === 'external2' ? 'externalEnergy2ResampleCache' : 'externalEnergyResampleCache';
+    const key = `${state?.curveUpdatedAt || 0}|${target}`;
+    if (this[cacheName]?.key === key && this[cacheName].sourceRows === state?.slots) return this[cacheName].value;
+    const value = resamplePriceSlots(state?.slots || [], target);
+    this[cacheName] = { key, value, sourceRows: state?.slots };
+    return value;
+  }
+
+  getDynamicPriceSelection(settings = this.getSettings(), now = new Date(), { readOnly = false } = {}) {
+    const homey = this.homeyEnergy || {}, external = this.externalEnergy || {};
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const order = sourceOrder(settings.dynamicPriceSource, settings.dynamicPriceSources).filter(Boolean);
+    const states = { homey, external, external2: this.externalEnergy2 || {} };
+    const rows = {};
+    const analyze = slots => analyzePriceSlots(slots, now, timezone, Number(settings.cheapHours) || 3, Number(settings.expensiveHours) || 3);
+    const analyses = {}, ready = {}, reasons = {};
+    const time = now.getTime();
+    const homeyAgeMs = homey.lastUpdatedAt ? Math.max(0, time-Number(homey.lastUpdatedAt)) : null;
+    for (const id of ['homey','external','external2']) {
+      rows[id] = readOnly ? resamplePriceSlots(states[id].slots || [], this.getDynamicTargetInterval(settings))
+        : id === 'homey' ? this.getEffectiveHomeySlots(settings) : this.getEffectiveExternalPriceSlots(settings,id);
+      analyses[id] = analyze(rows[id]);
+      const covered = analyses[id].currentPrice !== null && analyses[id].slotCount > 0;
+      ready[id] = id === 'homey' ? covered && homey.available !== false && homeyAgeMs !== null && homeyAgeMs <= 20*60000 : covered;
+      reasons[id] = !rows[id].length ? 'no_price_slots' : !covered ? 'no_current_price_slot'
+        : id === 'homey' && homey.available === false ? 'source_unavailable'
+        : id === 'homey' && !ready[id] ? 'stale' : 'ready';
+    }
+    const primarySource = order[0] || null, secondarySource = order[1] || null;
+    const persisted = this.dynamicPriceCalibrations === undefined ? this.homey.settings?.get?.('_dynamicPriceCalibrations') : this.dynamicPriceCalibrations;
+    const models = { ...(persisted && typeof persisted === 'object' ? persisted : {}) };
+    const legacy = this.dynamicPriceCalibration === undefined ? this.homey.settings?.get?.('_dynamicPriceCalibration') : this.dynamicPriceCalibration;
+    const attempts = this.priceCalibrationAttempts || {};
+    let changed = false;
+    const candidates = [];
+    for (let index=0; index<order.length; index++) {
+      const id = order[index];
+      let slots = rows[id], analysis = analyses[id], calibrated = index === 0, model = null, alignmentDetails = null, calibrationState = index === 0 ? 'disabled' : 'waiting';
+      if (index > 0) {
+        const pair = `${primarySource}:${id}`;
+        model = models[pair] || (index === 1 && legacy && typeof legacy === 'object' ? legacy : null);
+        alignmentDetails = model?.details || attempts[pair]?.details || null;
+        const usesHomey = primarySource === 'homey' || id === 'homey';
+        const formulaKey = usesHomey ? homey.formulaKnown ? String(homey.formulaKey || '') : model?.formulaKey || '' : '';
+        const zone = usesHomey ? homey.zone ?? model?.zone ?? null : null;
+        const context = JSON.stringify([primarySource,id,timezone,this.getDynamicTargetInterval(settings),zone,formulaKey]);
+        const attemptKey = `${context}|${localParts(now, timezone).dateKey}|${usesHomey ? homey.lastUpdatedAt || 0 : 0}|${states[primarySource].curveUpdatedAt || 0}|${states[id].curveUpdatedAt || 0}|${ready[primarySource]}|${ready[id]}`;
+        const previousAttempt = attempts[pair];
+        const changedCurve = previousAttempt?.primaryRows !== states[primarySource].slots || previousAttempt?.secondaryRows !== states[id].slots;
+        const expiredSinceAttempt = model && time > Number(model.validUntil) && Number(previousAttempt?.at || 0) <= Number(model.validUntil);
+        calibrationState = attempts[pair]?.reason || 'waiting';
+        if (ready[primarySource] && ready[id] && (previousAttempt?.key !== attemptKey || changedCurve || expiredSinceAttempt)) {
+          const fit = fitCalibration(states[primarySource].slots || [], states[id].slots || [], time, { timezone });
+          alignmentDetails = fit.details;
+          calibrationState = fit.reason;
+          if (fit.model) model = { ...fit.model, context, formulaKey, zone: homey.zone ?? null };
+          else if (fit.reason === 'incompatible_curves' || model?.context !== context
+            || !calibrationAgrees(model, states[primarySource].slots || [], states[id].slots || [], fit.details, timezone)) model = null;
+          if (!readOnly) {
+            attempts[pair] = { key: attemptKey, reason: fit.reason, at: time, details: fit.details,
+              primaryRows: states[primarySource].slots, secondaryRows: states[id].slots };
+            models[pair] = model;
+            changed = true;
+            if (index === 1) this.homey.settings?.set?.('_dynamicPriceCalibration', model);
+          }
+        }
+        calibrated = model?.context === context && Boolean(validCalibration(model,time));
+        calibrationState = calibrated ? 'ready' : model?.context === context && time>Number(model.validUntil) ? 'expired' : calibrationState;
+        slots = calibrated ? normalizeSecondary(rows[id],model,{timezone}) : [];
+        analysis = analyze(slots);
+      }
+      const usable = ready[id] && calibrated && analysis.currentPrice !== null;
+      candidates.push({ source: id, name: sourceName(id, settings), price: analysis.currentPrice, sourcePrice: analyses[id].currentPrice,
+        available: ready[id], ready: usable, normalized: index > 0 && calibrated, calibrationState,
+        reason: !ready[id] ? reasons[id] : !calibrated ? `alignment_${calibrationState}` : analysis.currentPrice === null ? 'alignment_current_outlier' : 'ready',
+        alignment: index > 0 ? { referenceSource: primarySource, referenceName: sourceName(primarySource, settings),
+          source: id, state: calibrationState, ...(model?.details || alignmentDetails || {}) } : null,
+        error: states[id].error || '', slots, analysis,
+        calibration: index > 0 && calibrated ? { scale:model.scale,offset:model.offset,learnedAt:model.learnedAt,validUntil:model.validUntil } : null });
+    }
+    if (!readOnly) {
+      this.priceCalibrationAttempts = attempts;
+      this.dynamicPriceCalibrations = models;
+      if (changed) this.homey.settings?.set?.('_dynamicPriceCalibrations', models);
+      this.dynamicPriceCalibration = candidates[1]?.calibration ? models[`${primarySource}:${secondarySource}`] || legacy : null;
+    }
+    const selected = candidates.find(item => item.ready);
+    const source = selected?.source || 'none';
+    const sourceInfo = candidates.map(({slots, analysis, ...info}) => info);
+    const externalCurrentAgeMs = external.currentUpdatedAt ? Math.max(0,time-Number(external.currentUpdatedAt)) : null;
+    return { source, slots: selected?.slots || [], analysis: selected?.analysis || analyze([]),
+      homeyFresh:ready.homey,homeyAgeMs,externalCurveReady:ready.external,
+      externalCurrentFresh: external.currentPrice != null && Number.isFinite(Number(external.currentPrice)) && externalCurrentAgeMs !== null && externalCurrentAgeMs <= 20*60000, externalCurrentAgeMs,
+      fallbackEnabled:order.length > 1, fallbackActive:source !== 'none' && source !== primarySource,
+      fallbackReady:candidates.slice(1).some(item=>item.ready), primarySource, secondarySource,
+      calibrationState:order.length < 2 ? 'disabled' : candidates.slice(1).some(item=>item.ready) ? 'ready' : candidates[1]?.calibrationState || 'waiting',
+      primary:sourceInfo[0] || null, secondary:sourceInfo[1] || null, tertiary:sourceInfo[2] || null,
+      sources:sourceInfo, sourceOrder:order, skippedSources:sourceInfo.filter(item=>!item.ready && (source === 'none' || order.indexOf(item.source)<order.indexOf(source))),
+      calibration:candidates[1]?.calibration || null };
+  }
+
+  getEffectiveDynamicSlots(settings = this.getSettings(), now = new Date()) {
+    const selection = this.getDynamicPriceSelection(settings, now);
+    // The following EV pass reuses the already validated source selection.
+    // Battery consumers still receive precisely the same day/source data.
+    this.evDeadlinePriceSelection = { selection, at: now.getTime(), revision: this.evDeadlineSettingsRevision };
+    return selection.slots;
+  }
+
+  getRawHomeyEnergyStatus(settings = this.getSettings(), now = new Date()) {
+    const homeyEnergy = this.homeyEnergy || {};
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const effectiveSlots = this.getEffectiveHomeySlots(settings);
+    const lp = localParts(now, timezone);
+    const targetInterval = this.getDynamicTargetInterval(settings);
+    const analysis = analyzePriceSlots(
+      effectiveSlots,
+      now,
+      timezone,
+      Number(settings.cheapHours) || 3,
+      Number(settings.expensiveHours) || 3,
+    );
+    let priceClass = '';
+    if (analysis.isCheapNow) priceClass = 'goedkoop';
+    else if (analysis.isExpensiveNow) priceClass = 'duur';
+    else if (analysis.currentPrice !== null) priceClass = 'normaal';
+    return {
+      source: 'homey',
+      available: homeyEnergy.available,
+      refreshing: homeyEnergy.refreshing,
+      priceType: homeyEnergy.priceType,
+      zone: homeyEnergy.zone,
+      preferredInterval: homeyEnergy.interval,
+      sourceIntervalMinutes: inferIntervalMinutes(homeyEnergy.slots || [], Number(homeyEnergy.interval) || 15),
+      slotIntervalMinutes: analysis.slotCount > 0 ? analysis.intervalMinutes : null,
+      decisionIntervalMinutes: targetInterval,
+      slotsToday: analysis.slotCount,
+      totalSlotsLoaded: effectiveSlots.length,
+      currentPrice: analysis.currentPrice,
+      currentRawPrice: analysis.currentRawPrice,
+      currentUserCostAdder: analysis.currentUserCostAdder,
+      currentRank: analysis.currentRank,
+      priceClass,
+      isCheapNow: analysis.isCheapNow,
+      isExpensiveNow: analysis.isExpensiveNow,
+      cheapestSummary: analysis.cheapestSummary,
+      expensiveSummary: analysis.expensiveSummary,
+      cheapestBlockSummary: analysis.cheapestBlockSummary,
+      cheapestBlockAveragePrice: analysis.cheapestBlockAveragePrice,
+      cheapHours: Number(settings.cheapHours) || 3,
+      expensiveHours: Number(settings.expensiveHours) || 3,
+      lastUpdatedAt: homeyEnergy.lastUpdatedAt,
+      ageSeconds: homeyEnergy.lastUpdatedAt ? Math.max(0, Math.round((now.getTime() - Number(homeyEnergy.lastUpdatedAt)) / 1000)) : null,
+      error: homeyEnergy.error || '',
+      responseShape: homeyEnergy.responseShape || '',
+      formula: String(homeyEnergy.formulaKey || '').slice(0, 250),
+      dateKey: lp.dateKey,
+    };
+  }
+
+  getExternalEnergyStatus(settings = this.getSettings(), now = new Date(), source = 'external') {
+    const externalEnergy = (source === 'external2' ? this.externalEnergy2 : this.externalEnergy) || {};
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const slots = this.getEffectiveExternalPriceSlots(settings, source);
+    const analysis = analyzePriceSlots(slots, now, timezone, Number(settings.cheapHours) || 3, Number(settings.expensiveHours) || 3);
+    const currentAgeMs = externalEnergy.currentUpdatedAt ? Math.max(0, now.getTime() - Number(externalEnergy.currentUpdatedAt)) : null;
+    const currentFresh = externalEnergy.currentPrice != null && Number.isFinite(Number(externalEnergy.currentPrice)) && currentAgeMs !== null && currentAgeMs <= 20 * 60 * 1000;
+    return {
+      available: analysis.currentPrice !== null || currentFresh,
+      curveReady: analysis.currentPrice !== null && analysis.slotCount > 0,
+      currentFresh,
+      currentPrice: currentFresh ? Number(externalEnergy.currentPrice) : analysis.currentPrice,
+      curveCurrentPrice: analysis.currentPrice,
+      slotsToday: analysis.slotCount,
+      totalSlotsLoaded: slots.length,
+      slotIntervalMinutes: analysis.slotCount > 0 ? analysis.intervalMinutes : null,
+      curveUpdatedAt: Number(externalEnergy.curveUpdatedAt) || 0,
+      currentUpdatedAt: Number(externalEnergy.currentUpdatedAt) || 0,
+      currentAgeSeconds: currentAgeMs === null ? null : Math.round(currentAgeMs / 1000),
+      error: externalEnergy.error || '',
+      responseShape: externalEnergy.responseShape || '',
+    };
+  }
+
+  getHomeyEnergyStatus(settings = this.getSettings(), now = new Date()) {
+    const homeyEnergy = this.homeyEnergy || {};
+    // Kept under the historic property name for compatibility with Insights,
+    // Savings and existing UI code. From v0.5.5 it represents the effective
+    // dynamic price source, while raw Homey diagnostics are exposed separately.
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const selection = this.getDynamicPriceSelection(settings, now);
+    const externalEnergy = (selection.source === 'external2' ? this.externalEnergy2 : this.externalEnergy) || {};
+    const analysis = selection.analysis;
+    const targetInterval = this.getDynamicTargetInterval(settings);
+    let priceClass = '';
+    if (analysis.isCheapNow) priceClass = 'goedkoop';
+    else if (analysis.isExpensiveNow) priceClass = 'duur';
+    else if (analysis.currentPrice !== null) priceClass = 'normaal';
+
+    // The selected curve is authoritative for both planning and accounting.
+    // A standalone price input must not bypass secondary normalization.
+    const currentPrice = analysis.currentPrice;
+    const sourceUpdatedAt = selection.source === 'homey'
+      ? Number(homeyEnergy.lastUpdatedAt) || 0
+      : ['external','external2'].includes(selection.source)
+        ? Number(externalEnergy.curveUpdatedAt || externalEnergy.currentUpdatedAt) || 0
+        : 0;
+    return {
+      source: selection.source,
+      sourceName: selection.sources.find(item => item.source === selection.source)?.name || 'None',
+      fallbackEnabled: selection.fallbackEnabled,
+      fallbackActive: selection.fallbackActive,
+      fallbackReady: selection.fallbackReady,
+      primarySource: selection.primarySource,
+      secondarySource: selection.secondarySource,
+      primary: selection.primary,
+      secondary: selection.secondary,
+      tertiary: selection.tertiary,
+      sources: selection.sources,
+      sourceOrder: selection.sourceOrder,
+      skippedSources: selection.skippedSources,
+      calibrationState: selection.calibrationState,
+      calibration: selection.calibration,
+      available: selection.source !== 'none',
+      refreshing: homeyEnergy.refreshing,
+      priceType: homeyEnergy.priceType,
+      zone: homeyEnergy.zone,
+      preferredInterval: homeyEnergy.interval,
+      sourceIntervalMinutes: ['external','external2'].includes(selection.source)
+        ? inferIntervalMinutes(externalEnergy.slots || [], 15)
+        : inferIntervalMinutes(homeyEnergy.slots || [], Number(homeyEnergy.interval) || 15),
+      slotIntervalMinutes: analysis.slotCount > 0 ? analysis.intervalMinutes : null,
+      decisionIntervalMinutes: targetInterval,
+      slotsToday: analysis.slotCount,
+      totalSlotsLoaded: selection.slots.length,
+      currentPrice,
+      currentRawPrice: analysis.currentRawPrice,
+      currentUserCostAdder: analysis.currentUserCostAdder,
+      currentRank: analysis.currentRank,
+      priceClass,
+      isCheapNow: analysis.isCheapNow,
+      isExpensiveNow: analysis.isExpensiveNow,
+      cheapestSummary: analysis.cheapestSummary,
+      expensiveSummary: analysis.expensiveSummary,
+      cheapestBlockSummary: analysis.cheapestBlockSummary,
+      cheapestBlockAveragePrice: analysis.cheapestBlockAveragePrice,
+      cheapHours: Number(settings.cheapHours) || 3,
+      expensiveHours: Number(settings.expensiveHours) || 3,
+      lastUpdatedAt: sourceUpdatedAt,
+      homeyFresh: selection.homeyFresh,
+      homeyAgeSeconds: selection.homeyAgeMs === null ? null : Math.round(selection.homeyAgeMs / 1000),
+      externalCurveReady: selection.externalCurveReady,
+      externalCurrentFresh: selection.externalCurrentFresh,
+      externalCurrentAgeSeconds: selection.externalCurrentAgeMs === null ? null : Math.round(selection.externalCurrentAgeMs / 1000),
+      error: selection.source === 'none' ? selection.skippedSources.map(item => `${item.name}: ${item.reason}`).join(' · ') || 'Geen bruikbare dynamische prijsdata' : '',
+      responseShape: ['external','external2'].includes(selection.source) ? externalEnergy.responseShape || 'external Flow' : homeyEnergy.responseShape || '',
+      timezone,
+    };
+  }
+
+  usesHomeyEnergyPrices(settings = this.getSettings()) {
+    return isDynamicContract(settings) && sourceOrder(settings.dynamicPriceSource, settings.dynamicPriceSources).includes('homey');
+  }
+
+  getHomeyEngineSlots(settings = this.getSettings(), now = new Date()) {
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const today = localParts(now, timezone).dateKey;
+    return this.getEffectiveDynamicSlots(settings, now)
+      .filter(slot => slot.dateKey === today && Number.isFinite(Number(slot.price)) && Number.isFinite(Number(slot.minute)))
+      .sort((a, b) => a.minute - b.minute)
+      .map(slot => ({
+        time: `${String(Math.floor(slot.minute / 60)).padStart(2, '0')}:${String(slot.minute % 60).padStart(2, '0')}`,
+        price: Number(slot.price),
+      }));
+  }
+
+  restoreLowForecastSunnyState(at = Date.now()) {
+    const stored = String(this.homey.settings.get('_lowForecastSunnyOverrideDate') || '');
+    const today = this.getForecastDateKey(at);
+    this.lowForecastSunnyOverrideDate = stored === today ? stored : '';
+    this.lowForecastSunnyRuntime = { date: today, aboveSince: 0 };
+  }
+
+  getAverageBatterySocForLowForecastPromotion(settings = this.getSettings()) {
+    const batterySoc = Array.from({ length: this.getBatteryCount(settings) }, (_, index) =>
+      this.inputSeen.batterySoc[index] ? this.state.batterySoc[index] : null);
+    return computeAverageSoc({ batterySoc }, settings);
+  }
+
+  getTodayStrategyForecastKwh() {
+    const full = Number(this.state.forecastDailyMaxKwh);
+    if (Number.isFinite(full) && full >= 0) return full;
+    if (Boolean(this.inputSeen.forecast)) {
+      const remaining = Number(this.state.forecastRemainingKwh);
+      if (Number.isFinite(remaining) && remaining >= 0) return remaining;
+    }
+    return null;
+  }
+
+  isLowForecastSunnyOverrideActive(settings = this.getSettings(), at = Date.now()) {
+    if (!Boolean(settings.lowForecastAutoSunnyEnabled)) return false;
+    if (this.isNightPlanningPhase(at)) return false;
+    const today = this.getForecastDateKey(at);
+    return String(this.lowForecastSunnyOverrideDate || '') === today;
+  }
+
+  updateLowForecastSunnyPromotion(at = Date.now(), settings = this.getSettings()) {
+    const runtime = this.lowForecastSunnyRuntime || (this.lowForecastSunnyRuntime = { date: '', aboveSince: 0 });
+    const today = this.getForecastDateKey(at);
+    if (runtime.date !== today) {
+      runtime.date = today;
+      runtime.aboveSince = 0;
+      if (String(this.lowForecastSunnyOverrideDate || '') !== today) this.lowForecastSunnyOverrideDate = '';
+    }
+
+    if (!Boolean(settings.lowForecastAutoSunnyEnabled)
+      || String(settings.forcedMode || 'auto') !== 'auto'
+      || this.isNightPlanningPhase(at)
+      || String(this.lowForecastSunnyOverrideDate || '') === today) {
+      runtime.aboveSince = 0;
+      return false;
+    }
+
+    const lowPvThresholdKwh = Math.max(0, Number(settings.lowForecastSelfConsumptionMinKwh) || 0);
+    const forecastKwh = this.getTodayStrategyForecastKwh();
+    if (lowPvThresholdKwh <= 0 || forecastKwh === null || forecastKwh >= lowPvThresholdKwh) {
+      runtime.aboveSince = 0;
+      return false;
+    }
+
+    const avgSoc = this.getAverageBatterySocForLowForecastPromotion(settings);
+    const thresholdSoc = Math.max(0, Math.min(100, Number(settings.lowForecastAutoSunnySoc) || 0));
+    if (avgSoc === null || avgSoc < thresholdSoc) {
+      runtime.aboveSince = 0;
+      return false;
+    }
+
+    if (!runtime.aboveSince) runtime.aboveSince = Number(at) || Date.now();
+    const minutes = Math.max(1, Number(settings.lowForecastAutoSunnyMinutes) || 10);
+    const dueAt = runtime.aboveSince + (minutes * 60000);
+    if ((Number(at) || Date.now()) < dueAt) return false;
+
+    this.lowForecastSunnyOverrideDate = today;
+    runtime.aboveSince = 0;
+    this.setSetting('_lowForecastSunnyOverrideDate', today);
+    return true;
+  }
+
+  getForecastDateKey(at = Date.now()) {
+    const settings = this.getSettings();
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    return localParts(new Date(at), timezone).dateKey;
+  }
+
+  restoreForecastState(at = Date.now()) {
+    const today = this.getForecastDateKey(at);
+    const storedDate = String(this.homey.settings.get('_forecastDailyMaxDate') || '');
+    const storedMaxRaw = this.homey.settings.get('_forecastDailyMaxKwh');
+    const storedMax = storedMaxRaw === null || storedMaxRaw === undefined ? null : Number(storedMaxRaw);
+    const tomorrowDate = String(this.homey.settings.get('_forecastTomorrowDate') || '');
+    const tomorrowRaw = this.homey.settings.get('_forecastTomorrowKwh');
+    const tomorrow = tomorrowRaw === null || tomorrowRaw === undefined || tomorrowRaw === '' ? null : Number(tomorrowRaw);
+    this.state.forecastDailyMaxDate = today;
+    this.state.forecastDailyMaxKwh = storedDate === today && Number.isFinite(storedMax) && storedMax >= 0 ? storedMax : null;
+    this.state.forecastTomorrowDate = tomorrowDate;
+    this.state.forecastTomorrowKwh = Number.isFinite(tomorrow) && tomorrow >= 0 ? tomorrow : null;
+    this.inputSeen.forecastTomorrow = Boolean(this.state.forecastTomorrowKwh !== null && tomorrowDate === shiftDateKey(today, 1));
+    if (tomorrowDate === today && this.state.forecastTomorrowKwh !== null) {
+      this.state.forecastDailyMaxKwh = Math.max(this.state.forecastDailyMaxKwh ?? 0, this.state.forecastTomorrowKwh);
+      this.state.forecastTomorrowKwh = null;
+      this.state.forecastTomorrowDate = '';
+      this.inputSeen.forecastTomorrow = false;
+      this.setSetting('_forecastTomorrowDate', '');
+      this.setSetting('_forecastTomorrowKwh', '');
+    }
+  }
+
+  ensureForecastDayCurrent(at = Date.now()) {
+    const dateKey = this.getForecastDateKey(at);
+    if (String(this.state.forecastDailyMaxDate || '') === dateKey) return;
+
+    const promotedTomorrow = String(this.state.forecastTomorrowDate || '') === dateKey
+      && Number.isFinite(Number(this.state.forecastTomorrowKwh))
+      ? Math.max(0, Number(this.state.forecastTomorrowKwh))
+      : null;
+
+    // A forecast supplied yesterday as 'tomorrow' becomes today's full-day forecast
+    // at midnight. Remaining PV still waits for a fresh current-day value.
+    this.state.forecastDailyMaxDate = dateKey;
+    this.state.forecastDailyMaxKwh = promotedTomorrow;
+    this.state.forecastRemainingKwh = null;
+    this.inputSeen.forecast = false;
+    this.inputUpdatedAt.forecast = 0;
+    if (promotedTomorrow !== null) {
+      this.setSetting('_forecastDailyMaxDate', dateKey);
+      this.setSetting('_forecastDailyMaxKwh', promotedTomorrow);
+    }
+    this.state.forecastTomorrowKwh = null;
+    this.state.forecastTomorrowDate = '';
+    this.inputSeen.forecastTomorrow = false;
+    this.inputUpdatedAt.forecastTomorrow = 0;
+    this.setSetting('_forecastTomorrowDate', '');
+    this.setSetting('_forecastTomorrowKwh', '');
+  }
+
+  updateForecastInput(value, at = Date.now()) {
+    const parsed = parseFiniteInputNumber(value);
+    if (parsed === null) return false;
+    this.ensureForecastDayCurrent(at);
+    const normalized = Math.max(0, parsed);
+    const nightForecast = this.getNightForecastInputRuntime('today', at);
+
+    const wasSeen = Boolean(this.inputSeen.forecast);
+    const previousRemaining = Number(this.state.forecastRemainingKwh);
+    const dateKey = this.getForecastDateKey(at);
+    const previousDate = String(this.state.forecastDailyMaxDate || '');
+    const previousMax = Number(this.state.forecastDailyMaxKwh);
+    const newDay = previousDate !== dateKey;
+    const nextMax = newDay || !Number.isFinite(previousMax)
+      ? normalized
+      : Math.max(previousMax, normalized);
+    const changed = newDay
+      || this.hasNumericInputChanged(previousRemaining, normalized, wasSeen, 0.01)
+      || !Number.isFinite(previousMax)
+      || nextMax > previousMax + 0.009;
+
+    this.state.forecastRemainingKwh = normalized;
+    this.state.forecastDailyMaxDate = dateKey;
+    this.state.forecastDailyMaxKwh = nextMax;
+    this.inputSeen.forecast = true;
+    this.inputUpdatedAt.forecast = at;
+
+    // Persist only when the day changes or a new daily maximum is observed.
+    // Identical periodic forecast inputs only refresh freshness; they do not
+    // write Homey settings or invalidate the five-minute planning throttle.
+    if (newDay || !Number.isFinite(previousMax) || nextMax > previousMax + 0.009) {
+      this.setSetting('_forecastDailyMaxDate', dateKey);
+      this.setSetting('_forecastDailyMaxKwh', nextMax);
+    }
+    const medianChanged = this.addNightForecastSample(nightForecast, normalized, at);
+    return changed || medianChanged;
+  }
+
+  updateForecastTomorrowInput(value, at = Date.now()) {
+    const parsed = parseFiniteInputNumber(value);
+    if (parsed === null) return false;
+    const normalized = Math.max(0, parsed);
+    this.ensureForecastDayCurrent(at);
+    const nightForecast = this.getNightForecastInputRuntime('tomorrow', at);
+    const targetDate = shiftDateKey(this.getForecastDateKey(at), 1);
+    const wasSeen = Boolean(this.inputSeen.forecastTomorrow);
+    const previousValue = Number(this.state.forecastTomorrowKwh);
+    const previousDate = String(this.state.forecastTomorrowDate || '');
+    const changed = previousDate !== targetDate
+      || this.hasNumericInputChanged(previousValue, normalized, wasSeen, 0.01);
+
+    this.state.forecastTomorrowKwh = normalized;
+    this.state.forecastTomorrowDate = targetDate;
+    this.inputSeen.forecastTomorrow = true;
+    this.inputUpdatedAt.forecastTomorrow = at;
+    if (changed) {
+      this.setSetting('_forecastTomorrowDate', targetDate);
+      this.setSetting('_forecastTomorrowKwh', normalized);
+    }
+    const medianChanged = this.addNightForecastSample(nightForecast, normalized, at);
+    return changed || medianChanged;
+  }
+
+  normalizeEvOperatingMode(mode) {
+    const value = String(mode || 'smart');
+    return ['smart', 'soc_target', 'emergency'].includes(value) ? value : 'smart';
+  }
+
+  getEffectiveEvMode(settings = this.getSettings()) {
+    if (evPlanOptions.widget(this, 0) && !evPlanOptions.widget(this, 0).flowExtended) return 'smart';
+    if (settings.evAfterSocTarget === 'preferences' && !this.evEnergyPlans?.[0]?.active
+      && this.getEvSessionDetectionRuntime(0)?.socTargetReached) return 'smart';
+    const overrideMode = this.normalizeEvOperatingMode(this.evSessionOverride?.mode || '');
+    if (this.evSessionOverride?.mode && ['smart', 'soc_target', 'emergency'].includes(String(this.evSessionOverride.mode))) {
+      return overrideMode;
+    }
+    return this.normalizeEvOperatingMode(settings.evMode || 'smart');
+  }
+
+  setEvSessionOverride(mode, source = 'flow') {
+    if (String(mode).startsWith('extend_plan_')) {
+      const match = /^extend_plan_([1-7])_days$/.exec(mode);
+      return match ? evPlanOptions.extend(this, 0, Number(match[1])) : false;
+    }
+    const completedPlan = evPlanOptions.widget(this, 0);
+    if (completedPlan?.flowExtended && completedPlan.completed) this.clearEvSocPlan(0, 'goal_completed');
+    if (evPlanOptions.deferMode(this, 0, mode, source)) return this.normalizeEvOperatingMode(mode);
+    this.rearmEvCompletedTarget(0);
+    const normalized = this.normalizeEvOperatingMode(mode);
+    const connectedNow = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
+    const alreadyStarted = Boolean(this.evSessionOverride?.mode) && Boolean(this.evSessionOverride?.sessionStarted);
+    this.evSessionOverride = {
+      mode: normalized,
+      sessionStarted: alreadyStarted || connectedNow,
+      requestedAt: Date.now(),
+      source: String(source || 'flow'),
+    };
+    // A Smart PV-only latch belongs to the previous operating mode and must not
+    // leak into an Emergency/SoC override. No polling or extra calculation loop
+    // is created; the existing EMS pass publishes the new EV decision.
+    this.clearEvPvSession();
+    this.forceEvOutput = true;
+    this.requestContextEvaluate(true, 'ev1_session_override');
+    this.syncEmsDevices().catch(err => this.error('EMS device sync after EV session override failed', err));
+    return normalized;
+  }
+
+  clearEvSessionOverride() {
+    const wasActive = Boolean(this.evSessionOverride?.mode);
+    this.evSessionOverride = { mode: null, sessionStarted: false, requestedAt: 0, source: '' };
+    if (wasActive) {
+      this.clearEvPvSession();
+      this.forceEvOutput = true;
+    }
+    return wasActive;
+  }
+
+  handleEvSessionConnectionTransition(wasConnected, isConnected) {
+    const energyChanged = this.handleEvEnergyPlanConnectionTransition(0, wasConnected, isConnected);
+    if (!this.evSessionOverride?.mode) return energyChanged;
+
+    // If the override was requested while disconnected, the first connection
+    // starts the one-session lifetime. If it was requested while already
+    // connected, sessionStarted was set immediately in setEvSessionOverride().
+    if (isConnected) {
+      this.evSessionOverride.sessionStarted = true;
+      return energyChanged;
+    }
+
+    // Repeated disconnected reports before a session has ever started do not
+    // consume the override. Only connected -> disconnected ends the session.
+    if (Boolean(wasConnected) && Boolean(this.evSessionOverride.sessionStarted)) {
+      return this.clearEvSessionOverride() || energyChanged;
+    }
+    return energyChanged;
+  }
+
+
+  getEvSessionOverrideFor(index) {
+    if (index === 0) return this.evSessionOverride;
+    return this.getExtraEv(index)?.sessionOverride || { mode: null, sessionStarted: false, requestedAt: 0, source: '' };
+  }
+
+  getEffectiveEvModeFor(index, settings = this.getSettings()) {
+    if (evPlanOptions.widget(this, index) && !evPlanOptions.widget(this, index).flowExtended) return 'smart';
+    if (settings[this.getEvSettingKey(index, 'AfterSocTarget')] === 'preferences'
+      && !this.evEnergyPlans?.[index]?.active && this.getEvSessionDetectionRuntime(index)?.socTargetReached) return 'smart';
+    const override = this.getEvSessionOverrideFor(index);
+    if (override?.mode && ['smart', 'soc_target', 'emergency'].includes(String(override.mode))) {
+      return this.normalizeEvOperatingMode(override.mode);
+    }
+    // Operating mode is an EV preference/override, not a derived tariff or
+    // deadline setting. Do not rebuild all TOU rates and Flow plans to read it.
+    return this.normalizeEvOperatingMode(settings[this.getEvSettingKey(index, 'Mode')] || 'smart');
+  }
+
+  setEvSessionOverrideFor(index, mode, source = 'flow') {
+    if (index === 0) return this.setEvSessionOverride(mode, source);
+    if (String(mode).startsWith('extend_plan_')) {
+      const match = /^extend_plan_([1-7])_days$/.exec(mode);
+      return match ? evPlanOptions.extend(this, index, Number(match[1])) : false;
+    }
+    const completedPlan = evPlanOptions.widget(this, index);
+    if (completedPlan?.flowExtended && completedPlan.completed) this.clearEvSocPlan(index, 'goal_completed');
+    if (evPlanOptions.deferMode(this, index, mode, source)) return this.normalizeEvOperatingMode(mode);
+    const runtime = this.getExtraEv(index);
+    if (!runtime) return this.normalizeEvOperatingMode(mode);
+    this.rearmEvCompletedTarget(index);
+    const normalized = this.normalizeEvOperatingMode(mode);
+    const connectedNow = Boolean(runtime.seen.connected) && Boolean(runtime.state.connected);
+    const alreadyStarted = Boolean(runtime.sessionOverride?.mode) && Boolean(runtime.sessionOverride?.sessionStarted);
+    runtime.sessionOverride = {
+      mode: normalized,
+      sessionStarted: alreadyStarted || connectedNow,
+      requestedAt: Date.now(),
+      source: String(source || 'flow'),
+    };
+    this.clearEvPvSessionFor(index);
+    runtime.forceOutput = true;
+    this.requestContextEvaluate(true, `ev${index + 1}_session_override`);
+    this.syncEmsDevices().catch(err => this.error(`EMS device sync after EV ${index + 1} session override failed`, err));
+    return normalized;
+  }
+
+  clearEvSessionOverrideFor(index) {
+    if (index === 0) return this.clearEvSessionOverride();
+    const runtime = this.getExtraEv(index);
+    if (!runtime) return false;
+    const wasActive = Boolean(runtime.sessionOverride?.mode);
+    runtime.sessionOverride = { mode: null, sessionStarted: false, requestedAt: 0, source: '' };
+    if (wasActive) {
+      this.clearEvPvSessionFor(index);
+      runtime.forceOutput = true;
+    }
+    return wasActive;
+  }
+
+  handleEvSessionConnectionTransitionFor(index, wasConnected, isConnected) {
+    if (index === 0) return this.handleEvSessionConnectionTransition(wasConnected, isConnected);
+    const energyChanged = this.handleEvEnergyPlanConnectionTransition(index, wasConnected, isConnected);
+    const runtime = this.getExtraEv(index);
+    if (!runtime?.sessionOverride?.mode) return energyChanged;
+    if (isConnected) {
+      runtime.sessionOverride.sessionStarted = true;
+      return energyChanged;
+    }
+    if (Boolean(wasConnected) && Boolean(runtime.sessionOverride.sessionStarted)) {
+      return this.clearEvSessionOverrideFor(index) || energyChanged;
+    }
+    return energyChanged;
+  }
+
+  getEvSessionDetectionRuntime(index) {
+    const normalized = Math.max(0, Math.min(3, Math.round(Number(index) || 0)));
+    return this.evSessionDetection?.sessions?.[normalized] || null;
+  }
+
+  getConnectedEvIndexes(settings = this.getSettings()) {
+    const connected = [];
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const input = this.getEvInputSnapshot(index);
+      if (Boolean(input?.seen?.connected) && Boolean(input?.connected)) connected.push(index);
+    }
+    return connected;
+  }
+
+  getEvPhysicalSiteLoadW(gridPowerW = this.state.gridPowerW) {
+    if (!this.inputSeen.grid || !this.inputSeen.pv) return null;
+    return calculatePhysicalSiteLoadW({
+      gridPowerW,
+      pvPowerW: this.state.pvPowerW,
+      batteryPowerW: this.state.lastTotalCommandW,
+    });
+  }
+
+  getLearnedEvHouseBaselineW(now = Date.now(), settings = this.getSettings()) {
+    const learned = getRobustAverageW(
+      this.evSessionDetection?.houseHistory || [], now, DEFAULT_HISTORY_MINUTES,
+    );
+    if (learned !== null && learned !== undefined && Number.isFinite(Number(learned))) {
+      return Math.max(0, Number(learned));
+    }
+    // The existing idle-house-load setting remains a conservative startup
+    // fallback until enough pre-session P1/PV samples have been observed.
+    const configured = Number(settings.evIdleHouseLoadW);
+    return Number.isFinite(configured) && configured > 0 ? configured : null;
+  }
+
+  restoreEvModeHouseReference() {
+    // Publication receipts only: no charging status, planning or measured W.
+    const saved = this.homey.settings.get('_evModeHouseReference');
+    const valid = saved?.version === 1;
+    this.evModeHouseCommands = Array.from({ length: 4 }, (_, i) => {
+      const row = valid ? saved.commands?.[i] : null;
+      return { mode: ['stop', 'smart', 'standard'].includes(row?.mode) ? row.mode : null,
+        at: Math.max(0, Number(row?.at) || 0) };
+    });
+    this.evModeHousePending = Array(4).fill(false);
+    this.evModeHouseStartCandidate = null;
+    this.evModeHouseConfirmedThisRun = Array(4).fill(false);
+    const reference = valid ? parseFiniteInputNumber(saved.referenceW) : null;
+    if (reference !== null && reference >= 0 && this.evModeHouseCommands.some((row, i) =>
+      row.mode && this.getEvControlTypeFor(i) === 'mode')) {
+      this.evSessionDetection.portfolioBaselineW = reference;
+      this.evBatteryHouseReferenceW = reference;
+    }
+    this.evModeHouseSavedReferenceW = reference !== null && reference >= 0 ? reference : null;
+    this.evModeHouseSerialized = valid ? JSON.stringify({ version: 1,
+      commands: this.evModeHouseCommands, referenceW: this.evModeHouseSavedReferenceW }) : '';
+  }
+
+  hasEvModeHouseCommandLock(settings = this.getSettings(), includePending = true) {
+    for (let i = 0; i < 4; i++) {
+      if (this.getEvControlTypeFor(i, settings) !== 'mode') continue;
+      if (['smart', 'standard'].includes(this.evModeHouseCommands?.[i]?.mode)
+        || (includePending && this.evModeHousePending?.[i])) return true;
+    }
+    return false;
+  }
+
+  isEvModeHouseLearningFrozen(settings = this.getSettings()) {
+    if (this.hasEvModeHouseCommandLock(settings)) return true;
+    // On upgrade/cold startup a connected or not-yet-reported Mode EV may
+    // already be drawing. Do not learn it before the first real publication.
+    for (let i = 0; i < this.getEvCount(settings); i++) {
+      if (!settings[this.getEvSettingKey(i, 'Enabled')] || this.getEvControlTypeFor(i, settings) !== 'mode'
+        || this.evModeHouseConfirmedThisRun?.[i]) continue;
+      const input = this.getEvInputSnapshot(i);
+      if (!input?.seen?.connected || input.connected) return true;
+    }
+    return false;
+  }
+
+  noteEvModeHousePublished(index, mode, candidate = null, now = Date.now()) {
+    const wasLocked = this.hasEvModeHouseCommandLock(this.getSettings(), false);
+    const previous = this.evModeHouseCommands[index];
+    this.evModeHouseConfirmedThisRun[index] = true;
+    let reference = null;
+    const startCandidate = candidate || this.evModeHouseStartCandidate;
+    if (mode !== 'stop' && !wasLocked && startCandidate) reference = this.applyEvStartHouseReference(index, startCandidate, now);
+    if (previous.mode !== mode) {
+      this.evModeHouseCommands[index] = { mode, at: now };
+      // Every new learning period starts with post-STOP points only. Old
+      // pre-charge/uncertain points must not be reused as a fresh 60s window.
+      if (this.evSessionDetection) this.evSessionDetection.recentHouseSamples = [];
+    }
+    if (mode !== 'stop' && !wasLocked) {
+      const value = parseFiniteInputNumber(reference?.houseReferenceW ?? this.evSessionDetection?.portfolioBaselineW);
+      this.evModeHouseSavedReferenceW = value !== null && value >= 0 ? value : null;
+      this.evSessionDetection.portfolioBaselineW = this.evModeHouseSavedReferenceW;
+      this.evBatteryHouseReferenceW = this.evModeHouseSavedReferenceW;
+      for (let i = 0; i < this.evSessionDetection.sessions.length; i++) {
+        if (this.getEvInputSnapshot(i)?.connected) this.evSessionDetection.sessions[i].baselineW = this.evModeHouseSavedReferenceW;
+      }
+    }
+    const stored = { version: 1, commands: this.evModeHouseCommands,
+      referenceW: this.evModeHouseSavedReferenceW ?? null };
+    const serialized = JSON.stringify(stored);
+    if (serialized !== this.evModeHouseSerialized) {
+      this.setSetting('_evModeHouseReference', JSON.parse(serialized));
+      this.evModeHouseSerialized = serialized;
+    }
+    return { ...reference, publishedMode: mode, successfulFlowPublication: true,
+      houseLearningFrozen: this.isEvModeHouseLearningFrozen(),
+      houseReferenceW: this.evSessionDetection?.portfolioBaselineW ?? null };
+  }
+
+  async trackEvModeHousePublication(index, mode, candidate, publish) {
+    // Quarantine P1 received while the real START Flow is in flight. Commit
+    // the receipt only after that particular Flow trigger succeeds; a later
+    // permission/token failure must not erase a successfully sent STOP.
+    if (mode !== 'stop' && !this.hasEvModeHouseCommandLock()) this.evModeHouseStartCandidate = candidate;
+    this.evModeHousePending[index] = mode !== 'stop';
+    if (mode !== 'stop' && this.evSessionDetection) this.evSessionDetection.recentHouseSamples = [];
+    try {
+      await publish();
+      return this.noteEvModeHousePublished(index, mode, candidate);
+    } finally {
+      this.evModeHousePending[index] = false;
+      if (!this.evModeHousePending.some(Boolean)) this.evModeHouseStartCandidate = null;
+    }
+  }
+
+  recordEvHouseLoadSample(gridPowerW = this.state.gridPowerW, now = Date.now(), settings = this.getSettings()) {
+    if (!this.evSessionDetection) return;
+    const modeFrozen = this.isEvModeHouseLearningFrozen(settings);
+    this.recordRecentEvHouseLoadSample(gridPowerW, now, settings, modeFrozen);
+    if (modeFrozen) return;
+    if (!this.inputSeen.grid || !this.inputSeen.pv) return;
+    const connected = this.getConnectedEvIndexes(settings);
+    const uncertainSession = connected.some(index => {
+      // Mode learning is governed by the successful publication receipts
+      // above, even if session/permission or display-only fields disagree.
+      if (this.getEvControlTypeFor(index, settings) === 'mode') return false;
+      const session = this.getEvSessionDetectionRuntime(index);
+      const input = this.getEvInputSnapshot(index);
+      const actualA = this.getEvControlTypeFor(index, settings) !== 'mode' && input?.seen?.chargeCurrent
+        ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+      return actualA > 0.5 || (!session?.endedLatched && this.isEvOutputActiveFor(index, settings));
+    });
+    if (uncertainSession) return;
+    const siteLoadW = this.getEvPhysicalSiteLoadW(gridPowerW);
+    if (!Number.isFinite(Number(siteLoadW))) return;
+    recordMinuteSample(this.evSessionDetection.houseHistory, siteLoadW, now, DEFAULT_HISTORY_MINUTES);
+  }
+
+  recordRecentEvHouseLoadSample(gridPowerW, now, settings, modeFrozen = this.isEvModeHouseLearningFrozen(settings)) {
+    if (modeFrozen) return;
+    const count = this.getEvCount(settings);
+    let modeConfigured = false;
+    for (let i = 0; i < count; i++) if (settings[this.getEvSettingKey(i, 'Enabled')]
+      && this.getEvControlTypeFor(i, settings) === 'mode') { modeConfigured = true; break; }
+    if (!modeConfigured) return;
+    let reason = '', evW = 0;
+    const pvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    if (!pvAt || pvAt > now || now - pvAt > 60000) reason = 'pv_stale';
+    const siteW = this.getEvPhysicalSiteLoadW(gridPowerW);
+    if (siteW === null || !Number.isFinite(siteW) || [gridPowerW, this.state.pvPowerW, this.state.lastTotalCommandW]
+      .some(value => parseFiniteInputNumber(value) === null)) reason ||= 'site_unknown';
+    for (let i = 0; i < count && !reason; i++) {
+      if (!settings[this.getEvSettingKey(i, 'Enabled')]) continue;
+      const input = this.getEvInputSnapshot(i);
+      if (!input?.seen?.connected) { reason = 'ev_connection_unknown'; break; }
+      if (!input.connected) continue;
+      if (this.getEvControlTypeFor(i, settings) === 'mode') {
+        // A stopped Mode output needs no ampere sensor to observe the site.
+        // Any physical tail after STOP stays INCLUDED: this is a conservative
+        // house upper bound, never a subtraction based on an old command.
+        // While active, P1 minus its own inferred EV delta would simply teach
+        // the frozen baseline back to itself. Do not manufacture such evidence.
+        // Successful Mode STOP is the permission to resume observation. The
+        // publication receipt was checked before this loop; UI fields alone
+        // are not another way to freeze/release it.
+        continue;
+      }
+      const measured = this.getEvMeasuredCurrent(i, input, now);
+      const outputAt = Number(i === 0 ? this.lastEvPublishedAt : this.getExtraEv(i)?.lastPublishedAt) || 0;
+      if (!measured.fresh || measured.updatedAt < outputAt) { reason = 'ev_feedback_pending'; break; }
+      const active = this.isEvOutputPermittedFor(i) && this.isEvOutputActiveFor(i, settings);
+      if (measured.currentA > .5) {
+        if (!active || now - measured.updatedAt > 10000) { reason = 'ev_feedback_delayed'; break; }
+        // Read cached settings directly; do not expand EV policies or resolve
+        // planning deadlines in the P1 path.
+        const key = suffix => settings[this.getEvSettingKey(i, suffix)];
+        evW += measured.currentA * evPowerPerAmp({ evPhases: key('Phases'), evVoltage: key('Voltage'), evVoltageReference: key('VoltageReference') });
+      } else if (active) { reason = 'ev_start_response_pending'; break; }
+    }
+    if (evW > siteW + Math.max(50, siteW * .05)) reason ||= 'ev_site_mismatch';
+    evHouseReference.record(this.evSessionDetection, now, Math.max(0, siteW - evW), reason, this.evPhysicalConfigRevision || 0);
+  }
+
+  getEvStartHouseReference(now = Date.now()) {
+    const recent = evHouseReference.read(this.evSessionDetection, now, this.evPhysicalConfigRevision || 0);
+    if (this.isEvModeHouseLearningFrozen()) {
+      recent.usable = false; recent.fallbackReason = 'mode_house_unobserved';
+    }
+    const gridAt = Number(this.inputUpdatedAt?.grid) || 0, pvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    if (!this.inputSeen?.grid || !this.inputSeen?.pv || !pvAt || pvAt > now || now - pvAt > 60000
+      || !gridAt || gridAt > now || now - gridAt > 5000) {
+      recent.usable = false; recent.fallbackReason ||= 'site_stale';
+    }
+    const previous = this.evSessionDetection?.portfolioBaselineW;
+    return { at: now, revision: this.evPhysicalConfigRevision || 0,
+      houseReferenceSource: recent.usable ? 'recent_60s' : 'existing_reference',
+      houseReferenceW: recent.usable ? recent.averageW : (Number.isFinite(this.evBatteryHouseReferenceW)
+        ? this.evBatteryHouseReferenceW : previous ?? null),
+      houseRecentAverageW: recent.averageW, housePreviousBaselineW: previous ?? null,
+      houseRecentSampleCount: recent.sampleCount, houseRecentWindowSeconds: recent.windowSeconds,
+      houseRecentCoverageSeconds: recent.coverageSeconds, houseReferenceFallback: !recent.usable,
+      houseReferenceFallbackReason: recent.fallbackReason };
+  }
+
+  applyEvStartHouseReference(index, candidate, now = Date.now()) {
+    const reference = { ...candidate };
+    if (this.hasEvModeHouseCommandLock(this.getSettings(), false)) {
+      reference.houseReferenceFallback = true;
+      reference.houseReferenceSource = 'existing_reference';
+      reference.houseReferenceFallbackReason = 'mode_house_frozen';
+    }
+    if (now - reference.at > 5000 || reference.revision !== (this.evPhysicalConfigRevision || 0)) {
+      reference.houseReferenceFallback = true;
+      reference.houseReferenceSource = 'existing_reference';
+      reference.houseReferenceFallbackReason = 'start_publication_changed';
+    }
+    if (!this.getEvInputSnapshot(index)?.connected) {
+      reference.houseReferenceFallback = true; reference.houseReferenceSource = 'existing_reference';
+      reference.houseReferenceFallbackReason = 'ev_disconnected';
+    }
+    const detection = this.evSessionDetection;
+    if (!reference.houseReferenceFallback && detection) {
+      detection.portfolioBaselineW = reference.houseReferenceW;
+      detection.baselineCapturedAt = now;
+      this.evBatteryHouseReferenceW = reference.houseReferenceW;
+      detection.noLoadSince = 0; detection.gridReleaseBlocked = false; detection.gridReleaseBlockedAt = 0;
+      detection.detectedEvLoadW = null;
+      // Do not mark charging or grant an EV allowance. The existing positive
+      // current / two-sample P1 resume confirmation remains authoritative.
+      for (let i = 0; i < detection.sessions.length; i++) if (this.getEvInputSnapshot(i)?.connected && detection.sessions[i]) {
+        detection.sessions[i].baselineW = reference.houseReferenceW;
+      }
+    } else {
+      reference.houseReferenceW = Number.isFinite(this.evBatteryHouseReferenceW)
+        ? this.evBatteryHouseReferenceW : detection?.portfolioBaselineW ?? null;
+    }
+    reference.houseLoadHold = Boolean(detection?.gridReleaseBlocked);
+    if (detection) detection.houseStartReference = reference;
+    return reference;
+  }
+
+  handleEvDetectionConnectionTransition(index, wasConnected, isConnected, now = Date.now(), settings = this.getSettings()) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!session || Boolean(wasConnected) === Boolean(isConnected)) return false;
+    if (!Array.isArray(this.evNightSurplusActive)) this.evNightSurplusActive = Array(4).fill(false);
+    this.evNightSurplusActive[Math.max(0, Math.min(3, Math.round(Number(index) || 0)))] = false;
+
+    if (isConnected) {
+      if (this.evBatterySupply) this.evBatterySupply[index] = null;
+      if (this.evBatteryCurrentDrop) this.evBatteryCurrentDrop[index] = null;
+      const otherConnected = this.getConnectedEvIndexes(settings).some(other => other !== index);
+      const existingBaseline = this.evSessionDetection.portfolioBaselineW;
+      const hasExistingBaseline = existingBaseline !== null && existingBaseline !== undefined
+        && Number.isFinite(Number(existingBaseline));
+      if ((!otherConnected || !hasExistingBaseline) && !this.hasEvModeHouseCommandLock(settings)) {
+        this.evSessionDetection.portfolioBaselineW = this.getLearnedEvHouseBaselineW(now, settings);
+        const learnedBaseline = this.evSessionDetection.portfolioBaselineW;
+        this.evSessionDetection.baselineCapturedAt = learnedBaseline !== null && learnedBaseline !== undefined
+          && Number.isFinite(Number(learnedBaseline)) ? now : 0;
+        this.evSessionDetection.noLoadSince = 0;
+        this.evSessionDetection.gridReleaseBlocked = false;
+        this.evSessionDetection.gridReleaseBlockedAt = 0;
+        this.evSessionDetection.detectedEvLoadW = null;
+      }
+      Object.assign(session, {
+        state: 'waiting', connectedAt: now, startedAt: 0, endedAt: 0,
+        endedReason: '', endedLatched: false, socTargetReached: false, detectionSource: '',
+        lastChargingAt: 0, zeroCurrentSince: 0, loadAbsent: false,
+        resumeSince: 0, resumeSamples: 0, resumeMode: '', lastLoadSampleAt: 0, observedModePowerW: null,
+        baselineW: this.evSessionDetection.portfolioBaselineW !== null
+          && this.evSessionDetection.portfolioBaselineW !== undefined
+          && Number.isFinite(Number(this.evSessionDetection.portfolioBaselineW))
+          ? Number(this.evSessionDetection.portfolioBaselineW) : null,
+      });
+      return true;
+    }
+
+    const hadSession = Number(session.connectedAt) > 0 || Number(session.startedAt) > 0;
+    Object.assign(session, {
+      state: hadSession ? 'ended' : 'idle',
+      endedAt: hadSession ? now : Number(session.endedAt) || 0,
+      endedReason: hadSession ? 'disconnected' : String(session.endedReason || ''),
+      socTargetReached: false,
+      endedLatched: false,
+      zeroCurrentSince: 0,
+    });
+    if (!this.getConnectedEvIndexes(settings).length && !this.hasEvModeHouseCommandLock(settings)) {
+      this.evBatteryHouseReferenceW = null;
+      this.evSessionDetection.portfolioBaselineW = null;
+      this.evSessionDetection.baselineCapturedAt = 0;
+      this.evSessionDetection.detectedEvLoadW = null;
+      this.evSessionDetection.physicalSiteLoadW = null;
+      this.evSessionDetection.noLoadSince = 0;
+      this.evSessionDetection.gridReleaseBlocked = false;
+      this.evSessionDetection.gridReleaseBlockedAt = 0;
+    }
+    return true;
+  }
+
+  updateEvSessionFromCurrent(index, connected, currentA, now = Date.now()) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!session || !connected || session.endedLatched) return false;
+    const charging = Math.max(0, Number(currentA) || 0) > 0.5;
+    if (!charging && session.detectionSource === 'house_load'
+      && this.getEvControlTypeFor(index) === 'mode') return false;
+    if (charging) {
+      const newlyStarted = !(Number(session.startedAt) > 0);
+      if (newlyStarted) session.startedAt = now;
+      session.state = 'charging';
+      session.detectionSource = 'current';
+      session.lastChargingAt = now;
+      session.zeroCurrentSince = 0;
+      session.loadAbsent = false;
+      return newlyStarted;
+    }
+    if (Number(session.startedAt) > 0) {
+      if (!Number(session.zeroCurrentSince)) session.zeroCurrentSince = now;
+      session.state = 'paused';
+      session.loadAbsent = true;
+    }
+    return false;
+  }
+
+  updateEvPortfolioLoadDetection(gridPowerW = this.state.gridPowerW, now = Date.now(), settings = this.getSettings()) {
+    const detection = this.evSessionDetection;
+    if (!detection) return false;
+    const sampleAt = Number(this.inputUpdatedAt?.grid) || now;
+    if (sampleAt <= Number(detection.lastSampleAt || 0)) return false;
+    detection.lastSampleAt = sampleAt;
+    const previousPower = detection.modePowerSnapshot;
+    detection.modePowerSnapshot = null;
+    const siteLoadW = this.getEvPhysicalSiteLoadW(gridPowerW);
+    detection.physicalSiteLoadW = siteLoadW === null ? null : Math.round(siteLoadW);
+    const baselineW = detection.portfolioBaselineW;
+    const detectedW = calculateDetectedEvLoadW(siteLoadW, baselineW);
+    detection.detectedEvLoadW = siteLoadW === null || detectedW === null ? null : Math.round(detectedW);
+    if (detection.detectedEvLoadW === null) return false;
+
+    const connectedIndexes = this.getConnectedEvIndexes(settings);
+    let candidateSettings = null;
+    const measuredModes = [], ampIndexes = [];
+    let flowPowerW = 0, unknownFlowPower = false, flowValidUntil = Infinity;
+    const candidates = connectedIndexes.filter(index => {
+      const candidate = Boolean(settings[this.getEvSettingKey(index, 'Enabled')])
+        && this.getEvControlTypeFor(index, settings) === 'mode'
+        && !this.getEvSessionDetectionRuntime(index)?.endedLatched;
+      if (candidate) {
+        candidateSettings = this.measurePlanningCalculation('evElectricalSettingsRead', 'p1_load_detection', index + 1,
+          () => this.getEvElectricalSettingsFor(index, settings));
+        candidateSettings.evModeLoadTolerancePercent = settings[`_ev${index + 1}ModeLoadTolerancePercent`]
+          ?? settings[this.getEvSettingKey(index, 'FeedbackTolerancePercent')];
+        this.recordDiagnosticCounter('evModePhysicalSettingsReads');
+        if (this.isEvOutputPermittedFor(index) && this.isEvOutputActiveFor(index, settings)) {
+          const published = index === 0 ? this.lastPublishedEvChargeMode : this.getExtraEv(index)?.lastPublishedChargeMode;
+          const perAmp = evPowerPerAmp(candidateSettings);
+          const commandCeilingW = this.getEvModeEstimatedCurrentA(published, candidateSettings) * perAmp;
+          let ceilingW = commandCeilingW, downshiftUntil = 0;
+          const previousW = Number(previousPower?.watts?.[index]) || 0;
+          // Retain only physical evidence from BEFORE a lower command. A
+          // steady Smart output cannot attribute a new appliance to the EV.
+          // Reuse that observation's original freshness expiry, never extend
+          // it on subsequent samples or create another control hold/timer.
+          if (previousPower?.revision === (this.evPhysicalConfigRevision || 0)
+            && previousPower.at < sampleAt && now <= previousPower.validUntil
+            && previousW > commandCeilingW + 0.5) {
+            const expiry = previousPower.downshiftUntil?.[index]
+              || (previousPower.modes?.[index] !== published ? previousPower.validUntil : 0);
+            if (expiry >= now) { ceilingW = previousW; downshiftUntil = expiry; }
+          }
+          measuredModes.push({ index,
+            ceilingW, commandCeilingW, downshiftUntil, published,
+            minimumW: Math.max(1, Number(candidateSettings.evMinCurrentA) || 6) * perAmp
+              * (1 - this.getEvModeLoadTolerancePercent(candidateSettings) / 100) });
+        }
+      } else if (settings[this.getEvSettingKey(index, 'Enabled')]
+        && this.getEvControlTypeFor(index, settings) !== 'mode') {
+        ampIndexes.push(index);
+      }
+      return candidate;
+    });
+    const pvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    const meterPower = candidates.length ? { at: sampleAt, revision: this.evPhysicalConfigRevision || 0,
+      validUntil: Math.min(sampleAt + this.getGridFreshness(settings, now).timeoutMs, pvAt + 300000),
+      watts: [0, 0, 0, 0], modes: [null, null, null, null], downshiftUntil: [0, 0, 0, 0],
+      totalW: 0, source: 'homeflux_p1_estimate', usable: false } : null;
+    detection.modePowerSnapshot = meterPower;
+    if (measuredModes.length) for (const index of ampIndexes) {
+      const flow = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index), now);
+      if (!flow.fresh) { unknownFlowPower = true; break; }
+      flowValidUntil = Math.min(flowValidUntil, flow.updatedAt + EV_CURRENT_FEEDBACK_MAX_MS);
+      if (flow.currentA > 0) flowPowerW += flow.currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
+    }
+    // The common P1 delta is shared ONCE across mode-only EVs. Nominal mode
+    // currents are ceilings/weights, never evidence of consumption. Exclude
+    // actual amp-controlled loads before allocating the remaining measured
+    // delta; an unknown competing Flow load cannot finance mode attribution.
+    if (measuredModes.length && !unknownFlowPower && pvAt > 0 && pvAt <= now && now - pvAt <= 300000) {
+      meterPower.usable = true;
+      // Recording cannot outlive a competing Flow meter used to separate this
+      // P1 pool. This metadata does not change the control cache's validity.
+      meterPower.recordingValidUntil = Math.min(meterPower.validUntil, flowValidUntil);
+      const ceilingW = measuredModes.reduce((sum, row) => sum + row.ceilingW, 0);
+      const minimumW = Math.min(...measuredModes.map(row => row.minimumW));
+      const residualW = Math.max(0, detectedW - flowPowerW);
+      // Retain a minimum-load plausibility threshold, including partial EV
+      // delivery below a Standard command. This remains a P1 estimate.
+      const availableW = residualW >= Math.max(250, minimumW) ? Math.min(residualW, ceilingW) : 0;
+      if (ceilingW > 0) for (const row of measuredModes) {
+        const watts = availableW * row.ceilingW / ceilingW;
+        meterPower.watts[row.index] = watts;
+        meterPower.modes[row.index] = row.published;
+        meterPower.downshiftUntil[row.index] = watts > row.commandCeilingW + 0.5 ? row.downshiftUntil : 0;
+      }
+      meterPower.totalW = availableW;
+    }
+    // A shared P1 meter cannot identify individual cars. Keep the existing
+    // portfolio ceiling for multiple cars; never guess which session paused.
+    if (candidates.length !== 1 || connectedIndexes.length !== 1) {
+      detection.noLoadSince = 0;
+      detection.gridReleaseBlocked = false;
+      detection.gridReleaseBlockedAt = 0;
+      return false;
+    }
+    const index = candidates[0];
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!session) return false;
+    const instanceSettings = candidateSettings;
+    const publishedMode = index === 0 ? this.lastPublishedEvChargeMode : this.getExtraEv(index)?.lastPublishedChargeMode;
+    const expectedW = this.getEvModeEstimatedCurrentA(publishedMode, instanceSettings) * evPowerPerAmp(instanceSettings);
+    const previousState = session.state;
+    const wasAbsent = Boolean(session.loadAbsent);
+    const wasBlocked = Boolean(detection.gridReleaseBlocked);
+    // Mode control has one physical source: the P1/PV/battery observation
+    // above. Flow amperes never establish or overwrite mode consumption.
+    const observedW = Math.max(0, meterPower.watts[index]);
+    const matches = ['smart', 'standard'].includes(String(publishedMode)) && observedW > 0;
+    session.observedModePowerW = observedW;
+    const freshSample = sampleAt > Number(session.lastLoadSampleAt || 0);
+    if (!freshSample) return false;
+    const sampleGap = sampleAt - Number(session.lastLoadSampleAt || 0);
+    session.lastLoadSampleAt = sampleAt;
+
+    if (!matches) {
+      session.loadAbsent = true;
+      session.resumeSince = 0;
+      session.resumeSamples = 0;
+      detection.detectedEvLoadW = 0;
+      // Missing samples are not sixty seconds of evidence. A long input gap
+      // restarts observation instead of finishing a timer against stale P1.
+      if (!Number(detection.noLoadSince) || sampleGap > 60000) detection.noLoadSince = now;
+      if (now - Number(detection.noLoadSince) >= 60000) {
+        session.state = 'paused';
+        session.detectionSource = 'house_load';
+        detection.gridReleaseBlocked = true;
+        if (!detection.gridReleaseBlockedAt) detection.gridReleaseBlockedAt = now;
+      }
+    } else {
+      detection.noLoadSince = 0;
+      if (session.state !== 'charging' || session.loadAbsent) {
+        if (!Number(session.resumeSince) || sampleGap > 60000 || session.resumeMode !== publishedMode) {
+          session.resumeSince = now;
+          session.resumeSamples = 0;
+          session.resumeMode = publishedMode;
+        }
+        session.resumeSamples = Number(session.resumeSamples || 0) + 1;
+        const confirmed = session.resumeSamples >= 2 && now - session.resumeSince >= 5000;
+        session.loadAbsent = !confirmed;
+        if (confirmed) {
+          session.state = 'charging';
+          if (!Number(session.startedAt)) session.startedAt = now;
+          session.detectionSource = 'house_load';
+          detection.gridReleaseBlocked = false;
+          detection.gridReleaseBlockedAt = 0;
+        }
+      }
+      detection.detectedEvLoadW = session.loadAbsent ? 0 : Math.round(observedW);
+      if (!session.loadAbsent) {
+        session.lastChargingAt = now;
+        detection.gridReleaseBlocked = false;
+        detection.gridReleaseBlockedAt = 0;
+      }
+    }
+    // Pause only changes accounting/status. It never clears a target/override
+    // or sends STOP. Peak Guard and tariff decisions keep their normal authority.
+    return previousState !== session.state || wasAbsent !== Boolean(session.loadAbsent)
+      || wasBlocked !== Boolean(detection.gridReleaseBlocked);
+  }
+
+  rearmEvCompletedTarget(index) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!session) return;
+    session.socTargetReached = false;
+    if (!['soc_target', 'energy_target'].includes(session.endedReason)) return;
+    Object.assign(session, { state: 'waiting', endedAt: 0, endedReason: '', endedLatched: false,
+      loadAbsent: true, resumeSince: 0, resumeSamples: 0, observedModePowerW: null });
+  }
+
+  applyEvSessionEndLatch(index, decision) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (!decision) return decision;
+    if (session && !session.endedLatched && decision.socTargetReached && !session.socTargetReached) {
+      session.socTargetReached = true;
+      // A completed SoC override must not leak Emergency/deadline policy back
+      // into later decisions. The persistent Flow target remains available for
+      // a reconnect; this completion marker lives only in the current session.
+      this.clearEvSessionOverrideFor(index);
+      this.clearEvPvSessionFor(index);
+    }
+    if (session && !session.endedLatched && decision.targetCompleted) {
+      this.markEvSessionEnded(index, decision.targetCompleted);
+    }
+    if (!session?.endedLatched) return decision;
+    return {
+      ...decision,
+      allowed: false,
+      desiredCurrentA: 0,
+      desiredPowerW: 0,
+      requestedCurrentA: 0,
+      requestedPowerW: 0,
+      pvRequestPowerW: 0,
+      gridRequestPowerW: 0,
+      pvAllocatedW: 0,
+      gridAllocatedW: 0,
+      batterySupportAllocatedW: 0,
+      portfolioGridImportTargetW: 0,
+      intentionalGridImport: false,
+      source: 'off',
+      effectiveChargeMode: 'stop',
+      requestedChargeMode: 'stop',
+      nightSurplusActive: false,
+      nightSurplusAllocatedW: 0,
+      reason: session.endedReason === 'soc_target'
+        ? 'Laadsessie voltooid · SoC-doel bereikt'
+        : session.endedReason === 'energy_target'
+          ? 'Laadsessie voltooid · gevraagde energie geleverd'
+          : 'Laadsessie beëindigd via Flow · wacht op nieuwe aansluiting',
+      sessionEnded: true,
+    };
+  }
+
+  markEvSessionEnded(index, source = 'flow', now = Date.now()) {
+    const session = this.getEvSessionDetectionRuntime(index);
+    evPlanOptions.complete(this, index, source);
+    if (!session || session.endedLatched) return false;
+    this.rememberEvBatterySupply(index, index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision);
+    this.evBatteryMeterLiveUntil = now + EV_CURRENT_FEEDBACK_MAX_MS;
+    const input = this.getEvInputSnapshot(index);
+    Object.assign(session, {
+      state: 'ended',
+      endedAt: now,
+      endedReason: String(source || 'flow'),
+      socTargetReached: false,
+      endedLatched: Boolean(input?.connected),
+      detectionSource: String(session.detectionSource || 'flow'),
+      zeroCurrentSince: 0,
+    });
+    // Finishing/stopping a session is not a physical cable disconnection.
+    // Keep the binding and remaining energy through restart while connected;
+    // only a real disconnected input arms the full kWh goal for a new cable
+    // session. Otherwise a completed goal could refill on the first status
+    // input after restart.
+    if (!Boolean(input?.seen?.connected && input?.connected)) {
+      this.handleEvEnergyPlanConnectionTransition(index, true, false, now);
+    } else if (this.evEnergyPlans?.[index]?.active) {
+      this.evEnergyPlans[index].lastTickAt = now;
+      this.persistEvEnergyPlanOverrides(true, now);
+    }
+    this.clearEvSessionOverrideFor(index);
+    this.clearEvPvSessionFor(index);
+    if (index === 0) this.forceEvOutput = true;
+    else {
+      const runtime = this.getExtraEv(index);
+      if (runtime) runtime.forceOutput = true;
+    }
+    this.evSessionDetection.noLoadSince = 0;
+    this.evSessionDetection.gridReleaseBlocked = false;
+    this.evSessionDetection.gridReleaseBlockedAt = 0;
+    this.requestEvaluate(true);
+    this.requestContextEvaluate(true, `ev${index + 1}_session_ended`);
+    this.syncEmsDevices().catch(err => this.error(`EMS device sync after EV ${index + 1} session end failed`, err));
+    return true;
+  }
+
+  getRuntimeSettings(settings = this.getSettings()) {
+    this.ensureForecastDayCurrent();
+    const runtime = {
+      ...settings,
+      evMode: this.getEffectiveEvMode(settings),
+      evSessionOverrideActive: Boolean(this.evSessionOverride?.mode),
+      forecastDataReady: Boolean(this.inputSeen.forecast),
+      forecastDailyDataReady: Number.isFinite(Number(this.state.forecastDailyMaxKwh)),
+      forecastTomorrowDataReady: Boolean(this.inputSeen.forecastTomorrow) && Number.isFinite(Number(this.state.forecastTomorrowKwh)),
+      pvDataReady: Boolean(this.inputSeen.pv),
+    };
+    if (!isDynamicContract(settings)) return runtime;
+    const dynamicSlots = this.getHomeyEngineSlots(settings);
+    return { ...runtime, dynamicSlots, dynamicPriceDataReady: dynamicSlots.length > 0 };
+  }
+
+  recordGridSample(value, at = Date.now()) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return;
+    this.gridInputHistory.push({ at: Number(at) || Date.now(), value: numeric });
+    this.noteAutoTuneGridSample(numeric, at);
+
+    // Grid smoothing is input-based, not time-based. Keep a bounded number of
+    // received meter values so 3/5/7/10-input averages remain independent of
+    // the actual P1/Flow publication interval.
+    while (this.gridInputHistory.length > 32) this.gridInputHistory.shift();
+  }
+
+  getGridAverage(sampleCount = 5, now = Date.now()) {
+    const live = Number(this.state.gridPowerW);
+    if (!Number.isFinite(live)) return 0;
+    const count = Math.max(1, Math.round(Number(sampleCount) || 5));
+    const samples = this.gridInputHistory.filter(sample => sample.at <= now).slice(-count);
+    if (!samples.length) return live;
+    return samples.reduce((sum, sample) => sum + Number(sample.value || 0), 0) / samples.length;
+  }
+
+  getGridControlSampleCount(settings = this.getSettings()) {
+    // Keep the historical settings key for upgrade compatibility. Its numeric
+    // values now mean number of received grid inputs rather than seconds.
+    const configured = Number(settings.gridControlWindowSeconds);
+    if (configured === 0) return 0;
+    if (configured === 3 || configured === 5 || configured === 7 || configured === 10) return configured;
+    return 5;
+  }
+
+  isAdaptiveLiveControlActive(settings = this.getSettings(), now = Date.now()) {
+    if (!Boolean(settings.adaptiveLiveControlEnabled)) return false;
+    return Number(this.adaptiveLiveUntil || 0) > Number(now || Date.now());
+  }
+
+  updateAdaptiveSetpointDetection(gridPowerW, settings = this.getSettings(), now = Date.now()) {
+    const grid = Number(gridPowerW);
+    if (!Number.isFinite(grid)) return false;
+    const previous = Number(this.lastAdaptiveGridW);
+    this.lastAdaptiveGridW = grid;
+    const enabled = Boolean(settings.adaptiveLiveControlEnabled);
+    const thresholdW = Math.max(1, Number(settings.adaptiveSetpointDeltaW) || 1000);
+    const windowMs = Math.max(1, Number(settings.adaptiveSetpointWindowSeconds) || 15) * 1000;
+    if (!enabled || !Number.isFinite(previous)) return false;
+    const deltaW = Math.abs(grid - previous);
+    if (deltaW < thresholdW) return false;
+    const lastLargeAt = Number(this.lastLargeSetpointChangeAt || 0);
+    const repeating = lastLargeAt > 0 && (now - lastLargeAt) <= windowMs;
+    this.lastLargeSetpointChangeAt = now;
+    if (repeating || this.isAdaptiveLiveControlActive(settings, now)) {
+      this.adaptiveLiveUntil = now + windowMs;
+      return true;
+    }
+    return false;
+  }
+
+  getRecentPvDelta(now = Date.now()) {
+    return this.pvLiveObservation && now < this.pvLiveObservation.expiresAt
+      ? this.pvLiveObservation.deltaW : 0;
+  }
+
+  getGridControlSelection(settings, now, pvDeltaW = this.getRecentPvDelta(now)) {
+    const liveGridW = Number.isFinite(Number(this.state.gridPowerW)) ? Number(this.state.gridPowerW) : 0;
+    const count = this.getGridControlSampleCount(settings);
+    const configuredThreshold = Number(settings.pvDeltaThresholdW);
+    const threshold = Number.isFinite(configuredThreshold) ? Math.max(0, configuredThreshold) : 100;
+    const pvLive = threshold > 0 && Math.abs(Number(pvDeltaW) || 0) >= threshold;
+    const adaptiveLive = this.isAdaptiveLiveControlActive(settings, now);
+    const evTransitionLive = now < Number(this.evBatteryMeterLiveUntil || 0);
+    const useLive = count === 0 || pvLive || adaptiveLive || evTransitionLive;
+    return {
+      value: useLive ? liveGridW : this.getGridAverage(count, now),
+      source: evTransitionLive ? 'live_ev_transition' : pvLive ? 'live_pv_delta' : adaptiveLive ? 'live_adaptive_setpoint'
+        : count === 0 ? 'direct' : `average_${count}_inputs`,
+    };
+  }
+
+  getEvBatteryDischargePolicy(settings = this.getSettings(), now = Date.now()) {
+    const always = settings.evBlockBatteryDischargeAlways === true;
+    const conditional = settings.evBlockBatteryDischargeGridMajority === true;
+    if ((!always && !conditional) || this.getBatteryCount(settings) === 0) return { eligible: false, blocked: false };
+    let gridShare = null;
+    if (conditional && !always) {
+      const count = this.getBatteryCount(settings);
+      const knownSoc = this.state.batterySoc?.slice(0, count);
+      // The origin pool is shared, just like Savings. Do not guess missing SoC.
+      if (knownSoc?.length !== count || knownSoc.some((v, i) => !this.inputSeen.batterySoc[i]
+        || v === null || !Number.isFinite(Number(v)))) return { eligible: false, blocked: false };
+      const storedKwh = configuredBatteryCapacityKwh(settings) * computeAverageSoc(this.state, settings) / 100;
+      gridShare = evBatteryPolicy.origin(this.savings?.inventory, storedKwh).gridShare;
+    }
+    const eligible = always || gridShare > 0.5;
+    if (!eligible) return { eligible: false, blocked: false, gridShare };
+    let charging = false;
+    for (let index = 0; index < this.getEvCount(settings); index++) {
+      const input = this.getEvInputSnapshot(index);
+      if (!input?.seen?.connected || !input.connected) continue;
+      // Same physical sources as Peak Guard: Mode uses the existing P1 cache,
+      // Current/Hybrid use fresh Flow actual-current feedback, never commands.
+      const watts = this.getEvControlTypeFor(index, settings) === 'mode'
+        ? this.getEvModeObservedPowerW(index, settings, now)
+        : this.getEvMeasuredCurrent(index, input, now).currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
+      if (watts > 0.5) { charging = true; break; }
+    }
+    return { eligible, blocked: charging, gridShare };
+  }
+
+  getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now), evObservation = null) {
+    const count = this.getBatteryCount(settings);
+    const today = this.getLocalDateKey(new Date(now));
+    const planningForecastDay = this.getPlanningForecastDay(now, today);
+    const nightPlanningActive = this.isNightPlanningPhase(now, today);
+    let nightForecast = null;
+    if (nightPlanningActive) {
+      const targetDate = planningForecastDay === 'tomorrow' ? shiftDateKey(today, 1) : today;
+      // The hot path reads a cached scalar. Collecting/sorting observations is
+      // restricted to forecast input and seeding a genuinely new night.
+      nightForecast = this.nightForecastMedian?.targetDate === targetDate
+        ? this.nightForecastMedian : this.getNightForecastRuntime(now);
+      if (settings.nightForecastHoldEnabled && !nightForecast.hold?.frozen
+        && targetDate === today && this.getLocalMinuteOfDay(now) >= 120) {
+        this.updateNightForecastHold(nightForecast, null, now);
+      }
+    }
+    // SoC is value-based, not freshness-based. Once a battery has supplied a
+    // valid SoC value, keep using the last known value until a newer one arrives.
+    // A battery is unavailable only when no valid SoC has ever been received.
+    const batterySoc = Array.from({ length: 8 }, (_, index) => {
+      if (index >= count) return null;
+      if (!this.inputSeen.batterySoc[index]) return null;
+      const value = Number(this.state.batterySoc[index]);
+      return Number.isFinite(value) ? value : null;
+    });
+
+    const liveGridPowerW = Number.isFinite(Number(this.state.gridPowerW)) ? Number(this.state.gridPowerW) : 0;
+    const gridAverage5sW = this.getGridAverage(5, now);
+    const gridSelection = this.getGridControlSelection(settings, now, pvDeltaW);
+    const selectedGridW = gridSelection.value;
+    const evGridControl = this.getEvGridImportObservation(settings, now, evObservation);
+    const activeEvGridImportTargetW = Math.max(0, Number(evGridControl.activeTargetW) || 0);
+    // The battery controller itself is unchanged. When Smart EV charging is
+    // explicitly allowed to use grid energy, shift only its meter TARGET by
+    // that EV allowance. Raw P1 remains untouched and Peak Guard still uses the
+    // real meter, so this cannot hide an installation peak.
+    const selectedControlGridW = selectedGridW - activeEvGridImportTargetW;
+    let controlGridSource = gridSelection.source;
+    if (activeEvGridImportTargetW > 0) controlGridSource += '_ev_grid_target';
+    this.recordDiagnosticEvAllowance(evGridControl, settings, now, selectedGridW, controlGridSource);
+
+    return {
+      ...this.state,
+      batterySoc,
+      batteryDischargeBlockedByEv: this.getEvBatteryDischargePolicy(settings, now).blocked,
+      lastBatteryCommands: Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
+      efficiencyDischargeStickyIndex: Number.isInteger(this.efficiencyDischargeStickyIndex)
+        ? this.efficiencyDischargeStickyIndex : null,
+      efficiencyChargeStickyIndex: Number.isInteger(this.efficiencyChargeStickyIndex)
+        ? this.efficiencyChargeStickyIndex : null,
+      efficiencyActiveCountSticky: Number.isInteger(this.efficiencyActiveCountSticky)
+        ? this.efficiencyActiveCountSticky : null,
+      forecastDailyMaxKwh: this.state.forecastDailyMaxKwh === null ? null : (Number.isFinite(Number(this.state.forecastDailyMaxKwh)) ? Number(this.state.forecastDailyMaxKwh) : null),
+      forecastTomorrowKwh: this.state.forecastTomorrowKwh === null ? null : (Number.isFinite(Number(this.state.forecastTomorrowKwh)) ? Number(this.state.forecastTomorrowKwh) : null),
+      // Project the night median into the existing engine inputs, leaving raw
+      // forecast inputs and the daytime full-day maximum unchanged. The same
+      // selected value then drives both the plan and live battery context.
+      ...(nightForecast && nightForecast.value !== null ? (planningForecastDay === 'tomorrow'
+        ? { forecastTomorrowKwh: nightForecast.value }
+        : { forecastRemainingKwh: nightForecast.value, forecastDailyMaxKwh: nightForecast.value }) : {}),
+      gridPowerW: liveGridPowerW,
+      // The real meter remains authoritative. A positive EV grid target is a
+      // target offset, not subtracted EV consumption: normal household import
+      // is still regulated and Peak Guard continues to see raw gridPowerW.
+      controlGridPowerW: selectedControlGridW,
+      evGridImportTargetW: activeEvGridImportTargetW,
+      plannedBatteryGridLimitW: this.getPlannedBatteryGridLimitW(settings, now, evObservation),
+      evGridImportRequestedTargetW: Math.max(0, Number(evGridControl.requestedTargetW) || 0),
+      evGridImportControlState: String(evGridControl.state || 'inactive'),
+      gridAverage5sW,
+      controlGridSource,
+      pvDeltaW: Number(pvDeltaW) || 0,
+      planningForecastDay,
+      planningDecisionSource: this.state.nightPlanningDecisionSource || '',
+      nightPlanningActive,
+      lowForecastSunnyOverrideActive: this.isLowForecastSunnyOverrideActive(settings, now),
+      peakGuardExtraLoadW: this.getBoilerPeakGuardReserveW(settings, now),
+    };
+  }
+
+  getInputReadiness(settings = this.getSettings()) {
+    const count = this.getBatteryCount(settings);
+    const missing = [];
+    const degraded = [];
+    const now = Date.now();
+    // The grid meter is the only hard control prerequisite. If it is absent,
+    // invalid or stale we cannot know import/export and therefore must not steer.
+    const gridFreshness = this.getGridFreshness(settings, now);
+    const gridFresh = gridFreshness.fresh;
+    if (!gridFresh) missing.push(this.inputSeen.grid ? 'netvermogen verouderd' : 'netvermogen');
+
+    // PV and forecast improve planning but are not proof of actual grid flow.
+    // The grid meter remains authoritative for self-consumption and export capture.
+    if (!this.inputSeen.pv) degraded.push('PV-vermogen');
+    if (!this.inputSeen.forecast) degraded.push('PV-voorspelling');
+    if (!this.inputSeen.forecastTomorrow) degraded.push('PV-voorspelling morgen');
+
+    const batterySocAvailable = Array.from({ length: count }, (_, index) => {
+      if (!this.inputSeen.batterySoc[index]) return false;
+      return Number.isFinite(Number(this.state.batterySoc[index]));
+    });
+    for (let i = 0; i < count; i += 1) {
+      if (!batterySocAvailable[i]) degraded.push(`SoC batterij ${i + 1}`);
+    }
+
+    if (isDynamicContract(settings)) {
+      const slots = this.getHomeyEngineSlots(settings);
+      if (!slots.length) {
+        degraded.push(this.isExternalPriceFallbackEnabled(settings) ? 'dynamische prijs-slots' : 'Homey Energy prijs-slots');
+      }
+    }
+    return {
+      ready: missing.length === 0,
+      missing,
+      degraded,
+      gridFresh,
+      gridAgeSeconds: gridFreshness.ageSeconds,
+      priceDataReady: !degraded.some(item => item.includes('prijs-slots')),
+      forecastDataReady: Boolean(this.inputSeen.forecast),
+      forecastTomorrowDataReady: Boolean(this.inputSeen.forecastTomorrow),
+      batterySocAgeSeconds: Array.from({ length: count }, (_, index) => this.inputSeen.batterySoc[index] && this.inputUpdatedAt.batterySoc[index]
+        ? Math.max(0, Math.round((now - this.inputUpdatedAt.batterySoc[index]) / 1000))
+        : null),
+      received: {
+        grid: gridFresh,
+        pv: this.inputSeen.pv,
+        forecast: this.inputSeen.forecast,
+        forecastTomorrow: this.inputSeen.forecastTomorrow,
+        batterySoc: batterySocAvailable,
+      },
+    };
+  }
+
+  createSafetyResult(calculated, settings, readiness) {
+    const count = this.getBatteryCount(settings);
+    const calculatedCommands = calculated.commands.slice(0, count);
+    const calculatedTotalCommandW = calculated.totalCommandW;
+    const chargeTestPassed = this.isChargeTestValid(settings);
+    const controlEnabled = Boolean(settings.controlEnabled) && chargeTestPassed;
+    const canPublishCommands = readiness.ready && controlEnabled;
+    const actualInternalCommands = Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0);
+    const actualCommands = actualInternalCommands.map(value => this.toPublishedCommand(value, settings));
+    const actualTotal = actualCommands.reduce((sum, value) => sum + value, 0);
+
+    if (!readiness.ready) {
+      return {
+        ...calculated,
+        baseMode: 'waiting_input',
+        modeLabel: 'Wachten op data',
+        override: null,
+        overrideLabel: '',
+        statusText: `Wachten op data: ${readiness.missing.join(', ')}`,
+        calculatedCommands,
+        calculatedTotalCommandW,
+        candidateCommands: Array(count).fill(0),
+        candidateTotalCommandW: 0,
+        outputCommands: actualCommands,
+        outputTotalCommandW: actualTotal,
+        commands: calculatedCommands,
+        totalCommandW: calculatedTotalCommandW,
+        plannedChargeW: 0,
+        gridChargeAssistW: 0,
+        inputReady: false,
+        missingInputs: readiness.missing,
+        degradedInputs: readiness.degraded || [],
+        priceDataReady: readiness.priceDataReady !== false,
+        inputsReceived: readiness.received,
+        controlEnabled,
+        canPublishCommands: false,
+      };
+    }
+
+    let safeStatusText = calculated.statusText;
+    const degraded = Array.isArray(readiness.degraded) ? readiness.degraded : [];
+    const notes = [];
+    if (degraded.some(item => item.includes('prijs-slots'))) notes.push('prijsdata ontbreekt');
+    if (degraded.includes('PV-voorspelling')) notes.push('forecast vandaag/resterend ontbreekt');
+    if (degraded.includes('PV-voorspelling morgen')) notes.push('forecast morgen ontbreekt: veiligheids-SoC blijft actief');
+    if (degraded.includes('PV-vermogen')) notes.push('PV-meting ontbreekt: netmeting gebruikt');
+    const missingSoc = degraded.filter(item => item.startsWith('SoC batterij'));
+    if (missingSoc.length) notes.push(`${missingSoc.join(', ')} uitgesloten`);
+    if (notes.length) safeStatusText = `${calculated.statusText} · ${notes.join(' · ')}`;
+    return {
+      ...calculated,
+      statusText: controlEnabled ? safeStatusText : this.getBatteryDisabledStatusText(settings, safeStatusText),
+      calculatedCommands,
+      calculatedTotalCommandW,
+      candidateCommands: canPublishCommands ? calculatedCommands : Array(count).fill(0),
+      candidateTotalCommandW: canPublishCommands ? calculatedTotalCommandW : 0,
+      outputCommands: controlEnabled ? actualCommands : Array(count).fill(0),
+      outputTotalCommandW: controlEnabled ? actualTotal : 0,
+      inputReady: true,
+      missingInputs: [],
+      degradedInputs: readiness.degraded || [],
+      priceDataReady: readiness.priceDataReady !== false,
+      inputsReceived: readiness.received,
+      controlEnabled,
+      canPublishCommands,
+    };
+  }
+
+  updateBalanceHealth(result, settings) {
+    const now = Date.now();
+    const monitor = this.balanceMonitor;
+    const count = this.getBatteryCount(settings);
+    if (count === 0) {
+      monitor.baselineSpread = null;
+      monitor.worseningSince = null;
+      monitor.warningActive = false;
+      monitor.warningText = '';
+      return '';
+    }
+    const values = Array.from({ length: count }, (_, index) => {
+      if (!this.inputSeen.batterySoc[index]) return null;
+      const value = Number(this.state.batterySoc[index]);
+      return Number.isFinite(value) ? value : null;
+    });
+    const valid = values.length === count && values.every(value => value !== null);
+    const active = Boolean(settings.balanceEnabled)
+      && Boolean(settings.balanceWarningEnabled)
+      && result.inputReady
+      && result.controlEnabled
+      && Math.abs(result.outputTotalCommandW || 0) >= Math.max(0, Number(settings.balanceWarningMinCommandW) || 0);
+
+    if (!valid || !active) {
+      monitor.baselineSpread = null;
+      monitor.worseningSince = null;
+      monitor.warningActive = false;
+      monitor.warningText = '';
+      return '';
+    }
+
+    const minSoc = Math.min(...values);
+    const maxSoc = Math.max(...values);
+    const lowIndex = values.indexOf(minSoc);
+    const highIndex = values.indexOf(maxSoc);
+    const spread = Math.round((maxSoc - minSoc) * 10) / 10;
+    const growthLimit = Math.max(0.1, Number(settings.balanceWarningGrowthPct) || 1.5);
+    const spreadLimit = Math.max(0.1, Number(settings.balanceWarningSpreadPct) || 4);
+    const delayMs = Math.max(1, Number(settings.balanceWarningDelayMinutes) || 15) * 60000;
+
+    if (monitor.baselineSpread === null || spread < monitor.baselineSpread) {
+      monitor.baselineSpread = spread;
+      monitor.worseningSince = null;
+      monitor.warningActive = false;
+      monitor.warningText = '';
+      return '';
+    }
+
+    if (spread >= spreadLimit && spread >= monitor.baselineSpread + growthLimit) {
+      if (!monitor.worseningSince) monitor.worseningSince = now;
+      if ((now - monitor.worseningSince) >= delayMs) {
+        const baseline = Math.round(monitor.baselineSpread * 10) / 10;
+        const message = `Battery Balance wordt slechter: SoC-spreiding steeg van ${baseline}% naar ${spread}% (B${lowIndex + 1} ${minSoc}%, B${highIndex + 1} ${maxSoc}%). Controleer of iedere batterij-SoC aan dezelfde Battery X Command gekoppeld is.`;
+        monitor.warningText = message;
+        if (!monitor.warningActive) {
+          monitor.warningActive = true;
+          monitor.lastWarningAt = now;
+          this.balanceWarningTrigger.trigger(this.localizeDisplayTokens({
+            message,
+            spread,
+            baseline_spread: baseline,
+            lowest_battery: lowIndex + 1,
+            highest_battery: highIndex + 1,
+          })).catch(err => this.error('Battery Balance warning trigger failed', err));
+        }
+        return message;
+      }
+    } else {
+      monitor.worseningSince = null;
+      monitor.warningActive = false;
+      monitor.warningText = '';
+    }
+
+    return monitor.warningText || '';
+  }
+
+  getAverageBatterySoc(settings = this.getSettings()) {
+    const batterySoc = Array.from({ length: this.getBatteryCount(settings) }, (_, index) =>
+      this.inputSeen.batterySoc[index] ? this.state.batterySoc[index] : null);
+    return computeAverageSoc({ batterySoc }, settings);
+  }
+
+
+  isPvCurtailmentSocAllowed(settings = this.getSettings()) {
+    if (this.getBatteryCount(settings) === 0) return true;
+    const averageBatterySoc = this.getAverageBatterySoc(settings);
+    const configured = Number(settings.pvCurtailMinBatterySoc);
+    const minBatterySoc = Math.max(0, Math.min(100, Number.isFinite(configured) ? configured : 95));
+    return averageBatterySoc !== null && averageBatterySoc >= minBatterySoc;
+  }
+
+  getPvCurtailmentHeadroomW(settings = this.getSettings()) {
+    if (!this.inputSeen.pv || !this.isPvCurtailmentSocAllowed(settings)) return 0;
+    const pv = Math.max(0, Number(this.state.pvPowerW) || 0);
+    const limit = Number(this.lastPublishedPvLimitPercent);
+    if (!Number.isFinite(limit) || limit >= 99.9 || limit <= 0 || pv <= 0) return 0;
+    const estimatedFull = pv * (100 / Math.max(10, limit));
+    return Math.max(0, estimatedFull - pv);
+  }
+
+  clearEvPvSession() {
+    if (!this.evPvSession) this.evPvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
+    this.evPvSession.active = false;
+    this.evPvSession.rateId = '';
+    this.evPvSession.overImportSince = 0;
+    this.evPvSession.belowPvSince = 0;
+  }
+
+  isEvPvSessionActiveForTariff(tariff = null, settings = this.getSettings()) {
+    if (!this.evPvSession?.active) return false;
+    const rateId = String(tariff?.rateId || tariff?.className || tariff?.kind || 'default');
+    return Boolean(rateId) && rateId === String(this.evPvSession.rateId || '');
+  }
+
+  syncEvPvSessionFromDecision(decision, chargeMode = null, settings = this.getSettings()) {
+    if (!this.evPvSession) this.evPvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
+    const controlType = this.getEvControlType(settings);
+    const outputActive = controlType === 'mode'
+      ? chargeMode === 'smart'
+      : Boolean(decision?.allowed && Number(decision?.desiredCurrentA || 0) > 0);
+    const source = String(decision?.source || 'off');
+    const rateId = String(decision?.tariffRateId || 'default');
+    const pvOnly = outputActive && Boolean(decision?.pvTariffHysteresisEnabled) && ['pv','pv+topup'].includes(source) && Boolean(rateId);
+    const pvHold = outputActive && source === 'pv_hold' && this.evPvSession.active;
+
+    if (pvOnly) {
+      if (!this.evPvSession.active || this.evPvSession.rateId !== rateId) {
+        this.evPvSession.overImportSince = 0;
+      }
+      this.evPvSession.active = true;
+      this.evPvSession.rateId = rateId;
+      return;
+    }
+    if (pvHold) return;
+
+    // Standard/tariff/guarantee charging has its own permission and therefore
+    // must not inherit the PV-only stop timer. Only pure PV / PV-hold sessions
+    // keep this latch.
+    this.clearEvPvSession();
+  }
+
+  applyEvPvSessionHysteresis(request, result, settings, now = Date.now()) {
+    if (!request || !this.isEvPvSessionActiveForTariff({ rateId: request.tariffRateId }, settings)) return request;
+    if (String(settings.evMode || 'smart') !== 'smart' || !Boolean(settings.evEnabled) || !request.connected) {
+      this.clearEvPvSession();
+      return request;
+    }
+
+    // Peak Guard remains absolute and never waits for the PV stop timer.
+    if (Boolean(settings.peakShaveEnabled) && String(result?.action || '') === 'peak_shave') {
+      this.clearEvPvSession();
+      return { ...request, allowed: false, desiredCurrentA: 0, desiredPowerW: 0, requestedCurrentA: 0, requestedPowerW: 0, pvRequestPowerW: 0, gridRequestPowerW: 0, peakLimited: true, source: 'off', reason: 'Peak Guard stopt EV onmiddellijk' };
+    }
+
+    // If another valid reason now permits charging, leave the PV-only session;
+    // tariff/guarantee charging is governed by its own rules.
+    if (request.allowed && !['pv', 'pv+topup', 'pv_hold'].includes(String(request.source || 'off'))) {
+      this.clearEvPvSession();
+      return request;
+    }
+
+    const stopGridImportW = Math.max(0, Number(request.pvTariffStopGridImportW) || 0);
+    const configuredStopDelaySeconds = Number(request.pvTariffStopDelaySeconds);
+    const stopDelaySeconds = Math.max(0, Number.isFinite(configuredStopDelaySeconds) ? configuredStopDelaySeconds : 60);
+    const gridW = Number(this.state.gridPowerW);
+    const importingTooMuch = Number.isFinite(gridW) && gridW >= stopGridImportW;
+    const stopSurplusW = Math.max(0, Number(request.pvTariffStopSurplusW) || 0);
+    const pvNowW = Math.max(0, Number(request.pvAvailableW) || 0);
+    const pvTooLow = stopSurplusW > 0 && pvNowW < stopSurplusW;
+    if (pvTooLow) {
+      if (!Number(this.evPvSession.belowPvSince)) this.evPvSession.belowPvSince = now;
+      if (stopDelaySeconds <= 0 || now - Number(this.evPvSession.belowPvSince) >= stopDelaySeconds * 1000) {
+        this.clearEvPvSession();
+        return { ...request, allowed:false, desiredCurrentA:0, desiredPowerW:0, requestedCurrentA:0, requestedPowerW:0, pvRequestPowerW:0, gridRequestPowerW:0, source:'off', reason:`EV PV-laden gestopt: PV ${Math.round(pvNowW)} W onder ${Math.round(stopSurplusW)} W gedurende ${Math.round(stopDelaySeconds)} s` };
+      }
+    } else this.evPvSession.belowPvSince = 0;
+
+    if (importingTooMuch) {
+      if (!Number(this.evPvSession.overImportSince)) this.evPvSession.overImportSince = now;
+      const elapsedMs = Math.max(0, now - Number(this.evPvSession.overImportSince));
+      if (stopDelaySeconds <= 0 || elapsedMs >= stopDelaySeconds * 1000) {
+        this.clearEvPvSession();
+        return { ...request, allowed: false, desiredCurrentA: 0, desiredPowerW: 0, requestedCurrentA: 0, requestedPowerW: 0, pvRequestPowerW: 0, gridRequestPowerW: 0, source: 'off', reason: `EV PV-laden gestopt: netafname ${Math.round(gridW)} W gedurende ${Math.round(stopDelaySeconds)} s` };
+      }
+    } else {
+      this.evPvSession.overImportSince = 0;
+    }
+
+    if (request.allowed && ['pv','pv+topup'].includes(String(request.source || ''))) return request;
+
+    const remainingSeconds = importingTooMuch
+      ? Math.max(0, Math.ceil(stopDelaySeconds - ((now - Number(this.evPvSession.overImportSince || now)) / 1000)))
+      : stopDelaySeconds;
+    if (['current','hybrid'].includes(this.getEvControlType(settings))) {
+      const minA = Math.max(1, Math.min(64, Math.round(Number(settings.evMinCurrentA) || 6)));
+      const powerW = Math.round(minA * evPowerPerAmp(settings));
+      return {
+        ...request,
+        allowed: true,
+        desiredCurrentA: minA,
+        desiredPowerW: powerW,
+        requestedCurrentA: minA,
+        requestedPowerW: powerW,
+        pvRequestPowerW: Math.min(powerW, Math.max(0, Number(request.pvAvailableW) || 0)),
+        gridRequestPowerW: Math.max(0, powerW - Math.max(0, Number(request.pvAvailableW) || 0)),
+        source: 'pv_hold',
+        pvSessionHoldActive: true,
+        reason: importingTooMuch
+          ? `PV-laadsessie actief · stop bij ${Math.round(stopGridImportW)} W netafname over ${remainingSeconds} s`
+          : `PV-laadsessie actief · stop pas na ${Math.round(stopDelaySeconds)} s boven ${Math.round(stopGridImportW)} W netafname`,
+      };
+    }
+
+    return {
+      ...request,
+      allowed: true,
+      desiredCurrentA: 0,
+      desiredPowerW: 0,
+      requestedCurrentA: 0,
+      requestedPowerW: 0,
+      pvRequestPowerW: 0,
+      gridRequestPowerW: 0,
+      source: 'pv_hold',
+      pvSessionHoldActive: true,
+      reason: importingTooMuch
+        ? `PV-laadsessie actief · stop bij ${Math.round(stopGridImportW)} W netafname over ${remainingSeconds} s`
+        : `PV-laadsessie actief · stop pas na ${Math.round(stopDelaySeconds)} s boven ${Math.round(stopGridImportW)} W netafname`,
+    };
+  }
+
+
+  clearEvPvSessionFor(index) {
+    if (index === 0) return this.clearEvPvSession();
+    const runtime = this.getExtraEv(index);
+    if (!runtime) return;
+    runtime.pvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
+  }
+
+  isEvPvSessionActiveForTariffFor(index, tariff = null, settings = this.getSettings()) {
+    if (index === 0) return this.isEvPvSessionActiveForTariff(tariff, settings);
+    const runtime = this.getExtraEv(index);
+    if (!runtime?.pvSession?.active) return false;
+    const rateId = String(tariff?.rateId || tariff?.className || tariff?.kind || 'default');
+    return Boolean(rateId) && rateId === String(runtime.pvSession.rateId || '');
+  }
+
+  syncEvPvSessionFromDecisionFor(index, decision, chargeMode = null, settings = this.getSettings()) {
+    if (index === 0) return this.syncEvPvSessionFromDecision(decision, chargeMode, settings);
+    const runtime = this.getExtraEv(index);
+    if (!runtime) return;
+    if (!runtime.pvSession) runtime.pvSession = { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 };
+    const controlType = this.getEvControlType(settings);
+    const outputActive = controlType === 'mode'
+      ? chargeMode === 'smart'
+      : Boolean(decision?.allowed && Number(decision?.desiredCurrentA || 0) > 0);
+    const source = String(decision?.source || 'off');
+    const rateId = String(decision?.tariffRateId || 'default');
+    const pvOnly = outputActive && Boolean(decision?.pvTariffHysteresisEnabled) && ['pv','pv+topup'].includes(source) && Boolean(rateId);
+    const pvHold = outputActive && source === 'pv_hold' && runtime.pvSession.active;
+    if (pvOnly) {
+      if (!runtime.pvSession.active || runtime.pvSession.rateId !== rateId) runtime.pvSession.overImportSince = 0;
+      runtime.pvSession.active = true;
+      runtime.pvSession.rateId = rateId;
+      return;
+    }
+    if (pvHold) return;
+    this.clearEvPvSessionFor(index);
+  }
+
+  applyEvPvSessionHysteresisFor(index, request, result, settings, gridPowerW = this.state.gridPowerW, now = Date.now()) {
+    if (index === 0) return this.applyEvPvSessionHysteresis(request, result, settings, now);
+    const runtime = this.getExtraEv(index);
+    if (!runtime || !request || !this.isEvPvSessionActiveForTariffFor(index, { rateId: request.tariffRateId }, settings)) return request;
+    if (String(settings.evMode || 'smart') !== 'smart' || !Boolean(settings.evEnabled) || !request.connected) {
+      this.clearEvPvSessionFor(index);
+      return request;
+    }
+    if (Boolean(settings.peakShaveEnabled) && String(result?.action || '') === 'peak_shave') {
+      this.clearEvPvSessionFor(index);
+      return { ...request, allowed: false, desiredCurrentA: 0, desiredPowerW: 0, requestedCurrentA: 0, requestedPowerW: 0, pvRequestPowerW: 0, gridRequestPowerW: 0, peakLimited: true, source: 'off', reason: 'Peak Guard stopt EV onmiddellijk' };
+    }
+    if (request.allowed && !['pv', 'pv+topup', 'pv_hold'].includes(String(request.source || 'off'))) {
+      this.clearEvPvSessionFor(index);
+      return request;
+    }
+    const stopGridImportW = Math.max(0, Number(request.pvTariffStopGridImportW) || 0);
+    const configuredStopDelaySeconds = Number(request.pvTariffStopDelaySeconds);
+    const stopDelaySeconds = Math.max(0, Number.isFinite(configuredStopDelaySeconds) ? configuredStopDelaySeconds : 60);
+    const gridW = Number(gridPowerW);
+    const importingTooMuch = Number.isFinite(gridW) && gridW >= stopGridImportW;
+    const stopSurplusW = Math.max(0, Number(request.pvTariffStopSurplusW) || 0);
+    const pvNowW = Math.max(0, Number(request.pvAvailableW) || 0);
+    const pvTooLow = stopSurplusW > 0 && pvNowW < stopSurplusW;
+    if (pvTooLow) {
+      if (!Number(runtime.pvSession.belowPvSince)) runtime.pvSession.belowPvSince = now;
+      if (stopDelaySeconds <= 0 || now - Number(runtime.pvSession.belowPvSince) >= stopDelaySeconds * 1000) {
+        this.clearEvPvSessionFor(index);
+        return { ...request, allowed:false, desiredCurrentA:0, desiredPowerW:0, requestedCurrentA:0, requestedPowerW:0, pvRequestPowerW:0, gridRequestPowerW:0, source:'off', reason:`EV PV-laden gestopt: PV ${Math.round(pvNowW)} W onder ${Math.round(stopSurplusW)} W gedurende ${Math.round(stopDelaySeconds)} s` };
+      }
+    } else runtime.pvSession.belowPvSince = 0;
+    if (importingTooMuch) {
+      if (!Number(runtime.pvSession.overImportSince)) runtime.pvSession.overImportSince = now;
+      const elapsedMs = Math.max(0, now - Number(runtime.pvSession.overImportSince));
+      if (stopDelaySeconds <= 0 || elapsedMs >= stopDelaySeconds * 1000) {
+        this.clearEvPvSessionFor(index);
+        return { ...request, allowed: false, desiredCurrentA: 0, desiredPowerW: 0, requestedCurrentA: 0, requestedPowerW: 0, pvRequestPowerW: 0, gridRequestPowerW: 0, source: 'off', reason: `EV PV-laden gestopt: netafname ${Math.round(gridW)} W gedurende ${Math.round(stopDelaySeconds)} s` };
+      }
+    } else runtime.pvSession.overImportSince = 0;
+    if (request.allowed && ['pv','pv+topup'].includes(String(request.source || ''))) return request;
+    const remainingSeconds = importingTooMuch
+      ? Math.max(0, Math.ceil(stopDelaySeconds - ((now - Number(runtime.pvSession.overImportSince || now)) / 1000)))
+      : stopDelaySeconds;
+    if (['current','hybrid'].includes(this.getEvControlType(settings))) {
+      const minA = Math.max(1, Math.min(64, Math.round(Number(settings.evMinCurrentA) || 6)));
+      const powerW = Math.round(minA * evPowerPerAmp(settings));
+      return {
+        ...request, allowed: true, desiredCurrentA: minA, desiredPowerW: powerW,
+        requestedCurrentA: minA, requestedPowerW: powerW,
+        pvRequestPowerW: Math.min(powerW, Math.max(0, Number(request.pvAvailableW) || 0)),
+        gridRequestPowerW: Math.max(0, powerW - Math.max(0, Number(request.pvAvailableW) || 0)),
+        source: 'pv_hold', pvSessionHoldActive: true,
+        reason: importingTooMuch
+          ? `PV-laadsessie actief · stop bij ${Math.round(stopGridImportW)} W netafname over ${remainingSeconds} s`
+          : `PV-laadsessie actief · stop pas na ${Math.round(stopDelaySeconds)} s boven ${Math.round(stopGridImportW)} W netafname`,
+      };
+    }
+    return {
+      ...request, allowed: true, desiredCurrentA: 0, desiredPowerW: 0,
+      requestedCurrentA: 0, requestedPowerW: 0, pvRequestPowerW: 0, gridRequestPowerW: 0,
+      source: 'pv_hold', pvSessionHoldActive: true,
+      reason: importingTooMuch
+        ? `PV-laadsessie actief · stop bij ${Math.round(stopGridImportW)} W netafname over ${remainingSeconds} s`
+        : `PV-laadsessie actief · stop pas na ${Math.round(stopDelaySeconds)} s boven ${Math.round(stopGridImportW)} W netafname`,
+    };
+  }
+
+  restoreEvEnergyPlanOverrides() {
+    const raw = this.homey.settings.get('evEnergyDeadlineOverrides');
+    const saved = Array.isArray(raw) ? raw : [];
+    const now = Date.now();
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    this.evEnergyPlans = Array.from({ length: 4 }, (_, index) => {
+      const item = saved[index] || {};
+      const targetKwh = Math.max(0, Math.min(250, Number(item.targetKwh) || 0));
+      const remainingKwh = Math.max(0, Math.min(targetKwh, Number.isFinite(Number(item.remainingKwh)) ? Number(item.remainingKwh) : targetKwh));
+      const targetTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(item.targetTime || '')) ? String(item.targetTime) : '07:00';
+      const deadlineAt = Math.max(0, Number(item.deadlineAt) || 0);
+      return {
+        active: Boolean(item.active),
+        targetKwh,
+        remainingKwh,
+        ...evPlanOptions.serialized(item),
+        targetTime,
+        deadlineAt,
+        targetOccurrenceAt: deadlineAt,
+        targetTimezone: timezone,
+        // Never integrate charge current across app downtime. The remaining
+        // value is persisted periodically, then counting resumes from startup.
+        lastTickAt: now,
+        guarantee: Boolean(item.guarantee),
+        // Older versions also cleared this flag on logical completion. With
+        // zero remaining energy, an unknown initial connection after restart
+        // must not be mistaken for proof of a new cable session.
+        sessionStarted: Boolean(item.sessionStarted) || (Boolean(item.active) && remainingKwh <= 0.001),
+      };
+    });
+    this.evEnergyPlanPersistAt = now;
+  }
+
+  persistEvEnergyPlanOverrides(force = false, now = Date.now()) {
+    if (!force && Number(this.evEnergyPlanPersistAt) > 0 && now - Number(this.evEnergyPlanPersistAt) < 5 * 60 * 1000) return false;
+    const serialized = Array.from({ length: 4 }, (_, index) => {
+      const plan = this.evEnergyPlans?.[index] || {};
+      const targetKwh = Math.max(0, Math.min(250, Number(plan.targetKwh) || 0));
+      return {
+        active: Boolean(plan.active),
+        ...evPlanOptions.serialized(plan),
+        targetKwh,
+        remainingKwh: Math.max(0, Math.min(targetKwh, Number.isFinite(Number(plan.remainingKwh)) ? Number(plan.remainingKwh) : targetKwh)),
+        targetTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(plan.targetTime || '')) ? String(plan.targetTime) : '07:00',
+        deadlineAt: Math.max(0, Number(plan.deadlineAt) || 0),
+        guarantee: Boolean(plan.guarantee),
+        sessionStarted: Boolean(plan.sessionStarted),
+      };
+    });
+    if (typeof this.homey?.settings?.set === 'function') this.setSetting('evEnergyDeadlineOverrides', serialized);
+    this.evEnergyPlanPersistAt = now;
+    return true;
+  }
+
+  restoreEvSocPlanOverrides() {
+    const raw = this.homey.settings.get('evSocDeadlineOverrides');
+    const saved = Array.isArray(raw) ? raw : [];
+    const now = Date.now();
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    this.evSocPlans = Array.from({ length: 4 }, (_, index) => {
+      const item = saved[index] || {};
+      const targetSoc = Math.max(1, Math.min(100, Number(item.targetSoc) || 80));
+      const targetTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(item.targetTime || '')) ? String(item.targetTime) : '07:00';
+      const deadlineAt = item.active ? (item.widgetPlan ? Number(item.deadlineAt) || 0 : this.getEvSocPlanDeadlineAt(now, targetTime, timezone, index)) : 0;
+      return { active: Boolean(item.active), ...evPlanOptions.serialized(item), targetSoc, targetTime, deadlineAt, guarantee: Boolean(item.guarantee),
+        targetOccurrenceAt: deadlineAt,
+        targetTimezone: timezone };
+    });
+  }
+
+  persistEvSocPlanOverrides() {
+    const serialized = Array.from({ length: 4 }, (_, index) => {
+      const plan = this.evSocPlans?.[index] || {};
+      return {
+        active: Boolean(plan.active),
+        ...evPlanOptions.serialized(plan),
+        targetSoc: Math.max(1, Math.min(100, Number(plan.targetSoc) || 80)),
+        targetTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(plan.targetTime || '')) ? String(plan.targetTime) : '07:00',
+        guarantee: Boolean(plan.guarantee),
+      };
+    });
+    if (typeof this.homey?.settings?.set === 'function') this.setSetting('evSocDeadlineOverrides', serialized);
+  }
+
+  clearEvSocPlan(index, endReason = 'explicit_clear') {
+    // Keep the historical Flow card ID for compatibility, but v0.7.2 makes it
+    // the generic EV planning-override clear action. This is necessary now that
+    // both SoC and kWh deadline targets are persistent.
+    if (!Array.isArray(this.evSocPlans)) this.restoreEvSocPlanOverrides();
+    if (!Array.isArray(this.evEnergyPlans)) this.restoreEvEnergyPlanOverrides();
+    const socPlan = this.evSocPlans?.[index];
+    const energyPlan = this.evEnergyPlans?.[index];
+    const wasWidget = evPlanOptions.widget(this, index);
+    if (!socPlan && !energyPlan) return false;
+    if (socPlan) {
+      socPlan.active = false;
+      socPlan.deadlineAt = 0;
+    }
+    if (energyPlan) {
+      energyPlan.active = false;
+      energyPlan.deadlineAt = 0;
+      energyPlan.remainingKwh = 0;
+      energyPlan.sessionStarted = false;
+    }
+    if (socPlan) delete socPlan.widgetPlan;
+    if (energyPlan) delete energyPlan.widgetPlan;
+    this.rearmEvCompletedTarget(index);
+    // A disconnect may restore a saved Flow goal through the central setter,
+    // which already persists both goal types and requests one context refresh.
+    if (wasWidget && !wasWidget.flowExtended && evPlanOptions.resume(this, index, endReason)) return true;
+    this.persistEvSocPlanOverrides();
+    this.persistEvEnergyPlanOverrides(true);
+    if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
+    this.markEvPlanChanged(index, 'goal_cleared');
+    this.requestContextEvaluate(true, 'ev'+(index+1)+'_planning_override_cleared');
+    return true;
+  }
+
+  getEvSocFreshness(index, settings = this.getEvInstanceSettings(index), now = Date.now()) {
+    const input = this.getEvInputSnapshot(index) || {};
+    const enabled = settings.evSocEnabled !== false;
+    const seen = enabled && Boolean(input?.seen?.soc) && Number.isFinite(Number(input?.soc));
+    const updatedAt = Math.max(0, Number(input?.updatedAt?.soc) || 0);
+    const timeoutMinutes = Math.max(1, Math.min(60, Math.round(Number(settings.evSocFreshnessMinutes) || 15)));
+    const ageMs = updatedAt > 0 ? Math.max(0, now - updatedAt) : Infinity;
+    const fresh = seen && ageMs <= timeoutMinutes * 60000;
+    return { enabled, seen, fresh, updatedAt, timeoutMinutes, ageMinutes: Number.isFinite(ageMs) ? ageMs / 60000 : null };
+  }
+
+  tickEvEnergyPlan(index, now = Date.now()) {
+    const plan = this.evEnergyPlans?.[index];
+    if (!plan?.active) return plan || null;
+    const last = Math.max(0, Number(plan.lastTickAt) || now);
+    const input = this.getEvInputSnapshot(index);
+    const feedbackAt = Number(input?.updatedAt?.chargeCurrent) || 0;
+    // A command is no delivery proof. Integrate only a bounded interval after
+    // actual current feedback, settling it before the next reading replaces it.
+    const elapsedHours = feedbackAt > 0 ? Math.max(0, Math.min(now, feedbackAt + EV_CURRENT_FEEDBACK_MAX_MS) - Math.max(last, feedbackAt)) / 3600000 : 0;
+    const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+    const actualCurrentA = connected && input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+    const session = this.getEvSessionDetectionRuntime(index);
+    const before = Math.max(0, Number(plan.remainingKwh) || 0);
+    const canDeliver = elapsedHours > 0 && actualCurrentA > 0 && before > 0
+      && !session?.loadAbsent && !session?.endedLatched;
+    // Keep the helper's existing expired-deadline rollover side effect, but
+    // avoid rebuilding settings when zero/stale/absent feedback delivers no
+    // energy. lastTickAt still advances exactly as before.
+    const settings = canDeliver || !(Number(plan.deadlineAt) > now)
+      ? this.getEvInstanceSettings(index, this.getSettings()) : null;
+    const deliveredKwh = canDeliver ? elapsedHours * actualCurrentA * evPowerPerAmp(settings) / 1000 : 0;
+    if (!settings) this.recordDiagnosticCounter('evEnergyAccountingIdleSkipped');
+    if (deliveredKwh > 0 && before > 0) plan.remainingKwh = Math.max(0, before - deliveredKwh);
+    plan.lastTickAt = now;
+    if (deliveredKwh > 0 && before > 0) {
+      const reachedMinimumNow = before > 0.001 && plan.remainingKwh <= 0.001;
+      this.persistEvEnergyPlanOverrides(reachedMinimumNow, now);
+      if (reachedMinimumNow && session && !session.endedLatched) this.markEvSessionEnded(index, 'energy_target', now);
+    }
+    return plan;
+  }
+
+  handleEvEnergyPlanConnectionTransition(index, wasConnected, isConnected, now = Date.now()) {
+    const plan = this.evEnergyPlans?.[index];
+    if (!plan?.active) return false;
+    if (plan.widgetPlan) {
+      plan.lastTickAt = now;
+      plan.sessionStarted = Boolean(isConnected);
+      return false; // Widget progress is one goal, never refilled on reconnect.
+    }
+    const connectedNow = Boolean(isConnected);
+    const connectedBefore = Boolean(wasConnected);
+    let changed = false;
+    if (connectedNow && !connectedBefore) {
+      if (!plan.sessionStarted) {
+        plan.remainingKwh = Math.max(0, Number(plan.targetKwh) || 0);
+        const settings = this.getSettings();
+        const deadline = findNextLocalTime(new Date(now), String(plan.targetTime || '07:00'), settings.timezone || 'Europe/Brussels');
+        plan.deadlineAt = deadline.getTime();
+        plan.targetOccurrenceAt = plan.deadlineAt;
+        plan.targetTimezone = settings.timezone || 'Europe/Brussels';
+        changed = true;
+      }
+      plan.sessionStarted = true;
+      plan.lastTickAt = now;
+      changed = true;
+    } else if (!connectedNow && plan.sessionStarted) {
+      // A confirmed disconnect ends the energy-counting session. This also
+      // covers the first disconnected status received after an app/Homey
+      // restart, where `wasConnected` starts false but the persisted plan still
+      // remembers that the previous charging session had started.
+      // Keep the persistent target itself and arm the full configured kWh
+      // minimum for the next real EV connection.
+      plan.sessionStarted = false;
+      plan.lastTickAt = now;
+      changed = true;
+    }
+    if (changed) this.persistEvEnergyPlanOverrides(true, now);
+    return changed;
+  }
+
+  isEvPlanGoalCurrent(plan, now = Date.now()) {
+    // deadlineAt may roll forward while displaying an existing persistent
+    // plan. Keep the submitted occurrence separate: the same HH:mm tomorrow
+    // is a real new goal, while repeated inputs today cannot refill progress.
+    return !plan.active || (plan.targetTimezone === (this.homey.clock.getTimezone() || 'UTC')
+      && now < Math.floor(Number(plan.targetOccurrenceAt) / 60000) * 60000);
+  }
+
+  setEvEnergyPlan(index, energyKwh, targetTime, guaranteeInput = 'no', widgetInput = null) {
+    if (evPlanOptions.protectedPlan(this, index)
+      && (!widgetInput || evPlanOptions.widget(this, index)?.flowExtended)) return false;
+    this.recordDiagnosticCounter('evEnergyTargetInputs');
+    const parsedKwh = parseFiniteInputNumber(energyKwh);
+    if (parsedKwh === null || parsedKwh < 0 || parsedKwh > 250) return false;
+    const kwh = parsedKwh;
+    const time = String(targetTime || '').trim();
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
+    const guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
+    const plan = this.evEnergyPlans[index];
+    if (!plan) return false;
+    const previousWidget = evPlanOptions.widget(this, index);
+    const widgetMeta = evPlanOptions.resolve(this, index, time, widgetInput);
+    if (widgetMeta === false) return false;
+    // Compare the submitted persistent goal, not its decreasing remainder.
+    // Repeated feedback must not refill already delivered kWh or reset ticks.
+    // Completion stays latched until a new goal occurrence, clear or reconnect.
+    if (!widgetMeta && !previousWidget && plan.active && Math.abs(Number(plan.targetKwh) - kwh) <= 1e-9
+      && plan.targetTime === time && plan.guarantee === guarantee && !this.evSocPlans?.[index]?.active
+      && this.isEvPlanGoalCurrent(plan)) {
+      this.recordDiagnosticCounter('evEnergyTargetUnchanged');
+      return true;
+    }
+    const settings = this.getSettings();
+    const now = Date.now();
+    const deadline = findNextLocalTime(new Date(now), time, settings.timezone || 'Europe/Brussels');
+    if (widgetMeta && !previousWidget) evPlanOptions.captureFlowPlan(this, index);
+    if (!widgetMeta?.completed) this.rearmEvCompletedTarget(index);
+    // Zero is a persistent, already-satisfied target, not an implicit clear.
+    // Clearing the Flow planning override belongs to clearEvSocPlan().
+    const previousKwh = plan.targetKwh;
+    const previousActive = plan.active;
+    plan.active = true;
+    plan.targetKwh = kwh;
+    plan.remainingKwh = widgetMeta?.preserveProgress && previousActive && Math.abs(Number(previousKwh) - kwh) <= 1e-9
+      ? Math.max(0, Math.min(kwh, Number(plan.remainingKwh) || 0)) : kwh;
+    plan.targetTime = time;
+    plan.deadlineAt = plan.active ? deadline.getTime() : 0;
+    plan.targetOccurrenceAt = plan.deadlineAt;
+    plan.targetTimezone = settings.timezone || 'Europe/Brussels';
+    plan.lastTickAt = now;
+    plan.guarantee = guarantee;
+    const input = this.getEvInputSnapshot(index);
+    plan.sessionStarted = plan.active && Boolean(input?.seen?.connected) && Boolean(input?.connected);
+
+    // The most recently submitted Flow target owns EV deadline planning. Keep
+    // one unambiguous source instead of allowing a hidden older SoC target to
+    // reappear behind a persistent kWh minimum.
+    const socPlan = this.evSocPlans?.[index];
+    if (socPlan) {
+      socPlan.active = false;
+      socPlan.deadlineAt = 0;
+      this.persistEvSocPlanOverrides();
+    }
+    evPlanOptions.install(this, index, plan, widgetMeta, previousWidget);
+    this.persistEvEnergyPlanOverrides(true, now);
+    if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
+    this.markEvPlanChanged(index, 'energy_goal');
+    this.requestContextEvaluate(true, 'ev'+(index+1)+'_energy_deadline');
+    return true;
+  }
+
+  setEvSocPlan(index, targetSocInput, targetTime, guaranteeInput = 'no', widgetInput = null) {
+    if (evPlanOptions.protectedPlan(this, index)
+      && (!widgetInput || evPlanOptions.widget(this, index)?.flowExtended)) return false;
+    this.recordDiagnosticCounter('evSocTargetInputs');
+    const targetSoc = Number(targetSocInput);
+    const time = String(targetTime || '').trim();
+    if (!Number.isFinite(targetSoc) || targetSoc < 1 || targetSoc > 100) return false;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return false;
+    const guarantee = String(guaranteeInput || 'no') === 'yes' || guaranteeInput === true;
+    const existing = this.evSocPlans?.[index];
+    const previousWidget = evPlanOptions.widget(this, index);
+    const widgetMeta = evPlanOptions.resolve(this, index, time, widgetInput);
+    if (widgetMeta === false) return false;
+    if (!widgetMeta && !previousWidget && existing?.active && Math.abs(Number(existing.targetSoc) - targetSoc) <= 1e-9
+      && existing.targetTime === time && existing.guarantee === guarantee && !this.evEnergyPlans?.[index]?.active
+      && this.isEvPlanGoalCurrent(existing)) {
+      this.recordDiagnosticCounter('evSocTargetUnchanged');
+      return true;
+    }
+    const settings = this.getSettings();
+    const deadline = findNextLocalTime(new Date(), time, settings.timezone || 'Europe/Brussels');
+    if (!Array.isArray(this.evSocPlans)) this.evSocPlans = Array.from({ length: 4 }, () => ({ active:false, targetSoc:0, targetTime:'07:00', deadlineAt:0, guarantee:false }));
+    const plan = this.evSocPlans[index];
+    if (!plan) return false;
+    if (widgetMeta && !previousWidget) evPlanOptions.captureFlowPlan(this, index);
+    plan.active = true;
+    if (!widgetMeta?.completed) this.rearmEvCompletedTarget(index);
+    plan.targetSoc = Math.max(1, Math.min(100, targetSoc));
+    plan.targetTime = time;
+    plan.deadlineAt = deadline.getTime();
+    plan.targetOccurrenceAt = plan.deadlineAt;
+    plan.targetTimezone = settings.timezone || 'Europe/Brussels';
+    plan.guarantee = guarantee;
+    const energyPlan = this.evEnergyPlans?.[index];
+    if (energyPlan) {
+      energyPlan.active = false;
+      energyPlan.deadlineAt = 0;
+      energyPlan.remainingKwh = 0;
+      energyPlan.sessionStarted = false;
+      this.persistEvEnergyPlanOverrides(true);
+    }
+    evPlanOptions.install(this, index, plan, widgetMeta, previousWidget);
+    this.persistEvSocPlanOverrides();
+    if (Array.isArray(this.evTargetWarningState)) this.evTargetWarningState[index] = '';
+    this.markEvPlanChanged(index, 'soc_goal');
+    this.requestContextEvaluate(true, 'ev'+(index+1)+'_soc_deadline');
+    return true;
+  }
+
+  async publishEvTargetWarning(index, decision) {
+    const warning = String(decision?.targetWarning || '');
+    if (!warning || !this.evTargetWarningTrigger || this.evTargetWarningSent?.[index]) return;
+    this.evTargetWarningSent ||= Array(4).fill(false);
+    // Claim before async I/O: overlapping evaluations cannot send twice.
+    this.evTargetWarningSent[index] = true;
+    this.setSetting('_evTargetWarningSent', this.evTargetWarningSent.slice());
+    await this.evTargetWarningTrigger.trigger(this.localizeDisplayTokens({
+      ev: index + 1,
+      name: this.getEvInstanceName(index),
+      message: warning,
+      energy_needed: Math.max(0, Number(decision?.energyNeedKwh) || 0),
+      deadline: decision?.deadlineAt ? new Date(Number(decision.deadlineAt)).toLocaleString('nl-BE', { timeZone: this.getSettings().timezone || 'Europe/Brussels' }) : '',
+    }));
+  }
+
+  calculateAdditionalEvControl(index, result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, adjustedGridPowerW = this.state.gridPowerW, options = {}) {
+    const storedSettings = this.getSettings();
+    this.tickEvEnergyPlan(index);
+    const runtimeBase = this.getRuntimeSettings(storedSettings);
+    const settings = this.getEvInstanceSettings(index, runtimeBase, 'single');
+    settings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
+    const input = this.getEvInputSnapshot(index);
+    const readiness = this.getInputReadiness(storedSettings);
+    const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+    const socFreshness = this.getEvSocFreshness(index, settings);
+    const soc = socFreshness.fresh ? Number(input.soc) : NaN;
+    const actualCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+    if (!readiness.ready) {
+      return {
+        instance: index + 1, enabled: Boolean(settings.evEnabled), connected,
+        soc: Number.isFinite(soc) ? soc : null, targetSoc: Number(settings.evTargetSoc) || 80,
+        desiredCurrentA: 0, desiredPowerW: 0, actualCurrentA,
+        actualPowerW: Math.round(actualCurrentA * evPowerPerAmp(settings)), allowed: false,
+        source: 'off', reason: 'Wachten op geldige netmeting', peakLimited: true,
+        tariffLabel: String(result?.tariff?.label || ''), pvAvailableW: 0,
+        energyNeedKwh: null, deadlineAt: null, guaranteeActive: false,
+      };
+    }
+    const tariff = result?.tariff || findCurrentTariff(new Date(), settings);
+    let decision = this.measureEvPlanningDecision(index, 'single', {
+      settings,
+      now: new Date(),
+      tariff,
+      connected,
+      soc,
+      socSeen: socFreshness.seen,
+      socFresh: socFreshness.fresh,
+      socAgeMinutes: socFreshness.ageMinutes,
+      actualCurrentA,
+      gridPowerW: Number(adjustedGridPowerW) || 0,
+      currentBatteryCommandW,
+      nextBatteryCommandW,
+      pvHeadroomW: this.getPvCurtailmentHeadroomW(settings),
+      pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
+      skipPeakLimit: Boolean(options.skipPeakLimit),
+    });
+    if (decision.socTargetReached) settings.evMode = 'smart';
+    decision = this.applyEvPvSessionHysteresisFor(index, decision, result, settings, adjustedGridPowerW);
+    decision = this.applyEvSessionEndLatch(index, decision);
+    return { ...decision, instance: index + 1 };
+  }
+
+  calculateEvControl(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW) {
+    const storedSettings = this.getSettings();
+    this.tickEvEnergyPlan(0);
+    const settings = this.getEvInstanceSettings(0, this.getRuntimeSettings(storedSettings));
+    const readiness = this.getInputReadiness(storedSettings);
+    const connected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
+    const ev1Freshness = this.getEvSocFreshness(0, settings);
+    const soc = ev1Freshness.fresh ? Number(this.state.evSoc) : NaN;
+    const actualCurrentA = this.inputSeen.ev?.chargeCurrent ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) : 0;
+
+    if (!readiness.ready) {
+      return {
+        enabled: Boolean(settings.evEnabled), connected, soc: Number.isFinite(soc) ? soc : null,
+        targetSoc: Number(settings.evTargetSoc) || 80, desiredCurrentA: 0, desiredPowerW: 0,
+        actualCurrentA, actualPowerW: Math.round(actualCurrentA * evPowerPerAmp(settings)),
+        allowed: false, source: 'off', reason: 'Wachten op geldige netmeting', peakLimited: true,
+        tariffLabel: String(result?.tariff?.label || ''), pvAvailableW: 0, energyNeedKwh: null,
+        deadlineAt: null, guaranteeActive: false,
+      };
+    }
+
+    let decision = this.measureEvPlanningDecision(0, 'legacy', {
+      settings,
+      now: new Date(),
+      tariff: result?.tariff || findCurrentTariff(new Date(), settings),
+      connected,
+      soc,
+      socSeen: ev1Freshness.seen,
+      socFresh: ev1Freshness.fresh,
+      socAgeMinutes: ev1Freshness.ageMinutes,
+      actualCurrentA,
+      gridPowerW: Number(this.state.gridPowerW) || 0,
+      currentBatteryCommandW,
+      nextBatteryCommandW,
+      pvHeadroomW: this.getPvCurtailmentHeadroomW(settings),
+      pvSessionActive: this.isEvPvSessionActiveForTariff(result?.tariff || findCurrentTariff(new Date(), settings), settings),
+    });
+    if (decision.socTargetReached) settings.evMode = 'smart';
+    decision = this.applyEvPvSessionHysteresis(decision, result, settings);
+    decision = this.applyEvSessionEndLatch(0, decision);
+    return decision;
+  }
+
+  shouldUseEvBatterySupport(settings = this.getSettings(), mode = 'smart') {
+    if (!Boolean(settings.controlEnabled)) return false;
+    if (this.getBatteryCount(settings) === 0) return false;
+    if (String(mode) === 'emergency') return Boolean(settings.evPeakGuardBatteryAssistEmergency);
+    return Boolean(settings.evPeakGuardBatteryAssistNormal);
+  }
+
+  getEvBatterySupportAvailableW(settings = this.getSettings(), nextBatteryCommandW = 0, dischargeFloorSoc = null, now = Date.now()) {
+    if (this.getEvBatteryDischargePolicy(settings, now).eligible) return 0;
+    const count = this.getBatteryCount(settings);
+    if (count === 0) return 0;
+    const configuredGroupMaxRaw = Number(settings.maxTotalDischargeW);
+    const configuredGroupMax = Math.max(0, Number.isFinite(configuredGroupMaxRaw) ? configuredGroupMaxRaw : (Number(DEFAULTS.maxTotalDischargeW) || 0));
+    if (configuredGroupMax <= 0) return 0;
+
+    const minSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
+    const requestedFloor = Number(dischargeFloorSoc);
+    let floorSoc = Number.isFinite(requestedFloor)
+      ? Math.max(minSoc, Math.min(100, requestedFloor))
+      : minSoc;
+    if (settings.sunChanceReserveEnabled && String(settings.forcedMode || 'auto') === 'auto') {
+      floorSoc = Math.max(floorSoc, this.getSunChanceReserveStatus(settings, now).floorSoc);
+    }
+    let commands = distributeCommand(
+      configuredGroupMax,
+      { batterySoc: this.state.batterySoc },
+      settings,
+      { dischargeFloorSoc: floorSoc },
+    );
+    commands = commands.slice(0, count).map(value => Math.max(0, roundBatteryCommand(value, settings)));
+    const availableDischargeW = Math.min(
+      configuredGroupMax,
+      commands.reduce((sum, value) => sum + (Number(value) || 0), 0),
+    );
+    const alreadyDischargingW = Math.max(0, Number(nextBatteryCommandW) || 0);
+    return Math.max(0, availableDischargeW - alreadyDischargingW);
+  }
+
+  getEvNightSurplusStatus(result = this.latestResult, settings = this.getSettings(), nextBatteryCommandW = 0, now = Date.now()) {
+    const inactive = {
+      active: false, targetSoc: null, avgSoc: null, energyAboveTargetKwh: 0, remainingHours: 0,
+      targetAt: 0, supportAvailableW: 0, reason: 'inactive',
+    };
+    if (!Boolean(settings.controlEnabled)
+      || !this.isNightPlanningPhase(now) || this.getBatteryCount(settings) === 0) return inactive;
+    if (this.isHybridExternalControlActive(settings)) return { ...inactive, reason: 'external_ems' };
+
+    const avgSoc = Number(result?.avgSoc);
+    const reserveFloor = settings.sunChanceReserveEnabled && String(settings.forcedMode || 'auto') === 'auto' ? this.getSunChanceReserveStatus(settings, now).floorSoc : 0;
+    const targetSoc = Math.max(Number(result?.targetSoc), reserveFloor);
+    const capacityKwh = Math.max(0, Number(result?.effectiveCapacityKwh) || 0);
+    if (!Number.isFinite(avgSoc) || !Number.isFinite(targetSoc) || capacityKwh <= 0) {
+      return { ...inactive, reason: 'missing_plan' };
+    }
+
+    const timezone = settings.timezone || this.homey?.clock?.getTimezone?.() || 'UTC';
+    const localNow = localParts(new Date(now), timezone);
+    const forecastDay = String(result?.forecastPlanningDay || this.getPlanningForecastDay(now));
+    const targetDateKey = forecastDay === 'tomorrow' ? shiftDateKey(localNow.dateKey, 1) : localNow.dateKey;
+    const targetAt = localDateTimeUtcMs(targetDateKey, String(settings.nightTargetTime || '07:00'), timezone);
+    const remainingHours = Number.isFinite(targetAt) ? Math.max(0, (targetAt - now) / 3600000) : 0;
+    const energyAboveTargetKwh = Math.max(0, capacityKwh * ((avgSoc - targetSoc) / 100));
+    if (remainingHours <= 0 || energyAboveTargetKwh <= 0.001 || avgSoc <= targetSoc + 0.01) {
+      return { ...inactive, targetSoc, avgSoc, energyAboveTargetKwh, remainingHours, targetAt: Number(targetAt) || 0, reason: remainingHours <= 0 ? 'target_time_passed' : 'target_reached' };
+    }
+
+    const supportAvailableW = this.getEvBatterySupportAvailableW(settings, nextBatteryCommandW, targetSoc, now);
+    if (supportAvailableW <= 0.5) {
+      return { ...inactive, targetSoc, avgSoc, energyAboveTargetKwh, remainingHours, targetAt: Number(targetAt) || 0, supportAvailableW: 0, reason: 'no_discharge_headroom' };
+    }
+
+    return {
+      active: true,
+      targetSoc,
+      avgSoc,
+      energyAboveTargetKwh,
+      remainingHours,
+      targetAt: Number(targetAt) || 0,
+      supportAvailableW,
+      reason: 'available',
+    };
+  }
+
+  getEvNightSurplusStatuses(nightStatus, storedSettings = this.getSettings(), evCount = this.getEvCount(storedSettings)) {
+    const count = Math.max(0, Math.min(4, Math.round(Number(evCount) || 0)));
+    const statuses = Array.from({ length: count }, () => ({ ...nightStatus, active: false, supportAvailableW: 0, energyAboveTargetKwh: 0 }));
+    if (!nightStatus?.active || count <= 0) return statuses;
+    if (!Array.isArray(this.evNightSurplusActive)) this.evNightSurplusActive = Array(4).fill(false);
+
+    const candidates = [];
+    for (let index = 0; index < count; index += 1) {
+      const settings = this.getEvInstanceSettings(index, storedSettings);
+      const input = this.getEvInputSnapshot(index) || {};
+      const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+      if (!Boolean(settings.evEnabled) || !Boolean(settings.evNightSurplusChargeEnabled) || !connected) continue;
+      if (this.getEffectiveEvModeFor(index, storedSettings) === 'emergency') continue;
+      const controlType = this.getEvControlType(settings);
+      const requestA = controlType === 'mode'
+        ? this.getEvModeEstimatedCurrentA('standard', settings)
+        : Math.max(1, Math.min(64, Math.round(Number(settings.evStandardCurrentA) || Number(settings.evMinCurrentA) || 6)));
+      const maxPowerW = Math.max(0, requestA * evPowerPerAmp(settings));
+      if (maxPowerW <= 0.5) continue;
+      candidates.push({
+        index, settings, maxPowerW, modeExpectedCurrentA: requestA,
+        weight: Math.max(1, Math.min(10, Math.round(Number(settings.evWeight) || 1))),
+        decision: { requestedCurrentA: requestA, desiredCurrentA: requestA },
+      });
+    }
+    if (!candidates.length) return statuses;
+
+    const calculateShares = entries => {
+      const allocation = this.allocateWeightedEvPower(entries, Math.max(0, Number(nightStatus.supportAvailableW) || 0));
+      const totalAllocatedW = entries.reduce((sum, entry) => sum + Math.max(0, Number(allocation.get(entry.index)) || 0), 0);
+      const remainingHours = Math.max(0, Number(nightStatus.remainingHours) || 0);
+      const totalEnergyKwh = Math.max(0, Number(nightStatus.energyAboveTargetKwh) || 0);
+      const shares = new Map();
+      for (const entry of entries) {
+        const powerW = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        const timePotentialKwh = (powerW * remainingHours) / 1000;
+        const energyShareKwh = totalAllocatedW > 0
+          ? totalEnergyKwh * (powerW / totalAllocatedW)
+          : 0;
+        shares.set(entry.index, {
+          powerW,
+          transferableKwh: Math.max(0, Math.min(timePotentialKwh, energyShareKwh)),
+        });
+      }
+      return shares;
+    };
+
+    // Existing latches stay selected until the night target is reached. New EVs
+    // are then admitted by EV weight (stable tie-break on EV number), but only
+    // when every newly admitted EV can still receive strictly more than 1 kWh.
+    // This prevents 2-4 EVs from each claiming the same battery-surplus energy.
+    const selected = candidates.filter(entry => Boolean(this.evNightSurplusActive[entry.index]));
+    const optional = candidates
+      .filter(entry => !Boolean(this.evNightSurplusActive[entry.index]))
+      .sort((a, b) => b.weight - a.weight || a.index - b.index);
+    for (const candidate of optional) {
+      const trial = [...selected, candidate];
+      const shares = calculateShares(trial);
+      const allNewCanStart = trial.every(entry => (
+        Boolean(this.evNightSurplusActive[entry.index])
+        || (Number(shares.get(entry.index)?.transferableKwh) || 0) > 1.0 + 1e-6
+      ));
+      if (allNewCanStart) selected.push(candidate);
+    }
+
+    const finalShares = calculateShares(selected);
+    const selectedIndexes = new Set(selected.map(entry => entry.index));
+    for (const candidate of candidates) {
+      const share = finalShares.get(candidate.index);
+      if (!selectedIndexes.has(candidate.index) || !share) {
+        statuses[candidate.index] = { ...nightStatus, active: true, supportAvailableW: 0, energyAboveTargetKwh: Math.max(0, Number(nightStatus.energyAboveTargetKwh) || 0) };
+        continue;
+      }
+      statuses[candidate.index] = {
+        ...nightStatus,
+        active: true,
+        supportAvailableW: Math.max(0, Number(share.powerW) || 0),
+        energyAboveTargetKwh: Math.max(0, Number(share.transferableKwh) || 0),
+      };
+    }
+    return statuses;
+  }
+
+  applyEvNightSurplusEligibility(index, decision, settings, nightStatus) {
+    if (!Array.isArray(this.evNightSurplusActive)) this.evNightSurplusActive = Array(4).fill(false);
+    const enabled = Boolean(settings.evNightSurplusChargeEnabled);
+    const connected = Boolean(decision?.connected);
+    const emergency = String(settings.evMode || 'smart') === 'emergency';
+    const hardGuarantee = Boolean(decision?.guaranteeActive);
+    if (!enabled || !connected || emergency || hardGuarantee || !nightStatus?.active) {
+      this.evNightSurplusActive[index] = false;
+      return { ...decision, nightSurplusActive: false, nightSurplusStartPotentialKwh: 0, nightSurplusRequestedW: 0 };
+    }
+
+    const perAmpW = evPowerPerAmp(settings);
+    const controlType = this.getEvControlType(settings);
+    const requestA = controlType === 'mode'
+      ? this.getEvModeEstimatedCurrentA('standard', settings)
+      : Math.max(1, Math.min(64, Math.round(Number(settings.evStandardCurrentA) || Number(settings.evMinCurrentA) || 6)));
+    const requestedW = Math.max(0, requestA * perAmpW);
+    const usableSettings = controlType === 'mode' ? { ...settings, evModeExpectedCurrentA: requestA } : settings;
+    const usableA = this.getEvCurrentForPower(Math.min(requestedW, Math.max(0, Number(nightStatus.supportAvailableW) || 0)), usableSettings);
+    const usableW = Math.max(0, usableA * perAmpW);
+    const transferableKwh = Math.min(
+      Math.max(0, Number(nightStatus.energyAboveTargetKwh) || 0),
+      (Math.max(0, Number(nightStatus.remainingHours) || 0) * usableW) / 1000,
+    );
+
+    if (!this.evNightSurplusActive[index] && transferableKwh > 1.0 + 1e-6) this.evNightSurplusActive[index] = true;
+    if (!this.evNightSurplusActive[index]) {
+      const baseReason = String(decision?.reason || '');
+      const reason = (!decision?.allowed && nightStatus.energyAboveTargetKwh > 0.001)
+        ? `Wachten: nachtoverschot kan vóór doelmoment slechts ${transferableKwh.toFixed(2)} kWh naar EV overdragen (start > 1,0 kWh)`
+        : baseReason;
+      return {
+        ...decision,
+        nightSurplusActive: false,
+        nightSurplusStartPotentialKwh: Math.round(transferableKwh * 100) / 100,
+        nightSurplusRequestedW: 0,
+        reason,
+      };
+    }
+
+    const requestedPowerW = Math.max(Math.max(0, Number(decision?.requestedPowerW) || 0), requestedW);
+    const requestedCurrentA = Math.max(Math.max(0, Number(decision?.requestedCurrentA) || 0), requestA);
+    return {
+      ...decision,
+      // Night-surplus charging is an explicit non-grid source. While it is
+      // active it takes precedence over ordinary selected-tariff charging; once
+      // the calculated home-battery target is reached, normal tariff policy is
+      // evaluated again on the next cycle.
+      selectedTariff: false,
+      guaranteeActive: false,
+      gridRequestPowerW: 0,
+      pvRequestPowerW: 0,
+      allowed: requestedPowerW > 0,
+      source: 'night_surplus',
+      requestedCurrentA,
+      requestedPowerW: Math.round(requestedPowerW),
+      desiredCurrentA: Math.max(Math.max(0, Number(decision?.desiredCurrentA) || 0), requestA),
+      desiredPowerW: Math.max(Math.max(0, Number(decision?.desiredPowerW) || 0), Math.round(requestedW)),
+      requestedChargeMode: controlType === 'mode' ? 'standard' : decision?.requestedChargeMode,
+      effectiveChargeMode: controlType === 'mode' ? 'standard' : decision?.effectiveChargeMode,
+      nightSurplusActive: true,
+      nightSurplusStartPotentialKwh: Math.round(transferableKwh * 100) / 100,
+      nightSurplusRequestedW: Math.round(requestedW),
+      nightSurplusTargetSoc: Number(nightStatus.targetSoc),
+      nightSurplusEnergyKwh: Math.round(Number(nightStatus.energyAboveTargetKwh) * 100) / 100,
+      nightSurplusTargetAt: Number(nightStatus.targetAt) || 0,
+    };
+  }
+
+  getEvCurrentForPower(powerW, settings = this.getSettings()) {
+    const perAmpW = evPowerPerAmp(settings);
+    if (!Number.isFinite(Number(powerW)) || Number(powerW) <= 0 || perAmpW <= 0) return 0;
+    if (this.getEvControlType(settings) === 'mode') {
+      const expectedA = Math.max(1, Math.min(64, Math.round(Number(settings.evModeExpectedCurrentA)
+        || this.getEvModeEstimatedCurrentA(['emergency','soc_target'].includes(String(settings.evMode || 'smart')) ? 'standard' : 'smart', settings))));
+      if (Number(powerW) + 0.5 >= expectedA * perAmpW) return expectedA;
+      // Mode-only fallback: when Standard does not fit the available power
+      // budget, Smart is still a valid discrete lower step. This is especially
+      // important for Peak Guard, where stopping is unnecessary if Smart fits.
+      const smartA = this.getEvModeEstimatedCurrentA('smart', settings);
+      if (expectedA > smartA && Number(powerW) + 0.5 >= smartA * perAmpW) return smartA;
+      return 0;
+    }
+    const minA = Math.max(1, Math.min(64, Math.round(Number(settings.evMinCurrentA) || 6)));
+    const maxA = Math.max(minA, Math.min(64, Math.round(Number(settings.evMaxCurrentA) || 32)));
+    const amps = Math.floor(Number(powerW) / perAmpW);
+    if (amps < minA) return 0;
+    return Math.max(minA, Math.min(maxA, amps));
+  }
+
+  allocateFlexiblePair(firstRequestW, secondRequestW, availableW, mode = 'first') {
+    const firstReq = Math.max(0, Number(firstRequestW) || 0);
+    const secondReq = Math.max(0, Number(secondRequestW) || 0);
+    if (!Number.isFinite(Number(availableW))) return { first: firstReq, second: secondReq };
+    const available = Math.max(0, Number(availableW) || 0);
+    if (mode === 'second') {
+      const second = Math.min(secondReq, available);
+      const first = Math.min(firstReq, Math.max(0, available - second));
+      return { first, second };
+    }
+    if (mode === 'share') {
+      let first = Math.min(firstReq, available / 2);
+      let second = Math.min(secondReq, available / 2);
+      let left = Math.max(0, available - first - second);
+      const firstNeed = Math.max(0, firstReq - first);
+      const secondNeed = Math.max(0, secondReq - second);
+      if (left > 0 && firstNeed > 0) {
+        const add = Math.min(firstNeed, left);
+        first += add;
+        left -= add;
+      }
+      if (left > 0 && secondNeed > 0) second += Math.min(secondNeed, left);
+      return { first, second };
+    }
+    const first = Math.min(firstReq, available);
+    const second = Math.min(secondReq, Math.max(0, available - first));
+    return { first, second };
+  }
+
+  refreshBatteryPresentationAfterCoordination(result, settings = this.getSettings(), totalCommandOverrideW = null) {
+    if (!result) return result;
+    const overrideProvided = totalCommandOverrideW !== null && totalCommandOverrideW !== undefined;
+    const overrideW = Number(totalCommandOverrideW);
+    const totalCommandW = overrideProvided && Number.isFinite(overrideW) ? overrideW : Number(result.candidateTotalCommandW);
+    if (!Number.isFinite(totalCommandW)) return result;
+
+    const previousWorkingModeLabel = String(result.workingModeLabel || result.actionLabel || result.modeLabel || '');
+    const finalChargeW = Math.max(0, -totalCommandW);
+    const finalDischargeW = Math.max(0, totalCommandW);
+    let gridChargeW = 0;
+    let pvChargeW = 0;
+
+    if (finalChargeW > 0) {
+      const measuredGridW = Number(this.state?.gridPowerW);
+      if (overrideProvided && Boolean(this.inputSeen?.grid) && Number.isFinite(measuredGridW)) {
+        // The meter is authoritative for the physical source of charging. Any
+        // simultaneous net import can supply at most that much of the battery
+        // charge; the remainder is PV surplus. This prevents a Split Command
+        // minimum/hold remainder from being labelled as solar while importing.
+        gridChargeW = Math.min(finalChargeW, Math.max(0, measuredGridW));
+        pvChargeW = Math.max(0, finalChargeW - gridChargeW);
+      } else if (String(result.baseMode || '') === 'manual_charge') {
+        // Fallback only before a valid grid measurement has been received.
+        gridChargeW = finalChargeW;
+      } else if (String(result.baseMode || '') === 'charge' || Number(result.gridChargeAssistW) > 0) {
+        gridChargeW = Math.min(finalChargeW, Math.max(0, Number(result.gridChargeAssistW) || 0));
+        pvChargeW = Math.max(0, finalChargeW - gridChargeW);
+      } else {
+        pvChargeW = finalChargeW;
+      }
+    }
+
+    result.gridChargeAssistW = Math.round(gridChargeW);
+    result.pvChargeW = Math.round(pvChargeW);
+
+    const configuredActionThresholdW = Number(settings.commandDeadbandW);
+    const actionThresholdW = Math.max(0, Number.isFinite(configuredActionThresholdW) ? configuredActionThresholdW : 25);
+    let action = 'idle';
+    let actionLabel = 'Rust';
+    if (String(result.override || '') === 'peak_shave' && finalDischargeW > 0) {
+      action = 'peak_shave';
+      actionLabel = `Afvlakken ${Math.round(finalDischargeW)} W`;
+    } else if (gridChargeW > actionThresholdW && pvChargeW > actionThresholdW) {
+      action = 'grid_and_pv_charge';
+      actionLabel = `Netladen ${Math.round(gridChargeW)} W + Laden uit zon ${Math.round(pvChargeW)} W`;
+    } else if (gridChargeW > actionThresholdW) {
+      action = 'grid_charge';
+      actionLabel = `Netladen ${Math.round(gridChargeW)} W`;
+    } else if (pvChargeW > actionThresholdW) {
+      action = 'pv_charge';
+      actionLabel = `Laden uit zon ${Math.round(pvChargeW)} W`;
+    } else if (finalDischargeW > actionThresholdW) {
+      action = String(result.baseMode || '') === 'avoid_import' ? 'avoid_grid_import' : 'discharge';
+      actionLabel = action === 'avoid_grid_import'
+        ? `Netimport vermijden ${Math.round(finalDischargeW)} W`
+        : `Ontladen ${Math.round(finalDischargeW)} W`;
+    }
+
+    const workingModeLabel = actionLabel === 'Rust'
+      ? String(result.modeLabel || 'Zelfconsumptie')
+      : actionLabel;
+    result.action = action;
+    result.actionLabel = actionLabel;
+    result.workingModeLabel = workingModeLabel;
+
+    const statusText = String(result.statusText || '');
+    if (statusText && previousWorkingModeLabel && statusText.includes(previousWorkingModeLabel)) {
+      result.statusText = statusText.replace(previousWorkingModeLabel, workingModeLabel);
+    }
+    return result;
+  }
+
+  refreshBatteryChargeSourcePresentation(settings = this.getSettings(), now = Date.now()) {
+    const result = this.latestResult;
+    // Source-only meter changes do not need the full battery evaluator. Refresh
+    // their presentation on the existing slow housekeeping cadence instead.
+    // Use only the confirmed ordinary charging output, never a pending command
+    // or a Hybrid/Peak Guard result. The existing helper owns source labels.
+    if (!result?.canPublishCommands || result.baseMode !== 'charge' || result.override
+      || this.lastEmittedMode !== 'charge' || this.lastEmittedOverride
+      || this.commandPublishing || this.pendingResult || this.pendingCommandBypassInterval
+      || this.isHybridEmsConfigured(settings) || !settings.controlEnabled
+      || !this.isChargeTestValid(settings) || !this.getGridFreshness(settings, now).fresh) return false;
+    const commands = this.lastEmittedCommands;
+    const count = this.getBatteryCount(settings);
+    if (this.batteryIdleKnownOutput !== commands || !(this.lastEmitAt > 0)
+      || !Array.isArray(commands) || commands.length !== count || count === 0
+      || commands.some(value => !Number.isFinite(value))
+      || ![result.candidateCommands, result.calculatedCommands].every(values =>
+        Array.isArray(values) && values.length === count
+        && commands.every((value, index) => value === values[index]))) return false;
+    const total = commands.reduce((sum, value) => sum + value, 0);
+    if (total >= 0 || total !== this.state.lastTotalCommandW) return false;
+    // Match the full engine's minimum action threshold, including contracts
+    // with a smaller command deadband. Power-source rounding stays unchanged.
+    const presentationSettings = { ...settings, commandDeadbandW: Math.max(25, Number(settings.commandDeadbandW) || 0) };
+    const presentation = this.refreshBatteryPresentationAfterCoordination({ ...result }, presentationSettings, total);
+    if (presentation.gridChargeAssistW === result.gridChargeAssistW
+      && presentation.pvChargeW === result.pvChargeW && presentation.action === result.action
+      && presentation.actionLabel === result.actionLabel) return false;
+    for (const key of ['gridChargeAssistW', 'pvChargeW', 'action', 'actionLabel', 'workingModeLabel', 'statusText']) {
+      result[key] = presentation[key];
+    }
+    this.recordDiagnosticCounter('chargeSourcePresentationUpdates');
+    this.queueStatusUpdate(result, false);
+    return true;
+  }
+
+  getEvModeObservedPowerW(index, storedSettings = this.getSettings(), now = Date.now()) {
+    const input = this.getEvInputSnapshot(index), reading = this.evSessionDetection?.modePowerSnapshot;
+    if (!this.inputSeen?.grid || !this.inputSeen?.pv || !input?.seen?.connected || !input.connected || !this.isEvOutputPermittedFor(index)
+      || !reading || reading.revision !== (this.evPhysicalConfigRevision || 0)
+      || reading.at > now || now > reading.validUntil) return 0;
+    // This cache is written by the existing P1 detector only. Neither a Flow
+    // current nor a published Smart/Standard command can manufacture a reading.
+    return Math.max(0, Number(reading.watts[index]) || 0);
+  }
+
+  getEvCommandedPowerW(index, storedSettings = this.getSettings()) {
+    // Historical public helper name; its result is PHYSICAL accounting only.
+    // Requested/estimated charger limits are used separately for allocation.
+    if (this.getEvControlTypeFor(index, storedSettings) === 'mode') {
+      return this.getEvModeObservedPowerW(index, storedSettings);
+    }
+    const measured = this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index));
+    if (!measured.fresh) return 0;
+    return measured.currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, storedSettings));
+  }
+
+  getEvGridImportLimitW(tariff = null, storedSettings = this.getSettings()) {
+    if (!tariff) return 0;
+    if (String(storedSettings.contractType || '') === 'tou') {
+      const rateId = String(tariff.rateId || '');
+      const rate = (Array.isArray(storedSettings.touRates) ? storedSettings.touRates : [])
+        .find(item => String(item?.id || '') === rateId);
+      if (Boolean(rate?.avoidGridImport)) return 0;
+      return Math.max(0, Number(rate?.evMaxGridImportW) || 0);
+    }
+    if (isDynamicContract(storedSettings)) {
+      if (String(tariff.className || '') === 'cheap') return Math.max(0, Number(storedSettings.evDynamicCheapMaxGridImportW) || 0);
+      if (String(tariff.className || '') === 'expensive') return Math.max(0, Number(storedSettings.evDynamicExpensiveMaxGridImportW) || 0);
+      return Math.max(0, Number(storedSettings.evDynamicNormalMaxGridImportW) || 0);
+    }
+    return Math.max(0, Number(storedSettings.evFixedMaxGridImportW) || 0);
+  }
+
+  allocateWeightedEvPower(entries = [], totalBudgetW = 0, existing = new Map()) {
+    const allocation = new Map(existing);
+    let used = 0;
+    for (const value of allocation.values()) used += Math.max(0, Number(value) || 0);
+    let remainingBudget = Math.max(0, Number(totalBudgetW) || 0) - used;
+    if (remainingBudget <= 0 || !entries.length) return allocation;
+
+    const pending = entries.map(entry => ({ ...entry }));
+    for (let pass = 0; pass < 8 && remainingBudget > 0.5 && pending.length; pass += 1) {
+      const active = pending.filter(entry => {
+        const current = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        return current + 0.5 < Math.max(0, Number(entry.maxPowerW) || 0);
+      });
+      if (!active.length) break;
+      const totalWeight = active.reduce((sum, entry) => sum + Math.max(1, Number(entry.weight) || 1), 0);
+      let grantedThisPass = 0;
+      for (const entry of active) {
+        const current = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        const room = Math.max(0, Number(entry.maxPowerW) || 0) - current;
+        if (room <= 0) continue;
+        const weightedShare = remainingBudget * (Math.max(1, Number(entry.weight) || 1) / totalWeight);
+        const grant = Math.min(room, weightedShare);
+        if (grant <= 0) continue;
+        allocation.set(entry.index, current + grant);
+        grantedThisPass += grant;
+      }
+      if (grantedThisPass <= 0.5) break;
+      remainingBudget = Math.max(0, remainingBudget - grantedThisPass);
+    }
+
+    // Quantize to actual charger current steps. If an EV's weighted share is
+    // below its minimum current it remains stopped; unused budget is then
+    // offered to the higher-weight EVs that can still accept another ampere.
+    let quantizedUsed = 0;
+    for (const entry of entries) {
+      const settings = this.getEvControlType(entry.settings) === 'mode'
+        ? { ...entry.settings, evModeExpectedCurrentA: Number(entry.modeExpectedCurrentA) || Number(entry.decision?.requestedCurrentA) || Number(entry.decision?.desiredCurrentA) || 0 }
+        : entry.settings;
+      const currentA = this.getEvCurrentForPower(Math.max(0, Number(allocation.get(entry.index)) || 0), settings);
+      const powerW = currentA * evPowerPerAmp(settings);
+      allocation.set(entry.index, Math.min(Math.max(0, Number(entry.maxPowerW) || 0), powerW));
+      quantizedUsed += Number(allocation.get(entry.index)) || 0;
+    }
+    remainingBudget = Math.max(0, (Number(totalBudgetW) || 0) - quantizedUsed);
+    const ordered = entries.slice().sort((a, b) => (Number(b.weight) || 1) - (Number(a.weight) || 1) || a.index - b.index);
+    let progressed = true;
+    while (progressed && remainingBudget > 0.5) {
+      progressed = false;
+      for (const entry of ordered) {
+        const currentPower = Math.max(0, Number(allocation.get(entry.index)) || 0);
+        const currentA = currentPower > 0 ? Math.round(currentPower / evPowerPerAmp(entry.settings)) : 0;
+        const modeOnly = this.getEvControlType(entry.settings) === 'mode';
+        const minA = modeOnly
+          // Mode-only can fall back from Standard to Smart before STOP.
+          // Starting at Standard would strand a shared PV budget that can
+          // safely run one or more EVs at the lower Smart step.
+          ? this.getEvModeEstimatedCurrentA('smart', entry.settings)
+          : Math.max(1, Math.round(Number(entry.settings.evMinCurrentA) || 6));
+        if (modeOnly && currentA > 0) continue;
+        const nextA = currentA > 0 ? currentA + 1 : minA;
+        const nextPower = nextA * evPowerPerAmp(entry.settings);
+        const extra = nextPower - currentPower;
+        if (nextPower <= Math.max(0, Number(entry.maxPowerW) || 0) + 0.5 && extra <= remainingBudget + 0.5) {
+          allocation.set(entry.index, nextPower);
+          remainingBudget -= extra;
+          progressed = true;
+        }
+      }
+    }
+    return allocation;
+  }
+
+  getEvPvSharePercent(settings = this.getSettings()) {
+    if (this.getBatteryCount(settings) === 0) return 100;
+    const configured = Number(settings.evPvSharePercent);
+    if (Number.isFinite(configured)) return Math.max(10, Math.min(90, Math.round(configured / 10) * 10));
+    // Upgrade/read fallback for settings snapshots created before the global
+    // distribution existed.
+    return String(settings.evSmartPvPriority || 'battery_first') === 'ev_first' ? 80 : 20;
+  }
+
+  calculateEvPortfolioDecisions(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, storedSettings = this.getSettings(), options = {}) {
+    const evCount = this.getEvCount(storedSettings);
+    if (evCount <= 0) {
+      this.clearEvContextRefresh(true);
+      this.scheduleEvDeadlineWakeup([]);
+      if (this.evContextRefresh) this.evContextRefresh.reference = null;
+      return [];
+    }
+    if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('evPortfolio');
+    this.recordDiagnosticCounter('evPortfolioCalculations');
+    for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
+    const runtimeSettings = this.getRuntimeSettings(storedSettings);
+    const batteryOutputEnabled = Boolean(runtimeSettings.controlEnabled)
+      && this.getBatteryCount(runtimeSettings) > 0 && this.isChargeTestValid(runtimeSettings);
+    const tariff = result?.tariff || findCurrentTariff(new Date(), runtimeSettings);
+    const rawGridW = Number(this.state.gridPowerW) || 0;
+    const currentBatteryW = Number(currentBatteryCommandW) || 0;
+    const nextBatteryW = batteryOutputEnabled || options.physicalOnly
+      ? Number(nextBatteryCommandW) || 0 : currentBatteryW;
+    // EV safety is always budgeted from the PHYSICAL battery output that is
+    // already active. A queued/candidate HomeFlux battery setpoint may never
+    // create virtual Peak Guard headroom for an EV. This is especially
+    // important while Hybrid EMS owns the batteries, because that candidate is
+    // deliberately not published at all.
+    const evPlanningBatteryW = currentBatteryW;
+    const predictedGridAfterBatteryW = rawGridW + currentBatteryW - evPlanningBatteryW;
+    // EV budgeting is based on the PHYSICAL situation that is already active,
+    // not on a queued/candidate battery command. Remove only CURRENT battery
+    // discharge from the real meter so battery energy can never masquerade as
+    // PV surplus. The shared PV pool must also include Smart-EV power that is
+    // already physically active; otherwise every EV would consume its own
+    // residual-export budget and be stepped down again on the next evaluation.
+    const pendingBatteryChargeW = options.physicalOnly
+      ? Math.max(0, -nextBatteryW - Math.max(0, -currentBatteryW)) : 0;
+    const gridWithoutCurrentBatteryDischargeW = rawGridW + Math.max(0, currentBatteryW) + pendingBatteryChargeW;
+    const currentBatteryChargeW = Math.max(0, -currentBatteryW);
+    let currentFlexibleEvPowerW = 0;
+    // Both phases of this synchronous portfolio evaluation use precisely the
+    // same settings snapshot. Build each EV's expanded policy once per pass;
+    // never retain it beyond the pass or across Homey I/O.
+    const evInstanceSettings = new Array(evCount);
+    for (let index = 0; index < evCount; index += 1) {
+      if (!Boolean(runtimeSettings[this.getEvSettingKey(index, 'Enabled')])) continue;
+      if (this.getEffectiveEvModeFor(index, storedSettings) === 'emergency') continue;
+      const input = this.getEvInputSnapshot(index) || {};
+      const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+      // A STOP/permission-off output may leave an old current or mode value in
+      // charger telemetry for a while. That physical value remains visible in
+      // Live status, but it may not finance its own restart by being added back
+      // to the flexible PV pool. Wait until HomeFlux has explicitly permitted
+      // the output again; real residual export will then fund a fresh start.
+      if (!connected || !this.isEvOutputPermittedFor(index) || !this.isEvOutputActiveFor(index, storedSettings)) continue;
+      const controlCurrentA = this.getEvControlCurrentA(index, input, storedSettings);
+      currentFlexibleEvPowerW += Math.max(0, controlCurrentA)
+        * evPowerPerAmp(this.getEvElectricalSettingsFor(index, runtimeSettings));
+    }
+
+    // Attribute any present grid import to battery charging first, preserving
+    // the existing conservative rule. Only a remaining import can make part of
+    // an already-active tariff-aware EV load grid-funded. Smart and SoC-target
+    // modes both reuse this PV pool; Emergency is deliberately excluded. This
+    // reconstructs: battery PV + active flexible-EV PV + residual export.
+    // Remove ALL discharge, including household support: PV covers the house
+    // before entering the flexible pool. Crediting existing house discharge
+    // here would let that command finance its own continuation despite sunlight.
+    const importWithoutBatteryDischargeW = Math.max(0, gridWithoutCurrentBatteryDischargeW);
+    const batteryPvChargeW = Math.max(0, currentBatteryChargeW - importWithoutBatteryDischargeW);
+    const importAfterBatteryChargeW = Math.max(0, importWithoutBatteryDischargeW - currentBatteryChargeW);
+    const flexibleEvPvPowerW = Math.max(0, currentFlexibleEvPowerW - importAfterBatteryChargeW);
+    const residualExportPvW = Math.max(0, -gridWithoutCurrentBatteryDischargeW);
+    const pvCurtailmentHeadroomW = this.getPvCurtailmentHeadroomW(runtimeSettings);
+    const nonBatteryPvW = Math.max(0, residualExportPvW + pvCurtailmentHeadroomW + flexibleEvPvPowerW);
+    const totalFlexiblePvW = Math.max(0, nonBatteryPvW + batteryPvChargeW);
+    const evPvSharePercent = batteryOutputEnabled ? this.getEvPvSharePercent(runtimeSettings) : 100;
+
+    // The configured PV percentage is a PRIORITY split while both the home
+    // battery and EV pool can actually use their share. It is not a reservation
+    // that may strand PV on the grid. Once the battery candidate cannot consume
+    // part of the physical flexible-PV pool (full SoC, charge limit, temporary
+    // block, etc.), that unused part is immediately available to the EV pool.
+    // Conversely, a queued battery increase may still claim residual export;
+    // that prevents the EV from stealing PV the battery is about to absorb.
+    const configuredEvPvBudgetW = Math.max(0, totalFlexiblePvW * (evPvSharePercent / 100));
+    // While an external Hybrid EMS owns the battery, result.pvChargeW is zero
+    // by design because HomeFlux does not publish a battery candidate. The
+    // battery's physical PV charge is nevertheless still in use and must not be
+    // labelled as an unused battery share that can be released to the EV pool.
+    const externallyOwnedPhysicalBatteryPvW = !batteryOutputEnabled || this.isHybridExternalControlActive(runtimeSettings)
+      ? batteryPvChargeW
+      : 0;
+    const plannedBatteryPvChargeW = Math.min(
+      totalFlexiblePvW,
+      Math.max(
+        0,
+        batteryOutputEnabled ? Number(result?.pvChargeW) || 0 : 0,
+        externallyOwnedPhysicalBatteryPvW,
+      ),
+    );
+    const unusedPvAfterBatteryPlanW = Math.max(0, totalFlexiblePvW - plannedBatteryPvChargeW);
+    const evPvPoolBudgetW = !batteryOutputEnabled
+      // HomeFlux cannot transfer PV out of a battery it is not controlling.
+      // Wait for real meter headroom after its physical charge has stopped.
+      ? Math.min(totalFlexiblePvW, nonBatteryPvW)
+      : Math.min(totalFlexiblePvW, Math.max(configuredEvPvBudgetW, unusedPvAfterBatteryPlanW));
+    const releasedBatteryPvBudgetW = Math.max(0, evPvPoolBudgetW - configuredEvPvBudgetW);
+    const batteryGridChargeW = batteryOutputEnabled ? Math.max(0, Number(result?.gridChargeAssistW) || 0) : 0;
+    const nightSurplusConfigured = batteryOutputEnabled && Array.from({ length: evCount }, (_, index) => (
+      Boolean(runtimeSettings[this.getEvSettingKey(index, 'NightSurplusChargeEnabled')])
+    )).some(Boolean);
+    const nightSurplusStatus = nightSurplusConfigured
+      ? this.getEvNightSurplusStatus(result, runtimeSettings, nextBatteryW, Date.now())
+      : { active: false, supportAvailableW: 0 };
+    const nightSurplusStatuses = nightSurplusConfigured
+      ? this.getEvNightSurplusStatuses(nightSurplusStatus, runtimeSettings, evCount)
+      : Array.from({ length: evCount }, () => ({ active: false, supportAvailableW: 0 }));
+    const decisions = [];
+    const smartEntries = [];
+    const nonSmartEntries = [];
+    let nonSmartIncreaseW = 0;
+
+    for (let index = 0; index < evCount; index += 1) {
+      const settings = evInstanceSettings[index]
+        || (evInstanceSettings[index] = this.getEvInstanceSettings(index, runtimeSettings, options.monitoringRoute || 'context'));
+      settings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
+      const input = this.getEvInputSnapshot(index) || {};
+      const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
+      const socFreshness = this.getEvSocFreshness(index, settings);
+      const soc = socFreshness.fresh ? Number(input.soc) : NaN;
+      const measuredCurrentA = input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0;
+      const actualCurrentA = this.getEvControlCurrentA(index, input, storedSettings);
+      const pvAvailableW = evPvPoolBudgetW;
+      let decision = this.measureEvPlanningDecision(index, options.monitoringRoute || 'context', {
+        settings,
+        now: new Date(),
+        tariff,
+        connected,
+        soc,
+        socSeen: socFreshness.seen,
+        socFresh: socFreshness.fresh,
+        socAgeMinutes: socFreshness.ageMinutes,
+        actualCurrentA,
+        gridPowerW: rawGridW,
+        currentBatteryCommandW: currentBatteryW,
+        nextBatteryCommandW: evPlanningBatteryW,
+        pvHeadroomW: 0,
+        pvAvailableWOverride: pvAvailableW,
+        pvSessionActive: this.isEvPvSessionActiveForTariffFor(index, tariff, settings),
+        // The portfolio coordinator owns the one shared Peak Guard budget for
+        // every EV mode. Per-EV Peak Guard here would let EV2..EV4 each believe
+        // they own the same headroom.
+        skipPeakLimit: true,
+      });
+      if (decision.socTargetReached) settings.evMode = 'smart';
+      decision = this.applyEvPvSessionHysteresisFor(index, decision, result, settings, rawGridW);
+      decision = this.applyEvNightSurplusEligibility(index, decision, settings, nightSurplusStatuses[index] || { active: false });
+      decision = this.applyEvSessionEndLatch(index, decision);
+      decision = {
+        ...decision,
+        // Preserve the raw feedback for display; control uses measured
+        // current, independently of the latest published ampere limit.
+        actualCurrentA: measuredCurrentA,
+        controlCurrentA: actualCurrentA,
+        instance: index + 1,
+        pvSharePercent: evPvSharePercent,
+        pvConfiguredShareBudgetW: Math.round(configuredEvPvBudgetW),
+        pvReleasedBatteryBudgetW: Math.round(releasedBatteryPvBudgetW),
+        pvPoolBudgetW: Math.round(evPvPoolBudgetW),
+        gridPriority: ['battery_first', 'ev_first', 'share'].includes(String(settings.evSmartGridPriority || 'battery_first'))
+          ? String(settings.evSmartGridPriority || 'battery_first') : 'battery_first',
+        weight: Math.max(1, Math.min(10, Math.round(Number(settings.evWeight) || 1))),
+        batterySupportEnabled: this.shouldUseEvBatterySupport(settings, settings.evMode) || Boolean(decision.nightSurplusActive),
+      };
+      decisions.push(decision);
+      const commandedPowerW = this.getEvCommandedPowerW(index, storedSettings);
+      if (String(settings.evMode || 'smart') !== 'smart') {
+        const requestedPowerW = Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0);
+        if (Boolean(decision.allowed) && requestedPowerW > 0) {
+          nonSmartEntries.push({
+            index,
+            settings,
+            decision,
+            weight: decision.weight,
+            modeExpectedCurrentA: this.getEvControlType(settings) === 'mode'
+              ? Math.max(0, Number(decision.requestedCurrentA || decision.desiredCurrentA) || 0)
+              : 0,
+            currentPowerW: commandedPowerW,
+            maxPowerW: requestedPowerW,
+            pvMaxPowerW: Math.min(requestedPowerW, Math.max(0, Number(decision.pvRequestPowerW) || 0)),
+          });
+        }
+        continue;
+      }
+      if (!decision.allowed || Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0) <= 0) continue;
+      smartEntries.push({
+        index,
+        settings,
+        decision,
+        weight: decision.weight,
+        modeExpectedCurrentA: this.getEvControlType(settings) === 'mode' ? Math.max(0, Number(decision.requestedCurrentA || decision.desiredCurrentA) || 0) : 0,
+        currentPowerW: commandedPowerW,
+        maxPowerW: Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0),
+      });
+    }
+
+    // Coordinate Emergency and SoC-target EVs as one portfolio before Smart
+    // EVs get the remaining room. Every EV sees the same physical Peak Guard
+    // headroom and the configured EV weights decide how that shared budget is
+    // divided. This prevents EV2..EV4 from each consuming the full site margin.
+    let nonSmartPvUsedW = 0;
+    let nonSmartIntentionalGridTargetW = 0;
+    let nonSmartAllocation = new Map();
+    let nonSmartPvAllocation = new Map();
+    if (nonSmartEntries.length) {
+      const currentNonSmartPowerW = nonSmartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
+      const nonSmartMaxRequestedW = nonSmartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.maxPowerW) || 0), 0);
+      let nonSmartPeakBudgetW = nonSmartMaxRequestedW;
+      if (Boolean(runtimeSettings.peakShaveEnabled)) {
+        const softTargetW = Math.max(0, (Number(runtimeSettings.peakLimitW) || 0) - Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0));
+        nonSmartPeakBudgetW = Math.max(0, currentNonSmartPowerW + (softTargetW - gridWithoutCurrentBatteryDischargeW));
+      }
+      nonSmartPeakBudgetW = Math.min(nonSmartPeakBudgetW, nonSmartMaxRequestedW);
+
+      // First share the one physical EV PV pool. A SoC-target EV that is only
+      // allowed to use PV may never independently claim the full pool alongside
+      // another EV. Emergency may also consume PV, but may continue with grid
+      // power in the second stage.
+      const nonSmartPvEntries = nonSmartEntries
+        .filter(entry => Math.max(0, Number(entry.pvMaxPowerW) || 0) > 0.5)
+        .map(entry => ({ ...entry, maxPowerW: Math.max(0, Number(entry.pvMaxPowerW) || 0) }));
+      const nonSmartPvBudgetW = Math.min(nonSmartPeakBudgetW, evPvPoolBudgetW);
+      nonSmartPvAllocation = this.allocateWeightedEvPower(nonSmartPvEntries, nonSmartPvBudgetW);
+      nonSmartAllocation = new Map(nonSmartPvAllocation);
+
+      // Grid-capable Emergency/SoC-target EVs may use only the remaining shared
+      // Peak Guard room. The helper already decided whether the current tariff,
+      // guarantee or Emergency mode permits grid energy.
+      const nonSmartGridEntries = nonSmartEntries.filter(entry => {
+        if (Math.max(0, Number(entry.decision.gridRequestPowerW) || 0) <= 0.5) return false;
+        const source = String(entry.decision.source || 'off');
+        return String(entry.settings.evMode || 'smart') === 'emergency'
+          || Boolean(entry.decision.selectedTariff)
+          || Boolean(entry.decision.guaranteeActive)
+          || (source === 'pv+topup' && Boolean(entry.decision.pvGridTopUpAllowed));
+      });
+      if (nonSmartGridEntries.length && nonSmartPeakBudgetW > 0) {
+        nonSmartAllocation = this.allocateWeightedEvPower(nonSmartGridEntries, nonSmartPeakBudgetW, nonSmartAllocation);
+      }
+
+      for (const entry of nonSmartEntries) {
+        const decision = decisions[entry.index];
+        const allocatedPowerW = Math.max(0, Number(nonSmartAllocation.get(entry.index)) || 0);
+        const allocationSettings = this.getEvControlType(entry.settings) === 'mode'
+          ? { ...entry.settings, evModeExpectedCurrentA: entry.modeExpectedCurrentA }
+          : entry.settings;
+        const allocatedCurrentA = this.getEvCurrentForPower(allocatedPowerW, allocationSettings);
+        const actualAllocatedW = allocatedCurrentA * evPowerPerAmp(entry.settings);
+        const pvBudgetForEvW = Math.max(0, Number(nonSmartPvAllocation.get(entry.index)) || 0);
+        const pvAllocatedW = Math.min(actualAllocatedW, pvBudgetForEvW);
+        const gridAllocatedW = Math.max(0, actualAllocatedW - pvAllocatedW);
+
+        decision.desiredCurrentA = allocatedCurrentA;
+        decision.desiredPowerW = Math.round(actualAllocatedW);
+        decision.allowed = allocatedCurrentA > 0;
+        decision.peakLimited = actualAllocatedW + 0.5 < Math.max(0, Number(entry.maxPowerW) || 0);
+        decision.priorityLimited = decision.peakLimited;
+        decision.pvAllocatedW = Math.round(pvAllocatedW);
+        decision.gridAllocatedW = Math.round(gridAllocatedW);
+        decision.batterySupportAllocatedW = 0;
+        decision.intentionalGridImport = gridAllocatedW > 0.5;
+        decision.weight = entry.weight;
+        decision.peakGuardAccounting = {
+          gridPowerW: Math.round(rawGridW),
+          batteryDischargeW: Math.round(Math.max(0, currentBatteryW)),
+          reservedBatteryChargeW: Math.round(pendingBatteryChargeW),
+          currentEvPowerW: Math.round(currentNonSmartPowerW),
+          currentInstancePowerW: Math.round(entry.currentPowerW),
+          maxRequestedEvPowerW: Math.round(nonSmartMaxRequestedW),
+          peakBudgetW: Math.round(nonSmartPeakBudgetW),
+          peakLimitW: Number(runtimeSettings.peakLimitW) || 0,
+          peakSoftMarginW: Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0),
+          houseBaselineW: this.evSessionDetection?.portfolioBaselineW ?? null,
+          observedModePowerW: this.getEvSessionDetectionRuntime(entry.index)?.observedModePowerW ?? null,
+        };
+
+        if (this.getEvControlType(entry.settings) === 'mode') {
+          const smartA = this.getEvModeEstimatedCurrentA('smart', entry.settings);
+          const requestedA = Math.max(0, Number(entry.modeExpectedCurrentA) || Number(decision.requestedCurrentA) || 0);
+          const requestedMode = requestedA > smartA ? 'standard' : 'smart';
+          decision.requestedChargeMode = requestedMode;
+          decision.effectiveChargeMode = allocatedCurrentA > 0
+            ? (requestedMode === 'standard' && allocatedCurrentA <= smartA ? 'smart' : requestedMode)
+            : 'stop';
+          decision.modeFallback = requestedMode === 'standard' && decision.effectiveChargeMode === 'smart' ? 'smart' : null;
+        }
+
+        if (allocatedCurrentA <= 0 && decision.peakLimited) {
+          decision.reason = 'Peak Guard laat geen gezamenlijk EV-laadvermogen toe';
+        } else if (decision.peakLimited) {
+          decision.reason = `${String(decision.reason || '').replace(/ · begrensd door Peak Guard/g, '')} · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard`;
+        } else if (nonSmartEntries.length > 1 && allocatedCurrentA > 0) {
+          decision.reason = `${decision.reason} · EV-gewicht ${entry.weight}`;
+        }
+        nonSmartPvUsedW += pvAllocatedW;
+        nonSmartIntentionalGridTargetW += gridAllocatedW;
+      }
+    }
+
+    // Battery support is a shared EV energy budget. It never creates or
+    // rewrites a battery command: it only allows EV setpoints to rise. While an
+    // external Hybrid EMS owns the batteries, HomeFlux has no publishable
+    // discharge headroom and therefore exposes zero battery support. Night
+    // surplus is stricter: it may use only discharge headroom above the
+    // calculated night target SoC.
+    const batterySupportCapacityW = !batteryOutputEnabled || this.isHybridExternalControlActive(runtimeSettings)
+      ? 0
+      : options.physicalOnly
+        ? Math.min(Math.max(0, Math.min(currentBatteryW, nextBatteryW)),
+          this.getEvBatterySupportAvailableW(runtimeSettings, 0))
+        : this.getEvBatterySupportAvailableW(runtimeSettings, nextBatteryW);
+    let batterySupportRemainingW = batterySupportCapacityW;
+    let nightSurplusSupportRemainingW = Math.min(
+      batterySupportRemainingW,
+      Math.max(0, Number(nightSurplusStatus?.supportAvailableW) || 0),
+    );
+
+    const applyNonSmartSupport = (entries, availableW, nightSource = false) => {
+      if (!entries.length || availableW <= 0.5) return 0;
+      const baseline = new Map(nonSmartAllocation);
+      let baselineTotalW = 0;
+      let maximumTotalW = 0;
+      const allowed = new Set(entries.map(entry => entry.index));
+      for (const entry of nonSmartEntries) {
+        const powerW = Math.max(0, Number(baseline.get(entry.index)) || 0);
+        baselineTotalW += powerW;
+        maximumTotalW += allowed.has(entry.index)
+          ? Math.max(powerW, Number(entry.maxPowerW) || 0)
+          : powerW;
+      }
+      const targetTotalW = Math.min(maximumTotalW, baselineTotalW + availableW);
+      const supported = this.allocateWeightedEvPower(entries, targetTotalW, baseline);
+      let usedSupportW = 0;
+      for (const entry of entries) {
+        const beforeW = Math.max(0, Number(baseline.get(entry.index)) || 0);
+        const supportedW = Math.max(beforeW, Number(supported.get(entry.index)) || 0);
+        const allocationSettings = this.getEvControlType(entry.settings) === 'mode'
+          ? { ...entry.settings, evModeExpectedCurrentA: entry.modeExpectedCurrentA }
+          : entry.settings;
+        const supportedCurrentA = this.getEvCurrentForPower(supportedW, allocationSettings);
+        const actualSupportedW = supportedCurrentA * evPowerPerAmp(entry.settings);
+        const decision = decisions[entry.index];
+        if (actualSupportedW > beforeW + 0.5) {
+          const supportW = actualSupportedW - beforeW;
+          decision.desiredCurrentA = supportedCurrentA;
+          decision.desiredPowerW = Math.round(actualSupportedW);
+          decision.allowed = supportedCurrentA > 0;
+          decision.peakLimited = actualSupportedW + 0.5 < Math.max(0, Number(entry.maxPowerW) || 0);
+          decision.priorityLimited = decision.peakLimited;
+          if (nightSource) {
+            decision.nightSurplusAllocatedW = Math.round((Number(decision.nightSurplusAllocatedW) || 0) + supportW);
+            decision.reason = `Nachtplanning · ${Math.round(supportW)} W uit thuisbatterij boven doel-SoC ${Number(nightSurplusStatus.targetSoc).toFixed(1)}%`;
+          } else {
+            decision.batterySupportAllocatedW = Math.round((Number(decision.batterySupportAllocatedW) || 0) + supportW);
+            decision.reason += ` · thuisbatterij ${Math.round(supportW)} W extra`;
+          }
+          decision.gridAllocatedW = Math.max(0, Math.round((Number(decision.gridAllocatedW) || 0) - supportW));
+          decision.intentionalGridImport = Number(decision.gridAllocatedW) > 0.5;
+          if (this.getEvControlType(entry.settings) === 'mode') {
+            const smartA = this.getEvModeEstimatedCurrentA('smart', entry.settings);
+            const standardA = this.getEvModeEstimatedCurrentA('standard', entry.settings);
+            decision.effectiveChargeMode = supportedCurrentA >= standardA ? 'standard' : (supportedCurrentA >= smartA ? 'smart' : 'stop');
+            decision.modeFallback = decision.effectiveChargeMode === 'smart' && Number(decision.requestedCurrentA) > smartA ? 'smart' : null;
+          }
+          usedSupportW += supportW;
+        }
+      }
+      nonSmartAllocation = supported;
+      return usedSupportW;
+    };
+
+    // Night-surplus support gets the first battery slice for SoC-target EVs;
+    // it is capped by the target-SoC discharge headroom and never creates a
+    // grid-import permission. Normal optional battery support uses what remains.
+    const nonSmartNightEntries = nonSmartEntries.filter(entry => Boolean(entry.decision.nightSurplusActive));
+    const usedNonSmartNightW = applyNonSmartSupport(
+      nonSmartNightEntries,
+      Math.min(nightSurplusSupportRemainingW, batterySupportRemainingW),
+      true,
+    );
+    nightSurplusSupportRemainingW = Math.max(0, nightSurplusSupportRemainingW - usedNonSmartNightW);
+    batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedNonSmartNightW);
+    for (const entry of nonSmartNightEntries) {
+      const decision = decisions[entry.index];
+      if (Math.max(0, Number(decision.nightSurplusAllocatedW) || 0) <= 0.5) {
+        decision.allowed = false;
+        decision.desiredCurrentA = 0;
+        decision.desiredPowerW = 0;
+        decision.reason = 'Wachten: batterij-energie boven nachtelijk doel-SoC past niet in de minimale EV-laadstap';
+      }
+    }
+
+    const nonSmartSupportEntries = nonSmartEntries.filter(entry => Boolean(entry.decision.batterySupportEnabled) && !Boolean(entry.decision.nightSurplusActive));
+    const usedNonSmartSupportW = applyNonSmartSupport(nonSmartSupportEntries, batterySupportRemainingW, false);
+    batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedNonSmartSupportW);
+
+    // Recalculate the actual non-Smart change after shared Peak Guard and any
+    // battery support. Smart EVs use this physical increase when calculating
+    // their remaining site headroom.
+    nonSmartIncreaseW = nonSmartEntries.reduce((sum, entry) => {
+      const desiredW = Math.max(0, Number(decisions[entry.index]?.desiredPowerW) || 0);
+      return sum + desiredW - Math.max(0, Number(entry.currentPowerW) || 0);
+    }, 0);
+
+    if (!smartEntries.length) {
+      const portfolioTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW));
+      for (const decision of decisions) decision.portfolioGridImportTargetW = portfolioTargetW;
+      this.completeEvContextRefresh(storedSettings);
+      this.scheduleEvDeadlineWakeup(decisions);
+      return decisions;
+    }
+    const currentSmartPowerW = smartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
+    const predictedGridBeforeSmartChangeW = gridWithoutCurrentBatteryDischargeW + Math.max(0, nonSmartIncreaseW);
+    const maxRequestedW = smartEntries.reduce((sum, entry) => sum + entry.maxPowerW, 0);
+
+    // Absolute Peak Guard budget. No theoretical EV power is subtracted from
+    // the meter and EV logic never changes a battery setpoint. Any battery help
+    // must first become real meter headroom through the normal battery EMS.
+    let peakBudgetW = maxRequestedW;
+    if (Boolean(runtimeSettings.peakShaveEnabled)) {
+      const softTargetW = Math.max(0, (Number(runtimeSettings.peakLimitW) || 0) - Math.max(0, Number(runtimeSettings.peakSoftMarginW) || 0));
+      peakBudgetW = Math.max(0, currentSmartPowerW + (softTargetW - predictedGridBeforeSmartChangeW));
+    }
+    peakBudgetW = Math.min(peakBudgetW, maxRequestedW);
+
+    // Stage 1: one global PV distribution for the complete EV pool. The pool
+    // consists of real residual PV, PV already consumed by active Smart EVs,
+    // and PV power that the home battery is ALREADY charging with. Including
+    // the active EV load prevents the controller from shrinking its own PV
+    // budget after a setpoint has taken effect. Only the configured EV share is
+    // claimed; the remainder stays available to the normal battery regulator.
+    const smartPvPoolBudgetW = Math.max(0, evPvPoolBudgetW - nonSmartPvUsedW);
+    const pvTargetBudgetW = Math.min(peakBudgetW, maxRequestedW, smartPvPoolBudgetW);
+    let allocation = this.allocateWeightedEvPower(smartEntries, pvTargetBudgetW);
+    const allocationAfterPv = new Map(allocation);
+    let allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    const allocatedAfterPvW = allocatedW;
+    const transferredBatteryPvW = Math.min(
+      batteryPvChargeW,
+      Math.max(0, allocatedAfterPvW - nonBatteryPvW),
+    );
+
+    // Stage 2: a guaranteed minimum target is allowed to leave the selected
+    // tariff windows only when the deadline algorithm says this is now required.
+    // The helper marks only those EVs as guaranteeActive. They may consume any
+    // remaining Peak Guard headroom, but never bypass the absolute peak budget.
+    // Because Stage 1 already allocated all usable PV, every extra watt added
+    // here is intentional grid charging that the battery EMS must not cancel.
+    const guaranteeEntries = smartEntries.filter(entry => Boolean(entry.decision.guaranteeActive));
+    if (guaranteeEntries.length && allocatedW + 0.5 < peakBudgetW) {
+      allocation = this.allocateWeightedEvPower(guaranteeEntries, peakBudgetW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    }
+    const allocatedAfterGuaranteeW = allocatedW;
+    const guaranteedGridBudgetW = Math.max(0, allocatedAfterGuaranteeW - allocatedAfterPvW);
+
+    // Stage 3: the current tariff can deliberately permit grid energy in two
+    // mutually exclusive ways: normal standard tariff charging, or PV charging
+    // with explicit grid top-up. Both use the same TOTAL P1/grid-import ceiling
+    // for the complete EV portfolio. A hard guaranteed minimum already allocated
+    // in Stage 2 stays authoritative and may use additional deadline headroom.
+    const tariffEntries = smartEntries.filter(entry => Boolean(entry.decision.selectedTariff));
+    const topUpEntries = smartEntries.filter(entry => (
+      !Boolean(entry.decision.selectedTariff)
+      && String(entry.decision.source || '') === 'pv+topup'
+      && Boolean(entry.decision.pvGridTopUpAllowed)
+      && Math.max(0, Number(entry.decision.gridRequestPowerW) || 0) > 0.5
+    ));
+    const gridPolicyEntries = [...tariffEntries, ...topUpEntries].filter(entry =>
+      this.getEvDecisionGridImportLimitW(entry.decision, tariff, runtimeSettings) > 0);
+    const gridImportLimitW = gridPolicyEntries.length ? Math.min(...gridPolicyEntries.map(entry =>
+      this.getEvDecisionGridImportLimitW(entry.decision, tariff, runtimeSettings))) : 0;
+    // The configured value is the maximum P1/grid import while an EV grid policy
+    // is active, not extra EV watts on top of unrelated household consumption.
+    // Convert that meter ceiling into a maximum total Smart-EV setpoint using the
+    // real meter and the currently published EV commands.
+    // Reserve a pending battery grid-charge increase before granting new EV
+    // import. A pending battery reduction creates no EV headroom until P1 sees it.
+    const currentBatteryGridChargeW = Math.min(currentBatteryChargeW, Math.max(0, rawGridW));
+    const pendingBatteryGridIncreaseW = Math.min(
+      Math.max(0, -nextBatteryW - currentBatteryChargeW),
+      Math.max(0, batteryGridChargeW - currentBatteryGridChargeW),
+    );
+    const gridPolicyMeterBudgetW = Math.max(0, currentSmartPowerW
+      + (gridImportLimitW - predictedGridBeforeSmartChangeW) - pendingBatteryGridIncreaseW);
+    const gridPolicyTargetBudgetW = Math.min(peakBudgetW, gridPolicyMeterBudgetW, maxRequestedW);
+    const gridPolicyExtraBudgetW = Math.max(0, gridPolicyTargetBudgetW - allocatedW);
+    if (gridPolicyEntries.length && gridPolicyExtraBudgetW > 0) {
+      allocation = this.allocateWeightedEvPower(gridPolicyEntries, allocatedW + gridPolicyExtraBudgetW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    }
+    const allocatedAfterGridPolicyW = allocatedW;
+    // This is the part of the site-meter import that is intentionally allowed
+    // by standard tariff charging or PV grid top-up. Normal household import
+    // remains the battery EMS' responsibility. PV transferred away from an
+    // already charging battery is removed so it never becomes false grid demand.
+    const nonEvGridBeforeSmartW = predictedGridBeforeSmartChangeW - currentSmartPowerW;
+    const predictedGridAfterGridPolicyW = predictedGridBeforeSmartChangeW
+      + (allocatedAfterGridPolicyW - currentSmartPowerW) - transferredBatteryPvW;
+    // Normal tariff/top-up charging respects the configured meter ceiling.
+    // Guaranteed minimum charging outside selected tariffs is a separate hard
+    // deadline allowance and is added on top of that normal allowance.
+    const intentionalGridLimitW = Math.max(0, gridImportLimitW) + guaranteedGridBudgetW;
+    const hasIntentionalGridCharge = (gridPolicyEntries.length > 0 || guaranteeEntries.length > 0)
+      && allocatedAfterGridPolicyW > 0;
+    const portfolioEvGridImportTargetW = hasIntentionalGridCharge
+      ? Math.min(
+        intentionalGridLimitW,
+        Math.max(0, predictedGridAfterGridPolicyW - Math.max(0, nonEvGridBeforeSmartW)),
+      )
+      : 0;
+
+    // Grid priority is applied by the battery controller using one shared
+    // grid budget. Do not add the battery's watts to the EV again here: that
+    // would double-spend them and exceed the configured meter ceiling.
+
+    // Stage 5: optional home-battery support gives the EV controller extra
+    // power budget without ever rewriting the battery command. The normal
+    // battery EMS continues to regulate on the real P1 value and will naturally
+    // discharge if its own rules allow it. Battery-first remains authoritative:
+    // while the battery is actively being charged from PV or grid, entries that
+    // explicitly gave the battery priority do not consume battery-support room.
+    const allocationBeforeBatterySupport = new Map(allocation);
+    let allocationAfterNightSurplus = new Map(allocation);
+
+    const applySmartSupport = (entries, availableW) => {
+      if (!entries.length || availableW <= 0.5) return 0;
+      const beforeTotalW = allocatedW;
+      const peakBudgetWithBatterySupportW = Boolean(runtimeSettings.peakShaveEnabled)
+        ? Math.min(maxRequestedW, peakBudgetW + availableW)
+        : maxRequestedW;
+      const batterySupportTargetW = Math.min(
+        maxRequestedW,
+        peakBudgetWithBatterySupportW,
+        allocatedW + availableW,
+      );
+      if (batterySupportTargetW <= allocatedW + 0.5) return 0;
+      allocation = this.allocateWeightedEvPower(entries, batterySupportTargetW, allocation);
+      allocatedW = [...allocation.values()].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      return Math.max(0, allocatedW - beforeTotalW);
+    };
+
+    const smartSupportEligible = entry => {
+      if (!Boolean(entry.decision.batterySupportEnabled)) return false;
+      // Never make the home battery discharge for EV support while it is still
+      // actively charging. First let the PV/grid distribution settle through
+      // the normal battery regulator; battery support may become available on a
+      // later cycle once charging has actually stopped.
+      if (batteryPvChargeW > 0 || batteryGridChargeW > 0) return false;
+      return true;
+    };
+
+    const smartNightSupportEntries = smartEntries.filter(entry => smartSupportEligible(entry) && Boolean(entry.decision.nightSurplusActive));
+    const usedSmartNightW = applySmartSupport(
+      smartNightSupportEntries,
+      Math.min(nightSurplusSupportRemainingW, batterySupportRemainingW),
+    );
+    nightSurplusSupportRemainingW = Math.max(0, nightSurplusSupportRemainingW - usedSmartNightW);
+    batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedSmartNightW);
+    allocationAfterNightSurplus = new Map(allocation);
+
+    const smartGenericSupportEntries = smartEntries.filter(entry => smartSupportEligible(entry) && !Boolean(entry.decision.nightSurplusActive));
+    const usedSmartGenericW = applySmartSupport(smartGenericSupportEntries, batterySupportRemainingW);
+    batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedSmartGenericW);
+
+    for (const entry of smartEntries) {
+      const decision = decisions[entry.index];
+      const allocatedPowerW = Math.max(0, Number(allocation.get(entry.index)) || 0);
+      const allocationSettings = this.getEvControlType(entry.settings) === 'mode'
+        ? { ...entry.settings, evModeExpectedCurrentA: entry.modeExpectedCurrentA }
+        : entry.settings;
+      const allocatedCurrentA = this.getEvCurrentForPower(allocatedPowerW, allocationSettings);
+      const actualAllocatedW = allocatedCurrentA * evPowerPerAmp(entry.settings);
+      decision.desiredCurrentA = allocatedCurrentA;
+      decision.desiredPowerW = Math.round(actualAllocatedW);
+      decision.allowed = allocatedCurrentA > 0;
+      if (this.getEvControlType(entry.settings) === 'mode') {
+        const smartA = this.getEvModeEstimatedCurrentA('smart', entry.settings);
+        const requestedA = Math.max(0, Number(entry.modeExpectedCurrentA) || Number(decision.requestedCurrentA) || 0);
+        const requestedMode = requestedA > smartA ? 'standard' : 'smart';
+        decision.requestedChargeMode = requestedMode;
+        decision.effectiveChargeMode = allocatedCurrentA > 0
+          ? (requestedMode === 'standard' && allocatedCurrentA <= smartA ? 'smart' : requestedMode)
+          : 'stop';
+        decision.modeFallback = requestedMode === 'standard' && decision.effectiveChargeMode === 'smart' ? 'smart' : null;
+        if (decision.modeFallback === 'smart') {
+          const peakConstrained = Boolean(runtimeSettings.peakShaveEnabled) && peakBudgetW + 0.5 < maxRequestedW;
+          if (peakConstrained) decision.peakLimited = true;
+        }
+      }
+      decision.gridImportLimitW = Math.round(gridImportLimitW);
+      decision.weight = entry.weight;
+      decision.priorityLimited = actualAllocatedW + 1 < entry.maxPowerW;
+      const beforeBatterySupportW = Math.max(0, Number(allocationBeforeBatterySupport.get(entry.index)) || 0);
+      const afterNightSurplusW = Math.min(
+        actualAllocatedW,
+        Math.max(beforeBatterySupportW, Number(allocationAfterNightSurplus.get(entry.index)) || 0),
+      );
+      decision.nightSurplusAllocatedW = Boolean(decision.nightSurplusActive)
+        ? Math.round(Math.max(0, afterNightSurplusW - beforeBatterySupportW))
+        : 0;
+      decision.batterySupportAllocatedW = Math.round(Math.max(
+        0,
+        actualAllocatedW - beforeBatterySupportW - decision.nightSurplusAllocatedW,
+      ));
+      const pvForThisEvW = Math.min(actualAllocatedW, Math.max(0, Number(allocationAfterPv.get(entry.index)) || 0));
+      decision.pvAllocatedW = Math.round(pvForThisEvW);
+      decision.gridAllocatedW = Math.round(Math.max(
+        0,
+        actualAllocatedW - pvForThisEvW - decision.nightSurplusAllocatedW - decision.batterySupportAllocatedW,
+      ));
+      const pvTopUpActive = String(decision.source || '') === 'pv+topup' && Boolean(decision.pvGridTopUpAllowed);
+      decision.intentionalGridImport = decision.gridAllocatedW > 0
+        && (Boolean(decision.selectedTariff) || Boolean(decision.guaranteeActive) || pvTopUpActive);
+      if (allocatedCurrentA <= 0) {
+        if (Boolean(decision.nightSurplusActive)) decision.reason = 'Wachten: batterij-energie boven nachtelijk doel-SoC past niet in de minimale EV-laadstap';
+        else if (Boolean(runtimeSettings.peakShaveEnabled) && peakBudgetW <= 0) decision.reason = 'Peak Guard laat geen EV-laadvermogen toe';
+        else if (String(decision.source || '') === 'pv+topup' && gridImportLimitW <= 0) decision.reason = 'Wachten: PV-netaanvulling toegestaan, maar EV-netimportlimiet is 0 W';
+        else if (!decision.selectedTariff && evPvPoolBudgetW < (Math.max(1, Math.round(Number(entry.settings.evMinCurrentA) || 6)) * evPowerPerAmp(entry.settings))) decision.reason = `PV-aandeel EV-pool (${evPvSharePercent}%) onder minimum laadvermogen`;
+        else if (decision.selectedTariff && gridImportLimitW <= 0 && allocatedAfterPvW <= 0) decision.reason = 'Wachten: geselecteerd tarief, maar EV-netimportlimiet is 0 W';
+        else decision.reason = decision.reason || 'Wachten op beschikbaar EV-energiebudget';
+      } else {
+        const pieces = [];
+        if (decision.pvAllocatedW > 0) pieces.push('PV');
+        if (decision.guaranteeActive && decision.gridAllocatedW > 0) pieces.push('garantie/deadline (alle tarieven indien nodig)');
+        else if (decision.selectedTariff && decision.gridAllocatedW > 0) pieces.push(`tarief (netlimiet ${Math.round(gridImportLimitW)} W totaal)`);
+        else if (pvTopUpActive && decision.gridAllocatedW > 0) pieces.push(`PV-netaanvulling (netlimiet ${Math.round(gridImportLimitW)} W totaal)`);
+        if (decision.nightSurplusAllocatedW > 0) pieces.push(`nachtoverschot thuisbatterij (${decision.nightSurplusAllocatedW} W boven ${Number(decision.nightSurplusTargetSoc).toFixed(1)}% doel)`);
+        if (decision.batterySupportAllocatedW > 0) pieces.push(`thuisbatterij (${decision.batterySupportAllocatedW} W extra)`);
+        decision.reason = decision.guaranteeActive
+          ? `Gegarandeerd minimum · ${pieces.length ? pieces.join(' + ') : 'beschikbaar energiebudget'} · gewicht ${entry.weight}`
+          : `Slim laden via ${pieces.length ? pieces.join(' + ') : 'beschikbaar energiebudget'} · gewicht ${entry.weight}`;
+        decision.reason += ` · PV-verdeling EV ${evPvSharePercent}% / batterij ${100 - evPvSharePercent}%`;
+        if (releasedBatteryPvBudgetW > 0.5) decision.reason += ` · ${Math.round(releasedBatteryPvBudgetW)} W ongebruikt batterijbudget vrijgegeven aan EV`;
+        if (decision.modeFallback === 'smart') {
+          const smartA = this.getEvModeEstimatedCurrentA('smart', entry.settings);
+          const standardA = this.getEvModeEstimatedCurrentA('standard', entry.settings);
+          decision.reason += Boolean(decision.peakLimited)
+            ? ` · Standaard (${standardA} A) past niet binnen Peak Guard → Slim (${smartA} A)`
+            : ` · Standaard (${standardA} A) past niet binnen beschikbaar EV-vermogen → Slim (${smartA} A)`;
+        } else if (decision.priorityLimited) decision.reason += ' · verdeeld volgens EV-gewicht';
+      }
+    }
+    // Allocating whole ampere/mode steps can leave a fractional PV remainder.
+    // An already-drawing EV physically consumes that remainder too. Attribute it
+    // once across the portfolio; treating it as grid energy exempts the house.
+    const pvAccountingEntries = decisions.filter(d => d.allowed && Number(d.desiredPowerW) > 0);
+    const assignedPvW = pvAccountingEntries.reduce((sum, d) => sum + (Number(d.pvAllocatedW) || 0), 0);
+    const pvRemainderRoom = d => Math.max(0, Number(d.desiredPowerW) - (Number(d.pvAllocatedW) || 0)
+      - (Number(d.batterySupportAllocatedW) || 0) - (Number(d.nightSurplusAllocatedW) || 0));
+    const totalPvRoomW = pvAccountingEntries.reduce((sum, d) => sum + pvRemainderRoom(d), 0);
+    const extraPhysicalPvW = Math.min(totalPvRoomW, Math.max(0, evPvPoolBudgetW - assignedPvW));
+    for (const d of decisions) d.pvAttributedW = Math.max(0, Number(d.pvAllocatedW) || 0)
+      + (d.allowed && totalPvRoomW > 0 ? extraPhysicalPvW * pvRemainderRoom(d) / totalPvRoomW : 0);
+    const combinedPortfolioGridImportTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW + portfolioEvGridImportTargetW));
+    if (this.isDiagnosticEnabled('planning')) {
+      try {
+        this.getCompactDiagnostics().portfolio({ tariffId: tariff?.rateId || tariff?.className,
+          gridImportLimitW, peakLimitW: runtimeSettings.peakLimitW, peakBudgetW,
+          pvPoolW: smartPvPoolBudgetW, gridTargetW: combinedPortfolioGridImportTargetW,
+          guaranteedGridW: guaranteedGridBudgetW, evCount,
+          gridPowerW: rawGridW, currentBatteryCommandW: currentBatteryW,
+          batteryOutputEnabled, batteryGridChargeW, batteryPvChargeW });
+      } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+    }
+    for (const decision of decisions) decision.portfolioGridImportTargetW = combinedPortfolioGridImportTargetW;
+    this.completeEvContextRefresh(storedSettings);
+    // The full portfolio ran synchronously. Record only revisions present
+    // in this pass, never clear a later request made during Homey I/O.
+    if (Array.isArray(this.evPlanRevision)) {
+      if (!Array.isArray(this.evPlanHandledRevision)) this.evPlanHandledRevision = [-1, -1, -1, -1];
+      for (let index = 0; index < evCount; index += 1) {
+        if (this.evPlanHandledRevision[index] !== this.evPlanRevision[index]) {
+          this.evPlanHandledRevision[index] = this.evPlanRevision[index];
+          if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('handled', index + 1);
+        } else if (this.inputMonitor?.active) this.inputMonitor.notePlanningEvent('unchanged_portfolio', index + 1);
+      }
+    }
+    this.scheduleEvDeadlineWakeup(decisions);
+    return decisions;
+  }
+
+  coordinateEvBatteryPriority(result, storedSettings = this.getSettings()) {
+    if (!result) return null;
+    const decisions = this.calculateEvPortfolioDecisions(
+      result,
+      Number(result.candidateTotalCommandW) || 0,
+      Number(this.state.lastTotalCommandW) || 0,
+      storedSettings,
+    );
+    result.evDecisions = decisions;
+    result.evDecision = decisions[0] || null;
+    result.evIntentionalGridImportW = decisions.reduce((max, decision) => {
+      if (!Boolean(decision?.intentionalGridImport)) return max;
+      return Math.max(max, Math.max(0, Number(decision?.portfolioGridImportTargetW) || 0));
+    }, 0);
+    return result.evDecision;
+  }
+
+  getEvControlType(settings = this.getSettings()) {
+    const type = String(settings.evControlType || 'current');
+    return ['current','mode','hybrid'].includes(type) ? type : 'current';
+  }
+
+  getEvModeEstimatedCurrentA(chargeMode = 'standard', settings = this.getSettings()) {
+    const smartA = Math.max(1, Math.min(64, Math.round(Number(settings.evModeSmartCurrentA) || Number(settings.evMinCurrentA) || 6)));
+    const configuredStandardA = Math.max(1, Math.min(64, Math.round(Number(settings.evModeStandardCurrentA) || Number(settings.evStandardCurrentA) || 16)));
+    // Mode-only fallback is Standard -> Smart -> Stop, so Standard must never
+    // be estimated below Smart. Keeping Smart untouched is the conservative
+    // choice for Peak Guard when imported settings are inverted.
+    const standardA = Math.max(smartA, configuredStandardA);
+    return String(chargeMode || 'standard') === 'smart' ? smartA : standardA;
+  }
+
+  getEvPeakGuardStopHoldMs(settings = this.getSettings()) {
+    return Math.max(0, Math.min(3600, Number(settings.evPeakGuardStopHoldSeconds) || 0)) * 1000;
+  }
+
+  clearEvPeakGuardStopHold() {
+    this.evPeakGuardStopHoldUntil = 0;
+    if (this.evPeakGuardStopHoldTimer) {
+      clearTimeout(this.evPeakGuardStopHoldTimer);
+      this.evPeakGuardStopHoldTimer = null;
+    }
+  }
+
+  armEvPeakGuardStopHold(settings = this.getSettings(), now = Date.now()) {
+    const holdMs = this.getEvPeakGuardStopHoldMs(settings);
+    if (holdMs <= 0) {
+      this.clearEvPeakGuardStopHold();
+      return;
+    }
+    // Compatibility note: the historical setting/key name mentions Peak Guard,
+    // but from v0.3.40 this is the general mode-controlled EV restart hold after
+    // any HomeFlux STOP. It is timestamp-only; regular EMS/P1 evaluations are
+    // sufficient to release it, so no extra timer/evaluation is scheduled.
+    this.evPeakGuardStopHoldUntil = now + holdMs;
+    if (this.evPeakGuardStopHoldTimer) {
+      clearTimeout(this.evPeakGuardStopHoldTimer);
+      this.evPeakGuardStopHoldTimer = null;
+    }
+  }
+
+  isEvPeakGuardStopHoldActive(now = Date.now()) {
+    return Number(this.evPeakGuardStopHoldUntil) > now;
+  }
+
+  getEvOutputFor(index, decision, settings = this.getSettings(), now = Date.now()) {
+    const runtime = index === 0 ? null : this.getExtraEv(index);
+    return resolveEvOutput({ decision, settings, now,
+      gridW: this.inputSeen?.grid ? this.state.gridPowerW : null,
+      holdUntil: index === 0 ? Number(this.evPeakGuardStopHoldUntil) || 0 : Number(runtime?.stopHoldUntil) || 0,
+      includeNightSurplus: index === 0 });
+  }
+
+  getEvChargeMode(decision, settings = this.getSettings()) {
+    return this.getEvOutputFor(0, decision, settings).mode;
+  }
+
+  getEvCommandIntervalMs(settings = this.getSettings()) {
+    return Math.min(3600, Math.max(1, Number(settings.evCommandIntervalSeconds) || 10)) * 1000;
+  }
+
+  getEvOutputTimingStatus(index, decision, storedSettings = this.getSettings(), now = Date.now(), observedSettings = null) {
+    const settings = observedSettings || this.getEvInstanceSettings(index, storedSettings);
+    const controlType = this.getEvControlType(settings);
+    const runtime = index === 0 ? null : this.getExtraEv(index);
+    const publishedAt = index === 0
+      ? Math.max(0, Number(this.lastEvPublishedAt) || 0)
+      : Math.max(0, Number(runtime?.lastPublishedAt) || 0);
+    const previousCurrentA = index === 0
+      ? Math.max(0, Number(this.lastPublishedEvCurrentA) || 0)
+      : Math.max(0, Number(runtime?.lastPublishedCurrentA) || 0);
+    const previousChargeMode = index === 0
+      ? String(this.lastPublishedEvChargeMode || 'stop')
+      : String(runtime?.lastPublishedChargeMode || 'stop');
+    const previousAllowed = index === 0
+      ? Boolean(this.lastPublishedEvAllowed)
+      : Boolean(runtime?.lastPublishedAllowed);
+
+    const output = this.getEvOutputFor(index, decision, settings, now);
+    const desiredCurrentA = output.currentA, desiredChargeMode = output.mode, desiredAllowed = output.allowed;
+
+    const currentChanged = ['current','hybrid'].includes(controlType) && desiredCurrentA !== previousCurrentA;
+    const modeChanged = ['mode','hybrid'].includes(controlType) && desiredChargeMode !== previousChargeMode;
+    const allowedChanged = desiredAllowed !== previousAllowed;
+    const changed = currentChanged || modeChanged || allowedChanged;
+    const intervalMs = this.getEvCommandIntervalMs(settings);
+    const allowedAt = publishedAt > 0 ? publishedAt + intervalMs : 0;
+    const modeSafetyReduction = ['mode','hybrid'].includes(controlType)
+      && desiredChargeMode === 'stop' && previousChargeMode !== 'stop';
+    const currentSafetyReduction = ['current','hybrid'].includes(controlType)
+      && ((desiredCurrentA === 0 && previousCurrentA > 0)
+        || (desiredCurrentA < previousCurrentA
+          && (Boolean(decision?.peakLimited) || !Boolean(settings.evEnabled) || !Boolean(decision?.connected))));
+    const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
+    const waitingForInterval = changed && !isSafetyReduction && now < allowedAt;
+    const remainingSeconds = waitingForInterval
+      ? Math.max(1, Math.ceil((allowedAt - now) / 1000))
+      : 0;
+
+    let reason = String(decision?.reason || '');
+    const stopHoldUntil = index === 0 ? Number(this.evPeakGuardStopHoldUntil) : Number(runtime?.stopHoldUntil);
+    if (['mode','hybrid'].includes(controlType) && Boolean(decision?.allowed) && !Boolean(decision?.peakLimited) && stopHoldUntil > now) {
+      const holdSeconds = Math.max(1, Math.ceil((stopHoldUntil - now) / 1000));
+      reason = `EV stopwachttijd actief · herstart opnieuw beoordelen over ${holdSeconds} s`;
+    }
+
+    return {
+      state: waitingForInterval ? 'waiting_interval' : changed ? 'ready' : 'active',
+      pending: changed,
+      waitingForInterval,
+      remainingSeconds,
+      waitReason: waitingForInterval ? 'minimumtijd tussen EV-uitgangen' : '',
+      nextCurrentA: desiredCurrentA,
+      nextChargeMode: desiredChargeMode === null ? '' : String(desiredChargeMode),
+      nextAllowed: desiredAllowed,
+      reason,
+    };
+  }
+
+  getEvModeLoadTolerancePercent(settings = {}) {
+    // Preserve legacy mode-only P1 detection without exposing the removed
+    // ampere/setpoint feedback tolerance to current or hybrid control.
+    const value = Number(settings.evModeLoadTolerancePercent);
+    return [5, 10, 15, 20].includes(value) ? value : 15;
+  }
+
+  updateEvStatusInput(index, connected, currentA, now = Date.now()) {
+    if (connected !== false) hvacPermanent.cancel(this);
+    const input = this.getEvInputSnapshot(index);
+    if (!input) return false;
+    const parsed = parseFiniteInputNumber(currentA);
+    const hasCurrent = parsed !== null && parsed >= 0;
+    const hasConnection = typeof connected === 'boolean';
+    const wasConnected = Boolean(input.seen?.connected && input.connected);
+    const nextConnected = hasConnection ? Boolean(connected) : wasConnected;
+    const connectionChanged = hasConnection && this.hasBooleanInputChanged(input.connected, nextConnected, Boolean(input.seen?.connected));
+    const currentChanged = hasCurrent && this.hasNumericInputChanged(input.chargeCurrentA, parsed, Boolean(input.seen?.chargeCurrent), 0.05);
+    const modeControl = this.getEvControlTypeFor(index) === 'mode';
+    const measuredWasFresh = this.getEvMeasuredCurrent(index, input, now).fresh;
+    const wasFresh = modeControl || measuredWasFresh;
+    this.tickEvEnergyPlan(index, now);
+    if (hasCurrent && !modeControl) this.noteEvBatteryCurrentTransition(index, parsed, nextConnected, now);
+    const runtime = index === 0 ? null : this.getExtraEv(index);
+    const seen = index === 0 ? this.inputSeen.ev : runtime.seen;
+    const updatedAt = index === 0 ? this.inputUpdatedAt.ev : runtime.updatedAt;
+    if (hasConnection) {
+      if (!nextConnected && this.evTargetWarningSent?.[index]) {
+        this.evTargetWarningSent[index] = false;
+        this.setSetting('_evTargetWarningSent', this.evTargetWarningSent.slice());
+      }
+      if (index === 0) this.state.evConnected = nextConnected;
+      else runtime.state.connected = nextConnected;
+      seen.connected = true; updatedAt.connected = now;
+    }
+    if (hasCurrent) {
+      if (index === 0) this.state.evChargeCurrentA = parsed;
+      else runtime.state.chargeCurrentA = parsed;
+      seen.chargeCurrent = true; updatedAt.chargeCurrent = now;
+      this.noteAutoTuneEvFeedback(index, parsed, now);
+      this.recordDiagnosticCounter('evFeedbackInputs');
+    }
+    if (connectionChanged || (!modeControl && currentChanged)) {
+      if (this.evSessionDetection) this.evSessionDetection.modePowerSnapshot = null;
+    }
+    if (connectionChanged) {
+      this.markEvPlanChanged(index, 'connection');
+      this.handleEvSessionConnectionTransitionFor(index, wasConnected, nextConnected);
+      this.handleEvDetectionConnectionTransition(index, wasConnected, nextConnected, now);
+    }
+    if (hasCurrent) {
+      // A repeated mode-current sample is a liveness update, not a new
+      // session transition. P1 may have established loadAbsent since the
+      // previous sample. Clearing it here makes the next P1 sample force a
+      // full context evaluation again, even while the output remains STOP.
+      // Keep energy integration, feedback timestamps and autotune above;
+      // changed inputs and stale recovery still take the normal path.
+      if (!modeControl || connectionChanged || currentChanged || !measuredWasFresh) {
+        this.updateEvSessionFromCurrent(index, nextConnected, parsed, now);
+      } else {
+        const session = this.getEvSessionDetectionRuntime(index);
+        if (nextConnected && parsed > 0.5 && session?.state === 'charging'
+          && !session.loadAbsent && !session.endedLatched) session.lastChargingAt = now;
+      }
+    }
+    evPlanOptions.feedback(this, index, hasConnection, nextConnected, now);
+    // Disconnected telemetry cannot be a usable physical load. Repeated 0 A
+    // while disconnected is not a repeated stale-to-fresh transition.
+    const changed = Boolean(connectionChanged || currentChanged || (hasCurrent && nextConnected && !wasFresh));
+    if (hasCurrent && !changed) this.recordDiagnosticCounter('evFeedbackUnchanged');
+    if (changed) this.recordDiagnosticCounter('evInputEvaluationRequests');
+    return changed;
+  }
+
+  getEvMeasuredCurrent(index, input = this.getEvInputSnapshot(index), now = Date.now()) {
+    const value = parseFiniteInputNumber(input?.chargeCurrentA);
+    const updatedAt = Number(input?.updatedAt?.chargeCurrent) || 0;
+    const session = this.getEvSessionDetectionRuntime(index);
+    // Reuse the measured-delivery horizon used by tickEvEnergyPlan. A newer
+    // output command does not invalidate actual charger telemetry.
+    const fresh = Boolean(input?.seen?.connected && input?.connected && input?.seen?.chargeCurrent)
+      && value !== null && value >= 0 && updatedAt > 0 && updatedAt <= now
+      && now - updatedAt <= EV_CURRENT_FEEDBACK_MAX_MS
+      && updatedAt >= (Number(session?.connectedAt) || 0);
+    return { fresh, currentA: fresh ? value : 0, updatedAt };
+  }
+
+  getEvControlCurrentA(index, input = this.getEvInputSnapshot(index), storedSettings = this.getSettings()) {
+    if (this.getEvControlTypeFor(index, storedSettings) !== 'mode') {
+      return this.getEvMeasuredCurrent(index, input).currentA;
+    }
+    const watts = this.getEvModeObservedPowerW(index, storedSettings);
+    return watts > 0 ? watts / evPowerPerAmp(this.getEvElectricalSettingsFor(index, storedSettings)) : 0;
+  }
+
+  getPlannedBatteryGridLimitW(settings = this.getSettings(), now = Date.now(), evObservation = null) {
+    let tariff = null;
+    const requests = [];
+    let activeEvPowerW = 0;
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const input = this.getEvInputSnapshot(index);
+      if (!settings[this.getEvSettingKey(index, 'Enabled')] || !input?.connected
+        || this.getEvSessionDetectionRuntime(index)?.endedLatched) continue;
+      const evSettings = this.getEvPhysicalObservationSettings(index, settings, now, evObservation, 'battery_grid_limit');
+      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      if (!decision || decision.connected === false || decision.emergencyTariffBlocked) continue;
+      // Use current tariff eligibility as well as the latest EV decision, so a
+      // tariff transition cannot leave a stale reservation behind.
+      if (!tariff) tariff = findCurrentTariff(new Date(now), { ...settings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || settings.dynamicSlots });
+      const deadlinePolicy = this.getEvDeadlinePolicy(index, decision, settings, now);
+      if (!(deadlinePolicy ? deadlinePolicy.selected : isEvTariffSelected(evSettings, tariff))
+        && !(getEvPvTariffPolicy(evSettings, tariff).gridTopUpAllowed && decision.gridRequestPowerW > 0)) continue;
+      if (this.getEffectiveEvModeFor(index, settings) !== 'smart') continue;
+      const requestW = Math.max(0, Number(decision.requestedPowerW) || 0);
+      const netRequestW = Math.max(0, requestW - (Number(decision.pvAllocatedW) || 0)
+        - (Number(decision.batterySupportAllocatedW) || 0) - (Number(decision.nightSurplusAllocatedW) || 0));
+      if (netRequestW <= 0) continue;
+      const evGridLimitW = deadlinePolicy ? deadlinePolicy.limitW : this.getEvGridImportLimitW(tariff, settings);
+      if (evGridLimitW <= 0) continue;
+      activeEvPowerW += this.getEvCommandedPowerW(index, settings);
+      requests.push({
+        index, gridLimitW: evGridLimitW, settings: evSettings, weight: Math.max(1, Number(evSettings.evWeight) || 1),
+        priority: evSettings.evSmartGridPriority || 'battery_first',
+        maxPowerW: requestW, basePowerW: requestW - netRequestW,
+        modeExpectedCurrentA: Math.max(0, Number(decision.requestedCurrentA) || 0),
+      });
+    }
+    if (!requests.some(r => r.priority === 'ev_first' || r.priority === 'share')) return null;
+    const gridLimitW = Math.max(0, Math.min(...requests.map(request => request.gridLimitW)));
+    const siteWithoutBatteryW = (Number(this.state.gridPowerW) || 0) + (Number(this.state.lastTotalCommandW) || 0);
+    const nonEvImportW = Math.max(0, siteWithoutBatteryW - activeEvPowerW);
+    const peakLimitW = settings.peakShaveEnabled
+      ? Math.max(0, Number(settings.peakLimitW) - Math.max(0, Number(settings.peakSoftMarginW) || 0))
+      : Infinity;
+    let poolW = Math.max(0, Math.min(gridLimitW, peakLimitW) - nonEvImportW);
+    const reserve = (entries, watts) => {
+      if (!entries.length || watts <= 0) return 0;
+      const existing = new Map(entries.map(entry => [entry.index, entry.basePowerW]));
+      const baseW = entries.reduce((sum,entry) => sum + entry.basePowerW, 0);
+      const allocated = this.allocateWeightedEvPower(entries, baseW + watts, existing);
+      return Math.min(watts, Math.max(0, [...allocated.values()].reduce((sum,w) => sum+w,0) - baseW));
+    };
+    poolW -= reserve(requests.filter(r => r.priority === 'ev_first'), poolW);
+    // Reserve only usable amp/mode steps; unused room returns to the battery.
+    // Battery-first EVs use what remains after the battery's planning request.
+    return Math.max(0, poolW - reserve(requests.filter(r => r.priority === 'share'), poolW / 2));
+  }
+
+  rememberEvBatterySupply(index, decision, now = Date.now()) {
+    if (!decision?.allowed || !decision.connected || !this.isEvOutputPermittedFor(index)) return;
+    const session = this.getEvSessionDetectionRuntime(index);
+    if (session?.endedLatched) return;
+    if (!this.evBatterySupply) this.evBatterySupply = Array(4).fill(null);
+    const modeOnly = this.getEvControlTypeFor(index) === 'mode';
+    this.evBatterySupply[index] = {
+      at: now, connectedAt: Number(session?.connectedAt) || 0,
+      pvAllocatedW: Math.max(0, Number(decision.pvAttributedW ?? decision.pvAllocatedW) || 0),
+      batterySupportAllocatedW: Math.max(0, Number(decision.batterySupportAllocatedW) || 0),
+      nightSurplusAllocatedW: Math.max(0, Number(decision.nightSurplusAllocatedW) || 0),
+      modePowerW: modeOnly
+        ? Math.max(0, Number(session?.observedModePowerW) || 0) : 0,
+    };
+  }
+
+  recordEvBatteryHouseReference(now = Date.now(), settings = this.getSettings()) {
+    const evCount = this.getEvCount(settings);
+    if (evCount <= 0) return;
+    const gridAt = Number(this.inputUpdatedAt?.grid) || now;
+    // Retain the command that accompanied THIS P1 sample. A later publication
+    // cannot retroactively change the physical supply reconstructed from it.
+    this.evBatteryPhysicalImportAt = gridAt;
+    this.evBatteryPhysicalImportW = (Number(this.state.gridPowerW) || 0)
+      + (Number(this.state.lastTotalCommandW) || 0);
+    const previousGridAt = Number(this.evBatteryHouseLastGridAt) || 0;
+    this.evBatteryHouseLastGridAt = gridAt;
+    if (this.isEvModeHouseLearningFrozen(settings)) return;
+    // A P1 update ahead of its PV update must not teach the PV delta as a
+    // household change. Keep the last coherent house reference until both
+    // source streams have advanced, without adding a timer or polling.
+    const pvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    if (!this.inputSeen?.pv || pvAt > gridAt || (previousGridAt > 0 && pvAt <= previousGridAt)) return;
+    let measuredW = 0;
+    for (let index = 0; index < evCount; index += 1) {
+      if (this.getEvControlTypeFor(index, settings) === 'mode') {
+        // A shared P1 delta cannot independently teach its own house baseline.
+        // In particular, ignore optional Mode ampere placeholders here too.
+        // A STOP request also does not prove that the car has already stopped.
+        // Do not teach its residual load as household demand in a mixed fleet.
+        if (this.getEvInputSnapshot(index)?.connected) return;
+        continue;
+      }
+      const measured = this.getEvMeasuredCurrent(index);
+      if (!this.isEvOutputPermittedFor(index) || !this.isEvOutputActiveFor(index, settings)) {
+        if (measured.fresh && measured.currentA > 0) return;
+        continue;
+      }
+      if (this.getEvSessionDetectionRuntime(index)?.endedLatched) return;
+      if (!measured.fresh || measured.updatedAt > Number(this.inputUpdatedAt?.grid) || measured.updatedAt < previousGridAt
+        || measured.currentA <= 0 || now < Number(this.evBatteryMeterLiveUntil || 0)) return;
+      measuredW += measured.currentA * evPowerPerAmp(this.getEvElectricalSettingsFor(index, settings));
+    }
+    if (measuredW <= 0) return;
+    const siteW = this.getEvPhysicalSiteLoadW();
+    if (measuredW > 0 && siteW !== null && siteW >= measuredW) {
+      this.evBatteryHouseReferenceW = siteW - measuredW;
+    }
+  }
+
+  noteEvBatteryCurrentTransition(index, currentA, connected, now = Date.now()) {
+    const previous = this.getEvMeasuredCurrent(index);
+    if (!previous.fresh || (connected && currentA >= previous.currentA)) return;
+    if (!this.evBatteryCurrentDrop) this.evBatteryCurrentDrop = Array(4).fill(null);
+    const pending = this.evBatteryCurrentDrop[index];
+    const keepPending = pending && now <= pending.expiresAt && Number(this.inputUpdatedAt?.grid) < pending.at;
+    this.evBatteryCurrentDrop[index] = {
+      at: now, currentA: Math.max(previous.currentA, keepPending ? pending.currentA : 0),
+      expiresAt: Math.min(previous.updatedAt + EV_CURRENT_FEEDBACK_MAX_MS, keepPending ? pending.expiresAt : Infinity),
+    };
+    this.evBatteryMeterLiveUntil = now + EV_CURRENT_FEEDBACK_MAX_MS;
+  }
+
+  hasEvPhysicalAccountingInput(settings, now) {
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      if (!settings[this.getEvSettingKey(index, 'Enabled')]) continue;
+      if (this.getEvInputSnapshot(index)?.connected) return true;
+      const drop = this.evBatteryCurrentDrop?.[index];
+      if (drop && now <= drop.expiresAt && Number(this.inputUpdatedAt?.grid) < drop.at) return true;
+    }
+    return false;
+  }
+
+  getEvGridImportControlStatus(storedSettings = this.getSettings(), now = Date.now(), evObservation = null) {
+    const evCount = this.getEvCount(storedSettings);
+    const batteryPowerW = Number(this.state?.lastTotalCommandW) || 0;
+    const batteryDischargeW = Math.max(0, batteryPowerW);
+    if (evCount <= 0) {
+      return {
+        requestedTargetW: 0, activeTargetW: 0, batteryDischargeW,
+        state: 'inactive', remainingSeconds: 0, waitingInstances: [],
+      };
+    }
+
+    this.recordDiagnosticCounter('evPhysicalAccountingChecks');
+    // A disconnected EV can still own load until a newer P1 acknowledges its
+    // falling feedback. Keep that case on the full accounting path. Otherwise
+    // the old loop would only build settings and return this same empty result.
+    if (!this.hasEvPhysicalAccountingInput(storedSettings, now)) {
+      this.recordDiagnosticCounter('evPhysicalAccountingInactiveSkipped');
+      return { requestedTargetW: 0, activeTargetW: 0, batteryDischargeW,
+        state: 'inactive', remainingSeconds: 0, waitingInstances: [], residualInstances: [] };
+    }
+    const relevant = [];
+    let currentTariff = null;
+    let requestedTargetW = 0;
+    const residualInstances = [];
+    for (let index = 0; index < evCount; index += 1) {
+      const decision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      const settings = this.getEvPhysicalObservationSettings(index, storedSettings, now, evObservation, 'grid_import_control');
+      const input = this.getEvInputSnapshot(index);
+      const session = this.getEvSessionDetectionRuntime(index);
+      const pendingInputDrop = this.evBatteryCurrentDrop?.[index];
+      const awaitingDisconnectMeter = !input?.connected && pendingInputDrop
+        && now <= pendingInputDrop.expiresAt && Number(this.inputUpdatedAt?.grid) < pendingInputDrop.at;
+      if (!settings.evEnabled || (!input?.connected && !awaitingDisconnectMeter)) continue;
+      const tariff = storedSettings.contractType
+        ? (currentTariff ||= findCurrentTariff(new Date(now), { ...storedSettings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || storedSettings.dynamicSlots })) : null;
+      const modeOnly = this.getEvControlType(settings) === 'mode';
+      const deadlinePolicy = this.getEvDeadlinePolicy(index, decision, storedSettings, now);
+      const tariffAllowed = !tariff || modeOnly || (deadlinePolicy ? deadlinePolicy.selected : isEvTariffSelected(settings, tariff))
+        || decision?.guaranteeActive
+        || (decision?.source === 'pv+topup' && getEvPvTariffPolicy(settings, tariff).gridTopUpAllowed)
+        || (this.getEffectiveEvModeFor(index, storedSettings) === 'emergency' && !decision?.emergencyTariffBlocked);
+      const budgetAllowed = !tariff || modeOnly || (deadlinePolicy ? deadlinePolicy.limitW : this.getEvGridImportLimitW(tariff, storedSettings)) > 0
+        || decision?.guaranteeActive || this.getEffectiveEvModeFor(index, storedSettings) === 'emergency';
+      const intentional = decision?.intentionalGridImport === undefined
+        ? Boolean(decision?.selectedTariff || decision?.guaranteeActive) : Boolean(decision.intentionalGridImport);
+      // A charger can still draw power while the shared allocator holds its
+      // next start at 0 A (including EV4). Fresh physical Current/Hybrid load
+      // remains grid-funded; this accounting never grants charger permission.
+      const active = input?.connected && decision?.connected && !session?.endedLatched && tariffAllowed && budgetAllowed && intentional
+        && Number(decision.portfolioGridImportTargetW) > 0
+        && (Number(decision.desiredCurrentA) > 0
+          || (!modeOnly && this.getEvMeasuredCurrent(index, input, now).currentA > 0));
+      if (active) {
+        requestedTargetW = Math.max(requestedTargetW, Number(decision.portfolioGridImportTargetW));
+        relevant.push({ index, decision, settings, residual: false });
+        continue;
+      }
+      const supply = this.evBatterySupply?.[index];
+      if (!supply || supply.connectedAt !== (Number(session?.connectedAt) || 0)) continue;
+      const measured = modeOnly ? { fresh: false, currentA: 0 } : this.getEvMeasuredCurrent(index, input, now);
+      const drop = modeOnly ? null : this.evBatteryCurrentDrop?.[index];
+      const pendingDrop = drop && now <= drop.expiresAt && Number(this.inputUpdatedAt?.grid) < drop.at;
+      // This residual bookkeeping cannot enter the allocator or grant charger permission.
+      const modeInference = input?.connected && modeOnly && supply.modePowerW > 0 && now - supply.at <= EV_CURRENT_FEEDBACK_MAX_MS;
+      if (!(measured.fresh && measured.currentA > 0) && !pendingDrop && !modeInference) continue;
+      relevant.push({ index, decision: supply, settings, residual: true });
+      residualInstances.push(index + 1);
+    }
+
+    if (!relevant.length) {
+      return { requestedTargetW: 0, activeTargetW: 0, batteryDischargeW,
+        state: 'inactive', remainingSeconds: 0, waitingInstances: [], residualInstances: [] };
+    }
+
+    const waitingCommandInstances = [];
+    const waitingResponseInstances = [];
+    let confirmedEvPowerW = 0;
+    let heldEvPowerW = 0;
+    let inferredEvPowerW = 0;
+    const pendingMeterInstances = [];
+    let confirmedEvGridPowerW = 0;
+    let modeControlRelevant = false;
+    let configuredEvPowerCeilingW = 0;
+    let modeConfiguredPowerCeilingW = 0;
+    let attributedPvW = 0;
+    let modeAttributedPvW = 0;
+
+    for (const { index, decision, settings, residual } of relevant) {
+      const controlType = this.getEvControlType(settings);
+      const desiredA = Math.max(0, Number(decision.desiredCurrentA) || 0);
+      const perAmpW = evPowerPerAmp(settings);
+
+      // Each intentional allowance is bounded by physical evidence. Mode
+      // consumes the existing P1 detector's shared observation; Current and
+      // Hybrid consume fresh Flow current. Commands are never observations.
+      if (controlType === 'mode' && !residual) {
+        modeControlRelevant = true;
+        const modePowerW = this.getEvModeObservedPowerW(index, storedSettings, now);
+        inferredEvPowerW += modePowerW;
+        const pvW = Math.min(modePowerW, Math.max(0, Number(decision.pvAttributedW ?? decision.pvAllocatedW) || 0));
+        attributedPvW += pvW;
+        modeAttributedPvW += pvW;
+        modeConfiguredPowerCeilingW += Math.max(0, modePowerW
+          - (Number(decision.batterySupportAllocatedW) || 0) - (Number(decision.nightSurplusAllocatedW) || 0));
+        configuredEvPowerCeilingW += modePowerW;
+      } else {
+        const measured = controlType === 'mode' ? { fresh: false, currentA: 0 }
+          : this.getEvMeasuredCurrent(index, this.getEvInputSnapshot(index), now);
+        const drop = controlType === 'mode' ? null : this.evBatteryCurrentDrop?.[index];
+        const pendingDrop = drop && now <= drop.expiresAt && Number(this.inputUpdatedAt?.grid) < drop.at;
+        const modeInferredW = residual && controlType === 'mode' && now - decision.at <= EV_CURRENT_FEEDBACK_MAX_MS
+          ? decision.modePowerW : 0;
+        if (!measured.fresh && !pendingDrop && !modeInferredW) {
+          waitingResponseInstances.push(index + 1);
+          continue;
+        }
+        const measuredPowerW = pendingDrop ? Math.max(measured.currentA, drop.currentA) * perAmpW
+          : measured.fresh ? measured.currentA * perAmpW : modeInferredW;
+        attributedPvW += Math.min(measuredPowerW, Math.max(0, Number(decision.pvAttributedW ?? decision.pvAllocatedW) || 0));
+        const rawMeasuredW = measured.fresh ? measured.currentA * perAmpW : 0;
+        confirmedEvPowerW += rawMeasuredW;
+        if (pendingDrop) {
+          pendingMeterInstances.push(index + 1);
+          heldEvPowerW += Math.max(0, measuredPowerW - rawMeasuredW);
+        } else if (!measured.fresh) inferredEvPowerW += modeInferredW;
+        // Explicit battery/night-surplus support must remain battery-funded.
+        confirmedEvGridPowerW += Math.max(0, measuredPowerW
+          - Math.max(0, Number(decision.batterySupportAllocatedW) || 0)
+          - Math.max(0, Number(decision.nightSurplusAllocatedW) || 0));
+        configuredEvPowerCeilingW += measuredPowerW;
+      }
+    }
+
+    const waitingInstances = [...new Set([...waitingCommandInstances, ...waitingResponseInstances])];
+    const detection = this.evSessionDetection || {};
+    const baselineW = detection.portfolioBaselineW === null || detection.portfolioBaselineW === undefined
+      ? NaN : Number(detection.portfolioBaselineW);
+    // Reconstructed from P1 + PV + signed battery command - measured EV power.
+    // This is an estimate, not a separate house or battery power measurement.
+    const houseReferenceW = Number.isFinite(this.evBatteryHouseReferenceW)
+      ? this.evBatteryHouseReferenceW : (Number.isFinite(baselineW) ? baselineW : null);
+    const pvFresh = this.inputSeen?.pv && Number(this.inputUpdatedAt?.pv) > 0
+      && now - Number(this.inputUpdatedAt.pv) <= 5 * 60 * 1000;
+    const measuredPvW = Math.max(0, Number(this.state?.pvPowerW) || 0);
+    let accountingPvW = measuredPvW;
+    const gridAt = Number(this.inputUpdatedAt?.grid) || 0;
+    if (pvFresh && houseReferenceW !== null && Number(this.inputUpdatedAt.pv) < gridAt
+      && configuredEvPowerCeilingW <= confirmedEvPowerW + heldEvPowerW + 0.5) {
+      // P1 can reveal a PV drop before its PV Flow arrives. With direct EV
+      // feedback, cap the old PV attribution using the last coherent house
+      // reference and this meter sample. This is a conservative estimate, not
+      // another PV measurement; mode-only inference cannot establish it.
+      const sampleImportW = this.evBatteryPhysicalImportAt === gridAt
+        ? this.evBatteryPhysicalImportW : (Number(this.state.gridPowerW) || 0) + batteryPowerW;
+      accountingPvW = Math.min(accountingPvW,
+        Math.max(0, houseReferenceW + confirmedEvPowerW + heldEvPowerW - sampleImportW));
+    }
+    // Apply one portfolio-wide ceiling, also between allocator evaluations and
+    // during STOP. No EV can claim PV that is needed by the household first.
+    const evPvAvailableW = pvFresh ? Math.max(0, accountingPvW - (houseReferenceW ?? 0)) : attributedPvW;
+    const protectedPvW = Math.min(attributedPvW, evPvAvailableW);
+    const pvScale = attributedPvW > 0 ? protectedPvW / attributedPvW : 0;
+    confirmedEvGridPowerW = Math.max(0, confirmedEvGridPowerW - (attributedPvW - modeAttributedPvW) * pvScale);
+    modeConfiguredPowerCeilingW = Math.max(0, modeConfiguredPowerCeilingW - modeAttributedPvW * pvScale);
+
+    // Never turn a theoretical EV allowance into a synthetic meter target.
+    // Remove the battery's signed contribution from P1: add discharge and
+    // subtract charging. Charging must never masquerade as EV consumption,
+    // otherwise the EV target can hide the very battery load that must stop.
+    // The allowance can relax existing battery discharge, but
+    // can never instruct the battery to charge/export merely because an EV
+    // command was expected to create a load. Current/hybrid contribution is
+    // actual, fresh measured power; falling feedback waits for a newer P1 sample
+    // within the same freshness horizon. Mode observations are labelled inferred.
+    const rawGridW = Number(this.state?.gridPowerW) || 0;
+    const physicalImportBeforeBatteryW = Math.max(0, rawGridW + batteryPowerW);
+    let physicalAllowanceW = physicalImportBeforeBatteryW;
+    physicalAllowanceW = Math.min(physicalAllowanceW, configuredEvPowerCeilingW);
+    const detectedEvLoadW = detection.detectedEvLoadW === null || detection.detectedEvLoadW === undefined
+      ? NaN : Number(detection.detectedEvLoadW);
+    const houseLoadProtectionAvailable = modeControlRelevant
+      && Number.isFinite(baselineW) && baselineW >= 0
+      && Number.isFinite(detectedEvLoadW) && detectedEvLoadW >= 0;
+    if (houseLoadProtectionAvailable) {
+      // Mode-only P1 inference cannot invalidate direct current telemetry
+      // from another EV in the same portfolio.
+      physicalAllowanceW = Math.min(physicalAllowanceW, Math.max(confirmedEvPowerW + heldEvPowerW, detectedEvLoadW));
+    }
+    const houseLoadHold = modeControlRelevant && Boolean(detection.gridReleaseBlocked);
+    if (houseLoadHold) physicalAllowanceW = Math.min(physicalAllowanceW, confirmedEvPowerW + heldEvPowerW);
+    let allowedTargetW = confirmedEvGridPowerW + modeConfiguredPowerCeilingW;
+    // Only the household deficit after PV remains eligible for ordinary battery
+    // support. Keep measured EV demand protected above a reduced EV setpoint.
+    if (houseReferenceW !== null && pvFresh) {
+      physicalAllowanceW = Math.min(physicalAllowanceW,
+        Math.max(0, physicalImportBeforeBatteryW - Math.max(0, houseReferenceW - accountingPvW)));
+    }
+    // A mode estimate remains subject to its existing planned allowance.
+    if (modeControlRelevant) allowedTargetW = Math.min(allowedTargetW,
+      confirmedEvGridPowerW + Math.max(0, requestedTargetW));
+    const activeTargetW = Math.min(allowedTargetW, physicalAllowanceW);
+    const waitingForPhysicalLoad = requestedTargetW > 0 && activeTargetW <= 0.5;
+    const noLoadRemainingSeconds = modeControlRelevant && Number(detection.noLoadSince) > 0 && !houseLoadHold
+      ? Math.max(0, Math.ceil(((Number(detection.noLoadSince) + 60000) - now) / 1000)) : 0;
+
+    return {
+      residualInstances, pendingMeterInstances, protectedPvW: Math.round(protectedPvW),
+      ...(detection.houseStartReference ? { houseStartReference: { ...detection.houseStartReference } } : {}),
+      heldEvPowerW: Math.round(heldEvPowerW), inferredEvPowerW: Math.round(inferredEvPowerW),
+      houseReferenceW: houseReferenceW === null ? null : Math.round(houseReferenceW),
+      requestedTargetW: Math.round(requestedTargetW),
+      activeTargetW: Math.round(activeTargetW),
+      batteryDischargeW: Math.round(batteryDischargeW),
+      state: houseLoadHold && activeTargetW <= 0.5 ? 'house_load_hold'
+        : noLoadRemainingSeconds > 0 ? 'house_load_observation'
+        : activeTargetW <= 0.5 && waitingResponseInstances.length ? 'waiting_response'
+          : waitingForPhysicalLoad ? 'waiting_load' : 'active',
+      remainingSeconds: noLoadRemainingSeconds > 0
+        ? noLoadRemainingSeconds
+        : 0,
+      waitingInstances,
+      waitingCommandInstances,
+      waitingResponseInstances,
+      physicalImportBeforeBatteryW: Math.round(physicalImportBeforeBatteryW),
+      confirmedEvPowerW: Math.round(confirmedEvPowerW),
+      confirmedEvGridPowerW: Math.round(confirmedEvGridPowerW),
+      configuredEvPowerCeilingW: Math.round(configuredEvPowerCeilingW),
+      modeConfiguredPowerCeilingW: Math.round(modeConfiguredPowerCeilingW),
+      houseBaselineW: Number.isFinite(baselineW) ? Math.round(baselineW) : null,
+      houseToleranceW: Number.isFinite(baselineW) ? Math.round(getHouseLoadToleranceW(baselineW)) : null,
+      physicalSiteLoadW: Number.isFinite(Number(detection.physicalSiteLoadW)) ? Math.round(Number(detection.physicalSiteLoadW)) : null,
+      detectedEvLoadW: Number.isFinite(detectedEvLoadW) ? Math.round(detectedEvLoadW) : null,
+      houseLoadProtectionAvailable,
+      houseLoadHold,
+    };
+  }
+
+  scheduleEvPublish(waitMs) {
+    const delay = Math.max(1, Math.round(Number(waitMs) || 1));
+    if (this.evTimer) return;
+    this.evTimer = this.homey.setTimeout(() => {
+      this.evTimer = null;
+      // Keep the output deadline and physical multi-EV validation, without
+      // rerunning unrelated EMS planning or flexible-load modules.
+      this.refreshEvOnlyContext().catch(err => this.error('Deferred EV output failed', err));
+    }, delay);
+  }
+
+  async publishEvDecision(decision) {
+    if (!decision) return;
+    this.publishEvTargetWarning(0, decision).catch(err => this.error('EV target warning trigger failed', err));
+    const settings = this.getSettings();
+    const controlType = this.getEvControlType(settings);
+    const output = this.getEvOutputFor(0, decision, settings);
+    const desiredA = output.currentA, chargeMode = output.mode;
+    const peakGuardHoldActive = ['mode','hybrid'].includes(controlType) && Boolean(decision.allowed) && !Boolean(decision.peakLimited) && this.isEvPeakGuardStopHoldActive();
+    if (peakGuardHoldActive) {
+      const remainingSeconds = Math.max(1, Math.ceil((Number(this.evPeakGuardStopHoldUntil) - Date.now()) / 1000));
+      decision.peakGuardStopHoldActive = true;
+      decision.peakGuardStopHoldRemainingSeconds = remainingSeconds;
+      decision.reason = `EV stopwachttijd · herstart opnieuw beoordelen over ${remainingSeconds} s`;
+    }
+    const allowed = output.allowed;
+    this.syncEvPvSessionFromDecision(decision, chargeMode, settings);
+
+    const forceOutput = Boolean(this.forceEvOutput);
+    const previousChargeMode = String(this.lastPublishedEvChargeMode || '');
+    const currentChanged = ['current','hybrid'].includes(controlType) && (forceOutput || desiredA !== Number(this.lastPublishedEvCurrentA || 0));
+    const modeChanged = ['mode','hybrid'].includes(controlType) && (forceOutput || chargeMode !== String(this.lastPublishedEvChargeMode || ''));
+    const allowedChanged = forceOutput || allowed !== Boolean(this.lastPublishedEvAllowed);
+    this.recordDiagnosticEvDecision(0, decision, settings, output);
+    if (!currentChanged && !modeChanged && !allowedChanged) {
+      if (allowed) this.rememberEvBatterySupply(0, decision);
+      return;
+    }
+    const diagnosticOutput = this.createDiagnosticEvOutput(0, decision, output);
+
+    const intervalMs = this.getEvCommandIntervalMs(settings);
+    const now = Date.now();
+    const allowedAt = this.lastEvPublishedAt > 0 ? this.lastEvPublishedAt + intervalMs : 0;
+    const previousCurrentA = Number(this.lastPublishedEvCurrentA || 0);
+    const modeSafetyReduction = ['mode','hybrid'].includes(controlType) && chargeMode === 'stop' && String(this.lastPublishedEvChargeMode || '') !== 'stop';
+    const currentSafetyReduction = ['current','hybrid'].includes(controlType) && ((desiredA === 0 && previousCurrentA > 0)
+      || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || !Boolean(settings.evEnabled) || !decision.connected)));
+    const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
+    if (!isSafetyReduction && now < allowedAt) {
+      diagnosticOutput?.('waiting', { reason: 'command_interval', allowedAt });
+      this.scheduleEvPublish(allowedAt - now);
+      return;
+    }
+    if (this.evPublishing) {
+      diagnosticOutput?.('waiting', { reason: 'publication_mutex' });
+      this.scheduleEvPublish(Math.max(250, intervalMs));
+      return;
+    }
+
+    const houseReferenceAtStart = controlType === 'mode' && !this.hasEvModeHouseCommandLock(settings)
+      && ['smart', 'standard'].includes(chargeMode) ? this.getEvStartHouseReference(now) : null;
+    this.evPublishing = true;
+    diagnosticOutput?.('publishing');
+    try {
+      if (currentChanged) {
+        const token = this.tokens.get('emsevcurrent');
+        if (token) await token.setValue(desiredA);
+        if (this.evCurrentTrigger) {
+          await this.evCurrentTrigger.trigger(this.localizeDisplayTokens({
+            charge_current: desiredA,
+            charge_power: Math.round(Number(decision.desiredPowerW) || 0),
+            source: String(decision.source || 'off'),
+            reason: String(decision.reason || ''),
+            target_soc: Number(decision.targetSoc) || 0,
+          }));
+        }
+        this.lastPublishedEvCurrentA = desiredA;
+        diagnosticOutput?.('component_published', { component: 'current', value: desiredA });
+        this.noteAutoTuneEvCurrentCommand(0, desiredA, Date.now());
+      }
+      if (modeChanged) {
+        let houseReference = null;
+        const token = this.tokens.get('emsevmode');
+        if (token) await token.setValue(chargeMode);
+        if (this.evModeTrigger) {
+          const publish = () => this.evModeTrigger.trigger(this.localizeDisplayTokens({
+            charge_mode: chargeMode,
+            reason: String(decision.reason || ''),
+          }), { charge_mode: chargeMode });
+          if (controlType === 'mode') houseReference = await this.trackEvModeHousePublication(0, chargeMode, houseReferenceAtStart, publish);
+          else await publish();
+        }
+        this.lastPublishedEvChargeMode = chargeMode;
+        diagnosticOutput?.('component_published', { component: 'mode', value: chargeMode,
+          ...(houseReference ? { houseReference } : {}) });
+        this.noteAutoTuneEvModeCommand(0, chargeMode, Date.now());
+        if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
+          this.armEvPeakGuardStopHold(settings);
+        }
+      }
+      if (allowedChanged) {
+        const token = this.tokens.get('emsevallowed');
+        if (token) await token.setValue(allowed ? 'Ja' : 'Nee');
+        if (this.evAllowedTrigger) {
+          await this.evAllowedTrigger.trigger(this.localizeDisplayTokens({
+            allowed: allowed ? 'Ja' : 'Nee',
+            allowed_value: allowed ? 1 : 0,
+            reason: String(decision.reason || ''),
+          }));
+        }
+        this.lastPublishedEvAllowed = allowed;
+        diagnosticOutput?.('component_published', { component: 'allowed', value: allowed });
+      }
+      this.lastEvPublishedAt = Date.now();
+      this.forceEvOutput = false;
+      if (allowed) this.rememberEvBatterySupply(0, decision);
+      diagnosticOutput?.('published');
+    } catch (err) {
+      diagnosticOutput?.('failed', { error: String(err?.message || err).slice(0, 1000) });
+      throw err;
+    } finally {
+      this.evPublishing = false;
+    }
+  }
+
+
+  getEvChargeModeFor(index, decision, settings = this.getSettings()) {
+    return this.getEvOutputFor(index, decision, settings).mode;
+  }
+
+  armEvStopHoldFor(index, settings = this.getSettings(), now = Date.now()) {
+    if (index === 0) return this.armEvPeakGuardStopHold(settings, now);
+    const runtime = this.getExtraEv(index);
+    if (!runtime) return;
+    const holdMs = this.getEvPeakGuardStopHoldMs(settings);
+    runtime.stopHoldUntil = holdMs > 0 ? now + holdMs : 0;
+  }
+
+  scheduleAdditionalEvPublish(index, waitMs) {
+    const runtime = this.getExtraEv(index);
+    if (!runtime || runtime.timer) return;
+    const delay = Math.max(1, Math.round(Number(waitMs) || 1));
+    runtime.timer = this.homey.setTimeout(() => {
+      runtime.timer = null;
+      this.refreshEvOnlyContext().catch(err => this.error('Deferred EV output failed', err));
+    }, delay);
+  }
+
+  isEvOutputActiveFor(index, settings = this.getSettings()) {
+    const type = this.getEvControlTypeFor(index, settings);
+    const runtime = index === 0 ? null : this.getExtraEv(index);
+    if (index > 0 && !runtime) return false;
+    const mode = index === 0 ? this.lastPublishedEvChargeMode : runtime.lastPublishedChargeMode;
+    const current = index === 0 ? this.lastPublishedEvCurrentA : runtime.lastPublishedCurrentA;
+    return ['mode','hybrid'].includes(type)
+      ? ['smart', 'standard'].includes(String(mode || '')) && (type === 'mode' || Number(current || 0) > 0)
+      : Number(current || 0) > 0;
+  }
+
+  isEvOutputPermittedFor(index) {
+    if (index === 0) return Boolean(this.lastPublishedEvAllowed);
+    return Boolean(this.getExtraEv(index)?.lastPublishedAllowed);
+  }
+
+  async publishAdditionalEvDecision(index, decision) {
+    const runtime = this.getExtraEv(index);
+    this.publishEvTargetWarning(index, decision).catch(err => this.error(`EV ${index + 1} target warning trigger failed`, err));
+    if (!runtime || !decision) return;
+    const settings = this.getEvInstanceSettings(index);
+    settings.evMode = this.getEffectiveEvModeFor(index);
+    const triggers = this.extraEvTriggers[index - 1] || {};
+    const controlType = this.getEvControlType(settings);
+    const output = this.getEvOutputFor(index, decision, settings);
+    const desiredA = output.currentA, chargeMode = output.mode;
+    const holdActive = ['mode','hybrid'].includes(controlType) && Boolean(decision.allowed) && !Boolean(decision.peakLimited) && Number(runtime.stopHoldUntil || 0) > Date.now();
+    if (holdActive) {
+      const remainingSeconds = Math.max(1, Math.ceil((Number(runtime.stopHoldUntil) - Date.now()) / 1000));
+      decision.peakGuardStopHoldActive = true;
+      decision.peakGuardStopHoldRemainingSeconds = remainingSeconds;
+      decision.reason = `EV stopwachttijd · herstart opnieuw beoordelen over ${remainingSeconds} s`;
+    }
+    const allowed = output.allowed;
+    this.syncEvPvSessionFromDecisionFor(index, decision, chargeMode, settings);
+    const forceOutput = Boolean(runtime.forceOutput);
+    const previousChargeMode = String(runtime.lastPublishedChargeMode || '');
+    const currentChanged = ['current','hybrid'].includes(controlType) && (forceOutput || desiredA !== Number(runtime.lastPublishedCurrentA || 0));
+    const modeChanged = ['mode','hybrid'].includes(controlType) && (forceOutput || chargeMode !== String(runtime.lastPublishedChargeMode || ''));
+    const allowedChanged = forceOutput || allowed !== Boolean(runtime.lastPublishedAllowed);
+    this.recordDiagnosticEvDecision(index, decision, settings, output);
+    if (!currentChanged && !modeChanged && !allowedChanged) {
+      if (allowed) this.rememberEvBatterySupply(index, decision);
+      return;
+    }
+    const diagnosticOutput = this.createDiagnosticEvOutput(index, decision, output);
+    const intervalMs = this.getEvCommandIntervalMs(settings);
+    const now = Date.now();
+    const allowedAt = runtime.lastPublishedAt > 0 ? runtime.lastPublishedAt + intervalMs : 0;
+    const previousCurrentA = Number(runtime.lastPublishedCurrentA || 0);
+    const modeSafetyReduction = ['mode','hybrid'].includes(controlType) && chargeMode === 'stop' && String(runtime.lastPublishedChargeMode || '') !== 'stop';
+    const currentSafetyReduction = ['current','hybrid'].includes(controlType) && ((desiredA === 0 && previousCurrentA > 0)
+      || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || !Boolean(settings.evEnabled) || !decision.connected)));
+    const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
+    if (!isSafetyReduction && now < allowedAt) {
+      diagnosticOutput?.('waiting', { reason: 'command_interval', allowedAt });
+      this.scheduleAdditionalEvPublish(index, allowedAt - now);
+      return;
+    }
+    if (runtime.publishing) {
+      diagnosticOutput?.('waiting', { reason: 'publication_mutex' });
+      this.scheduleAdditionalEvPublish(index, Math.max(250, intervalMs));
+      return;
+    }
+    const houseReferenceAtStart = controlType === 'mode' && !this.hasEvModeHouseCommandLock(this.getSettings())
+      && ['smart', 'standard'].includes(chargeMode) ? this.getEvStartHouseReference(now) : null;
+    runtime.publishing = true;
+    diagnosticOutput?.('publishing');
+    try {
+      if (currentChanged && triggers.current) {
+        await triggers.current.trigger(this.localizeDisplayTokens({
+          charge_current: desiredA,
+          charge_power: Math.round(Number(decision.desiredPowerW) || 0),
+          source: String(decision.source || 'off'),
+          reason: String(decision.reason || ''),
+          target_soc: Number(decision.targetSoc) || 0,
+        }));
+        runtime.lastPublishedCurrentA = desiredA;
+        diagnosticOutput?.('component_published', { component: 'current', value: desiredA });
+        this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
+      }
+      if (modeChanged && triggers.mode) {
+        const publish = () => triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
+        let houseReference = null;
+        if (controlType === 'mode') houseReference = await this.trackEvModeHousePublication(index, chargeMode, houseReferenceAtStart, publish);
+        else await publish();
+        runtime.lastPublishedChargeMode = chargeMode;
+        diagnosticOutput?.('component_published', { component: 'mode', value: chargeMode,
+          ...(houseReference ? { houseReference } : {}) });
+        this.noteAutoTuneEvModeCommand(index, chargeMode, Date.now());
+        if (chargeMode === 'stop' && previousChargeMode !== 'stop' && Boolean(settings.evEnabled) && Boolean(decision.connected)) {
+          this.armEvStopHoldFor(index, settings);
+        }
+      }
+      if (allowedChanged && triggers.allowed) {
+        await triggers.allowed.trigger(this.localizeDisplayTokens({
+          allowed: allowed ? 'Ja' : 'Nee',
+          allowed_value: allowed ? 1 : 0,
+          reason: String(decision.reason || ''),
+        }));
+        runtime.lastPublishedAllowed = allowed;
+        diagnosticOutput?.('component_published', { component: 'allowed', value: allowed });
+      }
+      runtime.lastPublishedAt = Date.now();
+      runtime.forceOutput = false;
+      if (allowed) this.rememberEvBatterySupply(index, decision);
+      diagnosticOutput?.('published');
+    } catch (err) {
+      diagnosticOutput?.('failed', { error: String(err?.message || err).slice(0, 1000) });
+      throw err;
+    } finally {
+      runtime.publishing = false;
+    }
+  }
+
+  async testEvOutput(body = {}) {
+    const output = String(body.output || '').trim().toLowerCase();
+    const index = Math.max(0, Math.min(3, Math.round(Number(body.instance) || 1) - 1));
+    const instance = index + 1;
+    const configuredEvCount = Math.max(0, Math.min(4, Math.round(Number(this.getSettings().evCount) || 0)));
+    if (instance > configuredEvCount) throw new Error(`EV ${instance} is niet geconfigureerd.`);
+    const reason = `Settings output test · EV ${instance}`;
+    const settings = this.getEvInstanceSettings(index);
+    const triggers = index === 0
+      ? { current: this.evCurrentTrigger, allowed: this.evAllowedTrigger, mode: this.evModeTrigger }
+      : this.extraEvTriggers[index - 1] || {};
+
+    if (output === 'current') {
+      const currentA = Math.max(0, Math.min(64, Number(body.currentA)));
+      if (!Number.isFinite(currentA)) throw new Error('Ongeldige EV-testlaadstroom.');
+      const powerW = Math.round(currentA * evPowerPerAmp(settings));
+      if (!triggers.current) throw new Error(`EV ${instance}-laadstroom Flow-trigger is niet beschikbaar.`);
+      await triggers.current.trigger(this.localizeDisplayTokens({
+        charge_current: currentA,
+        charge_power: powerW,
+        source: 'test',
+        reason,
+        target_soc: Math.max(0, Math.min(100, Number(settings.evTargetSoc) || 0)),
+      }));
+      return { ok: true, instance, output, value: currentA, detail: `${currentA} A` };
+    }
+
+    if (output === 'allowed') {
+      const allowed = Boolean(body.allowed);
+      if (!triggers.allowed) throw new Error(`EV ${instance}-toestemming Flow-trigger is niet beschikbaar.`);
+      await triggers.allowed.trigger(this.localizeDisplayTokens({ allowed: allowed ? 'Ja' : 'Nee', allowed_value: allowed ? 1 : 0, reason }));
+      return { ok: true, instance, output, value: allowed, detail: allowed ? 'Ja' : 'Nee' };
+    }
+
+    if (output === 'mode') {
+      const mode = String(body.mode || '').trim().toLowerCase();
+      if (!['stop', 'smart', 'standard'].includes(mode)) throw new Error('Ongeldige EV-testmodus.');
+      if (!triggers.mode) throw new Error(`EV ${instance}-laadmodus Flow-trigger is niet beschikbaar.`);
+      const publish = () => triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: mode, reason }), { charge_mode: mode });
+      if (this.getEvControlType(settings) === 'mode') {
+        const reference = mode !== 'stop' && !this.hasEvModeHouseCommandLock()
+          ? this.getEvStartHouseReference() : null;
+        await this.trackEvModeHousePublication(index, mode, reference, publish);
+      } else await publish();
+      return { ok: true, instance, output, value: mode, detail: mode };
+    }
+
+    throw new Error('Onbekende EV-outputtest.');
+  }
+
+  async testHvacOutput(body = {}) {
+    const output = String(body.output || '').trim().toLowerCase();
+    const index = Math.max(0, Math.min(9, Math.round(Number(body.instance) || 1) - 1));
+    const instance = index + 1;
+    const reason = `Settings output test · HVAC ${instance}`;
+    const triggers = index === 0
+      ? { power: this.hvacPowerTrigger, mode: this.hvacModeTrigger, setpoint: this.hvacSetpointTrigger, fan: this.hvacFanTrigger }
+      : this.extraHvacTriggers[index - 1] || {};
+
+    if (output === 'power') {
+      const on = Boolean(body.on);
+      if (!triggers.power) throw new Error(`HVAC ${instance} aan/uit Flow-trigger is niet beschikbaar.`);
+      await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason }));
+      return { ok: true, instance, output, value: on, detail: on ? 'Aan' : 'Uit' };
+    }
+    if (output === 'mode') {
+      const mode = String(body.mode || '').trim().toLowerCase();
+      if (!['cool', 'heat'].includes(mode)) throw new Error('Ongeldige HVAC-testmodus.');
+      if (!triggers.mode) throw new Error(`HVAC ${instance}-modus Flow-trigger is niet beschikbaar.`);
+      await triggers.mode.trigger(this.localizeDisplayTokens({ mode, reason }));
+      return { ok: true, instance, output, value: mode, detail: mode };
+    }
+    if (output === 'setpoint') {
+      const setpoint = Math.round(Number(body.setpoint) * 2) / 2;
+      if (!Number.isFinite(setpoint) || setpoint < 5 || setpoint > 99) throw new Error('Ongeldig HVAC-testsetpoint.');
+      if (!triggers.setpoint) throw new Error(`HVAC ${instance}-setpoint Flow-trigger is niet beschikbaar.`);
+      await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason }));
+      return { ok: true, instance, output, value: setpoint, detail: `${setpoint} °C` };
+    }
+    if (output === 'fan') {
+      const currentSpeed = Number(body.currentSpeed);
+      const targetSpeed = Number(body.targetSpeed);
+      if (!Number.isFinite(currentSpeed) || !Number.isFinite(targetSpeed)) throw new Error('Ongeldige HVAC-test ventilatorwaarde.');
+      const action = targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'same';
+      if (!triggers.fan) throw new Error(`HVAC ${instance}-ventilator Flow-trigger is niet beschikbaar.`);
+      await triggers.fan.trigger(this.localizeDisplayTokens({ action, current_speed: currentSpeed, target_speed: targetSpeed, reason }));
+      return { ok: true, instance, output, value: targetSpeed, detail: `${currentSpeed} → ${targetSpeed}` };
+    }
+    throw new Error('Onbekende HVAC-outputtest.');
+  }
+
+  getHvacFanScale(settings = this.getSettings()) {
+    let min = Number(settings.hvacFanMinValue);
+    let max = Number(settings.hvacFanMaxValue);
+    let step = Number(settings.hvacFanStepValue);
+    if (!Number.isFinite(min)) min = 0;
+    if (!Number.isFinite(max)) max = 100;
+    if (max < min) [min, max] = [max, min];
+    if (!Number.isFinite(step) || step <= 0) step = 1;
+    return { min, max, step };
+  }
+
+  getHvacFanTarget(action, currentValue, settings = this.getSettings()) {
+    if (!action) return null;
+    const { min, max, step } = this.getHvacFanScale(settings);
+    const current = Number(currentValue);
+    if (!Number.isFinite(current)) return null;
+    const snapped = Math.max(min, Math.min(max, min + Math.round((current - min) / step) * step));
+    const target = action === 'higher' ? snapped + step : action === 'lower' ? snapped - step : snapped;
+    const clamped = Math.max(min, Math.min(max, target));
+    return Math.round(clamped * 1000) / 1000;
+  }
+
+  getHvacComfortBand(settings = this.getSettings()) {
+    // The legacy setting keys are retained for upgrade compatibility, but from
+    // v0.3.59 onward they are independent mode targets rather than min/max
+    // boundaries of one shared comfort band. They may therefore be equal or
+    // even cross without being reordered.
+    let heatingTarget = Number(settings.hvacComfortMinC);
+    let coolingTarget = Number(settings.hvacComfortMaxC);
+    if (!Number.isFinite(heatingTarget)) heatingTarget = 21;
+    if (!Number.isFinite(coolingTarget)) coolingTarget = 23;
+    let energyDeviation = Number(settings.hvacEnergyDeviationC);
+    if (!Number.isFinite(energyDeviation)) energyDeviation = 2;
+    energyDeviation = Math.max(0, Math.min(10, energyDeviation));
+    let heatBelow = Number(settings.hvacHeatingActivationBelowC);
+    let coolAbove = Number(settings.hvacCoolingActivationAboveC);
+    if (!Number.isFinite(heatBelow)) heatBelow = 20;
+    if (!Number.isFinite(coolAbove)) coolAbove = 24;
+    return {
+      heatingTarget,
+      coolingTarget,
+      energyDeviation,
+      heatBelow,
+      coolAbove,
+      // Keep these aliases in status payloads for compatibility with existing
+      // pre-release diagnostics while their meaning is now mode-specific.
+      comfortMin: heatingTarget,
+      comfortMax: coolingTarget,
+    };
+  }
+
+  getHvacFanTargetFromClimate(mode, roomTemperatureC, outdoorTemperatureC, settings = this.getSettings()) {
+    const room = Number(roomTemperatureC);
+    const outdoor = Number(outdoorTemperatureC);
+    if (!Number.isFinite(room) || !Number.isFinite(outdoor) || !['cool', 'heat'].includes(String(mode))) return null;
+    const profile = String(mode === 'cool' ? settings.hvacCoolingFanProfile : settings.hvacHeatingFanProfile || 'normal');
+    const degreesPerLevel = profile === 'slow' ? 2 : profile === 'fast' ? 0.5 : 1;
+    const delta = mode === 'cool' ? outdoor - room : room - outdoor;
+    const { min, max, step } = this.getHvacFanScale(settings);
+    const levelCount = Math.max(1, Math.floor((max - min) / step) + 1);
+    const level = Math.max(1, Math.min(levelCount, Math.ceil(Math.max(0, delta) / degreesPerLevel)));
+    return Math.round(Math.max(min, Math.min(max, min + ((level - 1) * step))) * 1000) / 1000;
+  }
+
+  getHvacTargetSetpoint(mode, settings = this.getSettings()) {
+    const { heatingTarget, coolingTarget, energyDeviation } = this.getHvacComfortBand(settings);
+    const priority = String(settings.hvacPriority || 'comfort');
+    if (mode === 'heat') {
+      const target = priority === 'pv' ? heatingTarget + energyDeviation : heatingTarget;
+      return Math.max(5, Math.min(99, Math.round(target * 2) / 2));
+    }
+    if (mode === 'cool') {
+      const target = priority === 'pv' ? coolingTarget - energyDeviation : coolingTarget;
+      return Math.max(5, Math.min(99, Math.round(target * 2) / 2));
+    }
+    return null;
+  }
+
+  calculateHvacControl(result = this.latestResult, evDecision = this.latestEvDecision, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
+    const settings = options.settings || this.getSettings();
+    const now = Number(options.now) || Date.now();
+    const gridFreshness = this.getGridFreshness(settings, now);
+    const allowStart = options.allowStart !== false;
+    const instanceIndex = Math.max(0, Math.min(9, Number(options.instanceIndex) || 0));
+    const enabled = Boolean(settings.hvacEnabled);
+    const automaticControlEnabled = settings.hvacAutomaticControlEnabled !== false;
+    const room = this.inputSeen.hvac?.roomTemperature ? Number(this.state.hvacRoomTemperatureC) : NaN;
+    const outdoor = this.inputSeen.hvac?.outdoorTemperature ? Number(this.state.hvacOutdoorTemperatureC) : NaN;
+    const actualSetpoint = this.inputSeen.hvac?.setpoint ? Number(this.state.hvacSetpointC) : NaN;
+    const mode = this.inputSeen.hvac?.mode ? String(this.state.hvacMode || 'off') : '';
+    const fanSpeed = this.inputSeen.hvac?.fanSpeed ? Number(this.state.hvacFanSpeed) : null;
+    const avgSoc = this.getAverageBatterySoc(settings);
+    const grid = Number(this.state.gridPowerW) || 0;
+    const batteryAfterGrid = grid + (Number(currentBatteryCommandW) || 0) - (Number(nextBatteryCommandW) || 0);
+    const actualEvPowerW = Number.isFinite(Number(options.totalActualEvPowerW))
+      ? Math.max(0, Number(options.totalActualEvPowerW))
+      : Boolean(settings.evEnabled) && Boolean(this.state.evConnected) && this.inputSeen.ev?.chargeCurrent
+        ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) * evPowerPerAmp(settings)
+        : 0;
+    const desiredEvPowerW = Number.isFinite(Number(options.totalDesiredEvPowerW))
+      ? Math.max(0, Number(options.totalDesiredEvPowerW))
+      : Boolean(settings.evEnabled) && evDecision
+        ? Math.max(0, Number(evDecision.desiredPowerW) || 0)
+        : 0;
+    const predictedGridAfterEvW = batteryAfterGrid + desiredEvPowerW - actualEvPowerW;
+    const pvHeadroomW = this.getPvCurtailmentHeadroomW(settings);
+    const virtualGridW = predictedGridAfterEvW - pvHeadroomW;
+    const band = this.getHvacComfortBand(settings);
+
+    const decision = {
+      enabled,
+      automaticControlEnabled,
+      priority: String(settings.hvacPriority || 'comfort'),
+      roomTemperatureC: Number.isFinite(room) ? room : null,
+      outdoorTemperatureC: Number.isFinite(outdoor) ? outdoor : null,
+      currentMode: mode || null,
+      currentSetpointC: Number.isFinite(actualSetpoint) ? actualSetpoint : null,
+      fanSpeed: Number.isFinite(Number(fanSpeed)) ? Number(fanSpeed) : null,
+      averageBatterySoc: avgSoc,
+      predictedGridW: Math.round(predictedGridAfterEvW),
+      virtualGridW: Math.round(virtualGridW),
+      pvHeadroomW: Math.round(pvHeadroomW),
+      comfortMinC: band.comfortMin,
+      comfortMaxC: band.comfortMax,
+      heatingTargetC: band.heatingTarget,
+      coolingTargetC: band.coolingTarget,
+      energyDeviationC: band.energyDeviation,
+      heatingActivationBelowC: band.heatBelow,
+      coolingActivationAboveC: band.coolAbove,
+      powerCommand: null,
+      modeCommand: null,
+      setpointCommand: null,
+      fanAction: null,
+      fanTarget: null,
+      reason: '',
+      boostActive: this.hvacBaselineSetpoint !== null,
+      boostMode: this.hvacBoostMode || null,
+      instance: instanceIndex + 1,
+      startEligible: false,
+      startAllowedByPriority: allowStart,
+      energySource: 'none',
+      gridFresh: gridFreshness.fresh,
+      gridAgeSeconds: gridFreshness.ageSeconds,
+    };
+
+    const resetBoostState = () => {
+      this.hvacBaselineSetpoint = null;
+      this.hvacBaselineMode = null;
+      this.hvacBoostMode = null;
+      decision.boostActive = false;
+      decision.boostMode = null;
+    };
+
+    const restoreImmediately = reason => {
+      if (this.hvacBaselineSetpoint !== null && Boolean(settings.hvacAllowSetpointControl)) {
+        decision.setpointCommand = Math.round(Number(this.hvacBaselineSetpoint) * 2) / 2;
+      }
+      if (Boolean(settings.hvacAllowFanControl)) decision.fanTarget = this.getHvacFanScale(settings).min;
+      if (this.hvacManagedPowerOn && Boolean(settings.hvacAllowPowerControl)) {
+        decision.powerCommand = false;
+        this.hvacManagedPowerOn = false;
+      }
+      if (Boolean(settings.hvacAllowModeControl) && this.hvacBaselineMode && this.hvacBaselineMode !== mode) {
+        decision.modeCommand = this.hvacBaselineMode;
+      }
+      decision.reason = reason;
+      resetBoostState();
+      return decision;
+    };
+
+    if (!automaticControlEnabled) {
+      const restored = restoreImmediately('Automatische HVAC-sturing uit');
+      // A permanent thermostat need not have a legacy boost baseline or an
+      // earlier ON receipt. The explicit permission is sufficient for OFF.
+      if (settings.hvacAllowPowerControl) restored.powerCommand = false;
+      if (settings.hvacCoordination?.StandbyTemperatureC !== null && settings.hvacCoordination?.StandbyTemperatureC !== undefined
+        && settings.hvacCoordination?.StandbyTemperatureC !== '' && Number.isFinite(Number(settings.hvacCoordination?.StandbyTemperatureC)) && settings.hvacAllowSetpointControl) {
+        restored.setpointCommand = Math.round(Math.max(5, Math.min(99, Number(settings.hvacCoordination?.StandbyTemperatureC))) * 2) / 2;
+      }
+      restored.automaticControlOff = true;
+      restored.hvacRevision = this.hvacConfigRevision || 0;
+      return restored;
+    }
+
+    if (!enabled) {
+      const owned = this.hvacPermanentRuntime?.units?.[instanceIndex];
+      if (owned?.setpoint !== null && owned?.setpoint !== undefined && !owned.powerOff && !owned.legacyCoordinated) {
+        const restored=restoreImmediately('HVAC-module uit · permanente sturing stoppen');
+        if(settings.hvacAllowPowerControl)restored.powerCommand=false;
+        if(settings.hvacAllowSetpointControl&&Number.isFinite(room))restored.setpointCommand=Math.round(Math.max(5,Math.min(99,room))*2)/2;
+        restored.moduleControlOff=true;return restored;
+      }
+      if (this.hvacBaselineSetpoint !== null || this.hvacManagedPowerOn) return restoreImmediately('HVAC-module uit · regeling terug naar normaal');
+      decision.reason = 'HVAC-module uit';
+      return decision;
+    }
+
+
+
+    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, portfolio: options.hvacPortfolio });
+
+    // A stale P1 value may never be interpreted as current PV surplus or spare
+    // Peak Guard headroom. Existing HomeFlux-managed HVAC sessions fail safe by
+    // returning to their baseline; inactive units simply wait for a fresh meter.
+    if (!gridFreshness.fresh) {
+      if (this.hvacBaselineSetpoint !== null || this.hvacManagedPowerOn) {
+        return restoreImmediately('Netmeting verouderd · HVAC terug naar normaal');
+      }
+      decision.reason = this.inputSeen.grid ? 'Wachten op verse netmeting' : 'Wachten op netmeting';
+      return decision;
+    }
+
+    // Outdoor temperature is deliberately NOT a prerequisite anymore. It is
+    // only used for fan-speed selection when that output is enabled.
+    const requiredInputs = Number.isFinite(room) && Number.isFinite(actualSetpoint) && Boolean(mode);
+    if (!requiredInputs) {
+      decision.reason = 'Wachten op HVAC-ruimtetemperatuur/modus/setpoint';
+      return decision;
+    }
+
+    const selectedDirection = String(settings.hvacDirection || 'auto');
+    const candidateMode = hvacPermanent.activationMode(settings, room, outdoor);
+    const activationMode = candidateMode === 'heat' && selectedDirection !== 'cool' ? 'heat'
+      : candidateMode === 'cool' && selectedDirection !== 'heat' ? 'cool' : null;
+    const activeMode = this.hvacBoostMode && ['heat', 'cool'].includes(this.hvacBoostMode) ? this.hvacBoostMode : null;
+    if (selectedDirection !== 'auto' && activeMode && activeMode !== selectedDirection) {
+      const restored = restoreImmediately('HVAC-regelrichting gewijzigd');
+      if (restored.modeCommand && restored.modeCommand !== selectedDirection) restored.modeCommand=Boolean(settings.hvacAllowModeControl)?selectedDirection:null;
+      return restored;
+    }
+    const controlMode = activeMode || activationMode;
+    const configuredMinBatterySoc = Number(settings.hvacMinBatterySoc);
+    const minBatterySoc = Math.max(0, Math.min(100, Number.isFinite(configuredMinBatterySoc) ? configuredMinBatterySoc : 90));
+    const hasHomeBattery = this.getBatteryCount(settings) > 0;
+    const enoughBattery = !hasHomeBattery || (avgSoc !== null && avgSoc >= minBatterySoc);
+    const configuredStartW = Number(settings.hvacSurplusStartW);
+    const configuredStopW = Number(settings.hvacSurplusStopW);
+    const startW = Math.max(0, Number.isFinite(configuredStartW) ? configuredStartW : 800);
+    // Stop must never be harder to satisfy than start. Imported/old settings
+    // with an inverted pair otherwise create immediate start/stop oscillation.
+    const stopW = Math.min(startW, Math.max(0, Number.isFinite(configuredStopW) ? configuredStopW : 200));
+    const intervalMs = Math.max(1, Number(settings.hvacControlIntervalMinutes) || 5) * 60000;
+    const intervalReady = this.lastHvacControlAt <= 0 || (now - this.lastHvacControlAt) >= intervalMs;
+    const hasPvBoost = Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW <= -startW;
+    const configuredFastImportW = Number(settings.hvacFastResetImportW);
+    const fastImportW = Math.max(0, Number.isFinite(configuredFastImportW) ? configuredFastImportW : 1000);
+    const evStartsGridCharge = Boolean(evDecision)
+      && ['tariff', 'guarantee', 'pv+tariff'].includes(String(evDecision.source || ''))
+      && Number(evDecision.desiredCurrentA || 0) > Number(evDecision.actualCurrentA || 0) + 0.5;
+    const fastReset = Boolean(options.hvacBudgetSafety) || Boolean(result?.override === 'peak_shave') || predictedGridAfterEvW >= fastImportW || evStartsGridCharge;
+
+    const hasPublishedHvacSetpoint = this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined
+      && Number.isFinite(Number(this.lastPublishedHvacSetpoint));
+    const effectiveSetpoint = hasPublishedHvacSetpoint ? Number(this.lastPublishedHvacSetpoint) : actualSetpoint;
+
+    if (activeMode && fastReset) {
+      return restoreImmediately(result?.override === 'peak_shave'
+        ? 'Peak Guard · HVAC direct terug naar normaal'
+        : evStartsGridCharge
+          ? 'EV start netladen · HVAC direct terug naar normaal'
+          : 'Grote netafname · HVAC direct terug naar normaal');
+    }
+
+    const configuredStopBatterySoc = Number(settings.hvacStopBatterySoc);
+    const stopBatterySoc = Math.min(minBatterySoc, Math.max(0, Math.min(100, Number.isFinite(configuredStopBatterySoc) ? configuredStopBatterySoc : 50)));
+
+    if (activeMode) {
+      const targetSetpoint = this.getHvacTargetSetpoint(activeMode, settings);
+      const targetReached = activeMode === 'heat' ? room >= targetSetpoint : room <= targetSetpoint;
+      const pvStillAvailable = Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW < -stopW;
+      // Battery continuation is only allowed for a session that was already
+      // started by PV. It never creates a new HVAC start on its own. A valid
+      // battery SoC is required so the configured stop threshold can always
+      // be enforced safely.
+      const batteryContinuationActive = hasHomeBattery
+        && !pvStillAvailable
+        && Boolean(settings.hvacAllowOnBattery)
+        && avgSoc !== null
+        && avgSoc > stopBatterySoc;
+
+      if (hasHomeBattery && !pvStillAvailable && Boolean(settings.hvacAllowOnBattery)
+        && avgSoc !== null && avgSoc <= stopBatterySoc) {
+        return restoreImmediately(`Batterij-SoC ${avgSoc.toFixed(1)}% · HVAC uit onder ${stopBatterySoc}%`);
+      }
+
+      const energyStillAvailable = pvStillAvailable || batteryContinuationActive;
+      if (pvStillAvailable) decision.energySource = 'pv';
+      else if (batteryContinuationActive) decision.energySource = 'battery';
+      if (!energyStillAvailable || targetReached) {
+        const baseline = Number(this.hvacBaselineSetpoint);
+        const needsReturn = Number.isFinite(baseline) && Math.abs(effectiveSetpoint - baseline) >= 0.1;
+        if (needsReturn && intervalReady && Boolean(settings.hvacAllowSetpointControl)) {
+          const direction = baseline > effectiveSetpoint ? 0.5 : -0.5;
+          let next = effectiveSetpoint + direction;
+          if ((direction > 0 && next > baseline) || (direction < 0 && next < baseline)) next = baseline;
+          decision.setpointCommand = Math.round(next * 2) / 2;
+          if (Boolean(settings.hvacAllowFanControl)) decision.fanTarget = this.getHvacFanScale(settings).min;
+          this.lastHvacControlAt = now;
+          decision.reason = targetReached
+            ? `Comfortdoel bereikt · ${activeMode === 'heat' ? 'verwarmen' : 'koelen'} geleidelijk terug`
+            : 'Geen PV/batterijdoorgang · HVAC-setpoint geleidelijk terug';
+          return decision;
+        }
+        if (!needsReturn) {
+          // A managed HVAC session is finished here. Restore the original
+          // device state even when battery continuation was enabled: that
+          // option only extends an active PV session while SoC permits it.
+          if (this.hvacManagedPowerOn && Boolean(settings.hvacAllowPowerControl)) {
+            decision.powerCommand = false;
+            this.hvacManagedPowerOn = false;
+          }
+          if (Boolean(settings.hvacAllowModeControl) && this.hvacBaselineMode && this.hvacBaselineMode !== mode) {
+            decision.modeCommand = this.hvacBaselineMode;
+          }
+          if (Boolean(settings.hvacAllowFanControl)) decision.fanTarget = this.getHvacFanScale(settings).min;
+          decision.reason = targetReached ? 'Comfortdoel bereikt · HVAC-boost afgerond' : 'HVAC-boost afgerond';
+          resetBoostState();
+          return decision;
+        }
+        decision.reason = targetReached ? 'Comfortdoel bereikt · wachten op regelinterval' : 'Wachten op terugregel-marge';
+        return decision;
+      }
+
+      if (batteryContinuationActive) {
+        decision.reason = `HVAC verder op thuisbatterij · SoC ${avgSoc.toFixed(1)}% · stop onder ${stopBatterySoc}%`;
+      }
+    }
+
+    if (!activeMode && !activationMode) {
+      decision.reason = `Ruimtetemperatuur binnen activatiemarge ${band.heatBelow.toFixed(1)}–${band.coolAbove.toFixed(1)} °C · geen HVAC-start`;
+      return decision;
+    }
+
+    if (!controlMode) {
+      decision.reason = 'Geen HVAC-modus nodig';
+      return decision;
+    }
+
+    if (!activeMode && !hasPvBoost) {
+      decision.reason = enoughBattery
+        ? 'Wachten op voldoende PV-overschot'
+        : `HVAC PV-sturing pas boven ${minBatterySoc}% batterij`;
+      return decision;
+    }
+
+    if (!intervalReady && !activeMode) {
+      decision.reason = 'HVAC-start wacht op regelinterval';
+      return decision;
+    }
+
+    if (!activeMode) {
+      decision.energySource = 'pv';
+      decision.startEligible = true;
+      if (!allowStart) {
+        decision.reason = 'Voldoende PV-overschot · wacht op prioriteitencheck';
+        return decision;
+      }
+    }
+
+    if (this.hvacBaselineSetpoint === null) {
+      this.hvacBaselineSetpoint = actualSetpoint;
+      this.hvacBaselineMode = mode;
+      this.hvacBoostMode = controlMode;
+    }
+    decision.boostActive = true;
+    decision.boostMode = this.hvacBoostMode || controlMode;
+
+    if (Boolean(settings.hvacAllowPowerControl) && mode === 'off') {
+      decision.powerCommand = true;
+      this.hvacManagedPowerOn = true;
+    }
+    if (Boolean(settings.hvacAllowModeControl) && mode !== controlMode) decision.modeCommand = controlMode;
+
+    const targetSetpoint = this.getHvacTargetSetpoint(controlMode, settings);
+    if (Boolean(settings.hvacAllowSetpointControl) && intervalReady && Number.isFinite(targetSetpoint)) {
+      let next = effectiveSetpoint;
+      if (controlMode === 'cool' && effectiveSetpoint > targetSetpoint) next = Math.max(targetSetpoint, effectiveSetpoint - 0.5);
+      if (controlMode === 'heat' && effectiveSetpoint < targetSetpoint) next = Math.min(targetSetpoint, effectiveSetpoint + 0.5);
+      if (Math.abs(next - effectiveSetpoint) >= 0.1) decision.setpointCommand = Math.round(next * 2) / 2;
+    }
+
+    if (Boolean(settings.hvacAllowFanControl)) {
+      decision.fanTarget = this.getHvacFanTargetFromClimate(controlMode, room, outdoor, settings);
+      const referenceFan = Number.isFinite(Number(fanSpeed)) ? Number(fanSpeed) : Number(this.lastPublishedHvacFanSpeed);
+      if (decision.fanTarget !== null && Number.isFinite(referenceFan)) {
+        decision.fanAction = decision.fanTarget > referenceFan ? 'higher' : decision.fanTarget < referenceFan ? 'lower' : 'hold';
+      } else if (decision.fanTarget !== null) {
+        decision.fanAction = 'set';
+      }
+    }
+
+    if (decision.setpointCommand !== null || decision.powerCommand !== null || decision.modeCommand) this.lastHvacControlAt = now;
+    const priorityLabel = String(settings.hvacPriority || 'comfort') === 'pv' ? 'PV-overschot minimaliseren' : 'Comfort eerst';
+    if (!decision.reason) decision.reason = `${controlMode === 'cool' ? 'Koelen' : 'Verwarmen'} op ruimtetemperatuur · ${priorityLabel}`;
+    return decision;
+  }
+
+
+  withHvacRuntime(index, callback) {
+    if (index === 0) return callback();
+    const runtime = this.getExtraHvac(index);
+    if (!runtime) return callback();
+    const saved = {
+      state: {
+        roomTemperatureC: this.state.hvacRoomTemperatureC,
+        outdoorTemperatureC: this.state.hvacOutdoorTemperatureC,
+        mode: this.state.hvacMode,
+        setpointC: this.state.hvacSetpointC,
+        fanSpeed: this.state.hvacFanSpeed,
+      },
+      seen: this.inputSeen.hvac,
+      updatedAt: this.inputUpdatedAt.hvac,
+      lastPublishedPower: this.lastPublishedHvacPower,
+      lastPublishedMode: this.lastPublishedHvacMode,
+      lastPublishedSetpoint: this.lastPublishedHvacSetpoint,
+      lastPublishedFanAction: this.lastPublishedHvacFanAction,
+      lastPublishedFanSpeed: this.lastPublishedHvacFanSpeed,
+      latestDecision: this.latestHvacDecision,
+      baselineSetpoint: this.hvacBaselineSetpoint,
+      baselineMode: this.hvacBaselineMode,
+      boostMode: this.hvacBoostMode,
+      managedPowerOn: this.hvacManagedPowerOn,
+      lastControlAt: this.lastHvacControlAt,
+    };
+    this.state.hvacRoomTemperatureC = runtime.state.roomTemperatureC;
+    // Keep the global outdoor temperature while swapping only instance-specific HVAC inputs.
+    this.state.hvacOutdoorTemperatureC = saved.state.outdoorTemperatureC;
+    this.state.hvacMode = runtime.state.mode;
+    this.state.hvacSetpointC = runtime.state.setpointC;
+    this.state.hvacFanSpeed = runtime.state.fanSpeed;
+    this.inputSeen.hvac = { ...runtime.seen, outdoorTemperature: Boolean(saved.seen?.outdoorTemperature) };
+    this.inputUpdatedAt.hvac = { ...runtime.updatedAt, outdoorTemperature: Number(saved.updatedAt?.outdoorTemperature) || 0 };
+    this.lastPublishedHvacPower = runtime.lastPublishedPower;
+    this.lastPublishedHvacMode = runtime.lastPublishedMode;
+    this.lastPublishedHvacSetpoint = runtime.lastPublishedSetpoint;
+    this.lastPublishedHvacFanAction = runtime.lastPublishedFanAction;
+    this.lastPublishedHvacFanSpeed = runtime.lastPublishedFanSpeed;
+    this.latestHvacDecision = runtime.latestDecision;
+    this.hvacBaselineSetpoint = runtime.baselineSetpoint;
+    this.hvacBaselineMode = runtime.baselineMode;
+    this.hvacBoostMode = runtime.boostMode;
+    this.hvacManagedPowerOn = runtime.managedPowerOn;
+    this.lastHvacControlAt = runtime.lastControlAt;
+    try {
+      return callback();
+    } finally {
+      runtime.state.roomTemperatureC = this.state.hvacRoomTemperatureC;
+      runtime.state.mode = this.state.hvacMode;
+      runtime.state.setpointC = this.state.hvacSetpointC;
+      runtime.state.fanSpeed = this.state.hvacFanSpeed;
+      // Persist only instance-specific received flags/timestamps. Outdoor remains global.
+      runtime.seen = { ...this.inputSeen.hvac, outdoorTemperature: false };
+      runtime.updatedAt = { ...this.inputUpdatedAt.hvac, outdoorTemperature: 0 };
+      runtime.lastPublishedPower = this.lastPublishedHvacPower;
+      runtime.lastPublishedMode = this.lastPublishedHvacMode;
+      runtime.lastPublishedSetpoint = this.lastPublishedHvacSetpoint;
+      runtime.lastPublishedFanAction = this.lastPublishedHvacFanAction;
+      runtime.lastPublishedFanSpeed = this.lastPublishedHvacFanSpeed;
+      runtime.latestDecision = this.latestHvacDecision;
+      runtime.baselineSetpoint = this.hvacBaselineSetpoint;
+      runtime.baselineMode = this.hvacBaselineMode;
+      runtime.boostMode = this.hvacBoostMode;
+      runtime.managedPowerOn = this.hvacManagedPowerOn;
+      runtime.lastControlAt = this.lastHvacControlAt;
+      this.state.hvacRoomTemperatureC = saved.state.roomTemperatureC;
+      this.state.hvacOutdoorTemperatureC = saved.state.outdoorTemperatureC;
+      this.state.hvacMode = saved.state.mode;
+      this.state.hvacSetpointC = saved.state.setpointC;
+      this.state.hvacFanSpeed = saved.state.fanSpeed;
+      this.inputSeen.hvac = saved.seen;
+      this.inputUpdatedAt.hvac = saved.updatedAt;
+      this.lastPublishedHvacPower = saved.lastPublishedPower;
+      this.lastPublishedHvacMode = saved.lastPublishedMode;
+      this.lastPublishedHvacSetpoint = saved.lastPublishedSetpoint;
+      this.lastPublishedHvacFanAction = saved.lastPublishedFanAction;
+      this.lastPublishedHvacFanSpeed = saved.lastPublishedFanSpeed;
+      this.latestHvacDecision = saved.latestDecision;
+      this.hvacBaselineSetpoint = saved.baselineSetpoint;
+      this.hvacBaselineMode = saved.baselineMode;
+      this.hvacBoostMode = saved.boostMode;
+      this.hvacManagedPowerOn = saved.managedPowerOn;
+      this.lastHvacControlAt = saved.lastControlAt;
+    }
+  }
+
+  calculateHvacControlFor(index, result = this.latestResult, evDecision = this.latestEvDecision, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
+    const settings = options.hvacPortfolio?.settings[index] || this.getHvacInstanceSettings(index, options.storedSettings || this.getSettings());
+    return this.withHvacRuntime(index, () => this.calculateHvacControl(
+      result,
+      evDecision,
+      nextBatteryCommandW,
+      currentBatteryCommandW,
+      { ...options, settings, instanceIndex: index },
+    ));
+  }
+
+  getHvacPublishSlot(index) {
+    const safeIndex = Math.max(0, Math.min(9, Number(index) || 0));
+    if (!Array.isArray(this.hvacPublishSlots)) {
+      this.hvacPublishSlots = Array.from({ length: 10 }, () => ({ publishing: false, pending: null }));
+    }
+    if (!this.hvacPublishSlots[safeIndex]) this.hvacPublishSlots[safeIndex] = { publishing: false, pending: null };
+    return this.hvacPublishSlots[safeIndex];
+  }
+
+  async publishHvacDecisionFor(index, decision) {
+    if (!decision) return;
+    const safeIndex = Math.max(0, Math.min(9, Number(index) || 0));
+    const slot = this.getHvacPublishSlot(safeIndex);
+    // Latest-wins coalescing keeps the queue strictly bounded: while one Flow
+    // trigger is awaiting downstream actions, any number of recalculations can
+    // replace this single pending object but cannot create more open requests.
+    slot.pending = { ...decision };
+    if (slot.publishing) return;
+
+    slot.publishing = true;
+    try {
+      while (slot.pending) {
+        const next = slot.pending;
+        slot.pending = null;
+        if(next.moduleControlOff&&safeIndex<this.getHvacCount()&&this.getHvacInstanceSettings(safeIndex).hvacEnabled)continue;
+        if (next.automaticControlOff && this.getHvacInstanceSettings(safeIndex).hvacAutomaticControlEnabled !== false) continue;
+        const learningCandidate = hvacPermanent.legacyCandidate(this, safeIndex, next);
+        if (!hvacPermanent.beforePublish(this, safeIndex, next)) continue;
+        if(next.permanent&&next.outputChanged===false){
+          hvacPermanent.published(this,safeIndex,next);
+          if(safeIndex>0&&!slot.pending)this.getExtraHvac(safeIndex).latestDecision=next;
+          continue;
+        }
+        try {
+          await this._publishHvacDecisionNowFor(safeIndex, next);
+          if (next.permanent) hvacPermanent.published(this, safeIndex, next);
+          else if ((next.automaticControlOff || next.moduleControlOff) && next.outputChanged!==false) {
+            const u=hvacPermanent.unit(this,safeIndex);u.powerOff=next.moduleControlOff||next.powerCommand===false;
+            if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
+            hvacPermanent.persist(this);
+          } else if (next.legacyCoordinated) {
+            const u=hvacPermanent.unit(this,safeIndex);u.legacyCoordinated=true;u.mode=next.direction;
+            if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
+            hvacPermanent.persist(this);
+            if(learningCandidate?.manualLearning&&next.outputChanged!==false)hvacPermanent.begin(this,safeIndex,learningCandidate,Date.now());
+          } else if (learningCandidate && next.outputChanged!==false) hvacPermanent.begin(this, safeIndex, learningCandidate, Date.now());
+          if (!next.permanent && this.hvacPermanentRuntime?.units?.[safeIndex]?.legacyCoordinated && !next.boostActive) { this.hvacPermanentRuntime.units[safeIndex].powerOff=true; hvacPermanent.persist(this); }
+        } catch (error) {
+          if (next.permanent) { hvacPermanent.cancel(this); this.markContextDirty('hvac_publication_retry', false); }
+          throw error;
+        }
+      }
+    } finally {
+      slot.publishing = false;
+      // If the active trigger failed while a newer decision arrived, preserve
+      // that newest decision and retry it in a fresh single-flight worker.
+      if (slot.pending) {
+        const latest = slot.pending;
+        slot.pending = null;
+        this.publishHvacDecisionFor(safeIndex, latest)
+          .catch(err => this.error(`HVAC ${safeIndex + 1} queued output failed`, err));
+      }
+    }
+  }
+
+  async publishHvacDecision(decision) {
+    return this.publishHvacDecisionFor(0, decision);
+  }
+
+  async _publishHvacDecisionNowFor(index, decision) {
+    if (index === 0) return this._publishHvacDecisionNow(decision);
+    const runtime = this.getExtraHvac(index);
+    if (!runtime || !decision) return;
+    const settings = this.getHvacInstanceSettings(index);
+    const triggers = this.extraHvacTriggers[index - 1] || {};
+    if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
+      const on = Boolean(decision.powerCommand);
+      if (runtime.lastPublishedPower !== on) {
+        if (triggers.power) await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
+        runtime.lastPublishedPower = on;
+        runtime.managedPowerOn = on;
+      }
+    }
+    if (decision.modeCommand && Boolean(settings.hvacAllowModeControl) && decision.modeCommand !== runtime.lastPublishedMode) {
+      if (triggers.mode) await triggers.mode.trigger(this.localizeDisplayTokens({ mode: String(decision.modeCommand), reason: String(decision.reason || '') }));
+      runtime.lastPublishedMode = String(decision.modeCommand);
+    }
+    if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
+      const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
+      if (runtime.lastPublishedSetpoint === null || !Number.isFinite(Number(runtime.lastPublishedSetpoint)) || Math.abs(setpoint - Number(runtime.lastPublishedSetpoint)) >= 0.1) {
+        if (triggers.setpoint) await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
+        runtime.lastPublishedSetpoint = setpoint;
+        if (runtime.baselineSetpoint !== null && Math.abs(setpoint - Number(runtime.baselineSetpoint)) < 0.1) runtime.lastControlAt = 0;
+      }
+    }
+    if (Boolean(settings.hvacAllowFanControl) && (decision.fanTarget !== null || decision.fanAction)) {
+      const currentSpeed = runtime.seen?.fanSpeed ? Number(runtime.state.fanSpeed) : NaN;
+      const targetSpeed = decision.fanTarget !== null && Number.isFinite(Number(decision.fanTarget))
+        ? Number(decision.fanTarget)
+        : this.getHvacFanTarget(decision.fanAction, currentSpeed, settings);
+      decision.fanTarget = targetSpeed;
+      if (targetSpeed !== null && Number.isFinite(Number(targetSpeed))
+        && (runtime.lastPublishedFanSpeed === null || Math.abs(targetSpeed - Number(runtime.lastPublishedFanSpeed)) > 0.0001)) {
+        const action = String(decision.fanAction || (Number.isFinite(currentSpeed)
+          ? targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'hold'
+          : 'set'));
+        if (triggers.fan) await triggers.fan.trigger(this.localizeDisplayTokens({
+          action,
+          current_speed: Number.isFinite(currentSpeed) ? currentSpeed : 0,
+          target_speed: targetSpeed,
+          reason: String(decision.reason || ''),
+        }));
+        runtime.lastPublishedFanAction = action;
+        runtime.lastPublishedFanSpeed = targetSpeed;
+      }
+    }
+    // Do not overwrite a newer calculated decision that arrived while this
+    // Flow trigger was still running.
+    if (!this.getHvacPublishSlot(index).pending) runtime.latestDecision = decision;
+  }
+
+  async _publishHvacDecisionNow(decision) {
+    if (!decision) return;
+    const settings = this.getSettings();
+    if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
+      const on = Boolean(decision.powerCommand);
+      if (this.lastPublishedHvacPower !== on) {
+        if (this.hvacPowerTrigger) await this.hvacPowerTrigger.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
+        this.lastPublishedHvacPower = on;
+        if (on) this.hvacManagedPowerOn = true;
+        else this.hvacManagedPowerOn = false;
+      }
+    }
+    if (decision.modeCommand && Boolean(settings.hvacAllowModeControl) && decision.modeCommand !== this.lastPublishedHvacMode) {
+      if (this.hvacModeTrigger) await this.hvacModeTrigger.trigger(this.localizeDisplayTokens({ mode: String(decision.modeCommand), reason: String(decision.reason || '') }));
+      this.lastPublishedHvacMode = String(decision.modeCommand);
+      const token = this.tokens.get('emshvacmode');
+      if (token) await token.setValue(String(decision.modeCommand));
+    }
+    if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
+      const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
+      if (this.lastPublishedHvacSetpoint === null || this.lastPublishedHvacSetpoint === undefined || !Number.isFinite(Number(this.lastPublishedHvacSetpoint)) || Math.abs(setpoint - Number(this.lastPublishedHvacSetpoint)) >= 0.1) {
+        if (this.hvacSetpointTrigger) await this.hvacSetpointTrigger.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
+        this.lastPublishedHvacSetpoint = setpoint;
+        const token = this.tokens.get('emshvacsetpoint');
+        if (token) await token.setValue(setpoint);
+        if (this.hvacBaselineSetpoint !== null && Math.abs(setpoint - Number(this.hvacBaselineSetpoint)) < 0.1) {
+          // The next evaluation may now finish the managed power-on session.
+          this.lastHvacControlAt = 0;
+          if (!Boolean(settings.hvacEnabled)) this.hvacBaselineSetpoint = null;
+        }
+      }
+    }
+    if (Boolean(settings.hvacAllowFanControl) && (decision.fanTarget !== null || decision.fanAction)) {
+      const currentSpeed = this.inputSeen.hvac?.fanSpeed ? Number(this.state.hvacFanSpeed) : NaN;
+      const targetSpeed = decision.fanTarget !== null && Number.isFinite(Number(decision.fanTarget))
+        ? Number(decision.fanTarget)
+        : this.getHvacFanTarget(decision.fanAction, currentSpeed, settings);
+      decision.fanTarget = targetSpeed;
+      if (targetSpeed !== null && Number.isFinite(Number(targetSpeed))
+        && (this.lastPublishedHvacFanSpeed === null || Math.abs(targetSpeed - Number(this.lastPublishedHvacFanSpeed)) > 0.0001)) {
+        const action = String(decision.fanAction || (Number.isFinite(currentSpeed)
+          ? targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'hold'
+          : 'set'));
+        if (this.hvacFanTrigger) await this.hvacFanTrigger.trigger(this.localizeDisplayTokens({
+          action,
+          current_speed: Number.isFinite(currentSpeed) ? currentSpeed : 0,
+          target_speed: targetSpeed,
+          reason: String(decision.reason || ''),
+        }));
+        this.lastPublishedHvacFanAction = action;
+        this.lastPublishedHvacFanSpeed = targetSpeed;
+      }
+    } else if (!decision.fanAction && decision.fanTarget === null) {
+      this.lastPublishedHvacFanAction = '';
+      if (this.inputSeen.hvac?.fanSpeed && Number.isFinite(Number(this.state.hvacFanSpeed))
+        && this.lastPublishedHvacFanSpeed !== null
+        && Math.abs(Number(this.state.hvacFanSpeed) - Number(this.lastPublishedHvacFanSpeed)) < 0.0001) {
+        this.lastPublishedHvacFanSpeed = Number(this.state.hvacFanSpeed);
+      }
+    }
+  }
+
+
+  getBoilerCycleDurationMs(settings = this.getSettings()) {
+    return Math.max(1, Math.min(24 * 60, Number(settings.boilerCycleMinutes) || 90)) * 60000;
+  }
+
+  completeBoilerCycle(now = Date.now(), source = '') {
+    this.boilerState.outputOn = false;
+    this.boilerState.cycleAccumulatedMs = 0;
+    this.boilerState.lastCompletedAt = now;
+    this.boilerState.lastCompletedDate = this.getLocalDateKey(new Date(now));
+    this.boilerState.lastCompletedSource = String(source || this.boilerState.activeSource || '');
+    this.boilerState.activeSource = '';
+    this.boilerState.peakSupportRequestedAt = 0;
+    this.boilerState.lastTickAt = now;
+    this.persistBoilerRuntime();
+  }
+
+  isBoilerTariffPeriodAllowed(settings = this.getSettings(), now = Date.now()) {
+    const period = ['day','night','always'].includes(String(settings.boilerTariffPeriod || '')) ? String(settings.boilerTariffPeriod) : 'always';
+    if (period === 'always') return true;
+    const parse = value => { const m=/^(\d{1,2}):(\d{2})$/.exec(String(value||'')); if(!m) return null; const h=Number(m[1]),min=Number(m[2]); return h>=0&&h<24&&min>=0&&min<60?h*60+min:null; };
+    const start=parse(settings.boilerDayStartTime || '07:00'); const end=parse(settings.boilerDayEndTime || '23:00');
+    if (start===null||end===null) return true;
+    const minute=localParts(new Date(now), settings.timezone || 'Europe/Brussels').minuteOfDay;
+    const isDay=start===end?true:(start<end?minute>=start&&minute<end:minute>=start||minute<end);
+    return period === 'day' ? isDay : !isDay;
+  }
+
+  calculateBoilerDecision(result = this.latestResult, settings = this.getSettings(), options = {}) {
+    const now = Number(options.now) || Date.now();
+    const gridFreshness = this.getGridFreshness(settings, now);
+    this.updateBoilerRuntimeClock(now);
+    const enabled = this.getBoilerCount(settings) > 0 && Boolean(settings.boilerEnabled);
+    const hasHomeBattery = this.getBatteryCount(settings) > 0;
+    const avgSoc = this.getAverageBatterySoc(settings);
+    const configuredStartSoc = Number(settings.boilerStartSoc);
+    const startSoc = Math.max(0, Math.min(100, Number.isFinite(configuredStartSoc) ? configuredStartSoc : 90));
+    const configuredStopSoc = Number(settings.boilerStopSoc);
+    const stopSoc = Math.min(startSoc, Math.max(0, Math.min(100, Number.isFinite(configuredStopSoc) ? configuredStopSoc : 70)));
+    const powerW = Math.max(1, Math.min(20000, Number(settings.boilerPowerW) || 1800));
+    const cycleMs = this.getBoilerCycleDurationMs(settings);
+    const accumulatedMs = Math.max(0, Number(this.boilerState.cycleAccumulatedMs) || 0);
+    const tariff = result?.tariff || findCurrentTariff(new Date(now), settings);
+    const fallbackDays = Math.max(0, Math.min(30, Number(settings.boilerFallbackDays) || 0));
+    const tariffMinBatterySoc = Math.max(0, Math.min(100, Number.isFinite(Number(settings.boilerTariffMinBatterySoc)) ? Number(settings.boilerTariffMinBatterySoc) : 40));
+    const configuredTariffStopSoc = Math.max(0, Math.min(100, Number.isFinite(Number(settings.boilerTariffStopBatterySoc)) ? Number(settings.boilerTariffStopBatterySoc) : 30));
+    // Never allow the stop threshold above the start threshold. This keeps the
+    // tariff control hysteretic even if settings were imported incorrectly.
+    const tariffStopBatterySoc = Math.min(tariffMinBatterySoc, configuredTariffStopSoc);
+    const solarFallback = this.getBoilerSolarFallbackStatus(now, settings);
+    const daysWithoutCycle = solarFallback.missedSolarDays;
+    const fallbackDue = solarFallback.fallbackDue;
+    const tariffSelected = fallbackDue && this.isBoilerTariffSelected(settings, tariff) && this.isBoilerTariffPeriodAllowed(settings, now);
+    const tariffBatteryReady = !hasHomeBattery || (avgSoc !== null && avgSoc >= tariffMinBatterySoc);
+    const tariffAllowed = tariffSelected && tariffBatteryReady;
+    const gridW = Number.isFinite(Number(options.gridPowerW)) ? Number(options.gridPowerW) : Number(this.state.gridPowerW);
+    const currentBatteryCommandW = Number.isFinite(Number(options.currentBatteryCommandW))
+      ? Number(options.currentBatteryCommandW)
+      : Number(this.state.lastTotalCommandW) || 0;
+    const nextBatteryCommandW = Number.isFinite(Number(options.nextBatteryCommandW))
+      ? Number(options.nextBatteryCommandW)
+      : currentBatteryCommandW;
+    const configuredPeakLimitW = Number(settings.peakLimitW);
+    const peakLimitW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500);
+    const peakGuardActive = Boolean(settings.peakShaveEnabled)
+      && (String(result?.action || '') === 'peak_shave' || String(result?.override || '') === 'peak_shave');
+    const peakGuardBatterySupportEnabled = hasHomeBattery && Boolean(settings.boilerPeakGuardBatterySupportEnabled);
+    const configuredMinSoc = Number(settings.minSoc);
+    const hardMinSoc = Math.max(0, Math.min(100, Number.isFinite(configuredMinSoc) ? configuredMinSoc : 10));
+    const configuredMaxDischargeW = Number(settings.maxTotalDischargeW);
+    const maxBatteryDischargeW = Math.max(0, Number.isFinite(configuredMaxDischargeW) ? configuredMaxDischargeW : 0);
+    const additionalBatterySupportW = Math.max(0, maxBatteryDischargeW - nextBatteryCommandW);
+    const batterySupportSocReady = avgSoc !== null && avgSoc > Math.max(hardMinSoc, tariffStopBatterySoc) + 0.05;
+    // gridW already contains the effect of the currently applied battery command.
+    // Predict the meter value after the next battery command by removing the
+    // old command contribution and applying the new one. This lets tariff boiler
+    // heating continue while Peak Guard is successfully supported by the battery.
+    const predictedGridAfterBatteryW = Number.isFinite(gridW)
+      ? gridW + currentBatteryCommandW - nextBatteryCommandW
+      : null;
+    const pvPowerW = Math.max(0, Number(this.state.pvPowerW) || 0);
+    const lastPvAt = Number(this.inputUpdatedAt?.pv) || 0;
+    const pvFresh = Boolean(this.inputSeen.pv)
+      && lastPvAt > 0
+      && (now - lastPvAt) <= 5 * 60 * 1000
+      && pvPowerW > 0;
+    const headroomW = pvFresh ? this.getPvCurtailmentHeadroomW(settings) : 0;
+    // Remove the currently applied battery command from the meter position before
+    // treating export as solar surplus. Internal battery convention is positive
+    // discharge / negative charge, so -(grid + battery) represents the solar
+    // power that is actually left for battery charging and/or grid export. Clamp
+    // it to the fresh PV input so battery-created export can never start the boiler.
+    const measuredSolarSurplusW = pvFresh && Number.isFinite(gridW)
+      ? Math.min(pvPowerW, Math.max(0, -(gridW + currentBatteryCommandW)))
+      : 0;
+    const pvSurplusW = measuredSolarSurplusW + Math.max(0, headroomW);
+    const pvEligible = (!hasHomeBattery || (avgSoc !== null && avgSoc >= startSoc)) && pvSurplusW >= powerW;
+    const warmUntil = this.getBoilerWarmUntil(settings);
+    const warm = Number(this.boilerState.lastCompletedAt || 0) > 0 && now < warmUntil;
+    const completedToday = this.isBoilerCompletedToday(now, settings);
+    const running = Boolean(this.boilerState.outputOn);
+    const decision = {
+      enabled,
+      on: running,
+      outputCommand: null,
+      running,
+      activeSource: String(this.boilerState.activeSource || ''),
+      startEligible: false,
+      startAllowedByPriority: options.allowStart !== false,
+      averageBatterySoc: avgSoc,
+      startSoc,
+      stopSoc,
+      powerW,
+      pvSurplusW: Math.round(pvSurplusW),
+      cycleMinutes: Math.round(cycleMs / 60000),
+      accumulatedMinutes: Math.min(cycleMs, accumulatedMs) / 60000,
+      remainingMinutes: Math.max(0, cycleMs - accumulatedMs) / 60000,
+      completedToday,
+      warm,
+      warmUntil,
+      fallbackDays,
+      tariffMinBatterySoc,
+      tariffStopBatterySoc,
+      daysWithoutCycle,
+      missedSolarDays: daysWithoutCycle,
+      remainingSolarDays: solarFallback.remainingSolarDays,
+      nextFallbackAt: solarFallback.nextFallbackAt,
+      fallbackDue,
+      tariffSelected,
+      tariffBatteryReady,
+      tariffAllowed,
+      peakGuardActive,
+      peakGuardBatterySupportEnabled,
+      peakGuardBatterySupportActive: false,
+      peakGuardBatterySupportNeededW: 0,
+      peakLimitW,
+      currentBatteryCommandW: Math.round(currentBatteryCommandW),
+      nextBatteryCommandW: Math.round(nextBatteryCommandW),
+      predictedGridAfterBatteryW: predictedGridAfterBatteryW === null ? null : Math.round(predictedGridAfterBatteryW),
+      gridFresh: gridFreshness.fresh,
+      gridAgeSeconds: gridFreshness.ageSeconds,
+      reason: '',
+    };
+
+    if (running && accumulatedMs >= cycleMs) {
+      const completedSource = String(this.boilerState.activeSource || 'pv');
+      this.completeBoilerCycle(now, completedSource);
+      decision.on = false;
+      decision.running = false;
+      decision.outputCommand = false;
+      decision.accumulatedMinutes = 0;
+      decision.remainingMinutes = 0;
+      decision.completedToday = true;
+      decision.warm = true;
+      decision.warmUntil = this.getBoilerWarmUntil(settings);
+      decision.reason = 'Boiler-opwarmcyclus voltooid';
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    if (!enabled) {
+      if (running) {
+        decision.on = false;
+        decision.outputCommand = false;
+        this.boilerState.outputOn = false;
+        this.boilerState.activeSource = '';
+        this.persistBoilerRuntime();
+      }
+      decision.reason = 'Boiler-module uit';
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    // The boiler is a grid-significant load. Never start or keep a HomeFlux-
+    // managed heating cycle from an old P1 value. Preserve accumulated cycle
+    // time so the cycle can continue safely after the meter recovers.
+    if (!gridFreshness.fresh && running) {
+      decision.on = false;
+      decision.running = false;
+      decision.outputCommand = false;
+      decision.reason = 'Netmeting verouderd · boiler gestopt';
+      this.boilerState.outputOn = false;
+      this.boilerState.activeSource = '';
+      this.boilerState.peakSupportRequestedAt = 0;
+      this.persistBoilerRuntime();
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+    if (!gridFreshness.fresh && !warm) {
+      decision.reason = this.inputSeen.grid ? 'Wachten op verse netmeting' : 'Wachten op netmeting';
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    if (running) {
+      const source = String(this.boilerState.activeSource || 'pv');
+      // PV-driven boiler heating remains the first flexible load to yield during
+      // Peak Guard. Tariff fallback is different: grid use is intentional there,
+      // so the battery may support the boiler as long as the predicted grid value
+      // remains within the configured hard Peak Guard limit.
+      if (source !== 'tariff' && peakGuardActive) {
+        decision.on = false;
+        decision.outputCommand = false;
+        decision.reason = 'Peak Guard · boiler onmiddellijk uit';
+      } else if (source === 'tariff' && peakGuardActive
+        && (predictedGridAfterBatteryW === null || predictedGridAfterBatteryW > peakLimitW)) {
+        const supportNeededW = predictedGridAfterBatteryW === null ? Infinity : Math.max(0, predictedGridAfterBatteryW - peakLimitW);
+        const supportFeasible = peakGuardBatterySupportEnabled
+          && batterySupportSocReady
+          && maxBatteryDischargeW > 0
+          && Number.isFinite(supportNeededW)
+          && supportNeededW <= additionalBatterySupportW + 0.5;
+        // Give the battery controller enough time to publish and physically react
+        // before shedding the essential boiler. This does not raise Peak Guard:
+        // if the meter still cannot be brought below the hard limit after the
+        // bounded grace window, the boiler is switched off as before.
+        const supportGraceMs = Math.min(60000, Math.max(15000, ((Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 2) + 5) * 1000));
+        if (supportFeasible) {
+          if (!Number(this.boilerState.peakSupportRequestedAt)) this.boilerState.peakSupportRequestedAt = now;
+          const supportElapsedMs = Math.max(0, now - Number(this.boilerState.peakSupportRequestedAt));
+          if (supportElapsedMs <= supportGraceMs) {
+            decision.peakGuardBatterySupportActive = true;
+            decision.peakGuardBatterySupportNeededW = Math.round(supportNeededW);
+            decision.reason = `Boiler verwarmt tijdens geselecteerd tarief · batterij ondersteunt Peak Guard (${Math.round(supportNeededW)} W extra nodig)`;
+            this.boilerState.latestDecision = decision;
+            // The normal meter-driven Peak Guard remains the authority and will
+            // recalculate the battery command from fresh P1 data.
+            return decision;
+          }
+        }
+        this.boilerState.peakSupportRequestedAt = 0;
+        decision.on = false;
+        decision.outputCommand = false;
+        decision.reason = predictedGridAfterBatteryW === null
+          ? 'Peak Guard · onvoldoende meetdata · boilertariefladen gestopt'
+          : `Peak Guard ${peakLimitW} W niet haalbaar (${Math.round(predictedGridAfterBatteryW)} W verwacht) · boilertariefladen gestopt`;
+      } else if (source === 'pv' && hasHomeBattery && avgSoc !== null && avgSoc <= stopSoc) {
+        decision.on = false;
+        decision.outputCommand = false;
+        decision.reason = `Batterij-SoC ${avgSoc.toFixed(1)}% · boiler uit onder ${stopSoc}%`;
+      } else if (source === 'tariff' && !this.isBoilerTariffSelected(settings, tariff)) {
+        decision.on = false;
+        decision.outputCommand = false;
+        decision.reason = 'Boilertarief afgelopen · cyclus later verderzetten';
+      } else if (source === 'tariff' && hasHomeBattery && (avgSoc === null || avgSoc <= tariffStopBatterySoc)) {
+        decision.on = false;
+        decision.outputCommand = false;
+        decision.reason = avgSoc === null
+          ? 'Wachten op batterij-SoC voor boilertariefladen'
+          : `Batterij-SoC ${avgSoc.toFixed(1)}% · boilertariefladen stopt op/onder ${tariffStopBatterySoc}%`;
+      } else {
+        this.boilerState.peakSupportRequestedAt = 0;
+        decision.reason = source === 'tariff'
+          ? (peakGuardActive
+            ? `Boiler verwarmt tijdens geselecteerd tarief · Peak Guard ondersteund door batterij (${Math.round(predictedGridAfterBatteryW)} W verwacht)`
+            : 'Boiler verwarmt tijdens geselecteerd tarief')
+          : 'Boiler verwarmt met PV-overschot';
+        this.boilerState.latestDecision = decision;
+        return decision;
+      }
+      this.boilerState.outputOn = false;
+      this.boilerState.activeSource = '';
+      this.boilerState.peakSupportRequestedAt = 0;
+      this.persistBoilerRuntime();
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    if (warm) {
+      decision.reason = `Boiler opgewarmd · opnieuw koud om ${this.getBoilerColdResetTime(settings)}`;
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    const source = tariffAllowed ? 'tariff' : pvEligible ? 'pv' : '';
+    if (!source) {
+      if (tariffSelected && !tariffBatteryReady) {
+        decision.reason = avgSoc === null
+          ? 'Geselecteerd boilertarief · wachten op batterij-SoC'
+          : `Geselecteerd boilertarief · batterij eerst naar ${tariffMinBatterySoc}% (nu ${avgSoc.toFixed(1)}%)`;
+      } else if (fallbackDue && !tariffSelected) {
+        decision.reason = 'Zonnedaglimiet bereikt · wachten op toegestaan boilertarief';
+      } else if (hasHomeBattery && avgSoc === null) decision.reason = 'Wachten op batterij-SoC';
+      else if (hasHomeBattery && avgSoc < startSoc) decision.reason = `Boiler start pas boven ${startSoc}% batterij`;
+      else if (pvSurplusW < powerW) decision.reason = `Wachten op ${powerW} W resterend PV-overschot`;
+      else decision.reason = 'Wachten op PV-overschot of geselecteerd boilertarief';
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    decision.startEligible = true;
+    decision.activeSource = source;
+    if (options.allowStart === false) {
+      decision.reason = source === 'tariff'
+        ? 'Boiler mag op tarief starten · wacht op prioriteitencheck'
+        : 'Voldoende PV-overschot · boiler wacht op prioriteitencheck';
+      this.boilerState.latestDecision = decision;
+      return decision;
+    }
+
+    decision.on = true;
+    decision.outputCommand = true;
+    decision.running = true;
+    decision.reason = source === 'tariff' ? 'Boiler gestart tijdens geselecteerd tarief' : 'Boiler gestart met PV-overschot';
+    this.boilerState.outputOn = true;
+    this.boilerState.activeSource = source;
+    this.boilerState.peakSupportRequestedAt = 0;
+    this.boilerState.lastTickAt = now;
+    this.persistBoilerRuntime();
+    this.boilerState.latestDecision = decision;
+    return decision;
+  }
+
+  async publishBoilerDecision(decision) {
+    if (!decision) return;
+
+    // Warmed status is independent from the relay command. Publish it whenever
+    // a completed cycle becomes warm, the warm-hold expires, or the boiler
+    // module is disabled. This uses the existing EMS pass and adds no timer.
+    const warmed = Boolean(decision.enabled && decision.warm);
+    if (this.boilerState.lastPublishedWarmed !== warmed) {
+      if (this.boilerWarmedTrigger) await this.boilerWarmedTrigger.trigger(this.localizeDisplayTokens({ warmed }));
+      this.boilerState.lastPublishedWarmed = warmed;
+    }
+
+    const initialSync = this.boilerState.lastPublishedOutput === null || this.boilerState.lastPublishedOutput === undefined;
+    if (!initialSync && (decision.outputCommand === null || decision.outputCommand === undefined)) return;
+    const on = initialSync ? Boolean(decision.on) : Boolean(decision.outputCommand);
+    if (this.boilerState.lastPublishedOutput === on) return;
+    hvacPermanent.cancel(this);
+    if (this.boilerTrigger) await this.boilerTrigger.trigger(this.localizeDisplayTokens({ on }));
+    this.boilerState.lastPublishedOutput = on;
+  }
+
+  isHvacManagedActiveFor(index) {
+    const u = this.hvacPermanentRuntime?.units?.[index];
+    if (u && !u.legacyCoordinated && u.setpoint !== null && u.setpoint !== undefined && !u.powerOff && !u.outdoorStopped) return true;
+    if (index === 0) return this.hvacBaselineSetpoint !== null || Boolean(this.hvacManagedPowerOn);
+    const runtime = this.getExtraHvac(index);
+    return Boolean(runtime && (runtime.baselineSetpoint !== null || runtime.managedPowerOn));
+  }
+
+  isEvDecisionOutputActiveFor(index, decision, settings = this.getSettings()) {
+    const type = this.getEvControlTypeFor(index, settings);
+    if (type === 'mode') {
+      // getEvChargeModeFor only reads enable/mode/type from the EV config.
+      // It does not need a cloned TOU schedule or Flow target/deadline.
+      return this.getEvChargeModeFor(index, decision, {
+        evEnabled: settings[this.getEvSettingKey(index, 'Enabled')],
+        evControlType: settings[this.getEvSettingKey(index, 'ControlType')],
+        evMode: this.getEffectiveEvModeFor(index, settings),
+      }) !== 'stop';
+    }
+    return Boolean(decision?.allowed && Number(decision?.desiredCurrentA || 0) > 0);
+  }
+
+  getEvExpectedPowerFor(index, decision, settings = this.getSettings()) {
+    if (!decision) return 0;
+    const active = this.isEvDecisionOutputActiveFor(index, decision, settings);
+    const desired = Math.max(0, Number(decision.desiredPowerW) || 0);
+    if (desired > 0) return desired;
+    if (active) return Math.max(0, Number(decision.actualPowerW) || 0);
+    return 0;
+  }
+
+  async publishEvPortfolioNow(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
+    // This pass services every EV. Supersede old output wakeups; the existing
+    // per-charger gates below rearm only the deadlines that are still needed.
+    if (this.evTimer) clearTimeout(this.evTimer);
+    this.evTimer = null;
+    for (let index = 1; index < 4; index += 1) {
+      const runtime = this.getExtraEv(index);
+      if (runtime?.timer) clearTimeout(runtime.timer);
+      if (runtime) runtime.timer = null;
+    }
+    const storedSettings = this.getSettings();
+    const evCount = this.getEvCount(storedSettings);
+    const batteryOutputEnabled = Boolean(storedSettings.controlEnabled)
+      && this.getBatteryCount(storedSettings) > 0 && this.isChargeTestValid(storedSettings);
+    const physicalOnly = Boolean(options.evOnly) || options.allowEvIncrease === false || !batteryOutputEnabled;
+    if (options.evOnly) {
+      // Rebuild after any preceding asynchronous EV pass. Never replay a
+      // heartbeat decision made while another Flow publication was pending.
+      const now = Date.now();
+      const runtime = this.getRuntimeSettings(storedSettings);
+      result = { ...(this.latestResult || {}),
+        tariff: findCurrentTariff(new Date(now), runtime, this.getEvaluationState(storedSettings, now)),
+      };
+      currentBatteryCommandW = Number(this.state.lastTotalCommandW) || 0;
+      nextBatteryCommandW = currentBatteryCommandW;
+    }
+    if (physicalOnly) {
+      // Reserve the more importing outcome of current, planned, pending and
+      // in-flight battery commands, including Split Command minimum watts.
+      const targets = [Number(currentBatteryCommandW) || 0];
+      if (batteryOutputEnabled) targets.push(Number(nextBatteryCommandW) || 0);
+      // A disabled battery's simulated candidate is not an actual pending
+      // command. Real in-flight writes still reserve their importing outcome.
+      for (const commands of [batteryOutputEnabled ? result?.candidateCommands : null,
+        this.pendingResult?.candidateCommands, this.inFlightBatteryCommands]) {
+        if (!Array.isArray(commands)) continue;
+        let total = 0;
+        for (let index = 0; index < commands.length; index += 1) {
+          const value = Number(commands[index]) || 0;
+          const config = this.getSplitBatteryConfig(index, storedSettings);
+          if (!config.enabled) { total += value; continue; }
+          const mode = this.getSplitDesiredMode(value, config);
+          const watts = Math.abs(this.getSplitPowerValue(mode, value, config));
+          total += mode === 'charge' ? -watts : watts;
+        }
+        targets.push(total);
+      }
+      nextBatteryCommandW = Math.min(...targets);
+    }
+    const portfolio = this.calculateEvPortfolioDecisions(
+      result, nextBatteryCommandW, currentBatteryCommandW, storedSettings,
+      { physicalOnly, monitoringRoute: options.heartbeatEv ? 'heartbeat'
+        : (options.deferredEvContext ? 'deferred' : options.deadlineEvContext ? 'deadline' : options.evOnly ? 'publication' : 'context_output') },
+    );
+    if (options.deferredEvContext) this.recordDiagnosticCounter('evContextDeferredEvaluations');
+    // P1 readiness belongs to EV control itself, independently of battery
+    // configuration/test/output. Use the same gate in every portfolio route.
+    const evDecisions = [];
+    let adjustedGridW = Number(this.state.gridPowerW) || 0;
+    let totalActualEvPowerW = 0;
+    let totalDesiredEvPowerW = 0;
+    let evStartedThisCycle = false;
+
+    for (let index = 0; index < evCount; index += 1) {
+      // An earlier EV publication may have awaited Homey I/O. Recheck the
+      // latest enable/connection/P1 state before granting the next EV output.
+      const liveSettings = index > 0 ? this.getSettings() : storedSettings;
+      const instanceSettings = this.getEvInstanceSettings(index, liveSettings,
+        options.heartbeatEv ? 'heartbeat' : options.deferredEvContext ? 'deferred' : 'publication');
+      instanceSettings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
+      let decision = { ...(portfolio[index] || {}), instance: index + 1 };
+      const input = this.getEvInputSnapshot(index);
+      const evInputSafe = this.getGridFreshness(liveSettings).fresh;
+      const evConfigured = index < this.getEvCount(liveSettings) && Boolean(instanceSettings.evEnabled);
+      const connected = Boolean(input?.seen?.connected && input.connected)
+        && !this.getEvSessionDetectionRuntime(index)?.endedLatched;
+      const previousActive = this.isEvOutputActiveFor(index, storedSettings);
+      // A heartbeat/deferred-output pass budgets from physical headroom. No
+      // unrelated battery publication is required to release a safe EV start.
+      if ((!evInputSafe || !evConfigured || !connected) && decision.allowed) {
+        decision = { ...decision, allowed: false, desiredCurrentA: 0, desiredPowerW: 0,
+          effectiveChargeMode: 'stop', peakLimited: true, source: 'off',
+          reason: !evConfigured ? 'EV-module uit' : !connected
+            ? 'EV niet aangesloten of sessie beëindigd' : 'Wachten op geldige netmeting' };
+      }
+
+      let desiredActive = this.isEvDecisionOutputActiveFor(index, decision, storedSettings);
+      if (!previousActive && desiredActive && evStartedThisCycle) {
+        decision.allowed = false;
+        decision.desiredCurrentA = 0;
+        decision.desiredPowerW = 0;
+        decision.requestedCurrentA = 0;
+        decision.requestedPowerW = 0;
+        decision.pvRequestPowerW = 0;
+        decision.gridRequestPowerW = 0;
+        decision.source = 'off';
+        decision.reason = 'Een andere EV start deze regelcyclus · opnieuw beoordelen bij de volgende EMS-cyclus';
+        desiredActive = false;
+      }
+      if (!previousActive && desiredActive) evStartedThisCycle = true;
+
+      const actualPowerW = Math.max(0, Number(decision.actualPowerW) || 0);
+      const expectedPowerW = this.getEvExpectedPowerFor(index, decision, storedSettings);
+      totalActualEvPowerW += actualPowerW;
+      totalDesiredEvPowerW += expectedPowerW;
+      adjustedGridW += expectedPowerW - actualPowerW;
+      evDecisions.push(decision);
+
+      const previousDecision = index === 0 ? this.latestEvDecision : this.getExtraEv(index)?.latestDecision;
+      this.rememberEvBatterySupply(index, previousDecision);
+      if (previousDecision?.allowed && !decision.allowed && this.evBatterySupply?.[index]) {
+        this.evBatteryMeterLiveUntil = Date.now() + EV_CURRENT_FEEDBACK_MAX_MS;
+      }
+      if (index === 0) {
+        this.latestEvDecision = decision;
+        await this.publishEvDecision(decision);
+      } else {
+        const runtime = this.getExtraEv(index);
+        if (runtime) runtime.latestDecision = decision;
+        await this.publishAdditionalEvDecision(index, decision);
+      }
+    }
+
+    // EV instances removed from the configured count are explicitly stopped
+    // once if HomeFlux was still publishing an active output for them.
+    for (let index = evCount; index < 4; index += 1) {
+      if (!this.isEvOutputActiveFor(index, storedSettings)) continue;
+      const settings = this.getEvInstanceSettings(index, storedSettings);
+      const input = this.getEvInputSnapshot(index) || {};
+      const actualCurrentA = Math.max(0, Number(input.chargeCurrentA) || 0);
+      const stopDecision = {
+        instance: index + 1, enabled: false, connected: Boolean(input.connected), allowed: false,
+        desiredCurrentA: 0, desiredPowerW: 0, actualCurrentA,
+        actualPowerW: Math.round(actualCurrentA * evPowerPerAmp(settings)),
+        source: 'off', reason: `EV ${index + 1} niet actief in configuratie`, peakLimited: false,
+      };
+      if (index === 0) {
+        this.latestEvDecision = stopDecision;
+        await this.publishEvDecision(stopDecision);
+      } else {
+        const runtime = this.getExtraEv(index);
+        if (runtime) runtime.latestDecision = stopDecision;
+        await this.publishAdditionalEvDecision(index, stopDecision);
+      }
+    }
+
+    return { evDecisions, adjustedGridW, totalActualEvPowerW, totalDesiredEvPowerW, evStartedThisCycle };
+  }
+
+  getEvHeartbeatInputSignature(settings = this.getSettings()) {
+    // A compact, read-only identity for the physical inputs that a portfolio
+    // pass actually consumed. Never use the signature as a cached decision.
+    const count = this.getEvCount(settings);
+    const inputs = [];
+    for (let index = 0; index < count; index += 1) {
+      const input = this.getEvInputSnapshot(index) || {};
+      const session = this.getEvSessionDetectionRuntime(index);
+      const energy = this.evEnergyPlans?.[index];
+      const soc = this.evSocPlans?.[index];
+      inputs.push([
+        index, input.connected, input.chargeCurrentA, input.soc,
+        input.seen?.connected, input.seen?.chargeCurrent, input.seen?.soc,
+        input.updatedAt?.connected, input.updatedAt?.chargeCurrent, input.updatedAt?.soc,
+        session?.endedLatched, session?.loadAbsent, session?.observedModePowerW,
+        energy?.active, energy?.remainingKwh, energy?.deadlineAt, energy?.guarantee,
+        soc?.active, soc?.targetSoc, soc?.deadlineAt, soc?.guarantee,
+      ]);
+    }
+    return JSON.stringify([
+      count, this.inputUpdatedAt?.grid, this.inputUpdatedAt?.pv,
+      this.state.gridPowerW, this.state.pvPowerW, this.state.lastTotalCommandW,
+      this.controlContextRevision, this.planningCache?.generation,
+      inputs,
+    ]);
+  }
+
+  canCoalesceQueuedEvHeartbeat(completed, settings = this.getSettings(), now = Date.now()) {
+    if (!completed || completed.settings !== this.settingsCache
+      || completed.runtimeSettings !== this.cachedRuntimeSettings
+      || completed.completedAt < completed.startedAt
+      || now - completed.completedAt < 0 || now - completed.completedAt > 1000
+      || Math.floor(completed.startedAt / 60000) !== Math.floor(now / 60000)
+      || this.contextDirty || this.contextEvaluationRunning
+      || this.evPublishing || this.evTimer || this.forceEvOutput
+      || this.commandPublishing || this.pendingResult || this.inFlightBatteryCommands
+      || this.evContextRefresh?.timer || this.evContextRefresh?.due
+      || this.evContextRefresh?.requests?.size) return false;
+    const nextEvent = Number(this.latestResult?.nextEventAt);
+    if (nextEvent > completed.startedAt && nextEvent <= now) return false;
+    const nextTariff = Number(this.controlContext?.tariffValidUntil);
+    if (nextTariff > completed.startedAt && nextTariff <= now) return false;
+    if (!this.getGridFreshness(settings).fresh) return false;
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const runtime = this.getExtraEv(index);
+      if (runtime?.publishing || runtime?.timer || runtime?.forceOutput) return false;
+      const energy = this.evEnergyPlans?.[index];
+      const soc = this.evSocPlans?.[index];
+      if ((energy?.active && energy.deadlineAt > completed.startedAt && energy.deadlineAt <= now)
+        || (soc?.active && soc.deadlineAt > completed.startedAt && soc.deadlineAt <= now)) return false;
+      const decision = index === 0 ? this.latestEvDecision : runtime?.latestDecision;
+      if (decision?.deadlinePlanning && Number(decision.deadlinePlanNextAt) <= now) return false;
+      if (decision && settings[this.getEvSettingKey(index, 'SocEnabled')] !== false) {
+        const fresh = this.getEvSocFreshness(index, {
+          evSocFreshnessMinutes: settings[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+        }, now);
+        if (Boolean(decision.socFresh) !== Boolean(fresh.fresh)) return false;
+      }
+    }
+    return completed.signature === this.getEvHeartbeatInputSignature(settings);
+  }
+
+  async publishEvPortfolio(result, nextBatteryCommandW, currentBatteryCommandW, options = {}) {
+    // Serialize the shared EV budget, not the battery controller. Per-charger
+    // publication mutexes/intervals remain the final output gate.
+    let waitedForEvPublication = false;
+    while (this.evPortfolioPass) {
+      waitedForEvPublication = true;
+      await this.evPortfolioPass;
+    }
+    // A heartbeat that waited for an identical, just-finished pass does not
+    // need to repeat the tariff scan and shared allocation. New meter/Flow
+    // feedback, safety state, I/O or a time boundary always forces a fresh pass.
+    if (options.heartbeatEv && waitedForEvPublication
+      && this.canCoalesceQueuedEvHeartbeat(this.lastCompletedEvPortfolio)) {
+      this.recordDiagnosticCounter('evHeartbeatAlreadyServiced');
+      return null;
+    }
+    if (options.heartbeatEv && this.isEvPortfolioQuiet(this.getSettings())) {
+      this.recordDiagnosticCounter('evHeartbeatQuietSkipped');
+      return null;
+    }
+    // A regular or output pass may have handled this request while we waited
+    // for Homey I/O. Never execute a withdrawn/superseded timer request.
+    if (options.deferredEvContext && (!this.evContextRefresh?.due
+      || options.evContextGeneration !== this.evContextRefresh.generation
+      || !this.revalidateEvContextRequests())) return null;
+    let release;
+    const pass = new Promise(resolve => { release = resolve; });
+    this.evPortfolioPass = pass;
+    const startedAt = Date.now();
+    const startSignature = this.getEvHeartbeatInputSignature();
+    const startSettings = this.settingsCache;
+    const startRuntimeSettings = this.cachedRuntimeSettings;
+    try {
+      const published = await this.publishEvPortfolioNow(result, nextBatteryCommandW, currentBatteryCommandW, options);
+      const completedAt = Date.now();
+      // Do not certify a pass if any physical/Flow input changed while Homey
+      // I/O was pending. A waiting heartbeat must then re-evaluate from scratch.
+      this.lastCompletedEvPortfolio = startSignature === this.getEvHeartbeatInputSignature()
+        ? { startedAt, completedAt, signature: startSignature,
+          settings: startSettings, runtimeSettings: startRuntimeSettings }
+        : null;
+      return published;
+    } finally {
+      this.evPortfolioPass = null;
+      release();
+    }
+  }
+
+  isEvPortfolioQuiet(settings, now = Date.now()) {
+    if (this.evPortfolioPass || this.evPublishing || this.forceEvOutput || this.evTimer
+      || this.evContextRefresh?.timer || this.evContextRefresh?.due || this.evContextRefresh?.requests.size
+      || this.evPvSession?.active) return false;
+    const count = this.getEvCount(settings);
+    for (let index = 0; index < 4; index += 1) {
+      const runtime = index === 0 ? null : this.getExtraEv(index);
+      const input = this.getEvInputSnapshot(index);
+      const session = index < count ? this.getEvSessionDetectionRuntime(index) : null;
+      if (index < count && input?.connected && !session?.endedLatched) return false;
+      // STOP is not settled if a mode-only charger is still attributed
+      // physical power by its latest P1 load observation.
+      if (index < count && Number(session?.observedModePowerW) > 0 && !session?.loadAbsent) return false;
+      if (runtime?.publishing || runtime?.forceOutput || runtime?.timer || runtime?.pvSession?.active) return false;
+      if (this.isEvOutputActiveFor(index, settings)) return false;
+      const allowed = index === 0 ? this.lastPublishedEvAllowed : runtime?.lastPublishedAllowed;
+      if (allowed) return false;
+      if (index < count) {
+        const type = this.getEvControlTypeFor(index, settings);
+        const mode = index === 0 ? this.lastPublishedEvChargeMode : runtime?.lastPublishedChargeMode;
+        if (['mode','hybrid'].includes(type) && mode !== 'stop') return false;
+        // Contradictory, still-fresh physical feedback must retain recovery.
+        if (input?.seen?.chargeCurrent && Number(input.chargeCurrentA) > 0
+          && now - Number(input.updatedAt?.chargeCurrent || 0) <= EV_CURRENT_FEEDBACK_MAX_MS) return false;
+      }
+      const drop = this.evBatteryCurrentDrop?.[index];
+      if (drop && now <= drop.expiresAt && Number(this.inputUpdatedAt?.grid) < drop.at) return false;
+    }
+    return true;
+  }
+
+  async runEvHeartbeat() {
+    if (this.evHeartbeatRunning) return;
+    const settings = this.getSettings();
+    const hasEv = Array.from({ length: this.getEvCount(settings) }, (_, index) =>
+      Boolean(settings[this.getEvSettingKey(index, 'Enabled')])).some(Boolean);
+    if (!hasEv && ![0, 1, 2, 3].some(index => this.isEvOutputActiveFor(index, settings))) return;
+    if (this.isEvPortfolioQuiet(settings)) {
+      this.recordDiagnosticCounter('evHeartbeatQuietSkipped');
+      return;
+    }
+    this.evHeartbeatRunning = true;
+    const diagnosticCpu = this.startDiagnosticCpuSection('ev_heartbeat');
+    this.recordDiagnosticCounter('evHeartbeatContextRequests');
+    try {
+      await this.refreshEvOnlyContext({ heartbeatEv: true });
+    } catch (err) {
+      this.error('EV heartbeat evaluation failed', err);
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+      this.evHeartbeatRunning = false;
+    }
+  }
+
+  async refreshEvOnlyContext(options = {}) {
+    // Timer/heartbeat callbacks request the shared context; they never scan
+    // tariffs or calculate a second EV portfolio outside that context.
+    const boundary = Boolean(options.deadlineEvContext);
+    const reason = boundary ? 'ev_deadline_context' : options.deferredEvContext
+      ? 'ev_deferred_context' : options.heartbeatEv ? 'ev_heartbeat_context' : 'ev_output_context';
+    this.recordDiagnosticCounter('evSlowContextRequests');
+    this.requestContextEvaluate(boundary, reason, 0, false, false);
+    return null;
+  }
+
+  async publishFlexibleLoads(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
+    const storedSettings = this.getSettings();
+    const { evDecisions, adjustedGridW, totalActualEvPowerW, totalDesiredEvPowerW, evStartedThisCycle }
+      = await this.publishEvPortfolio(result, nextBatteryCommandW, currentBatteryCommandW, options);
+    const runHvac = result?._runHvacContextPass !== false;
+    if (runHvac) hvacPermanent.slowTick(this);
+    const configuredHvacCount = this.getHvacCount(storedSettings);
+    const hvacPortfolio = runHvac ? hvacCoordination.prepare(this, storedSettings, result) : null;
+    const hvacCount = runHvac ? configuredHvacCount : 0;
+    const hvacDecisions = Array.from({length:configuredHvacCount}, (_,i)=>i===0?this.latestHvacDecision:this.getExtraHvac(i)?.latestDecision || null);
+    const hvacPreviews = Array(hvacCount).fill(null);
+    const priorityDue = this.isFlexiblePriorityEvaluationDue(Date.now(), storedSettings);
+    const hvacPriorityOrder = this.getFlexibleLoadPriorityOrder(storedSettings);
+    if(hvacPortfolio)hvacPortfolio.priorityOrder=hvacPriorityOrder;
+
+    for (let index = 0; index < hvacCount; index += 1) {
+      const active = this.isHvacManagedActiveFor(index);
+      hvacPreviews[index] = this.calculateHvacControlFor(
+        index,
+        result,
+        evDecisions[0] || null,
+        nextBatteryCommandW,
+        currentBatteryCommandW,
+        {
+          storedSettings,
+          allowStart: active && !hvacPermanent.enabled(hvacPortfolio.settings[index]),
+          hvacPortfolio,
+          totalActualEvPowerW,
+          totalDesiredEvPowerW,
+        },
+      );
+    }
+
+    const boilerNextBatteryCommandW = Number.isFinite(Number(options.effectiveNextBatteryCommandW))
+      ? Number(options.effectiveNextBatteryCommandW)
+      : nextBatteryCommandW;
+    let boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
+      allowStart: Boolean(this.boilerState.outputOn),
+      gridPowerW: adjustedGridW,
+      currentBatteryCommandW,
+      nextBatteryCommandW: boilerNextBatteryCommandW,
+    });
+
+    let grantedId = '';
+    if (priorityDue) {
+      if (!evStartedThisCycle) {
+        const eligible = new Map();
+        if (Boolean(boilerDecision?.startEligible) && !Boolean(this.boilerState.outputOn)) eligible.set('boiler', true);
+        for (let index = 0; index < hvacCount; index += 1) {
+          if (Boolean(hvacPreviews[index]?.startEligible) && (hvacPreviews[index]?.permanent || !this.isHvacManagedActiveFor(index))) eligible.set(`hvac${index + 1}`, true);
+        }
+        grantedId = hvacPriorityOrder.find(id => eligible.get(id)) || '';
+      }
+      this.finishFlexiblePriorityEvaluation(Date.now(), storedSettings, grantedId || (evStartedThisCycle ? 'ev' : ''));
+    }
+
+    if (runHvac) {
+      hvacPortfolio.externalReservedW = grantedId === 'boiler' && !this.boilerState.outputOn && boilerDecision?.startEligible ? Math.max(0,Number(storedSettings.boilerPowerW)||1800) : 0;
+      hvacCoordination.plan(this, hvacPortfolio, hvacPreviews, grantedId, evStartedThisCycle);
+    }
+
+    for (let index = 0; index < hvacCount; index += 1) {
+      const id = `hvac${index + 1}`;
+      const active = this.isHvacManagedActiveFor(index);
+      let decision = hvacPreviews[index];
+      if (!decision?.permanent && active && hvacPortfolio?.budgetSafety) decision=this.calculateHvacControlFor(index,result,evDecisions[0]||null,nextBatteryCommandW,currentBatteryCommandW,{storedSettings,allowStart:false,hvacBudgetSafety:true,totalActualEvPowerW,totalDesiredEvPowerW});
+      if (!decision?.permanent && !active && (!decision?.legacyCoordinated && grantedId === id || decision?.coordinated)) {
+        decision = this.calculateHvacControlFor(
+          index,
+          result,
+          evDecisions[0] || null,
+          nextBatteryCommandW,
+          currentBatteryCommandW,
+          {
+            storedSettings,
+            allowStart: true,
+            totalActualEvPowerW,
+            totalDesiredEvPowerW,
+          },
+        );
+      }
+      if (!decision?.permanent && hvacPreviews[index]?.coordinated) {
+        const admitted=hvacPreviews[index];
+        Object.assign(decision,{coordinated:true,legacyCoordinated:true,hvacAdmission:admitted.hvacAdmission,increase:true,direction:admitted.direction,suppressAutoLearning:true,sampleGridW:hvacPortfolio.sampleGridW});
+      }
+      hvacDecisions[index] = decision;
+      if (index === 0) this.latestHvacDecision = decision;
+      else {
+        const runtime = this.getExtraHvac(index);
+        if (runtime) runtime.latestDecision = decision;
+      }
+      await this.publishHvacDecisionFor(index, decision);
+    }
+
+    if (runHvac) hvacCoordination.commit(this, hvacPortfolio, totalActualEvPowerW);
+
+    // HVAC instances removed from the configured count are restored once when
+    // HomeFlux still owns an active session.
+    for (let index = runHvac ? hvacCount : 10; index < 10; index += 1) {
+      if (!this.isHvacManagedActiveFor(index)) continue;
+      const disabledSettings = { ...storedSettings, [this.getHvacSettingKey(index, 'Enabled')]: false };
+      const decision = this.calculateHvacControlFor(index, result, evDecisions[0] || null, nextBatteryCommandW, currentBatteryCommandW, {
+        storedSettings: disabledSettings,
+        allowStart: false,
+        totalActualEvPowerW,
+        totalDesiredEvPowerW,
+      });
+      await this.publishHvacDecisionFor(index, decision);
+    }
+
+    if (!this.boilerState.outputOn && grantedId === 'boiler') {
+      boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
+        allowStart: true,
+        gridPowerW: adjustedGridW + (hvacPortfolio?.siteReservedW || 0),
+        currentBatteryCommandW,
+        nextBatteryCommandW: boilerNextBatteryCommandW,
+      });
+    }
+    await this.publishBoilerDecision(boilerDecision);
+
+    return {
+      ev: evDecisions[0] || null,
+      evs: evDecisions,
+      hvac: hvacDecisions[0] || null,
+      hvacs: hvacDecisions,
+      boiler: boilerDecision,
+      priority: {
+        due: priorityDue,
+        grantedId,
+        nextEvaluationAt: Number(this.flexiblePriorityState.nextEvaluationAt) || 0,
+        order: hvacPriorityOrder,
+      },
+    };
+  }
+
+  calculatePvPowerLimit(settings = this.getSettings(), nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW) {
+    const enabled = Boolean(settings.exportLimitEnabled);
+    const minimumExportW = Math.max(0, Math.min(5000, Number(settings.minimumExportW) || 0));
+    const pvPowerW = Number(this.state.pvPowerW);
+    const gridPowerW = Number(this.state.gridPowerW);
+    const currentLimitPercent = Number.isFinite(Number(this.lastPublishedPvLimitPercent))
+      ? Math.max(10, Math.min(100, Number(this.lastPublishedPvLimitPercent)))
+      : 100;
+    const averageBatterySoc = this.getAverageBatterySoc(settings);
+    const configuredCurtailSoc = Number(settings.pvCurtailMinBatterySoc);
+    const minBatterySoc = Math.max(0, Math.min(100, Number.isFinite(configuredCurtailSoc) ? configuredCurtailSoc : 95));
+    const batterySocAllowsCurtailment = this.getBatteryCount(settings) === 0
+      || (averageBatterySoc !== null && averageBatterySoc >= minBatterySoc);
+
+    const unrestricted = {
+      enabled,
+      averageBatterySoc,
+      minBatterySoc,
+      batterySocAllowsCurtailment,
+      limitPercent: 100,
+      targetPowerW: Number.isFinite(pvPowerW) ? Math.max(0, Math.round(pvPowerW)) : 0,
+      curtailmentW: 0,
+      minimumExportW,
+      targetGridW: batterySocAllowsCurtailment ? -minimumExportW : 0,
+      predictedGridBeforePvW: Number.isFinite(gridPowerW) ? Math.round(gridPowerW) : null,
+      predictedGridAfterPvW: Number.isFinite(gridPowerW) ? Math.round(gridPowerW) : null,
+    };
+
+    // When at least one battery is configured, PV remains unrestricted below
+    // the configured SoC threshold or until a valid battery SoC exists. With
+    // zero batteries this SoC gate intentionally does not apply. If the inverter was already
+    // curtailed this naturally publishes 100% again (subject to the PV command
+    // interval), so available solar can continue charging the battery first.
+    if (!enabled || !batterySocAllowsCurtailment || !this.inputSeen?.pv || !Number.isFinite(pvPowerW) || pvPowerW <= 0 || !Number.isFinite(gridPowerW)) return unrestricted;
+
+    // The live grid value still reflects the CURRENT battery output. Predict what
+    // the grid will do after the next real battery command before deciding how
+    // much PV still needs to be curtailed. This prevents battery charging and PV
+    // limiting from both correcting the same export at the same time.
+    const currentBatteryW = Number(currentBatteryCommandW) || 0;
+    const nextBatteryW = Number(nextBatteryCommandW) || 0;
+    const evPerAmpW = evPowerPerAmp(settings);
+    const actualEvPowerW = Boolean(settings.evEnabled) && Boolean(this.state.evConnected) && this.inputSeen.ev?.chargeCurrent
+      ? Math.max(0, Number(this.state.evChargeCurrentA) || 0) * evPerAmpW
+      : 0;
+    const expectedEvPowerW = Boolean(settings.evEnabled)
+      ? Math.max(0, Number(this.lastPublishedEvCurrentA) || 0) * evPerAmpW
+      : 0;
+    // EV is published before PV limiting. Reserve its newly requested power so
+    // the inverter does not curtail the same surplus that was just allocated to
+    // the car. Actual grid feedback remains authoritative on the next cycle.
+    const predictedGridBeforePvW = gridPowerW + currentBatteryW - nextBatteryW + expectedEvPowerW - actualEvPowerW;
+    const targetGridW = -minimumExportW;
+
+    // When PV is already curtailed, pvPowerW is normally the ACTUAL reduced
+    // production. Reconstruct the approximate 100% production so a stable
+    // 50% limit stays near 50% instead of jumping back to 100% every cycle.
+    const estimatedFullPvW = currentLimitPercent < 100
+      ? Math.max(pvPowerW, pvPowerW * (100 / currentLimitPercent))
+      : pvPowerW;
+    const requiredGridIncreaseW = targetGridW - predictedGridBeforePvW;
+    const desiredActualPvW = Math.max(0, pvPowerW - requiredGridIncreaseW);
+    const rawPercent = estimatedFullPvW > 0 ? (desiredActualPvW / estimatedFullPvW) * 100 : 100;
+
+    // Round UP to a whole percentage so HomeFlux never intentionally reduces PV
+    // further than necessary. This deliberately leaves at least the configured
+    // small export buffer whenever the inverter's 10..100% range can achieve it.
+    const limitPercent = Math.max(10, Math.min(100, Math.ceil(rawPercent)));
+    const targetPowerW = Math.round(estimatedFullPvW * (limitPercent / 100));
+    const pvDeltaFromCurrentW = pvPowerW - targetPowerW;
+    const curtailmentW = Math.max(0, Math.round(pvDeltaFromCurrentW));
+    const predictedGridAfterPvW = predictedGridBeforePvW + pvDeltaFromCurrentW;
+
+    return {
+      enabled,
+      averageBatterySoc,
+      minBatterySoc,
+      batterySocAllowsCurtailment,
+      limitPercent,
+      targetPowerW,
+      curtailmentW,
+      minimumExportW,
+      targetGridW,
+      predictedGridBeforePvW: Math.round(predictedGridBeforePvW),
+      predictedGridAfterPvW: Math.round(predictedGridAfterPvW),
+    };
+  }
+
+  getPvCommandIntervalMs(settings = this.getSettings()) {
+    return Math.max(1, Number(settings.pvCommandIntervalSeconds) || DEFAULTS.pvCommandIntervalSeconds || 10) * 1000;
+  }
+
+  schedulePvPowerLimitPublish(waitMs) {
+    const delay = Math.max(0, Math.round(Number(waitMs) || 0));
+    if (this.pvLimitTimer) return;
+    this.pvLimitTimer = this.homey.setTimeout(() => {
+      this.pvLimitTimer = null;
+      // Recalculate from the newest measurements and the last REAL battery
+      // command. Never queue an old PV percentage while the inverter timer is
+      // locked.
+      this.publishPvPowerLimit(this.latestResult, this.state.lastTotalCommandW, this.state.lastTotalCommandW)
+        .catch(err => this.error('Delayed PV power limit publish failed', err));
+    }, delay);
+  }
+
+  async publishPvPowerLimit(result, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW) {
+    const settings = this.getSettings();
+    const allowed = Boolean(result?.controlEnabled) && Boolean(result?.inputReady) && Boolean(settings.exportLimitEnabled);
+    const calculated = allowed
+      ? this.calculatePvPowerLimit(settings, nextBatteryCommandW, currentBatteryCommandW)
+      : { ...this.calculatePvPowerLimit({ ...settings, exportLimitEnabled: false }, nextBatteryCommandW, currentBatteryCommandW), enabled: false };
+
+    const percent = Math.max(10, Math.min(100, Math.round(Number(calculated.limitPercent) || 100)));
+    const targetPowerW = Math.max(0, Math.round(Number(calculated.targetPowerW) || 0));
+    const changed = this.lastPublishedPvLimitPercent !== percent;
+
+    if (result) {
+      result.pvLimitPercent = percent;
+      result.pvLimitTargetPowerW = targetPowerW;
+      result.pvLimitCurtailmentW = Math.max(0, Math.round(Number(calculated.curtailmentW) || 0));
+      result.pvLimitTargetGridW = Math.round(Number(calculated.targetGridW) || 0);
+      result.pvLimitPredictedGridW = calculated.predictedGridAfterPvW;
+    }
+    if (!changed) return calculated;
+
+    const intervalMs = this.getPvCommandIntervalMs(settings);
+    const now = Date.now();
+    const allowedAt = this.lastPvLimitPublishedAt > 0 ? this.lastPvLimitPublishedAt + intervalMs : 0;
+    if (now < allowedAt) {
+      this.schedulePvPowerLimitPublish(allowedAt - now);
+      return calculated;
+    }
+    if (this.pvLimitPublishing) {
+      // An async Flow/token write is still in progress. Recalculate again after
+      // it completes instead of starting a second inverter write in parallel.
+      this.schedulePvPowerLimitPublish(Math.max(1, intervalMs));
+      return calculated;
+    }
+
+    this.pvLimitPublishing = true;
+    try {
+      const token = this.tokens.get('emspvlimit');
+      if (token) await token.setValue(percent);
+      if (this.pvLimitTrigger) {
+        await this.pvLimitTrigger.trigger(this.localizeDisplayTokens({
+          limit_percent: percent,
+          target_power: targetPowerW,
+          curtailed_power: Math.max(0, Math.round(Number(calculated.curtailmentW) || 0)),
+          minimum_export: Math.max(0, Math.round(Number(calculated.minimumExportW) || 0)),
+          predicted_grid: calculated.predictedGridAfterPvW === null ? 0 : Math.round(Number(calculated.predictedGridAfterPvW) || 0),
+        }));
+      }
+      // Only remember the limit after the Flow publication succeeded. A failed
+      // trigger is retried from fresh measurements on a later control pass.
+      this.lastPublishedPvLimitPercent = percent;
+      this.lastPublishedPvTargetPowerW = targetPowerW;
+      this.lastPvLimitPublishedAt = Date.now();
+    } finally {
+      this.pvLimitPublishing = false;
+    }
+    return calculated;
+  }
+
+  refreshControlContext(storedSettings, evaluationState, now = Date.now()) {
+    const runtimeSettings = this.getRuntimeSettings(storedSettings);
+    this.controlContext = prepareControlContext(evaluationState, runtimeSettings, new Date(now));
+    const strategyChoice = chargeStrategy.select(runtimeSettings, now, evaluationState.nightPlanningActive);
+    const inputs = strategyChoice.mode === 'maximum' && strategyChoice.position !== 'center' ? null
+      : getBatteryNightPlanningInputs(evaluationState, runtimeSettings, new Date(now), this.controlContext.targetDetails);
+    const strategyNeedsPrices = strategyChoice.mode === 'maximum' && isDynamicContract(runtimeSettings);
+    if (inputs || strategyNeedsPrices) {
+      // getRuntimeSettings has just validated the shared price source. Keep its
+      // public daily classes; only this battery plan receives absolute intervals.
+      const selection = this.evDeadlinePriceSelection?.selection;
+      let curve = null;
+      if (selection?.source && selection.source !== 'none') {
+        const source = selection.source === 'homey' ? this.homeyEnergy : selection.source === 'external2' ? this.externalEnergy2 : this.externalEnergy;
+        const model = selection.calibration;
+        const key = [source?.slots, selection.source, runtimeSettings.timezone, this.getDynamicTargetInterval(runtimeSettings), model?.scale, model?.offset, model?.learnedAt];
+        const previous = this.batteryNightCurve;
+        if (!previous || !key.every((value, i) => value === previous.key[i])) {
+          const prepared = prepareEvPriceCurve(selection.slots, runtimeSettings.timezone, this.getDynamicTargetInterval(runtimeSettings));
+          this.batteryNightCurve = { key, curve: previous?.curve.fingerprint === prepared.fingerprint ? previous.curve : prepared };
+          this.recordDiagnosticCounter('batteryNightPriceCurveBuilds');
+        }
+        curve = this.batteryNightCurve.curve;
+      }
+      if (inputs) {
+        if (!this.batteryNightPlanner) this.batteryNightPlanner = new BatteryNightPlanner();
+        const planner = this.batteryNightPlanner, builds = planner.builds, windows = planner.windowBuilds;
+        runtimeSettings.batteryNightPlan = this.measurePlanningCalculation('batteryNightPlan', 'context', 0,
+          () => planner.evaluate({ ...inputs, curve }));
+        this.recordDiagnosticCounter(planner.builds > builds ? 'batteryNightPlanBuilds' : 'batteryNightPlanReuses');
+        if (planner.windowBuilds > windows) this.recordDiagnosticCounter('batteryNightPriceWindowBuilds');
+        this.controlContext.tariff = batteryNightTariff(this.controlContext.tariff, evaluationState, runtimeSettings, new Date(now));
+        const eventAt = this.controlContext.tariff.batteryNight?.nextAt;
+        if (eventAt > now) this.controlContext.tariffValidUntil = Math.min(this.controlContext.tariffValidUntil || Infinity, eventAt);
+      } else {
+        this.batteryNightPlanner = null;
+        runtimeSettings.batteryNightPlan = null;
+      }
+    } else {
+      // PV start owns the existing transition to daytime. Never carry a night
+      // schedule into the day or a different contract after a settings change.
+      this.batteryNightPlanner = null;
+      this.batteryNightCurve = null;
+    }
+    runtimeSettings.batteryChargeStrategyPlan = prepareChargeStrategy(evaluationState, runtimeSettings, new Date(now),
+      this.batteryNightCurve?.curve, this.controlContext.targetDetails, this.controlRuntimeSettings?.batteryChargeStrategyPlan);
+    this.controlRuntimeSettings = runtimeSettings;
+    this.cachedRuntimeSettings = runtimeSettings;
+    this.controlContextDirty = false;
+    this.controlContextUpdatedAt = now;
+    this.lastSlowEvaluationAt = now;
+    return runtimeSettings;
+  }
+
+  cacheEvBatteryCoordination(rawCandidateTotalW, result, now = Date.now()) {
+    this.evBatteryCoordinationCache = { maxChargeW: null, at: now };
+  }
+
+  applyCachedEvBatteryCoordination(result, storedSettings = this.getSettings()) {
+    const evCount = this.getEvCount(storedSettings);
+    const decisions = Array.from({ length: evCount }, (_, index) => index === 0
+      ? this.latestEvDecision
+      : this.getExtraEv(index)?.latestDecision).filter(Boolean);
+    if (decisions.length) {
+      result.evDecisions = decisions;
+      result.evDecision = decisions[0] || null;
+      result.evIntentionalGridImportW = decisions.reduce((max, decision) => {
+        if (!Boolean(decision?.intentionalGridImport)) return max;
+        return Math.max(max, Math.max(0, Number(decision?.portfolioGridImportTargetW) || 0));
+      }, 0);
+    } else {
+      result.evIntentionalGridImportW = 0;
+    }
+    return result;
+  }
+
+  getFastSignalThresholdW(settings = this.getSettings()) {
+    const deadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
+    const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+    // 50 W filters ordinary P1 jitter while remaining far below the power step
+    // of typical batteries. Crossing the zero band or a remaining feedback
+    // error outside it bypasses this delta threshold.
+    return Math.max(50, deadband, step);
+  }
+
+  getFastControlSnapshot(settings = this.getSettings(), now = Date.now(), evaluationState = null, evObservation = null) {
+    const rawGridW = evaluationState && Number.isFinite(Number(evaluationState.gridPowerW))
+      ? Number(evaluationState.gridPowerW)
+      : Number(this.state.gridPowerW);
+    if (!Number.isFinite(rawGridW)) return null;
+
+    const pvW = evaluationState && Number.isFinite(Number(evaluationState.pvPowerW))
+      ? Number(evaluationState.pvPowerW)
+      : (Number.isFinite(Number(this.state.pvPowerW)) ? Number(this.state.pvPowerW) : 0);
+    let controlGridW;
+    let evTargetW = Math.max(0, Number(evaluationState?.evGridImportTargetW) || 0);
+    if (evaluationState && Number.isFinite(Number(evaluationState.controlGridPowerW))) {
+      controlGridW = Number(evaluationState.controlGridPowerW);
+    } else {
+      // Select the meter before testing zones/deltas: averaged in-band P1
+      // must never hide a live correction. PV-live is not a scheduling reason.
+      const gridSelection = this.getGridControlSelection(settings, now);
+      evTargetW = Math.max(0, Number(this.getEvGridImportObservation(settings, now, evObservation).activeTargetW) || 0);
+      controlGridW = gridSelection.value - evTargetW;
+    }
+
+    let zeroMin = Number(settings.gridZeroMinW);
+    let zeroMax = Number(settings.gridZeroMaxW);
+    if (!Number.isFinite(zeroMin)) zeroMin = -5;
+    if (!Number.isFinite(zeroMax)) zeroMax = 25;
+    if (zeroMin > zeroMax) [zeroMin, zeroMax] = [zeroMax, zeroMin];
+    const zone = controlGridW < zeroMin ? 'export' : controlGridW > zeroMax ? 'import' : 'inside';
+    const configuredPeakLimitW = Number(settings.peakLimitW);
+    const softPeakW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500)
+      - Math.max(0, Number(settings.peakSoftMarginW) || 0);
+    const peak = Boolean(settings.peakShaveEnabled) && rawGridW >= softPeakW;
+    const pvDeltaW = this.getRecentPvDelta(now);
+    return { at: now, rawGridW, controlGridW, pvW, pvDeltaW, evTargetW,
+      adaptiveLive: this.isAdaptiveLiveControlActive(settings, now), zone, peak };
+  }
+
+  getBatteryFeedbackDependencies(state, plannedCharge = false) {
+    // Meter/PV values are handled by the preflight and the live-signal gate.
+    // The source label is presentation only: preflight checks the selected
+    // numeric meter value, so a label change cannot invalidate equal feedback.
+    // These are the remaining engine inputs that can alter mode or SoC limits.
+    return JSON.stringify([
+      state.batterySoc, state.lastTotalCommandW, state.batteryDischargeBlockedByEv, state.forecastRemainingKwh,
+      state.forecastDailyMaxKwh, state.forecastTomorrowKwh, state.sunChanceForecasts,
+      state.planningForecastDay, state.planningDecisionSource, state.nightPlanningActive,
+      state.targetSocOverride, state.lowForecastSunnyOverrideActive, state.chargeRestartState,
+      state.plannedBatteryGridLimitW, state.peakGuardExtraLoadW,
+      state.evGridImportTargetW, state.evGridImportRequestedTargetW, state.evGridImportControlState,
+      ...(plannedCharge ? [state.lastBatteryCommands, state.efficiencyDischargeStickyIndex,
+        state.efficiencyChargeStickyIndex, state.efficiencyActiveCountSticky] : []),
+    ]);
+  }
+
+  isBatteryFeedbackContextCurrent(memo) {
+    if (!this.controlContextDirty) return true;
+    // Only planned charging reuses a proof while the slow pass is pending.
+    // The first evaluation after every structural invalidation is mandatory.
+    return memo.result.baseMode === 'charge' && memo.contextWasDirty
+      && memo.contextRevision === (Number(this.controlContextRevision) || 0);
+  }
+
+  getChargingInputSignature() {
+    // Only raw, battery-relevant inputs. No tariff/date reconstruction, meter
+    // averaging or allocator. Settings changes already invalidate the memo.
+    const dependencies = this.getBatteryIdleDependencies();
+    if (dependencies === null) return null;
+    return JSON.stringify([
+      dependencies, this.state.lastTotalCommandW,
+      this.lastEmittedCommands, this.efficiencyDischargeStickyIndex,
+      this.efficiencyChargeStickyIndex, this.efficiencyActiveCountSticky,
+    ]);
+  }
+
+  rememberUnchangedChargingInput(memo, state, settings, now) {
+    const signature = this.getChargingInputSignature();
+    if (memo.chargingInputSignature !== signature || !memo.chargingInputs) {
+      memo.chargingInputSignature = signature;
+      memo.chargingInputs = [];
+    }
+    const proof = {
+      rawGridW: state.gridPowerW,
+      controlGridW: state.controlGridPowerW,
+      adaptiveLive: this.isAdaptiveLiveControlActive(settings, now),
+    };
+    if (memo.chargingInputs.some(input => input.rawGridW === proof.rawGridW
+      && input.controlGridW === proof.controlGridW && input.adaptiveLive === proof.adaptiveLive)) return;
+    // A few previously proved meter pairs handle ordinary repeating jitter.
+    // Every unseen value still takes the unchanged numeric feedback preview;
+    // no threshold, smoothing window or response interval is added.
+    if (memo.chargingInputs.length >= 8) memo.chargingInputs.shift();
+    memo.chargingInputs.push(proof);
+  }
+
+  canSkipUnchangedChargingInput(settings, now, snapshot) {
+    const memo = this.batteryFeedbackMemo;
+    if (this.latestResult?.baseMode !== 'charge') return false;
+    if (!memo?.chargingInputs?.length || memo.result !== this.latestResult
+      || memo.context !== this.controlContext || memo.runtime !== this.controlRuntimeSettings
+      || !this.isBatteryFeedbackContextCurrent(memo) || memo.timezone !== settings.timezone
+      || now >= memo.validUntil) return false;
+    // Use the existing minute/tariff/context expiry. No new hold duration.
+    // EV budgets and Split/efficiency transitions retain their original path.
+    if (this.getEvCount(settings) > 0 || this.isHybridEmsConfigured(settings)
+      || this.batteryEfficiencyTransitionTimer || memo.result.efficiencyOptimization?.transitionPending
+      || this.controlTimerForce || this.pendingCommandBypassInterval
+      || !settings.controlEnabled || !this.isChargeTestValid(settings)
+      || !this.getGridFreshness(settings, now).fresh
+      || Array.from({ length: this.getBatteryCount(settings) }, (_, index) =>
+        settings[`splitCommandBattery${index + 1}Enabled`]).some(Boolean)) return false;
+    if (memo.chargingInputSignature === null) return false;
+    if (memo.chargingInputSignature !== this.getChargingInputSignature()
+      || !memo.chargingInputs.some(proof => proof.rawGridW === snapshot.rawGridW
+        && proof.controlGridW === snapshot.controlGridW && proof.adaptiveLive === snapshot.adaptiveLive)) {
+      this.recordDiagnosticCounter('fastChargeInputChanged');
+      return false;
+    }
+    // An in-flight publication already owns this exact calculated result.
+    // Preserve it without recalculating identical input. A changed signal,
+    // safety request or different pending result always takes the normal path.
+    if (this.commandPublishing) {
+      if (this.pendingResult && this.pendingResult !== memo.result) return false;
+      if (!this.pendingResult && this.inFlightBatteryCommands
+        && !this.inFlightBatteryCommands.every(
+          (value, index) => value === memo.result.candidateCommands[index])) return false;
+      this.recordDiagnosticCounter('fastChargePendingInputSkipped');
+      return true;
+    }
+    if (this.pendingResult || this.inFlightBatteryCommands
+      || this.batteryIdleKnownOutput !== this.lastEmittedCommands
+      || !(this.lastEmitAt > 0)
+      || this.lastEmittedMode !== 'charge' || this.lastEmittedOverride
+      || this.commandChangedEnough(memo.result)) return false;
+    this.recordDiagnosticCounter('fastFeedbackUnchangedSkipped');
+    this.recordDiagnosticCounter('fastChargeUnchangedSkipped');
+    this.recordDiagnosticCounter('fastChargeInputSkipped');
+    if (this.controlContextDirty) this.recordDiagnosticCounter('fastChargePendingContextSkipped');
+    return true;
+  }
+
+  rememberBatteryFeedbackMemo(result, evaluationState, settings, now) {
+    this.batteryFeedbackMemo = null;
+    const count = this.getBatteryCount(settings);
+    const zero = values => Array.isArray(values) && values.length === count
+      && values.every(value => Number.isFinite(value) && value === 0);
+    const hardMinSoc = Math.max(0, Math.min(100, Number(settings.minSoc) || 0));
+    const peakBlocked = result?.override === 'peak_shave' && count > 0
+      && zero(result.candidateCommands) && zero(result.calculatedCommands)
+      && Array.from({ length: count }, (_, index) => evaluationState.batterySoc[index])
+        .every(value => value !== null && Number.isFinite(value) && value <= hardMinSoc);
+    if (!result?.canPublishCommands || (result.override && !peakBlocked)
+      || !['self_consumption', 'avoid_import', 'solar_capture', 'charge'].includes(result.baseMode)
+      || (result.baseMode === 'charge' && result.safetySocRecoveryActive)
+      || !Number.isFinite(result.ordinaryDischargeFloorSoc)) return;
+    this.batteryFeedbackMemo = {
+      result, context: this.controlContext, runtime: this.controlRuntimeSettings,
+      idleForcedMode: String(settings.forcedMode || 'auto'), idleHardMinSoc: hardMinSoc, idlePeakBlocked: peakBlocked,
+      contextWasDirty: Boolean(this.controlContextDirty),
+      contextRevision: Number(this.controlContextRevision) || 0,
+      timezone: settings.timezone,
+      // Strategies use minute-resolution schedules. Never carry a decision
+      // across a minute, tariff boundary or a refreshed slow context.
+      validUntil: Math.min((Math.floor(now / 60000) + 1) * 60000,
+        Number(result.nextEventAt) > now ? Number(result.nextEventAt) : Infinity,
+        Number(this.controlContext?.tariffValidUntil) > 0 ? Number(this.controlContext.tariffValidUntil) : Infinity),
+      dependencies: this.getBatteryFeedbackDependencies(evaluationState, result.baseMode === 'charge'),
+      outputDependencies: result.baseMode === 'charge'
+        ? this.getBatteryFeedbackOutputDependencies(evaluationState) : null,
+    };
+    if (result.baseMode === 'charge') {
+      this.rememberUnchangedChargingInput(this.batteryFeedbackMemo, evaluationState, settings, now);
+    }
+    const allZero = zero;
+    const floor = result.ordinaryDischargeFloorSoc;
+    // The full engine has already proved the mode, SoC floor and zero output.
+    // Keep only a cheap eligibility proof in its existing minute-bound memo.
+    if (count > 0 && ['self_consumption', 'avoid_import', 'solar_capture'].includes(result.baseMode)
+      && !result.safetySocRecoveryActive && result.plannedChargeW === 0
+      && !result.efficiencyOptimization?.transitionPending
+      && allZero(result.candidateCommands) && allZero(result.calculatedCommands)
+      && evaluationState.peakGuardExtraLoadW === 0
+      && (evaluationState.evGridImportTargetW || 0) === 0
+      && Array.from({ length: count }, (_, index) => evaluationState.batterySoc[index])
+        .every(value => value !== null && Number.isFinite(value) && value <= floor)) {
+      this.batteryFeedbackMemo.idleDependencies = this.getBatteryIdleDependencies();
+      // This narrower proof needs no charging-duration recalculation. Keep the
+      // existing one-minute periodic cadence, but do not duplicate it at both
+      // the wall-clock minute and the context heartbeat. Tariff/day boundaries
+      // and every input/context change still invalidate it immediately.
+      this.batteryFeedbackMemo.idleValidUntil = Math.min(now + 60000,
+        Number(result.nextEventAt) > now ? Number(result.nextEventAt) : Infinity,
+        Number(this.controlContext?.tariffValidUntil) > 0 ? Number(this.controlContext.tariffValidUntil) : Infinity,
+        this.getLocalMinuteOfDay(now) === 1439 ? (Math.floor(now / 60000) + 1) * 60000 : Infinity);
+    }
+  }
+
+  getBatteryIdleDependencies() {
+    // Raw control inputs only: no tariff/forecast-date rebuilding or allocator.
+    const state = this.state;
+    const boiler = this.boilerState;
+    const boilerRelevant = (this.getBoilerCount(this.getSettings()) > 0 && Boolean(this.getSettings().boilerEnabled))
+      || boiler?.outputOn || boiler?.peakSupportRequestedAt > 0 || boiler?.lastPublishedOutput
+      || this.latestBoilerDecision?.peakGuardBatterySupportActive;
+    // Bookkeeping clocks cannot change a battery decision. Disabled boiler
+    // previews must not invalidate a proven zero output after every slow pass.
+    const boilerState = boilerRelevant && boiler
+      ? Object.fromEntries(Object.entries(boiler).filter(([key]) => !['lastTickAt', 'lastPersistAt'].includes(key))) : null;
+    try { return JSON.stringify([
+      state.batterySoc, this.inputSeen?.batterySoc,
+      (this.settingsCache?.evBlockBatteryDischargeAlways || this.settingsCache?.evBlockBatteryDischargeGridMajority)
+        ? this.getEvBatteryDischargePolicy(this.settingsCache).blocked : false,
+      state.forecastRemainingKwh,
+      state.forecastDailyMaxKwh, state.forecastTomorrowKwh, state.sunChanceForecasts,
+      state.targetSocOverride, state.chargeRestartState, state.nightPlanningActive,
+      state.nightPlanningStartedDate, state.nightPlanningDecisionSource,
+      state.pvProducingDate, state.pvSeenProducingToday, this.lowForecastSunnyOverrideDate,
+      state.peakGuardExtraLoadW, boilerRelevant ? this.latestBoilerDecision : null, boilerState,
+      state.hvacRoomTemperatureC, state.hvacOutdoorTemperatureC, state.hvacMode,
+      state.hvacSetpointC, state.hvacFanSpeed, this.latestHvacDecision,
+      this.extraHvacInstances?.map(item => [item.state, item.latestDecision, item.managedPowerOn,
+        item.lastPublishedPower, item.boostMode]),
+    ]); } catch (_) { return null; }
+  }
+
+  bypassBatteryIdle(reason) {
+    this.recordDiagnosticCounter(`fastIdleGuardBypass${reason}`);
+    return false;
+  }
+
+  canSkipBatteryIdle(settings, now) {
+    if (this.commandPublishing || this.pendingResult || this.pendingCommandBypassInterval
+      || this.inFlightBatteryCommands || this.batteryEfficiencyTransitionTimer
+      || this.controlTimer || this.controlTimerForce
+      || this.evPublishing || this.evPortfolioPass
+      || this.hvacPublishSlots?.some(slot => slot.publishing || slot.pending)) return this.bypassBatteryIdle('PendingCommand');
+    const count = this.getBatteryCount(settings);
+    if (!count || !Array.isArray(this.lastEmittedCommands) || this.lastEmittedCommands.length !== count
+      || this.lastEmittedCommands.some(value => !Number.isFinite(value))) return this.bypassBatteryIdle('StateChange');
+    // A net zero total can hide simultaneous charging/discharging. Inspect each
+    // committed internal command, before consulting any cached idle proof.
+    if (this.lastEmittedCommands.some(value => value !== 0)
+      || Number(this.state.lastTotalCommandW) !== 0) return this.bypassBatteryIdle('ActiveSetpoint');
+    const grid = this.getGridFreshness(settings, now);
+    const softPeak = Math.max(0, Number(settings.peakLimitW) - Math.max(0, Number(settings.peakSoftMarginW)));
+    const memo = this.batteryFeedbackMemo;
+    const peakNow = settings.peakShaveEnabled && grid.value >= softPeak;
+    // A new peak must reach the full controller once. Only an already proved
+    // zero vector at every battery's hard minimum may reuse the blocked result.
+    if ((settings.peakShaveEnabled && !Number.isFinite(softPeak))
+      || (peakNow && !memo?.idlePeakBlocked) || (!peakNow && memo?.idlePeakBlocked)) return this.bypassBatteryIdle('PeakGuard');
+    if (!memo?.idleDependencies || memo.result !== this.latestResult || memo.context !== this.controlContext
+      || memo.runtime !== this.controlRuntimeSettings || this.controlContextDirty
+      || memo.timezone !== settings.timezone || now >= memo.idleValidUntil
+      || this.batteryIdleKnownOutput !== this.lastEmittedCommands || !(this.lastEmitAt > 0)
+      || this.lastEmittedMode !== memo.result.baseMode || this.lastEmittedOverride !== (memo.result.override || '')
+      || !settings.controlEnabled || !this.isChargeTestValid(settings)
+      || String(settings.forcedMode || 'auto') !== memo.idleForcedMode
+      || Math.max(0, Math.min(100, Number(settings.minSoc) || 0)) !== memo.idleHardMinSoc
+      || this.isHybridEmsConfigured(settings) || !grid.fresh
+      || !this.inputSeen?.pv || parseFiniteInputNumber(this.state.pvPowerW) === null
+      || !(this.inputUpdatedAt?.pv > 0) || now - this.inputUpdatedAt.pv > 5 * 60000) return this.bypassBatteryIdle('StateChange');
+    // Configured, explicitly disconnected EVs do not own an import allowance.
+    // Unknown/connected feedback, nonzero current or an outstanding output keeps
+    // the existing physical EV observation and allocator path authoritative.
+    if (this.hasEvPhysicalAccountingInput(settings, now)) return this.bypassBatteryIdle('StateChange');
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      const input = this.getEvInputSnapshot(index);
+      const ev = index === 0 ? this : this.getExtraEv(index);
+      if (!input?.seen?.connected || input.connected || Number(input.chargeCurrentA) > 0
+        || (index === 0 ? this.lastPublishedEvAllowed || this.lastPublishedEvCurrentA > 0
+          : ev?.lastPublishedAllowed || ev?.lastPublishedCurrentA > 0)) return this.bypassBatteryIdle('StateChange');
+    }
+    for (let index = 0; index < count; index += 1) {
+      // This age limit qualifies only this optimization. The ordinary controller
+      // keeps its existing last-known-SoC policy when the guard is bypassed.
+      const at = this.inputUpdatedAt?.batterySoc?.[index];
+      const soc = parseFiniteInputNumber(this.state.batterySoc[index]);
+      if (!this.inputSeen.batterySoc[index] || soc === null
+        || soc > (memo.idlePeakBlocked ? memo.idleHardMinSoc : memo.result.ordinaryDischargeFloorSoc) || !(at > 0) || now - at > 10 * 60000
+        || settings[`splitCommandBattery${index + 1}Enabled`]) return this.bypassBatteryIdle('StateChange');
+    }
+    if (memo.idleDependencies !== this.getBatteryIdleDependencies()) return this.bypassBatteryIdle('StateChange');
+    // Old averaged export must still be corrected after a new import sample.
+    // EV targets are conservatively excluded above; raw P1 stays authoritative
+    // for Peak Guard and for newly available solar export.
+    const bandMin = Math.min(Number(settings.gridZeroMinW), Number(settings.gridZeroMaxW));
+    const samples = this.getGridControlSampleCount(settings);
+    const average = samples > 0 ? this.getGridAverage(samples, now) : grid.value;
+    if (!Number.isFinite(bandMin) || !Number.isFinite(average)
+      || grid.value < Math.max(0, bandMin) || average < bandMin) return this.bypassBatteryIdle('StateChange');
+    this.recordDiagnosticCounter('fastIdleGuardSkipped');
+    return true;
+  }
+
+  getBatteryFeedbackOutputDependencies(state = null, settings = null) {
+    // Publication changes these inputs after a memo was calculated. Reject an
+    // old output before reconstructing forecast dates, EV budgets and meters.
+    return JSON.stringify(state ? [state.lastTotalCommandW, state.lastBatteryCommands,
+      state.efficiencyDischargeStickyIndex, state.efficiencyChargeStickyIndex,
+      state.efficiencyActiveCountSticky] : [this.state.lastTotalCommandW,
+      Array.from({ length: this.getBatteryCount(settings) }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
+      Number.isInteger(this.efficiencyDischargeStickyIndex) ? this.efficiencyDischargeStickyIndex : null,
+      Number.isInteger(this.efficiencyChargeStickyIndex) ? this.efficiencyChargeStickyIndex : null,
+      Number.isInteger(this.efficiencyActiveCountSticky) ? this.efficiencyActiveCountSticky : null]);
+  }
+
+  canSkipBatteryFeedback(settings, now, preflight = null) {
+    const memo = this.batteryFeedbackMemo;
+    if (!memo || memo.result !== this.latestResult || memo.context !== this.controlContext
+      || memo.runtime !== this.controlRuntimeSettings || !this.isBatteryFeedbackContextCurrent(memo)
+      || memo.timezone !== settings.timezone || now >= memo.validUntil
+      || this.commandPublishing || this.pendingResult || this.pendingCommandBypassInterval
+      || this.isHybridEmsConfigured(settings)) return false;
+    const result = memo.result;
+    // Returning false still schedules the original interval boundary. It never
+    // proves a safe skip, so pending safety work cannot be dismissed here.
+    if (result.baseMode === 'charge' && preflight?.deferFeedback) {
+      this.recordDiagnosticCounter('fastChargePreflightDeferred');
+      return false;
+    }
+    // A stopped/stale meter or disabled output must still reach the safety stop.
+    if (!settings.controlEnabled || !this.getInputReadiness(settings).ready
+      || !this.isChargeTestValid(settings)) return false;
+    if (result.baseMode === 'charge') {
+      if (memo.outputDependencies !== this.getBatteryFeedbackOutputDependencies(null, settings)) {
+        this.recordDiagnosticCounter('fastChargeOutputMemoRejected');
+        return false;
+      }
+      // A preview can only skip if both calculated arrays equal the committed
+      // output. Efficiency handovers and partial output cannot satisfy that.
+      const committed = this.lastEmittedCommands;
+      if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
+        || !Array.isArray(committed) || [result.candidateCommands, result.calculatedCommands]
+          .some(values => !Array.isArray(values) || values.length !== committed.length
+            || values.some((value, index) => value !== committed[index]))) return false;
+    }
+    const state = this.getEvaluationState(settings, now, this.getRecentPvDelta(now), preflight?.evObservation);
+    if (preflight) preflight.state = state;
+    if (memo.dependencies !== this.getBatteryFeedbackDependencies(state, memo.result.baseMode === 'charge')) return false;
+    if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
+      || !Array.isArray(this.lastEmittedCommands)) return false;
+    const charging = result.baseMode === 'charge';
+    const preview = previewBatteryFeedback(state, memo.runtime, result.ordinaryDischargeFloorSoc, charging ? result : null,
+      this.inputMonitor?.active
+        ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'fastPreview', 0, compute) : null);
+    if (charging && preview.plannedChargeW !== result.plannedChargeW) return false;
+    // Predicted peak pressure includes withdrawing an existing battery output
+    // and reserved flexible load, even when raw P1 is below the threshold.
+    if (preview.peakActive) return false;
+    const same = values => Array.isArray(values) && values.length === preview.commands.length
+      && preview.commands.every((value, index) => value === values[index]);
+    const effectivePreview = this.getEffectiveSplitCommands(preview.commands, settings);
+    const sameOutput = effectivePreview.length === this.lastEmittedCommands.length
+      && effectivePreview.every((value, index) => value === this.lastEmittedCommands[index]);
+    if (!sameOutput || !same(result.candidateCommands)
+      || !same(result.calculatedCommands)) return false;
+    // Split direction timers are independent of watts and must remain armed.
+    if (this.splitModeChangeNeeded(result, settings, now)) return false;
+    this.recordDiagnosticCounter('fastFeedbackUnchangedSkipped');
+    if (charging) {
+      this.rememberUnchangedChargingInput(memo, state, settings, now);
+      this.recordDiagnosticCounter('fastChargeUnchangedSkipped');
+      if (this.controlContextDirty) this.recordDiagnosticCounter('fastChargePendingContextSkipped');
+    }
+    if (charging && (preview.gridChargeAssistW !== result.gridChargeAssistW
+      || preview.pvChargeW !== result.pvChargeW)) this.recordDiagnosticCounter('fastChargeSourceOnlySkipped');
+    return true;
+  }
+
+  shouldRunFastEvaluation(force = false, settings = this.getSettings(), now = Date.now(), preflight = null) {
+    if (force) return true;
+    if (!this.controlContext || !this.controlRuntimeSettings || !this.latestResult) {
+      this.recordDiagnosticCounter('fastSkipContextUnavailable');
+      return false;
+    }
+    // Active charging has its own proof. Do not send every active setpoint
+    // through the zero-output idle guard before checking that proof.
+    const chargingSnapshot = this.latestResult.baseMode === 'charge'
+      ? this.getFastControlSnapshot(settings, now, null, preflight?.evObservation) : null;
+    if (chargingSnapshot && !chargingSnapshot.peak
+      && this.canSkipUnchangedChargingInput(settings, now, chargingSnapshot)) return false;
+    const idleCpu = this.startDiagnosticCpuSection('fast_idle_guard');
+    try {
+      if (this.canSkipBatteryIdle(settings, now)) return false;
+    } finally {
+      this.endDiagnosticCpuSection(idleCpu);
+    }
+    const current = chargingSnapshot || this.getFastControlSnapshot(settings, now, null, preflight?.evObservation);
+    if (!current) {
+      this.recordDiagnosticCounter('fastSkipInvalidGrid');
+      return false;
+    }
+    const previous = this.lastFastControlSnapshot;
+    if (!previous) return true;
+    if (current.peak !== previous.peak) { this.recordDiagnosticCounter('fastReasonPeakTransition'); return true; }
+    if (current.zone !== previous.zone) {
+      // In planned charging a zone crossing can merely change the solar/grid
+      // share at a fixed charge cap. Prove identical individual commands using
+      // the existing numeric preview; safety and target transitions stay full.
+      if (this.latestResult.baseMode === 'charge' && !current.peak && !previous.peak
+        && current.evTargetW === previous.evTargetW
+        && current.adaptiveLive === previous.adaptiveLive) {
+        const diagnosticCpu = this.startDiagnosticCpuSection('fast_feedback_preflight');
+        try {
+          if (this.canSkipBatteryFeedback(settings, now, preflight)) {
+            this.recordDiagnosticCounter('fastChargeZoneUnchangedSkipped');
+            return false;
+          }
+        } finally {
+          this.endDiagnosticCpuSection(diagnosticCpu);
+        }
+      }
+      this.recordDiagnosticCounter('fastReasonZone'); return true;
+    }
+    if ((Number(current.evTargetW) || 0) !== (Number(previous.evTargetW) || 0)) {
+      this.recordDiagnosticCounter('fastReasonEvTarget'); return true;
+    }
+    if (Boolean(current.adaptiveLive) !== Boolean(previous.adaptiveLive)) return true;
+
+    const baseMode = String(this.latestResult.baseMode || '');
+    // Planned charging also uses live meter feedback: the plan is a floor,
+    // while measured export may require more charging and excess import may
+    // require less PV capture. Staying in the same zone must not strand it.
+    const feedbackMode = ['self_consumption', 'avoid_import', 'solar_capture', 'charge'].includes(baseMode);
+    // PV observations only select the meter used above. The ordinary zone,
+    // feedback and delta gates decide whether battery work is necessary.
+    if (!feedbackMode && !current.peak && String(this.latestResult.override || '') !== 'peak_shave') {
+      this.recordDiagnosticCounter('fastSkipNonFeedbackMode');
+      return false;
+    }
+
+    // A remaining error needs another feedback step even when P1 barely moves.
+    // requestEvaluate still waits for the last command's minimum interval, and
+    // the output gates still enforce SoC, power limits and meaningful changes.
+    // Inside the zero band, retain the delta filter to ignore meter noise.
+    if (current.peak) { this.recordDiagnosticCounter('fastReasonPeakActive'); return true; }
+    if (feedbackMode && current.zone !== 'inside') {
+      const diagnosticCpu = this.startDiagnosticCpuSection('fast_feedback_preflight');
+      try {
+        if (this.canSkipBatteryFeedback(settings, now, preflight)) return false;
+      } finally {
+        this.endDiagnosticCpuSection(diagnosticCpu);
+      }
+      this.recordDiagnosticCounter('fastReasonFeedback');
+      return true;
+    }
+
+    const signalThreshold = this.getFastSignalThresholdW(settings);
+    if (Math.abs(current.controlGridW - previous.controlGridW) >= signalThreshold) return true;
+    if ((current.peak || previous.peak || String(this.latestResult.override || '') === 'peak_shave')
+      && Math.abs(current.rawGridW - previous.rawGridW) >= signalThreshold) return true;
+    this.recordDiagnosticCounter('fastSkipStableSignal');
+    return false;
+  }
+
+  rememberFastControlSnapshot(settings, now, evaluationState) {
+    const snapshot = this.getFastControlSnapshot(settings, now, evaluationState);
+    if (snapshot) this.lastFastControlSnapshot = snapshot;
+  }
+
+  getPausedEvaluationResult(now, storedSettings, forceStatus = false) {
+    const pauseInfo = this.getBatteryCommandPauseInfo(now, storedSettings);
+    if (!pauseInfo.active) return null;
+    this.pendingResult = null;
+    this.pendingCommandBypassInterval = false;
+    this.scheduleBatteryCommandPauseResume(pauseInfo, now);
+    if (this.latestResult) {
+      const held = {
+        ...this.latestResult,
+        batteryCommandPauseActive: true,
+        batteryCommandPauseStart: pauseInfo.start,
+        batteryCommandPauseEnd: pauseInfo.end,
+        statusText: `Batterijsturing gepauzeerd · ${pauseInfo.start}–${pauseInfo.end} · laatste setpoint behouden`,
+      };
+      this.queueStatusUpdate(held, forceStatus);
+    }
+    return this.latestResult;
+  }
+
+  requestEvaluate(immediate = false) {
+    if (this.inputMonitor?.active) this.inputMonitor.noteRequest('fast');
+    this.recordDiagnosticCounter('fastRequests');
+    const now = Date.now();
+    const controlSettings = this.getSettings();
+    const pauseInfo = this.getBatteryCommandPauseInfo(now, controlSettings);
+    if (pauseInfo.active) {
+      this.recordDiagnosticCounter('fastPaused');
+      if (this.controlTimer) {
+        clearTimeout(this.controlTimer);
+        this.controlTimer = null;
+      }
+      this.controlTimerForce = false;
+      this.scheduleBatteryCommandPauseResume(pauseInfo, now);
+      return false;
+    }
+
+    const intervalMs = Math.max(1, Number(controlSettings.commandIntervalSeconds) || DEFAULTS.commandIntervalSeconds || 10) * 1000;
+    // Only an actual command publication reserves the battery interval. A
+    // calculation that sends nothing must leave the next P1 correction free.
+    const earliest = Math.max(this.nextCommandAllowedAt || 0,
+      this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
+    const wait = Math.max(0, earliest - now);
+    // A queued battery pass already owns this interval. Input bookkeeping and
+    // urgent flexible-load safety run before this scheduler; keep its deadline
+    // and force flag without repeating a preflight whose result cannot run yet.
+    // At the deadline requestEvaluate rechecks settings and actual publications.
+    if (wait > 0 && this.controlTimer) {
+      this.controlTimerForce = Boolean(this.controlTimerForce || immediate);
+      this.recordDiagnosticCounter('fastCoalesced');
+      return true;
+    }
+    // Keep the cheap signal/safety gates, but do not build a charging feedback
+    // state while the existing command interval prevents its use. This object
+    // lives only in this synchronous request, never in the timer or on the app.
+    const preflight = { deferFeedback: wait > 0, at: now, settings: controlSettings, state: null,
+      // Private to this synchronous request, including its feedback preview.
+      // A timer, another input (even at the same timestamp), context or status
+      // read creates its own observation. No EV result crosses an await.
+      evObservation: this.getEvCount(controlSettings) > 0
+        ? { settings: controlSettings, at: now, instances: [], control: null,
+          // Snapshot created from the canonical cache above; the synchronous
+          // P1 preflight cannot receive external scenario overrides.
+          trustedPhysicalConfig: true } : null };
+    if (!this.shouldRunFastEvaluation(immediate, controlSettings, now, preflight)) {
+      this.fastEvaluationSkipped += 1;
+      this.recordDiagnosticCounter('fastSkipped');
+      return false;
+    }
+
+    if (wait === 0) {
+      if (this.controlTimer) {
+        clearTimeout(this.controlTimer);
+        this.controlTimer = null;
+      }
+      const forceEvaluation = Boolean(immediate || this.controlTimerForce);
+      this.controlTimerForce = false;
+      this.recordDiagnosticCounter('fastImmediate');
+      this.evaluateFastNow(forceEvaluation, preflight);
+      return true;
+    }
+
+    // All meter updates inside the hard battery interval collapse into one
+    // fresh calculation. No slow subsystem work is attached to this timer.
+    this.controlTimerForce = Boolean(this.controlTimerForce || immediate);
+    if (this.controlTimer) {
+      this.recordDiagnosticCounter('fastCoalesced');
+      return true;
+    }
+    this.recordDiagnosticCounter('fastScheduled');
+    this.controlTimer = this.homey.setTimeout(() => {
+      this.controlTimer = null;
+      const forceEvaluation = Boolean(this.controlTimerForce);
+      this.controlTimerForce = false;
+      // Another output may have reserved a later slot while this timer was
+      // pending. Recheck that boundary and calculate from the newest P1 data.
+      this.requestEvaluate(forceEvaluation);
+    }, wait);
+    return true;
+  }
+
+  resetHybridEmsRuntime(reason = 'reset') {
+    const previous = this.hybridEmsRuntime || {};
+    this.hybridEmsRuntime = { delegated: false, takeover: false, externalSetpointW: previous.externalSetpointW ?? null, externalSetpointAt: Number(previous.externalSetpointAt) || 0, externalSetpointChangedAt: Number(previous.externalSetpointChangedAt) || 0, staleOutsideSince: 0, retrySentAt: 0, retryReferenceSetpointW: null, modeRequestedAt: 0, peakGuardWasActive: Boolean(previous.peakGuardWasActive), peakGuardCooldownUntil: Math.max(0, Number(previous.peakGuardCooldownUntil) || 0), status: reason === 'hybrid_setting_changed' ? 'inactive' : String(reason || 'inactive') };
+  }
+
+  isHybridEmsConfigured(settings = this.getSettings()) {
+    return Boolean(settings.hybridEmsEnabled) && this.getBatteryCount(settings) > 0;
+  }
+
+  isHybridExternalControlActive(settings = this.getSettings()) {
+    const runtime = this.hybridEmsRuntime || {};
+    return this.isHybridEmsConfigured(settings)
+      && Boolean(runtime.delegated)
+      && !Boolean(runtime.takeover);
+  }
+
+  getHybridEmsStatus(settings = this.getSettings()) {
+    const runtime = this.hybridEmsRuntime || {};
+    const batteryCount = this.getBatteryCount(settings);
+    const peakGuardCooldownUntil = Math.max(0, Number(runtime.peakGuardCooldownUntil) || 0);
+    const peakGuardCooldownRemainingSeconds = peakGuardCooldownUntil > Date.now()
+      ? Math.max(0, Math.ceil((peakGuardCooldownUntil - Date.now()) / 1000))
+      : 0;
+    const rawMin = Number(settings.hybridWatchdogMinW);
+    const rawMax = Number(settings.hybridWatchdogMaxW);
+    const minValue = Number.isFinite(rawMin) ? rawMin : -300;
+    const maxValue = Number.isFinite(rawMax) ? rawMax : 300;
+    return {
+      enabled: Boolean(settings.hybridEmsEnabled),
+      available: batteryCount > 0,
+      configured: this.isHybridEmsConfigured(settings),
+      delegated: Boolean(runtime.delegated) && !Boolean(runtime.takeover),
+      takeover: Boolean(runtime.takeover),
+      owner: Boolean(runtime.delegated) && !Boolean(runtime.takeover) ? 'external' : 'homeflux',
+      mode: Boolean(runtime.delegated) && !Boolean(runtime.takeover) ? String(this.latestResult?.baseMode || '') : '',
+      status: String(runtime.status || 'inactive'),
+      externalSetpointW: Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null,
+      externalSetpointAt: Number(runtime.externalSetpointAt) || 0,
+      retrySentAt: Number(runtime.retrySentAt) || 0,
+      peakGuardCooldownUntil,
+      peakGuardCooldownRemainingSeconds,
+      gridBandMinW: Math.min(minValue, maxValue),
+      gridBandMaxW: Math.max(minValue, maxValue),
+    };
+  }
+
+  isHybridPeakGuardRequired(result, settings = this.getSettings()) {
+    if (!Boolean(settings.peakShaveEnabled)) return false;
+    const liveGridW = Number(result?.liveGridPowerW);
+    if (!Number.isFinite(liveGridW)) return false;
+    const extraLoadW = Math.max(0, Number(result?.peakGuardExtraLoadW) || 0);
+    const configuredPeakLimitW = Number(settings.peakLimitW);
+    const peakLimitW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : Number(DEFAULTS.peakLimitW) || 2500);
+    const configuredSoftMarginW = Number(settings.peakSoftMarginW);
+    const softMarginW = Math.max(0, Number.isFinite(configuredSoftMarginW) ? configuredSoftMarginW : Number(DEFAULTS.peakSoftMarginW) || 100);
+    const softPeakW = Math.max(0, peakLimitW - softMarginW);
+    // During Hybrid ownership the ordinary HomeFlux candidate is NOT published.
+    // Therefore Peak Guard ownership must be decided from the real P1 import,
+    // not from the predicted grid after a hypothetical HomeFlux battery command.
+    return liveGridW + extraLoadW >= softPeakW;
+  }
+
+  updateHybridPeakGuardCooldown(result, settings = this.getSettings(), now = Date.now()) {
+    const runtime = this.hybridEmsRuntime || {};
+    const required = this.isHybridPeakGuardRequired(result, settings);
+    const fiveMinutes = 5 * 60 * 1000;
+    if (required) {
+      // A fresh Peak Guard event immediately gives HomeFlux ownership. Do not
+      // start the release timer yet: the user gets five FULL stable minutes
+      // only after the measured P1 has actually left the Peak Guard zone.
+      runtime.peakGuardWasActive = true;
+      runtime.peakGuardCooldownUntil = 0;
+      return { required: true, cooldownActive: false, cooldownUntil: 0 };
+    }
+    if (runtime.peakGuardWasActive) {
+      runtime.peakGuardWasActive = false;
+      runtime.peakGuardCooldownUntil = now + fiveMinutes;
+    }
+    const cooldownUntil = Math.max(0, Number(runtime.peakGuardCooldownUntil) || 0);
+    const cooldownActive = cooldownUntil > now;
+    if (!cooldownActive && cooldownUntil) runtime.peakGuardCooldownUntil = 0;
+    return { required: false, cooldownActive, cooldownUntil: cooldownActive ? cooldownUntil : 0 };
+  }
+
+  isHybridExternalControlEligible(result, settings = this.getSettings()) {
+    const baseMode = String(result?.baseMode || '');
+    const avgSoc = Number(result?.avgSoc);
+    const configuredMaxSoc = Number(settings.maxSoc);
+    const dischargeFloorSoc = Number(result?.batteryDischargeFloorSoc);
+    const atConfiguredLowerDischargeLimit = Number.isFinite(avgSoc)
+      && Number.isFinite(dischargeFloorSoc)
+      && avgSoc <= dischargeFloorSoc + 0.05;
+    const atConfiguredUpperSocLimit = Number.isFinite(avgSoc)
+      && Number.isFinite(configuredMaxSoc)
+      && avgSoc >= configuredMaxSoc - 0.05;
+    return this.isHybridEmsConfigured(settings)
+      && Boolean(result?.inputReady)
+      && Boolean(result?.controlEnabled)
+      && ['self_consumption', 'avoid_import'].includes(baseMode)
+      // Peak Guard is always a HomeFlux priority. In Hybrid mode this uses the
+      // measured P1 value because the calculated HomeFlux candidate is not sent
+      // while the external EMS owns the battery group.
+      && !this.isHybridPeakGuardRequired(result, settings)
+      && !result?.override
+      && Math.max(0, Number(result?.gridChargeAssistW) || 0) <= 0
+      && !Boolean(result?.lowForecastBatterySaveActive)
+      && !Boolean(result?.lowForecastDischargeToTargetActive)
+      // Intentional EV grid charging (selected tariff, guaranteed deadline or
+      // Emergency/SoC-target grid power) must remain under HomeFlux ownership.
+      // A native self-consumption EMS would otherwise discharge the home
+      // battery to cancel the very import HomeFlux deliberately allowed.
+      && Math.max(0, Number(result?.evIntentionalGridImportW) || 0) <= 0
+      // Hybrid may only own plain zero-import/self-consumption behaviour. Any
+      // HomeFlux reserve/floor decision must stay authoritative, otherwise a
+      // native EMS could discharge through a planning or safety boundary.
+      && !Boolean(result?.peakReserveProtected)
+      && !String(result?.batteryPauseCode || '')
+      && !atConfiguredLowerDischargeLimit
+      // At HomeFlux' configured upper SoC limit, keep control local as well so
+      // an external native EMS cannot keep charging past a HomeFlux limit that
+      // may be lower than the battery/BMS limit.
+      && !atConfiguredUpperSocLimit;
+  }
+
+  async requestExternalEmsSelfConsumption(reason = 'delegate', retry = false) {
+    if (!this.externalEmsSelfConsumptionTrigger) return false;
+    try {
+      await this.externalEmsSelfConsumptionTrigger.trigger(this.localizeDisplayTokens({ reason: String(reason), retry: retry ? 1 : 0 }), {});
+      return true;
+    } catch (err) {
+      this.error('External EMS self-consumption trigger failed', err);
+      return false;
+    }
+  }
+
+  updateHybridEmsDelegation(result, settings, now = Date.now()) {
+    const runtime = this.hybridEmsRuntime;
+    const configured = this.isHybridEmsConfigured(settings);
+    const peakGuardState = configured
+      ? this.updateHybridPeakGuardCooldown(result, settings, now)
+      : { required: false, cooldownActive: false, cooldownUntil: 0 };
+    const peakGuardRequired = Boolean(peakGuardState.required);
+    const peakGuardCooldownActive = Boolean(peakGuardState.cooldownActive);
+    const eligible = this.isHybridExternalControlEligible(result, settings) && !peakGuardCooldownActive;
+    if (!configured) {
+      if (runtime.delegated || runtime.takeover) this.resetHybridEmsRuntime('inactive');
+    } else if (!eligible) {
+      runtime.delegated = false;
+      runtime.takeover = false;
+      runtime.staleOutsideSince = 0;
+      runtime.retrySentAt = 0;
+      runtime.retryReferenceSetpointW = null;
+      runtime.status = peakGuardRequired
+        ? 'homeflux_peak_guard'
+        : (peakGuardCooldownActive ? 'homeflux_peak_guard_cooldown' : 'homeflux_priority');
+    } else if (!runtime.takeover) {
+      if (!runtime.delegated) {
+        // Never switch ownership while a HomeFlux battery publication is in
+        // flight. That publication is allowed to finish atomically; a fresh
+        // context pass hands over immediately afterwards.
+        if (this.commandPublishing) {
+          // The current publication may finish, but nothing calculated behind
+          // it may queue. Once it completes, emitPending() schedules a fresh
+          // context pass and that pass performs the actual handover.
+          this.pendingResult = null;
+          this.pendingCommandBypassInterval = false;
+          runtime.status = 'handover_wait';
+        } else {
+          // Drop any command that was calculated before the handover. From this
+          // exact point onward no HomeFlux battery-output path may publish until
+          // delegation ends or the watchdog takes control back.
+          this.pendingResult = null;
+          this.pendingCommandBypassInterval = false;
+          runtime.delegated = true;
+          runtime.modeRequestedAt = now;
+          runtime.staleOutsideSince = 0;
+          runtime.retrySentAt = 0;
+          runtime.status = 'external_control';
+          this.lastCalculatedSetpointSignature = null;
+          this.requestExternalEmsSelfConsumption(String(result?.baseMode || '') === 'avoid_import' ? 'avoid_grid_import' : 'self_consumption', false);
+        }
+      }
+    } else {
+      runtime.status = 'homeflux_fallback';
+    }
+    const delegated = configured && eligible && runtime.delegated && !runtime.takeover;
+    result.hybridEms = {
+      enabled: Boolean(settings.hybridEmsEnabled), configured, delegated,
+      takeover: Boolean(runtime.takeover), status: runtime.status,
+      externalSetpointW: Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null,
+      externalSetpointAt: Number(runtime.externalSetpointAt) || 0,
+      retrySentAt: Number(runtime.retrySentAt) || 0,
+      peakGuardCooldownUntil: Math.max(0, Number(runtime.peakGuardCooldownUntil) || 0),
+      peakGuardCooldownRemainingSeconds: Math.max(0, Math.ceil(((Number(runtime.peakGuardCooldownUntil) || 0) - now) / 1000)),
+    };
+    if (delegated) result.statusText = `${result.statusText} · Hybrid EMS: externe EMS regelt ${String(result?.baseMode || '') === 'avoid_import' ? 'netimport vermijden' : 'zelfconsumptie'}`;
+    else if (configured && runtime.takeover) result.statusText = `${result.statusText} · Hybrid EMS fallback: HomeFlux heeft controle overgenomen`;
+    else if (configured && runtime.status === 'homeflux_peak_guard_cooldown') {
+      const remainingSeconds = Math.max(0, Math.ceil(((Number(runtime.peakGuardCooldownUntil) || 0) - now) / 1000));
+      result.statusText = `${result.statusText} · Hybrid EMS: Peak Guard cooldown ${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+    }
+    return delegated;
+  }
+
+  handleExternalEmsSetpoint(power, now = Date.now()) {
+    const value = Number(power);
+    if (!Number.isFinite(value)) return false;
+    const runtime = this.hybridEmsRuntime;
+
+    // External feedback only has meaning while the external EMS actually owns
+    // the battery. When HomeFlux has control, ignore background setpoints at the
+    // earliest possible point: no bookkeeping, no savings sample and no forced
+    // EMS evaluation. This keeps Hybrid completely out of the normal control loop.
+    if (!runtime?.delegated || runtime.takeover) return true;
+
+    const previous = Number(runtime.externalSetpointW);
+    runtime.externalSetpointW = value;
+    runtime.externalSetpointAt = now;
+    if (!Number.isFinite(previous) || Math.abs(previous - value) >= 1) runtime.externalSetpointChangedAt = now;
+
+    this.recordSavingsSample(now);
+    this.state.lastTotalCommandW = value;
+    this.lastEmittedCommands = [value];
+    this.lastEmittedMode = 'external_self_consumption';
+
+    if (runtime.retrySentAt
+      && Math.abs(value - Number(runtime.retryReferenceSetpointW || 0))
+        >= Math.max(1, Number(this.getSettings().batteryCommandStepW) || 1)) {
+      runtime.retrySentAt = 0;
+      runtime.staleOutsideSince = 0;
+      runtime.retryReferenceSetpointW = null;
+      runtime.status = 'external_control';
+    }
+
+    // P1 updates drive the watchdog and normal EMS evaluation. External setpoint
+    // feedback itself deliberately does not schedule another evaluation.
+    return true;
+  }
+
+  monitorHybridExternalControl(settings = this.getSettings(), now = Date.now()) {
+    const runtime = this.hybridEmsRuntime;
+    if (!this.isHybridEmsConfigured(settings) || !runtime.delegated || runtime.takeover) return;
+    const grid = Number(this.state.gridPowerW);
+    if (!Number.isFinite(grid)) return;
+    const rawMin = Number(settings.hybridWatchdogMinW);
+    const rawMax = Number(settings.hybridWatchdogMaxW);
+    const minValue = Number.isFinite(rawMin) ? rawMin : -300;
+    const maxValue = Number.isFinite(rawMax) ? rawMax : 300;
+    const min = Math.min(minValue, maxValue);
+    const max = Math.max(minValue, maxValue);
+    const withinBand = grid >= min && grid <= max;
+    if (withinBand) {
+      // The watchdog condition is explicitly AND-based: missing/stale external
+      // adjustment only matters while P1 is outside the configured Hybrid band.
+      // Returning inside the band proves acceptable regulation and fully resets
+      // an earlier retry cycle, so a later deviation receives a fresh 5 + 5 min.
+      runtime.staleOutsideSince = 0;
+      runtime.retrySentAt = 0;
+      runtime.retryReferenceSetpointW = null;
+      runtime.status = 'external_control';
+      return;
+    }
+    const intervalSeconds = Math.max(3, Number(settings.commandIntervalSeconds) || 10);
+    const freshnessMs = Math.max(30000, Math.min(120000, intervalSeconds * 3000));
+    // A repeated unchanged feedback value is not proof that the external EMS is
+    // still correcting the grid deviation. The watchdog therefore tracks the
+    // last meaningful setpoint change, while modeRequestedAt gives a newly
+    // delegated external EMS its normal response window.
+    const lastAdjustmentAt = Math.max(Number(runtime.externalSetpointChangedAt) || 0, Number(runtime.modeRequestedAt) || 0);
+    const stale = !lastAdjustmentAt || now - lastAdjustmentAt >= freshnessMs;
+    if (!stale) {
+      runtime.staleOutsideSince = 0;
+      return;
+    }
+    if (!runtime.staleOutsideSince) runtime.staleOutsideSince = now;
+    const fiveMinutes = 5 * 60 * 1000;
+    if (!runtime.retrySentAt && now - runtime.staleOutsideSince >= fiveMinutes) {
+      runtime.retrySentAt = now;
+      runtime.retryReferenceSetpointW = Number.isFinite(Number(runtime.externalSetpointW)) ? Number(runtime.externalSetpointW) : null;
+      runtime.status = 'retry_external_auto';
+      this.requestExternalEmsSelfConsumption('watchdog_retry', true);
+      return;
+    }
+    if (runtime.retrySentAt && now - runtime.retrySentAt >= fiveMinutes) {
+      const stepW = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+      const reference = Number(runtime.retryReferenceSetpointW);
+      const currentExternal = Number(runtime.externalSetpointW);
+      const changedAfterRetry = Number.isFinite(reference) && Number.isFinite(currentExternal)
+        && Math.abs(currentExternal - reference) >= stepW
+        && Number(runtime.externalSetpointAt) > Number(runtime.retrySentAt);
+      if (!changedAfterRetry && (grid < min || grid > max)) {
+        runtime.takeover = true;
+        runtime.delegated = false;
+        runtime.status = 'homeflux_fallback';
+        runtime.staleOutsideSince = 0;
+        this.requestEvaluate(true);
+        this.requestContextEvaluate(true, 'hybrid_watchdog_takeover');
+      }
+    }
+  }
+
+  rememberBatteryChargeRestartState(result) {
+    const next = result?.chargeRestartState;
+    if (!next || result.avgSoc === null) return;
+    if (JSON.stringify(this.state.chargeRestartState) === JSON.stringify(next)) return;
+    this.state.chargeRestartState = next;
+    // Write only on a band/phase transition, not on every P1 evaluation.
+    this.setSetting('_batteryChargeRestartState', next);
+  }
+
+  evaluateFastNow(forceStatus = false, preflight = null) {
+    if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('fast');
+    this.recordDiagnosticCounter('fastEvaluations');
+    const diagnosticCpu = this.startDiagnosticCpuSection('fast_evaluation');
+    try {
+      const now = Date.now();
+      // Only requestEvaluate supplies this local snapshot, synchronously. A
+      // later millisecond or any timer invocation gets a fresh settings/state.
+      const storedSettings = preflight?.at === now ? preflight.settings : this.getSettings();
+      const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
+      if (paused) return paused;
+
+      // Startup and a structural settings change are handled by the slow pass.
+      // Never rebuild tariffs, forecasts or flexible loads in the P1 path.
+      if (!this.controlContext || !this.controlRuntimeSettings) {
+        this.requestContextEvaluate(true, 'fast_loop_needs_context');
+        return this.latestResult;
+      }
+
+      const pvDeltaW = this.getRecentPvDelta(now);
+      const prepared = preflight?.state && preflight.at === now && preflight.settings === storedSettings;
+      const evaluationState = prepared ? preflight.state : this.getEvaluationState(storedSettings, now, pvDeltaW, preflight?.evObservation);
+      if (prepared) this.recordDiagnosticCounter('fastEvaluationStateReused');
+      const settings = this.controlRuntimeSettings;
+      const calculated = evaluate(evaluationState, settings, new Date(now), this.controlContext,
+        this.inputMonitor?.active
+          ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'fast', 0, compute) : null);
+      this.rememberBatteryChargeRestartState(calculated);
+      this.lastControlEvalAt = now;
+      this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
+
+      const readiness = this.getInputReadiness(storedSettings);
+      const result = this.createSafetyResult(calculated, settings, readiness);
+      this.applyCachedEvBatteryCoordination(result, storedSettings, now);
+
+      const previous = this.latestResult || {};
+      result.warningText = String(previous.warningText || this.balanceMonitor?.warningText || '');
+      if (result.warningText && !String(result.statusText || '').includes('WAARSCHUWING Battery Balance')) {
+        result.statusText = `${result.statusText} · WAARSCHUWING Battery Balance`;
+      }
+      result.homeyEnergy = previous.homeyEnergy || this.getHomeyEnergyStatus(settings);
+      result.controlProfile = String(settings.controlProfile || 'normal');
+      result.forcedMode = String(settings.forcedMode || 'auto');
+      result.forcedModeResumeAt = Number(settings.forcedModeResumeAt) || 0;
+      result.fastLoop = true;
+      result.slowContextAt = Number(this.controlContextUpdatedAt) || 0;
+      result.flexibleLoadPass = false;
+      result.pvLimitPercent = previous.pvLimitPercent ?? this.lastPublishedPvLimitPercent ?? 100;
+      result.pvLimitTargetPowerW = previous.pvLimitTargetPowerW ?? this.lastPublishedPvTargetPowerW ?? 0;
+      result.pvLimitCurtailmentW = previous.pvLimitCurtailmentW ?? 0;
+      result.pvLimitTargetGridW = previous.pvLimitTargetGridW ?? 0;
+      result.pvLimitPredictedGridW = previous.pvLimitPredictedGridW ?? 0;
+      result._runFlexibleLoadPass = false;
+      const hybridDelegated = this.updateHybridEmsDelegation(result, storedSettings, now);
+
+      this.latestResult = result;
+      if (Number(result.nextEventAt) > now && Array.from({length:this.getHvacCount(storedSettings)}, (_,i)=>storedSettings.hvacCoordination?.[i]?.DirectTariffEnabled).some(Boolean)) {
+        this.scheduleContextEvaluationAt(Number(result.nextEventAt));
+      }
+      this.rememberBatteryFeedbackMemo(result, evaluationState, storedSettings, now);
+      this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
+      const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
+      this.recordDiagnosticCounter(batteryWantsChange ? 'fastCommandChange' : 'fastNoCommandChange');
+      if (!hybridDelegated) this.queueCommandEmit(result, batteryWantsChange);
+      // queueStatusUpdate has its own compact signature and therefore performs
+      // no Homey writes when the visible outcome is unchanged.
+      this.queueStatusUpdate(result, forceStatus);
+      return result;
+    } catch (err) {
+      this.error('Fast HomeFlux EMS evaluation failed', err);
+      return this.latestResult;
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
+  }
+
+  evaluateContextNow(forceStatus = false) {
+    try {
+      const now = Date.now();
+      const storedSettings = this.getSettings();
+      this.ensureForecastDayCurrent(now);
+      const pvDeltaW = this.getRecentPvDelta(now);
+      const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
+      const settings = this.refreshControlContext(storedSettings, evaluationState, now);
+      // Reuse this pass's existing control calculation for the actual discharge
+      // floor. No second evaluation or parallel reserve policy for the widget.
+      const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
+      const calculated = paused ? null : evaluate(evaluationState, settings, new Date(now), this.controlContext,
+        this.inputMonitor?.active
+          ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'context', 0, compute) : null);
+      try {
+        this.refreshPlanningInContext(storedSettings, settings, evaluationState, now, calculated);
+        if (this.isNightPlanningPhase(now)) {
+          const forcePlanPublication = Boolean(this.forceChargePlanPublication);
+          this.forceChargePlanPublication = false;
+          this.publishChargePlanIfChanged(forcePlanPublication).catch(err => {
+            if (forcePlanPublication) this.forceChargePlanPublication = true;
+            this.error('Charge plan publication from slow context failed', err);
+          });
+        }
+      } catch (err) {
+        // A display/Flow plan failure must not prevent battery or safety control.
+        this.markContextDirty('planning_retry');
+        this.error('Charge plan calculation from slow context failed', err);
+      }
+      if (paused) return paused;
+      this.rememberBatteryChargeRestartState(calculated);
+      this.lastControlEvalAt = now;
+      this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
+
+      const readiness = this.getInputReadiness(storedSettings);
+      const result = this.createSafetyResult(calculated, settings, readiness);
+      const rawCandidateTotalW = Number(result.candidateTotalCommandW) || 0;
+      this.coordinateEvBatteryPriority(result, storedSettings);
+      this.cacheEvBatteryCoordination(rawCandidateTotalW, result, now);
+
+      result.warningText = this.updateBalanceHealth(result, settings);
+      if (result.warningText) result.statusText = `${result.statusText} · WAARSCHUWING Battery Balance`;
+      result.homeyEnergy = this.getHomeyEnergyStatus(settings);
+      result.controlProfile = String(settings.controlProfile || 'normal');
+      result.forcedMode = String(settings.forcedMode || 'auto');
+      result.forcedModeResumeAt = Number(settings.forcedModeResumeAt) || 0;
+      result.fastLoop = false;
+      result.slowContextAt = now;
+      result.flexibleLoadPass = true;
+      const hybridDelegated = this.updateHybridEmsDelegation(result, storedSettings, now);
+
+      const batteryPreviewW = hybridDelegated ? (Number(this.state.lastTotalCommandW) || 0) : result.candidateTotalCommandW;
+      const pvPreview = this.calculatePvPowerLimit(settings, batteryPreviewW, this.state.lastTotalCommandW);
+      result.pvLimitPercent = pvPreview.limitPercent;
+      result.pvLimitTargetPowerW = pvPreview.targetPowerW;
+      result.pvLimitCurtailmentW = pvPreview.curtailmentW;
+      result.pvLimitTargetGridW = pvPreview.targetGridW;
+      result.pvLimitPredictedGridW = pvPreview.predictedGridAfterPvW;
+      result._runFlexibleLoadPass = true;
+      // EV/input-triggered contexts may run sooner than the ordinary slow tick.
+      // They reuse HVAC decisions until the slow cadence is due. Retain the
+      // existing urgent safety context for Peak Guard and legacy fast reset.
+      const hvacSafety = (this.activeContextDiagnosticReasons || []).some(reason => reason === 'peak_guard' || /^hvac|^setting:hvac/.test(reason));
+      const hvacTariffChanged = hvacCoordination.tariffKey(result) !== hvacCoordination.tariffKey(this.latestResult);
+      result._runHvacContextPass = hvacSafety || hvacTariffChanged || !this.lastHvacContextEvalAt
+        || now - this.lastHvacContextEvalAt >= this.getSlowControlIntervalMs(storedSettings);
+      if (result._runHvacContextPass) this.lastHvacContextEvalAt = now;
+
+      this.latestResult = result;
+      if (Number(result.nextEventAt) > now && Array.from({length:this.getHvacCount(storedSettings)}, (_,i)=>storedSettings.hvacCoordination?.[i]?.DirectTariffEnabled).some(Boolean)) {
+        this.scheduleContextEvaluationAt(Number(result.nextEventAt));
+      }
+      this.rememberBatteryFeedbackMemo(result, evaluationState, storedSettings, now);
+      this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
+      this.queueStatusUpdate(result, forceStatus);
+      const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
+      const batteryPublishQueued = hybridDelegated ? false : this.queueCommandEmit(result, batteryWantsChange);
+      if (!batteryPublishQueued) {
+        const emergencyInstances = Array.from({ length: this.getEvCount(storedSettings) }, (_, index) => {
+          const evSettings = this.getEvInstanceSettings(index, storedSettings);
+          const mode = this.getEffectiveEvModeFor(index, storedSettings);
+          return { mode, assist: Boolean(evSettings.evPeakGuardBatteryAssistEmergency) };
+        });
+        const anyEmergency = emergencyInstances.some(item => item.mode === 'emergency');
+        const emergencyNeedsBatteryFirst = emergencyInstances.some(item => item.mode === 'emergency' && item.assist);
+        this.publishFlexibleLoads(result, this.state.lastTotalCommandW, this.state.lastTotalCommandW, {
+          allowEvIncrease: !batteryWantsChange || (anyEmergency && !emergencyNeedsBatteryFirst),
+          evDecision: result.evDecision,
+          evDecisions: result.evDecisions,
+        })
+          .catch(err => this.error('Flexible-load publish failed', err))
+          .finally(() => this.publishPvPowerLimit(result, this.state.lastTotalCommandW, this.state.lastTotalCommandW)
+            .catch(err => this.error('PV power limit publish failed', err)));
+        this.flexibleLoadsDirty = false;
+        this.lastFlexibleLoadEvaluationAt = now;
+      }
+      return result;
+    } catch (err) {
+      this.error('Slow HomeFlux EMS context evaluation failed', err);
+      return this.latestResult;
+    }
+  }
+
+  // Backwards-compatible internal/manual entry point: explicit recalculation is
+  // a full context pass. Meter-driven requests use evaluateFastNow().
+  evaluateNow(forceStatus = false) {
+    return this.evaluateContextNow(forceStatus);
+  }
+
+  async triggerCalculatedSetpoint(result) {
+    if (!this.calculatedSetpointTrigger || !result) return;
+
+    const settings = this.getSettings();
+    // The calculated-setpoint card is informational, but users may wire it to
+    // custom adapters. During external Hybrid ownership it must therefore stay
+    // completely silent as well. Resetting the signature guarantees one fresh
+    // calculation event as soon as HomeFlux takes control back.
+    if (this.isHybridExternalControlActive(settings)) {
+      this.lastCalculatedSetpointSignature = null;
+      return;
+    }
+    const count = this.getBatteryCount(settings);
+    const calculatedInternal = (result.calculatedCommands || result.commands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
+    const calculated = calculatedInternal.map(value => this.toPublishedCommand(value, settings));
+    const totalInternal = Math.round(Number(result.calculatedTotalCommandW ?? result.totalCommandW) || 0);
+    const total = this.toPublishedCommand(totalInternal, settings);
+    const outputTotal = Math.round(Number(result.outputTotalCommandW ?? this.toPublishedCommand(this.state.lastTotalCommandW, settings)) || 0);
+
+    // This card represents a NEW calculated setpoint, not merely another pass
+    // through the control loop with the same result. Mode/override are included
+    // in the signature because they can change the meaning of an identical W value.
+    const signature = JSON.stringify({ calculated, total, mode: result.baseMode || '', override: result.override || '' });
+    if (signature === this.lastCalculatedSetpointSignature) return;
+    this.lastCalculatedSetpointSignature = signature;
+
+    const tokens = {
+      battery_count: count,
+      total_setpoint: total,
+      output_total: outputTotal,
+      difference_total: total - outputTotal,
+      mode: String(result.modeLabel || ''),
+      override: String(result.overrideLabel || ''),
+      status: String(result.statusText || ''),
+      publish_allowed: result.canPublishCommands ? 'Ja' : 'Nee',
+    };
+    for (let i = 1; i <= 8; i += 1) tokens[`battery${i}setpoint`] = calculated[i - 1] || 0;
+
+    this.recordDiagnosticCounter('calculatedSetpointTriggers');
+    const diagnosticCpu = this.startDiagnosticCpuSection('calculated_setpoint_trigger');
+    try {
+      await this.calculatedSetpointTrigger.trigger(this.localizeDisplayTokens(tokens), {
+        mode: result.baseMode || '',
+        override: result.override || '',
+      });
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
+  }
+
+  getEmsHealthTokens(result = this.latestResult, now = Date.now()) {
+    const readiness = typeof result?.inputReady === 'boolean'
+      ? { ready: result.inputReady, missing: result.missingInputs || [] }
+      : this.getInputReadiness(this.settingsCache || this.getSettings());
+    const faults = [];
+    if (!readiness.ready) faults.push(`Ontbrekende invoer: ${(readiness.missing || []).join(', ')}`);
+    if (result?.safetySocRecoveryActive) faults.push('Veiligheidsreserve batterij wordt hersteld');
+    if (result?.warningText) faults.push(String(result.warningText));
+    const budget = this.planningCache?.energyBudget;
+    const available = Boolean(budget?.ready && now >= budget.calculatedAt && now < budget.validUntil
+      && Number.isFinite(budget.valueKwh));
+    return { emserrors: faults.join(' · '), emslasterror: this.lastEmsError || '',
+      emswaf: available ? budget.valueKwh : 0, emswafavailable: available };
+  }
+
+  getEmsWidgetTokens(result = this.latestResult, now = Date.now()) {
+    const view = result || {};
+    const candidate = Number(view.candidateTotalCommandW);
+    const actual = Number(this.state?.lastTotalCommandW) || 0;
+    const threshold = Math.max(25, Number(this.settingsCache?.commandDeadbandW) || 25);
+    const direction = watts => Math.abs(watts) > threshold ? Math.sign(watts) : 0;
+    return emsStatusTags.values({ ...view,
+      batteryCommandPauseActive: view.batteryCommandPauseActive
+        ?? (this.settingsCache?.batteryCommandPauseEnabled
+          ? this.getBatteryCommandPauseInfo(now, this.settingsCache).active : false),
+      decisionOutputPending: view.controlEnabled === true && view.canPublishCommands !== false
+        && view.candidateTotalCommandW != null && Number.isFinite(candidate)
+        && direction(candidate) !== direction(actual),
+      decisionExternalControl: Boolean(this.hybridEmsRuntime?.delegated && !this.hybridEmsRuntime?.takeover),
+    }, this.planningCache?.energyBudget, this.displayLanguage(), now, this.balanceMonitor);
+  }
+
+  getStatusResultSignature(result) {
+    if (!result) return '';
+    const evSessions = Array.from({ length: this.getEvCount() }, (_, index) => {
+      const session = this.getEvSessionDetectionRuntime(index) || {};
+      return {
+        state: String(session.state || 'idle'),
+        startedAt: Math.max(0, Number(session.startedAt) || 0),
+        endedAt: Math.max(0, Number(session.endedAt) || 0),
+        endedLatched: Boolean(session.endedLatched),
+      };
+    });
+    return JSON.stringify({
+      baseMode: result.baseMode || '',
+      action: result.action || '',
+      override: result.override || '',
+      statusText: result.statusText || '',
+      nextEventText: result.nextEventText || '',
+      targetSoc: result.targetSoc ?? null,
+      candidateTotalCommandW: result.candidateTotalCommandW ?? null,
+      outputTotalCommandW: result.outputTotalCommandW ?? null,
+      warningText: result.warningText || '',
+      health: this.getEmsHealthTokens(result),
+      details: this.getEmsWidgetTokens(result),
+      pvLimitPercent: result.pvLimitPercent ?? null,
+      controlEnabled: Boolean(result.controlEnabled),
+      inputReady: Boolean(result.inputReady),
+      evSessions,
+      evGridReleaseBlocked: Boolean(this.evSessionDetection?.gridReleaseBlocked),
+    });
+  }
+
+  schedulePendingStatusPublish(force = false) {
+    if (this.statusPublishing || !this.pendingStatusResult) return;
+
+    const minIntervalMs = 1000;
+    const wait = force ? 0 : Math.max(0, minIntervalMs - (Date.now() - this.lastStatusPublishAt));
+    if (wait === 0) {
+      if (this.statusTimer) {
+        clearTimeout(this.statusTimer);
+        this.statusTimer = null;
+      }
+      this.publishPendingStatus().catch(err => this.error('Status token update failed', err));
+      return;
+    }
+
+    if (!this.statusTimer) {
+      this.statusTimer = this.homey.setTimeout(() => {
+        this.statusTimer = null;
+        this.publishPendingStatus().catch(err => this.error('Status token update failed', err));
+      }, wait);
+    }
+  }
+
+  queueStatusUpdate(result, force = false) {
+    const signature = this.getStatusResultSignature(result);
+    if (!force && signature) {
+      // Coalesce duplicates against the value that is actually pending. Do not
+      // compare a pending update with a signature that was merely queued while
+      // an older status was still publishing; that used to strand the pending
+      // result forever after the active publication completed.
+      if (this.pendingStatusResult && signature === this.pendingStatusSignature) return;
+      if (!this.statusPublishing && !this.pendingStatusResult && signature === this.lastPublishedStatusSignature) return;
+    }
+
+    this.pendingStatusResult = result;
+    this.pendingStatusSignature = signature;
+    this.lastQueuedStatusSignature = signature;
+    this.schedulePendingStatusPublish(force);
+  }
+
+  async publishPendingStatus() {
+    if (this.statusPublishing) return;
+    const result = this.pendingStatusResult;
+    if (!result) return;
+    const signature = this.pendingStatusSignature || this.getStatusResultSignature(result);
+    this.pendingStatusResult = null;
+    this.pendingStatusSignature = '';
+    this.statusPublishing = true;
+    this.recordDiagnosticCounter('statusPublishes');
+    const diagnosticCpu = this.startDiagnosticCpuSection('status_publish');
+
+    try {
+      const publishSettings = this.getSettings();
+      const calculatedInternalTotal = result.calculatedTotalCommandW ?? result.totalCommandW;
+      const values = this.localizeDisplayTokens({
+        emstotalcommand: result.outputTotalCommandW ?? this.toPublishedCommand(result.totalCommandW, publishSettings),
+        emscalculatedcommand: this.toPublishedCommand(calculatedInternalTotal, publishSettings),
+        emsmode: result.modeLabel,
+        emsoverride: result.overrideLabel || '',
+        emsstatus: result.statusText,
+        emsnextchange: result.nextEventText || '',
+        emstargetsoc: result.targetSoc,
+        emsgridchargeassist: result.gridChargeAssistW,
+        emswarning: result.warningText || '',
+        ...this.getEmsHealthTokens(result),
+        ...this.getEmsWidgetTokens(result),
+        emsaction: result.actionLabel || 'Rust',
+        emspvcharge: result.pvChargeW || 0,
+        emspvlimit: this.lastPublishedPvLimitPercent ?? 100,
+        emscurrentprice: result.homeyEnergy?.currentPrice ?? 0,
+        emspriceclass: result.homeyEnergy?.priceClass || '',
+        emscheapesthours: result.homeyEnergy?.cheapestSummary || '',
+        emsexpensivehours: result.homeyEnergy?.expensiveSummary || '',
+        emscheapestblock: result.homeyEnergy?.cheapestBlockSummary || '',
+        emshomeypricerank: result.homeyEnergy?.currentRank || 0,
+        emshomeypriceinterval: result.homeyEnergy?.slotIntervalMinutes || 0,
+      });
+
+      for (const [id, value] of Object.entries(values)) {
+        if (Object.is(this.lastStatusTokenValues.get(id), value)) continue;
+        const token = this.tokens.get(id);
+        if (!token) continue;
+        await token.setValue(value);
+        this.lastStatusTokenValues.set(id, value);
+      }
+
+      // Do not fire a fake "changed" event on app startup. From the second
+      // published status onward, fire whenever the compact status line really changes.
+      const currentStatusText = String(result.statusText || '');
+      if (this.lastTriggeredStatusText === null) {
+        this.lastTriggeredStatusText = currentStatusText;
+      } else if (currentStatusText !== this.lastTriggeredStatusText) {
+        this.lastTriggeredStatusText = currentStatusText;
+        if (this.statusChangedTrigger) {
+          await this.statusChangedTrigger.trigger(this.localizeDisplayTokens({
+            status: currentStatusText,
+            tariff: String(result.tariff?.label || ''),
+            action: String(result.workingModeLabel || result.actionLabel || result.modeLabel || 'Rust'),
+            next_change: String(result.nextEventText || ''),
+          })).catch(err => this.error('EMS status changed trigger failed', err));
+        }
+      }
+
+      // EMS-device capability writes are intentionally not tied to fast status
+      // publication. They are refreshed by slow housekeeping, plus explicit
+      // operator/session actions that already request their own sync.
+      this.lastStatusPublishAt = Date.now();
+      this.lastPublishedStatusSignature = signature;
+      this.lastQueuedStatusSignature = signature;
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+      this.statusPublishing = false;
+      // The latest pending result is already stored; schedule it directly
+      // instead of feeding it through duplicate detection again.
+      if (this.pendingStatusResult) this.schedulePendingStatusPublish(false);
+    }
+  }
+
+  commandChangedEnough(result) {
+    const settings = this.getSettings();
+    const deadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
+    const commands = result.candidateCommands || [];
+
+    // Always inspect split-mode intent before any ordinary early return. Besides
+    // telling us whether a switch is due NOW, this schedules a fresh evaluation
+    // for a switch that is currently blocked by its per-battery timers.
+    const splitModeChangeNow = this.splitModeChangeNeeded(result, settings);
+
+    if (this.lastEmittedCommands.length !== commands.length) return true;
+    if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride !== (result.override || '')) return true;
+    if (splitModeChangeNow) return true;
+    const effective = this.getEffectiveSplitCommands(commands, settings);
+    if (effective.some((value, index) => value !== commands[index])
+      && effective.every((value, index) => value === this.lastEmittedCommands[index])) {
+      this.recordDiagnosticCounter('batterySplitIdenticalOutputSkipped');
+      return false;
+    }
+    if (settings.optimizeMultiBatteryEfficiency && this.getBatteryCount(settings) >= 2) {
+      // A SoC rotation changes individual setpoints without changing their sum.
+      // Publication still passes through the ordinary battery interval/locks,
+      // but the TOTAL command deadband must not suppress or enlarge the small
+      // per-battery handover steps.
+      const step = Math.max(1, Number(settings.batteryCommandStepW) || 1);
+      const efficiencyCandidateTotal = commands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+      const efficiencyEmittedTotal = this.lastEmittedCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+      const sameTotalRedistribution = Math.abs(efficiencyCandidateTotal - efficiencyEmittedTotal) < step;
+      if (sameTotalRedistribution && commands.some((value, index) => (Number(value) || 0) !== (Number(this.lastEmittedCommands[index]) || 0)
+        && ((Number(value) || 0) === 0 || (Number(this.lastEmittedCommands[index]) || 0) === 0
+          || Math.abs((Number(value) || 0) - (Number(this.lastEmittedCommands[index]) || 0)) >= step))) return true;
+    }
+
+    // commandDeadbandW applies to the TOTAL EMS setpoint, not to every battery.
+    // Battery Balance may split a meaningful 50 W correction into only 12-13 W
+    // per battery; that must not suppress the correction.
+    const candidateTotal = Number.isFinite(Number(result.candidateTotalCommandW))
+      ? Number(result.candidateTotalCommandW)
+      : commands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const emittedTotal = this.lastEmittedCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const totalDelta = Math.abs(candidateTotal - emittedTotal);
+
+    let zeroMin = Number(settings.gridZeroMinW);
+    let zeroMax = Number(settings.gridZeroMaxW);
+    if (!Number.isFinite(zeroMin)) zeroMin = -5;
+    if (!Number.isFinite(zeroMax)) zeroMax = 25;
+    if (zeroMin > zeroMax) [zeroMin, zeroMax] = [zeroMax, zeroMin];
+    const grid = Number(this.state.gridPowerW);
+    const outsideZeroBand = Number.isFinite(grid) && (grid < zeroMin || grid > zeroMax);
+
+    // Outside the configured zero band, any real calculated correction may pass
+    // on the next permitted command moment. Inside the band the total setpoint
+    // deadband prevents needless writes caused by rounding/planning noise.
+    if (outsideZeroBand && totalDelta >= 1) return true;
+    return totalDelta >= deadband;
+  }
+
+  limitEfficiencyHandoverAtOutput(result, requestedCommands, settings = this.getSettings()) {
+    const count = this.getBatteryCount(settings);
+    const direct = requestedCommands.slice(0, count).map(value => Math.round(Number(value) || 0));
+    const details = result?.efficiencyOptimization;
+    if (!Boolean(settings.optimizeMultiBatteryEfficiency) || count < 2 || !details?.enabled) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const previous = Array.from({ length: count }, (_, index) => Math.round(Number(this.lastEmittedCommands[index]) || 0));
+    const requestedTotal = direct.reduce((sum, value) => sum + value, 0);
+    const previousTotal = previous.reduce((sum, value) => sum + value, 0);
+    if (!requestedTotal || !previousTotal || Math.sign(requestedTotal) !== Math.sign(previousTotal)) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const direction = Math.sign(requestedTotal);
+    // Mixed charge/discharge allocations or a direction reversal are control
+    // events, not an efficiency rotation. Never delay them.
+    if (direct.some(value => value * direction < 0) || previous.some(value => value * direction < 0)) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    // If an old active battery has become unavailable according to the engine's
+    // own SoC/strategy eligibility, safety wins and its stop is immediate.
+    const available = new Set((Array.isArray(details.availableSoc) ? details.availableSoc : [])
+      .map(item => Number(item?.battery) - 1)
+      .filter(index => Number.isInteger(index) && index >= 0 && index < count));
+    const previousActive = previous
+      .map((value, index) => value * direction > 0 ? index : -1)
+      .filter(index => index >= 0);
+    if (available.size && previousActive.some(index => !available.has(index))) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const requestedMagnitude = Math.abs(requestedTotal);
+    const previousMagnitudeTotal = Math.abs(previousTotal);
+    const target = direct.map(value => Math.max(0, Math.round(value * direction)));
+    const old = previous.map(value => Math.max(0, Math.round(value * direction)));
+    const powerLimit = index => {
+      const battery = index + 1;
+      const charging = direction < 0;
+      const shared = Math.max(0, Number(charging ? settings.maxChargePerBatteryW : settings.maxDischargePerBatteryW)
+        || (charging ? 2300 : 2400));
+      if (!Boolean(settings.individualBatteryPowerLimitsEnabled)) return shared;
+      const key = charging ? `battery${battery}MaxChargeW` : `battery${battery}MaxDischargeW`;
+      const configured = Number(settings[key]);
+      return Math.max(0, Number.isFinite(configured) ? configured : shared);
+    };
+    const limits = Array.from({ length: count }, (_, index) => (available.size && !available.has(index)) ? 0 : powerLimit(index));
+
+    // Reshape the LAST PHYSICALLY EMITTED mix to the new total first. P1 and
+    // Peak Guard can therefore change total battery power immediately, while
+    // only the transfer between batteries is ramped.
+    const baseline = Array(count).fill(0);
+    const scale = requestedMagnitude / previousMagnitudeTotal;
+    for (let index = 0; index < count; index += 1) {
+      if (old[index] <= 0 || limits[index] <= 0) continue;
+      baseline[index] = Math.min(limits[index], Math.floor(old[index] * scale));
+    }
+    let residual = requestedMagnitude - baseline.reduce((sum, value) => sum + value, 0);
+    const fill = indexes => {
+      for (const index of indexes) {
+        if (residual <= 0) break;
+        const room = Math.max(0, limits[index] - baseline[index]);
+        if (!room) continue;
+        const add = Math.min(room, residual);
+        baseline[index] += add;
+        residual -= add;
+      }
+    };
+    fill(old.map((value, index) => ({ value, index })).filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value || a.index - b.index).map(item => item.index));
+    fill(target.map((value, index) => ({ value, index })).filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value || a.index - b.index).map(item => item.index));
+    fill(Array.from({ length: count }, (_, index) => index));
+    if (residual > 0) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const donors = baseline.map((value, index) => ({ index, watts: Math.max(0, value - target[index]) }))
+      .filter(item => item.watts > 0)
+      .sort((a, b) => b.watts - a.watts || a.index - b.index);
+    const receivers = baseline.map((value, index) => ({ index, watts: Math.max(0, target[index] - value) }))
+      .filter(item => item.watts > 0)
+      .sort((a, b) => b.watts - a.watts || a.index - b.index);
+    const transferNeeded = Math.min(
+      donors.reduce((sum, item) => sum + item.watts, 0),
+      receivers.reduce((sum, item) => sum + item.watts, 0),
+    );
+    if (transferNeeded <= 0) {
+      return { commands: direct, pending: false, applied: false, transitionStepW: 0 };
+    }
+
+    const configuredStep = Math.max(1, Math.round(Number(settings.batteryCommandStepW) || 1));
+    const commandStepW = [1, 10, 100].includes(configuredStep) ? configuredStep : 1;
+    const transitionStepW = Math.max(commandStepW, Math.ceil((requestedMagnitude / 4) / commandStepW) * commandStepW);
+    let transferRemaining = Math.min(transferNeeded, transitionStepW);
+    const smoothed = baseline.slice();
+    let donorPos = 0;
+    let receiverPos = 0;
+    while (transferRemaining > 0 && donorPos < donors.length && receiverPos < receivers.length) {
+      const donor = donors[donorPos];
+      const receiver = receivers[receiverPos];
+      const move = Math.min(donor.watts, receiver.watts, transferRemaining);
+      smoothed[donor.index] -= move;
+      smoothed[receiver.index] += move;
+      donor.watts -= move;
+      receiver.watts -= move;
+      transferRemaining -= move;
+      if (donor.watts <= 0) donorPos += 1;
+      if (receiver.watts <= 0) receiverPos += 1;
+    }
+
+    const commands = smoothed.map(value => value > 0 ? value * direction : 0);
+    const pending = commands.some((value, index) => value !== direct[index]);
+    return { commands, pending, applied: true, transitionStepW };
+  }
+
+  queueCommandEmit(result, precomputedChange = null) {
+    // Hard Hybrid ownership gate. Evaluation may continue for status/planning,
+    // but no normal or safety battery command is allowed to leave HomeFlux
+    // while the external EMS owns the configured battery group. During handover_wait the
+    // one already in-flight publication may finish, but no successor is queued.
+    const hybridSettings = this.getSettings();
+    const hybridHandoverPending = this.isHybridEmsConfigured(hybridSettings)
+      && String(this.hybridEmsRuntime?.status || '') === 'handover_wait';
+    if (this.isHybridExternalControlActive(hybridSettings) || hybridHandoverPending) {
+      this.pendingResult = null;
+      this.pendingCommandBypassInterval = false;
+      return false;
+    }
+    if (!result.canPublishCommands) {
+      const hadActiveOutput = this.lastEmittedCommands.some(value => Math.abs(value) > 0);
+      if (hadActiveOutput) {
+        const count = this.getBatteryCount(this.getSettings());
+        const safetyReason = !result.controlEnabled
+          ? 'EMS-uitvoer uitgeschakeld'
+          : (Array.isArray(result.missingInputs) && result.missingInputs.length
+            ? `Ontbrekende invoer: ${result.missingInputs.join(', ')}`
+            : 'Sturing niet veilig beschikbaar');
+        this.pendingResult = {
+          ...result,
+          canPublishCommands: true,
+          candidateCommands: Array(count).fill(0),
+          candidateTotalCommandW: 0,
+          baseMode: 'safety_stop',
+          modeLabel: 'Veilige stop',
+          statusText: `Veilige stop · ${safetyReason}`,
+        };
+        // A safety stop may bypass the interval, but the publishing mutex still
+        // guarantees that two command writes can never run concurrently.
+        this.pendingCommandBypassInterval = true;
+        this.emitPending().catch(err => this.error('Safety stop failed', err));
+        return true;
+      }
+      return false;
+    }
+    if (!(precomputedChange === null ? this.commandChangedEnough(result) : precomputedChange)) return false;
+
+    const settings = this.getSettings();
+    const intervalMs = Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 1000;
+    const now = Date.now();
+    const allowedAt = Math.max(this.nextCommandAllowedAt || 0, this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
+    const wait = Math.max(0, allowedAt - now);
+    if (wait > 0) {
+      // Never hold a stale command. Recalculate from the newest inputs at the
+      // first moment a new battery setpoint is allowed.
+      this.requestEvaluate(true);
+      return false;
+    }
+
+    // Never allow a normal command to replace a queued safety stop while an
+    // earlier command is still publishing. Safety always wins first.
+    if (this.commandPublishing && this.pendingCommandBypassInterval) return false;
+    this.pendingResult = result;
+    this.pendingCommandBypassInterval = false;
+    this.emitPending().catch(err => this.error('Battery command emit failed', err));
+    return true;
+  }
+
+  async emitPending() {
+    if (this.commandPublishing) return;
+    const result = this.pendingResult;
+    if (!result) return;
+
+    const bypassInterval = Boolean(this.pendingCommandBypassInterval);
+    const settings = this.getSettings();
+    // Re-check ownership at the final publication boundary. This catches a
+    // command that was queued before Hybrid delegation but had not yet started.
+    const hybridHandoverPending = this.isHybridEmsConfigured(settings)
+      && String(this.hybridEmsRuntime?.status || '') === 'handover_wait';
+    if (this.isHybridExternalControlActive(settings) || hybridHandoverPending) {
+      this.pendingResult = null;
+      this.pendingCommandBypassInterval = false;
+      return;
+    }
+    const intervalMs = Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 1000;
+    const now = Date.now();
+    const pauseInfo = this.getBatteryCommandPauseInfo(now, settings);
+    if (pauseInfo.active) {
+      // Never release a stale pending command into the no-control window, not
+      // even a Peak Guard/safety recalculation. Re-evaluate fresh after the end.
+      this.pendingResult = null;
+      this.pendingCommandBypassInterval = false;
+      this.scheduleBatteryCommandPauseResume(pauseInfo, now);
+      return;
+    }
+    const allowedAt = Math.max(this.nextCommandAllowedAt || 0, this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
+    if (!bypassInterval && now < allowedAt) {
+      this.pendingResult = null;
+      this.pendingCommandBypassInterval = false;
+      this.requestEvaluate(true);
+      return;
+    }
+
+    this.pendingResult = null;
+    this.pendingCommandBypassInterval = false;
+    this.commandPublishing = true;
+    // Reference only the output that completed all token/Flow writes. Clear it
+    // before attempting a command: failed/partial writes are never idle proof.
+    this.batteryIdleKnownOutput = null;
+    this.recordDiagnosticCounter('batteryCommandPublishes');
+    const diagnosticCpu = this.startDiagnosticCpuSection('battery_command_publish');
+
+
+    // Reserve the complete minimum interval BEFORE the first async token/Flow
+    // write. This closes the small race where another evaluation could otherwise
+    // start while the previous command was still being published.
+    this.lastEmitAt = now;
+    this.nextCommandAllowedAt = now + intervalMs;
+
+    try {
+      const count = this.getBatteryCount(settings);
+      const requestedInternalCommands = (result.candidateCommands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
+      const efficiencyOutputTransition = this.limitEfficiencyHandoverAtOutput(result, requestedInternalCommands, settings);
+      const dischargeBlocked = this.getEvBatteryDischargePolicy(settings, now).blocked;
+      const internalCommands = dischargeBlocked
+        ? efficiencyOutputTransition.commands.map(value => Math.min(0, value)) : efficiencyOutputTransition.commands;
+      this.inFlightBatteryCommands = internalCommands;
+      this.recordDiagnosticBatteryOutput(result, 'requested', internalCommands);
+      const internalTotal = internalCommands.reduce((sum, value) => sum + value, 0);
+      const commands = internalCommands.map(value => this.toPublishedCommand(value, settings));
+      const publishedTotal = this.toPublishedCommand(internalTotal, settings);
+
+      for (let i = 1; i <= count; i += 1) {
+        const token = this.tokens.get(`battery${i}command`);
+        if (token) await token.setValue(commands[i - 1] || 0);
+      }
+      const totalToken = this.tokens.get('emstotalcommand');
+      if (totalToken) await totalToken.setValue(publishedTotal);
+
+      const triggerTokens = {
+        battery_count: count,
+        total_command: publishedTotal,
+        mode: result.modeLabel,
+        override: result.overrideLabel || '',
+        status: result.statusText,
+        next_change: result.nextEventText || '',
+      };
+      for (let i = 1; i <= 8; i += 1) triggerTokens[`battery${i}command`] = commands[i - 1] || 0;
+
+      await this.commandTrigger.trigger(this.localizeDisplayTokens(triggerTokens), {
+        mode: result.baseMode,
+        override: result.override || '',
+      });
+
+      // Split-command batteries use dedicated mode/power Flow cards. A mode
+      // transition is followed by its power card exactly one second later. If
+      // the opposite direction is requested before that mode's minimum hold time
+      // has elapsed, the current mode is kept at its configured minimum and a
+      // fresh EMS calculation is scheduled for the first allowed switch moment.
+      const effectiveInternalCommands = await this.publishSplitBatteryCommands(internalCommands, settings);
+      const effectiveInternalTotal = effectiveInternalCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
+      this.recordDiagnosticBatteryOutput(result, 'published', effectiveInternalCommands);
+
+      const previousInternalTotal = Number(this.state.lastTotalCommandW) || 0;
+      // Flexible loads and PV limiting belong to the slow/output pass. A pure
+      // fast battery correction publishes only the battery command.
+      if (Boolean(result._runFlexibleLoadPass)) {
+        await this.publishFlexibleLoads(result, internalTotal, previousInternalTotal, {
+          evDecision: result.evDecision,
+          evDecisions: result.evDecisions,
+          effectiveNextBatteryCommandW: effectiveInternalTotal,
+        })
+          .catch(err => this.error('Flexible-load publish after battery command failed', err));
+        await this.publishPvPowerLimit(result, internalTotal, previousInternalTotal)
+          .catch(err => this.error('PV power limit publish after battery command failed', err));
+        this.flexibleLoadsDirty = false;
+        this.lastFlexibleLoadEvaluationAt = Date.now();
+      }
+
+      // Keep controller feedback in HomeFlux' internal sign convention
+      // (positive discharge, negative charge). Only published values are inverted.
+      const previousBatteryCommands = this.lastEmittedCommands.slice();
+      this.lastEmittedCommands = effectiveInternalCommands;
+      this.batteryIdleKnownOutput = this.lastEmittedCommands;
+      // Preserve each direction's incumbent across gradual efficiency handovers.
+      // During a 50/50 transition the previous incumbent is deliberately kept;
+      // it changes only after that battery actually reaches 0 W. This gives the
+      // engine an unambiguous battery to hold inside the 2%-plus SoC deadband.
+      if (Boolean(settings.optimizeMultiBatteryEfficiency) && count >= 2) {
+        const desiredActiveCount = Number(result?.efficiencyOptimization?.desiredActiveCount);
+        if (Number.isInteger(desiredActiveCount) && desiredActiveCount >= 1 && desiredActiveCount <= count) {
+          this.efficiencyActiveCountSticky = desiredActiveCount;
+        } else if (!effectiveInternalCommands.some(value => Number(value) !== 0)) {
+          this.efficiencyActiveCountSticky = null;
+        }
+        for (const [key, direction] of [['efficiencyDischargeStickyIndex', 1], ['efficiencyChargeStickyIndex', -1]]) {
+          const incumbent = Number.isInteger(this[key]) ? this[key] : null;
+          const incumbentStillActive = incumbent !== null
+            && incumbent >= 0 && incumbent < effectiveInternalCommands.length
+            && Number(effectiveInternalCommands[incumbent]) * direction > 0;
+          if (!incumbentStillActive) {
+            const candidates = effectiveInternalCommands
+              .map((value, index) => ({ index, watts: Math.max(0, (Number(value) || 0) * direction) }))
+              .filter(item => item.watts > 0)
+              .sort((a, b) => b.watts - a.watts || a.index - b.index);
+            if (candidates.length) this[key] = candidates[0].index;
+          }
+        }
+      }
+      this.recordDiagnosticBatteryEfficiency(result, effectiveInternalCommands, previousBatteryCommands, Date.now());
+      this.lastEmittedMode = result.baseMode;
+      this.lastEmittedOverride = result.override || '';
+      this.recordSavingsSample(Date.now());
+      this.state.lastTotalCommandW = effectiveInternalTotal;
+
+      // Efficiency rotations intentionally move only part of the power from one
+      // battery to another per publication. Continue the handover at the next
+      // permitted battery command boundary even if P1 stays perfectly stable;
+      // otherwise a quiet meter could leave the transition halfway completed.
+      if (this.batteryEfficiencyTransitionTimer) {
+        clearTimeout(this.batteryEfficiencyTransitionTimer);
+        this.batteryEfficiencyTransitionTimer = null;
+      }
+      if (Boolean(result?.efficiencyOptimization?.transitionPending) || efficiencyOutputTransition.pending) {
+        const transitionDelayMs = Math.max(1, (this.nextCommandAllowedAt || Date.now()) - Date.now() + 5);
+        this.batteryEfficiencyTransitionTimer = this.homey.setTimeout(() => {
+          this.batteryEfficiencyTransitionTimer = null;
+          this.requestEvaluate(true);
+        }, transitionDelayMs);
+      }
+
+      if (this.latestResult) {
+        const effectiveCommands = effectiveInternalCommands.map(value => this.toPublishedCommand(value, settings));
+        this.latestResult.outputCommands = effectiveCommands;
+        this.latestResult.outputTotalCommandW = this.toPublishedCommand(effectiveInternalTotal, settings);
+        // A Split Command minimum or blocked direction change may make the real
+        // output differ from the calculated candidate. Only then reclassify the
+        // live source from the measured balance; for an unchanged command the
+        // meter can still reflect the previous output for a moment.
+        const candidateInternalTotal = Number(this.latestResult.candidateTotalCommandW);
+        if (Number.isFinite(candidateInternalTotal) && Math.abs(effectiveInternalTotal - candidateInternalTotal) > 0.5) {
+          this.refreshBatteryPresentationAfterCoordination(this.latestResult, settings, effectiveInternalTotal);
+        }
+        this.queueStatusUpdate(this.latestResult, true);
+      }
+      if (!Boolean(result._runFlexibleLoadPass)) {
+        // EV/HVAC/boiler and PV limiting may react to the new real battery
+        // output on the shared slow cadence. Repeated battery writes collapse
+        // into the same pending context pass.
+        // The changed published commands already invalidate the memo through
+        // its live dependencies. Waiting for the module refresh must not also
+        // invalidate a fresh proof established from that new output.
+        this.requestContextEvaluate(false, 'battery_output_changed', 0, false, false);
+      }
+    } catch (err) {
+      this.recordDiagnosticBatteryOutput(result, 'failed', this.inFlightBatteryCommands, err);
+      throw err;
+    } finally {
+      this.inFlightBatteryCommands = null;
+      this.endDiagnosticCpuSection(diagnosticCpu);
+      this.commandPublishing = false;
+      if (this.pendingResult) {
+        this.emitPending().catch(err => this.error('Queued battery command emit failed', err));
+      } else if (this.isHybridEmsConfigured(this.getSettings()) && String(this.hybridEmsRuntime?.status || '') === 'handover_wait') {
+        // A handover request that arrived during the async command publication
+        // is retried only after that publication has completed atomically.
+        this.requestContextEvaluate(true, 'hybrid_handover_after_publish');
+      }
+    }
+  }
+
+  getPlanningSimulationDate(timeValue, baseAt = Date.now()) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(String(timeValue || '').trim());
+    if (!match) throw new Error('Ongeldig simulatie-uur. Gebruik UU:MM.');
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) throw new Error('Ongeldig simulatie-uur. Gebruik UU:MM.');
+
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const base = new Date(Number(baseAt) || Date.now());
+    const baseParts = localParts(base, timezone);
+    const targetMinute = (hour * 60) + minute;
+    const minuteAlignedBase = base.getTime() - (base.getUTCSeconds() * 1000) - base.getUTCMilliseconds();
+    const approximate = minuteAlignedBase + ((targetMinute - baseParts.minuteOfDay) * 60000);
+
+    // The direct offset is correct on ordinary days. The bounded scan handles
+    // DST transition days without constructing a local Date with a guessed UTC
+    // offset. A non-existent spring-forward time is rejected explicitly.
+    for (let offset = -180; offset <= 180; offset += 1) {
+      const candidate = new Date(approximate + (offset * 60000));
+      const parts = localParts(candidate, timezone);
+      if (parts.dateKey === baseParts.dateKey && parts.minuteOfDay === targetMinute) return candidate;
+    }
+    throw new Error('Dit lokale uur bestaat niet op de gekozen dag door de zomer-/wintertijdomschakeling.');
+  }
+
+  simulatePlanning(body = {}) {
+    const numberInRange = (value, fallback, min, max) => {
+      const numeric = Number(value);
+      return Math.max(min, Math.min(max, Number.isFinite(numeric) ? numeric : fallback));
+    };
+    const batterySoc = numberInRange(body.batterySoc, 50, 0, 100);
+    const targetSoc = numberInRange(body.targetSoc, 80, 0, 100);
+    const pvTodayKwh = numberInRange(body.pvTodayKwh, 10, 0, 250);
+    const pvLiveW = numberInRange(body.pvLiveW, 0, 0, 100000);
+    // Positive = import before the simulated EV load, negative = export. Keeping
+    // this separate from EV current makes the simulator useful for validating
+    // the production rule that P1 remains authoritative while an explicitly
+    // permitted EV grid share shifts only the battery meter target.
+    const baseGridPowerW = numberInRange(body.baseGridPowerW, 0, -100000, 100000);
+    const evInputs = Array.isArray(body.evs) ? body.evs : [];
+    const timezone = this.homey.clock.getTimezone() || 'UTC';
+    const currentParts = localParts(new Date(), timezone);
+    const defaultTime = `${String(currentParts.hour).padStart(2, '0')}:${String(currentParts.minute).padStart(2, '0')}`;
+    const simulatedAt = this.getPlanningSimulationDate(body.time || defaultTime);
+    const simulatedParts = localParts(simulatedAt, timezone);
+
+    // The simulator has no historical PV state by design. >=5 W means PV has
+    // started and therefore selects the daytime plan. Below 5 W selects night;
+    // before local noon it represents the night that crosses midnight into the
+    // current solar day, from noon onward the night after today's PV production.
+    const dayPlanningActive = pvLiveW >= 5;
+    const nightPlanningActive = !dayPlanningActive;
+    const planningForecastDay = dayPlanningActive
+      ? 'today'
+      : (simulatedParts.minuteOfDay < 12 * 60 ? 'today' : 'tomorrow');
+    const planningDecisionSource = dayPlanningActive
+      ? 'simulation_pv_started'
+      : (planningForecastDay === 'today' ? 'simulation_overnight_before_pv' : 'simulation_after_pv');
+
+    const storedSettings = this.getSettings();
+    let settings = {
+      ...storedSettings,
+      timezone,
+      forcedMode: 'auto',
+      forcedModeResumeAt: 0,
+      forecastDataReady: true,
+      forecastDailyDataReady: true,
+      forecastTomorrowDataReady: true,
+      pvDataReady: true,
+    };
+    let batterySimulationCurve = null;
+    if (isDynamicContract(settings)) {
+      const targetInterval = this.getDynamicTargetInterval(settings);
+      const simulatedDateKey = localParts(simulatedAt, timezone).dateKey;
+      const sourceNow = new Date();
+      const selectedSourceSlots = this.getDynamicPriceSelection(settings, sourceNow, { readOnly: true }).slots;
+      batterySimulationCurve = prepareEvPriceCurve(selectedSourceSlots, timezone, targetInterval);
+      const dynamicSlots = selectedSourceSlots
+        .filter(slot => slot.dateKey === simulatedDateKey && Number.isFinite(Number(slot.price)) && Number.isFinite(Number(slot.minute)))
+        .sort((a, b) => a.minute - b.minute)
+        .map(slot => ({
+          time: `${String(Math.floor(slot.minute / 60)).padStart(2, '0')}:${String(slot.minute % 60).padStart(2, '0')}`,
+          price: Number(slot.price),
+        }));
+      settings = { ...settings, dynamicSlots, dynamicPriceDataReady: dynamicSlots.length > 0 };
+    }
+
+    // EV simulation is intentionally steady-state and read-only. The entered
+    // current is treated as real charger feedback and therefore becomes a real
+    // load on the simulated P1 meter. HomeFlux then calculates the EV request
+    // from the same EV settings/tariff rules as production. Only the part of an
+    // active EV load that is both requested by HomeFlux and explicitly allowed
+    // as EV grid import is subtracted from the BATTERY control target. Raw P1 is
+    // never hidden, so Peak Guard continues to see the complete site import.
+    const simulatedTariff = findCurrentTariff(simulatedAt, settings);
+    const evCount = this.getEvCount(settings);
+    const physicalEvs = [];
+    let totalActualEvPowerW = 0;
+    for (let index = 0; index < evCount; index += 1) {
+      const evSettings = this.getEvInstanceSettings(index, settings);
+      const input = evInputs[index] && typeof evInputs[index] === 'object' ? evInputs[index] : {};
+      const maxA = Math.max(1, Math.min(64, Math.round(Number(evSettings.evMaxCurrentA) || 32)));
+      const connected = Boolean(evSettings.evEnabled) && Boolean(input.connected);
+      const actualCurrentA = connected ? numberInRange(input.currentA, 0, 0, maxA) : 0;
+      const rawSoc = Number(input.soc);
+      const socAvailable = input.socAvailable !== false && Number.isFinite(rawSoc);
+      const soc = socAvailable ? numberInRange(rawSoc, 50, 0, 100) : null;
+      const actualPowerW = Math.round(actualCurrentA * evPowerPerAmp(evSettings));
+      totalActualEvPowerW += actualPowerW;
+      physicalEvs.push({ index, evSettings, connected, actualCurrentA, actualPowerW, socAvailable, soc });
+    }
+
+    const rawGridPowerW = Math.round(baseGridPowerW + totalActualEvPowerW);
+    const simulatedEvs = [];
+    let eligibleEvGridPowerW = 0;
+    for (const physical of physicalEvs) {
+      const decision = this.measureEvPlanningDecision(physical.index, 'simulation', {
+        settings: physical.evSettings,
+        connected: physical.connected,
+        soc: physical.socAvailable ? physical.soc : NaN,
+        socSeen: physical.socAvailable,
+        socFresh: physical.socAvailable,
+        socAgeMinutes: physical.socAvailable ? 0 : null,
+        actualCurrentA: physical.actualCurrentA,
+        now: simulatedAt,
+        tariff: simulatedTariff,
+        gridPowerW: rawGridPowerW,
+        currentBatteryCommandW: 0,
+        nextBatteryCommandW: 0,
+        pvHeadroomW: 0,
+      });
+      const requestedSteadyStatePowerW = decision.allowed && decision.selectedTariff
+        ? Math.min(physical.actualPowerW, Math.max(0, Number(decision.desiredPowerW) || 0))
+        : 0;
+      eligibleEvGridPowerW += requestedSteadyStatePowerW;
+      const controlType = this.getEvControlType(physical.evSettings);
+      let modeCommand = null;
+      if (['mode', 'hybrid'].includes(controlType)) {
+        if (!decision.allowed) modeCommand = 'stop';
+        else if (controlType === 'mode' && ['smart','standard'].includes(String(decision.effectiveChargeMode || ''))) modeCommand = String(decision.effectiveChargeMode);
+        else if (decision.peakLimited && controlType === 'mode') modeCommand = 'stop';
+        else if (['emergency', 'soc_target'].includes(String(decision.mode || physical.evSettings.evMode || 'smart'))) modeCommand = 'standard';
+        else if (['tariff','guarantee','pv+tariff','pv+topup'].includes(String(decision.source || ''))) modeCommand = 'standard';
+        else modeCommand = 'smart';
+      }
+      simulatedEvs.push({
+        instance: physical.index + 1,
+        name: this.getEvInstanceName(physical.index, settings),
+        enabled: Boolean(physical.evSettings.evEnabled),
+        connected: physical.connected,
+        soc: physical.socAvailable ? physical.soc : null,
+        socAvailable: physical.socAvailable,
+        phases: Number(physical.evSettings.evPhases) === 1 ? 1 : 3,
+        voltage: Number(physical.evSettings.evVoltage) || 230,
+        voltageReference: physical.evSettings.evVoltageReference || 'phase',
+        controlType,
+        actualCurrentA: physical.actualCurrentA,
+        actualPowerW: physical.actualPowerW,
+        allowed: Boolean(decision.allowed),
+        desiredCurrentA: Math.max(0, Number(decision.desiredCurrentA) || 0),
+        desiredPowerW: Math.max(0, Math.round(Number(decision.desiredPowerW) || 0)),
+        modeCommand,
+        selectedTariff: Boolean(decision.selectedTariff),
+        source: String(decision.source || 'off'),
+        peakLimited: Boolean(decision.peakLimited),
+        targetReachable: decision.targetReachable !== false,
+        targetReachableOnSelectedTariffs: decision.targetReachableOnSelectedTariffs !== false,
+        energyNeedKwh: Number.isFinite(Number(decision.energyNeedKwh)) ? Number(decision.energyNeedKwh) : null,
+        deadlineAt: Number(decision.deadlineAt) || 0,
+        reason: String(decision.reason || ''),
+      });
+    }
+
+    const evGridImportLimitW = eligibleEvGridPowerW > 0
+      ? Math.max(0, Number(this.getEvGridImportLimitW(simulatedTariff, settings)) || 0)
+      : 0;
+    // Remove only the EV part that actually reaches the grid. Existing household
+    // import remains visible to the battery controller; pre-existing export first
+    // offsets the simulated EV before any intentional EV grid-import target exists.
+    const evGridMeterContributionW = Math.max(0, (baseGridPowerW + eligibleEvGridPowerW) - Math.max(0, baseGridPowerW));
+    const evGridImportTargetW = Math.min(evGridImportLimitW, evGridMeterContributionW);
+    const controlGridPowerW = rawGridPowerW - evGridImportTargetW;
+
+    const count = this.getBatteryCount(settings);
+    const simulationState = {
+      gridPowerW: rawGridPowerW,
+      controlGridPowerW,
+      gridAverage5sW: rawGridPowerW,
+      controlGridSource: evGridImportTargetW > 0 ? 'planning_simulation_ev_grid_target' : 'planning_simulation',
+      evGridImportTargetW,
+      pvPowerW: pvLiveW,
+      // The one PV field intentionally feeds every possible forecast role. The
+      // result identifies which role the selected planning phase actually used.
+      forecastRemainingKwh: pvTodayKwh,
+      forecastDailyMaxKwh: pvTodayKwh,
+      forecastTomorrowKwh: pvTodayKwh,
+      batterySoc: Array(count).fill(batterySoc),
+      lastTotalCommandW: 0,
+      pvDeltaW: 0,
+      planningForecastDay,
+      planningDecisionSource,
+      nightPlanningActive,
+      targetSocOverride: targetSoc,
+    };
+
+    // Both engine calls are pure calculations. No app state, setting, planning
+    // cache, Flow token or output command is written by this endpoint.
+    const batteryInputs = getBatteryNightPlanningInputs(simulationState, settings, simulatedAt);
+    if ((chargeStrategy.select(settings, simulatedAt.getTime(), simulationState.nightPlanningActive).mode !== 'maximum'
+      || chargeStrategy.select(settings, simulatedAt.getTime(), simulationState.nightPlanningActive).position === 'center')
+      && batteryInputs && batterySimulationCurve?.intervals.length) settings.batteryNightPlan = new BatteryNightPlanner()
+      .evaluate({ ...batteryInputs, curve: batterySimulationCurve });
+    settings.batteryChargeStrategyPlan = prepareChargeStrategy(simulationState, settings, simulatedAt, batterySimulationCurve);
+    const plan = this.measurePlanningCalculation('batterySocPlan', 'simulation', 0,
+      () => buildSocPlan(simulationState, settings, simulatedAt));
+    const result = evaluate(simulationState, settings, simulatedAt, null,
+      this.inputMonitor?.active
+        ? compute => this.measurePlanningCalculation('batteryChargeTarget', 'simulation', 0, compute) : null);
+    const tariff = result.tariff || {};
+    return {
+      version: this.homey?.manifest?.version || require('./app.json').version,
+      simulatedAt: simulatedAt.getTime(),
+      simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
+      timezone,
+      phase: dayPlanningActive ? 'day' : 'night',
+      planningForecastDay,
+      planningDecisionSource,
+      phaseAssumption: dayPlanningActive
+        ? 'pv_live_at_least_5w'
+        : (planningForecastDay === 'today' ? 'pv_below_5w_before_noon' : 'pv_below_5w_after_noon'),
+      inputs: { batterySoc, targetSoc, pvTodayKwh, pvLiveW, baseGridPowerW },
+      evSimulation: {
+        baseGridPowerW: Math.round(baseGridPowerW),
+        totalActualEvPowerW: Math.round(totalActualEvPowerW),
+        rawGridPowerW: Math.round(rawGridPowerW),
+        evGridImportLimitW: Math.round(evGridImportLimitW),
+        evGridImportTargetW: Math.round(evGridImportTargetW),
+        controlGridPowerW: Math.round(controlGridPowerW),
+        steadyState: true,
+        evs: simulatedEvs,
+      },
+      plan,
+      decision: {
+        baseMode: result.baseMode,
+        modeLabel: result.modeLabel,
+        action: result.action,
+        actionLabel: result.actionLabel,
+        workingModeLabel: result.workingModeLabel,
+        statusText: result.statusText,
+        tariffLabel: String(tariff.label || tariff.name || tariff.rateName || tariff.className || ''),
+        tariffClass: String(tariff.className || ''),
+        avgSoc: result.avgSoc,
+        targetSoc: result.targetSoc,
+        plannedChargeW: result.plannedChargeW,
+        gridChargeAssistW: result.gridChargeAssistW,
+        pvChargeW: result.pvChargeW,
+        totalCommandW: result.totalCommandW,
+        commands: result.commands,
+        predictedGridW: result.predictedGridW,
+        forecastPlanningDay: result.forecastPlanningDay,
+        forecastPlanningKwh: result.forecastPlanningKwh,
+        forecastEnergyTargetSoc: result.forecastEnergyTargetSoc,
+        targetOverridden: result.targetOverridden,
+        peakReserveStrategy: result.peakReserveStrategy,
+        peakReserveActive: result.peakReserveActive,
+        peakReserveTargetSoc: result.peakReserveTargetSoc,
+        peakReservePvCreditKwh: result.peakReservePvCreditKwh,
+        peakReserveShortfallAfterPvKwh: result.peakReserveShortfallAfterPvKwh,
+        sunnyMonthsMinSocActive: result.sunnyMonthsMinSocActive,
+        lowForecastBatterySaveActive: result.lowForecastBatterySaveActive,
+        lowForecastReferenceDay: result.lowForecastReferenceDay,
+        lowForecastReferenceKwh: result.lowForecastReferenceKwh,
+      },
+    };
+  }
+
+  getPlanningPhaseKey(now = Date.now()) {
+    return `${this.getLocalDateKey(new Date(now))}|${this.isNightPlanningPhase(now)}|${this.getPlanningForecastDay(now)}`;
+  }
+
+  refreshPlanningInContext(storedSettings, settings, state, now = Date.now(), controlResult = null) {
+    if (!this.planningCache) this.planningCache = { generation: 0, value: null, dirty: true, lastCalculatedAt: 0, nextAllowedAt: 0 };
+    const cache = this.planningCache;
+    const phaseKey = this.getPlanningPhaseKey(now);
+    const phaseChanged = cache.phaseKey !== phaseKey;
+    const hasValue = Boolean(cache.value?.plan);
+    const firstSoc = hasValue && cache.value.plan.currentSoc == null && computeAverageSoc(state, settings) !== null;
+    const planDue = !hasValue || phaseChanged || firstSoc || (cache.dirty && now >= Number(cache.nextAllowedAt));
+    const budgetDue = !cache.energyBudget || phaseChanged
+      || now >= Number(cache.budgetNextAt || 0) || firstSoc;
+    if (!planDue && !budgetDue) return cache.value.plan;
+    const diagnosticCpu = this.startDiagnosticCpuSection('planning_calculation');
+    let plan;
+    try {
+      if (budgetDue) {
+        const horizon = budgetHorizon(state, settings, now);
+        // Reuse the already calculated control facts, not a second planner or
+        // forecast-target calculation. Raw remaining-today is intentional:
+        // the continuing night controller may have projected its night median
+        // into evaluationState on a dark morning, while WAF now looks to 17:00.
+        const budgetPlan = {
+          ready: Boolean(controlResult),
+          currentSoc: controlResult?.avgSoc,
+          targetSoc: controlResult?.planningChargeTargetSoc ?? controlResult?.targetSoc,
+          safetySoc: controlResult?.safetySoc,
+          peakReserveActive: controlResult?.peakReserveActive,
+          peakReserveTargetSoc: controlResult?.peakReserveTargetSoc,
+          planningPhase: horizon.phase,
+          planningChargeDeadlineAt: horizon.targetAt,
+          forecastReady: Boolean(settings.forecastDataReady),
+          forecastUsedSource: 'today_remaining',
+          forecastUsedKwh: this.state.forecastRemainingKwh,
+        };
+        // WAF describes the household/battery/remaining-solar balance. EV
+        // goals, telemetry, price curves and planner horizons cannot gate it.
+        this.recordDiagnosticCounter('widgetEnergyBudgetCalculations');
+        cache.energyBudget = calculateBudget({ plan: budgetPlan, settings, state, now,
+          learning: this.autoTuneRuntime?.planning, reserveSoc: controlResult?.ordinaryDischargeFloorSoc,
+          batteryAvailable: Boolean(controlResult) && Boolean(settings.controlEnabled) && !this.hybridEmsRuntime?.delegated
+            && String(settings.forcedMode || 'auto') !== 'standby' });
+        cache.energyBudget.horizon = horizon.horizon;
+        cache.budgetPhaseKey = horizon.key;
+        cache.budgetNextAt = horizon.nextRefreshAt;
+        if (hasValue) cache.value.plan.energyBudget = cache.energyBudget;
+      }
+      // WAF is refreshed independently BEFORE the optional battery plan. A
+      // fixed contract, reached SoC goal or clean plan cache cannot suppress it.
+      if (!planDue) return cache.value.plan;
+      this.recordDiagnosticCounter('planningCalculations');
+      plan = {
+        version: this.homey?.manifest?.version || require('./app.json').version,
+        nightPlanningActive: this.isNightPlanningPhase(now),
+        planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
+        ...this.measurePlanningCalculation('batterySocPlan', 'context', 0,
+          () => buildSocPlan(state, settings, new Date(now))),
+        energyBudget: cache.energyBudget,
+      };
+    } finally {
+      this.endDiagnosticCpuSection(diagnosticCpu);
+    }
+    cache.value = { at: now, plan };
+    cache.dirty = false;
+    cache.phaseKey = phaseKey;
+    cache.lastCalculatedAt = now;
+    cache.nextAllowedAt = now + Math.max(this.getPlanningMinIntervalMs(storedSettings), this.getSlowControlIntervalMs(storedSettings));
+    this.recordDiagnosticPlanning(plan, now, storedSettings, state);
+    return plan;
+  }
+
+  // Status/device reads never run the planner or schedule work.
+  getPlanningStatus() {
+    return this.planningCache?.value?.plan || { currentSoc: null, rows: [] };
+  }
+
+  async refreshChargePlanning() {
+    this.invalidatePlanningCache(true);
+    await this.runContextEvaluation(true);
+    return this.getPlanningStatus();
+  }
+
+  getBatteryDisabledStatusText(settings, batteryStatus = 'HomeFlux EMS gereed') {
+    for (let index = 0; index < this.getEvCount(settings); index += 1) {
+      if (settings[this.getEvSettingKey(index, 'Enabled')]) return 'Batterij-uitvoer uit · EV-regeling zelfstandig';
+    }
+    return `SIMULATIE · ${batteryStatus}`;
+  }
+
+  getPublicStatus() {
+    const storedSettings = this.getSettings();
+    // /status is polled every two seconds while the settings page is visible.
+    // Reuse the last slow-loop runtime snapshot instead of rebuilding dynamic
+    // tariffs and derived settings on every read-only status request.
+    const settings = this.controlRuntimeSettings || this.cachedRuntimeSettings || this.getRuntimeSettings(storedSettings);
+    const readiness = this.getInputReadiness(storedSettings);
+
+    // v0.3.28: /status is deliberately read-only and lightweight. The settings
+    // page polls this endpoint every two seconds while visible, so it must never
+    // run the EMS engine again. Derived values come from the most recent REAL
+    // control calculation; raw inputs and actual published outputs are refreshed
+    // from current state. This keeps the control cadence authoritative and avoids
+    // up to 30 unnecessary preview evaluations per minute.
+    const statusNow = Date.now();
+    const pauseInfo = this.getBatteryCommandPauseInfo(statusNow, storedSettings);
+    const count = this.getBatteryCount(storedSettings);
+    const chargeTestPassed = this.isChargeTestValid(storedSettings);
+    const controlEnabled = Boolean(settings.controlEnabled) && chargeTestPassed;
+    const actualInternalCommands = Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0);
+    const actualPublishedCommands = actualInternalCommands.map(value => this.toPublishedCommand(value, storedSettings));
+    const actualPublishedTotal = actualPublishedCommands.reduce((sum, value) => sum + value, 0);
+
+    // Live status reports direction explicitly. For normal batteries direction is
+    // derived from HomeFlux' internal sign convention. For split batteries the
+    // ACTUAL active mode/power is used, which is important while a requested
+    // opposite mode is still waiting for its anti-chatter timer.
+    this.ensureSplitCommandState();
+    const outputCommandModes = [];
+    const outputCommandPowerW = [];
+    for (let index = 0; index < count; index += 1) {
+      const config = this.getSplitBatteryConfig(index, storedSettings);
+      const splitState = this.splitCommandState[index];
+      if (!controlEnabled) {
+        outputCommandModes.push('idle');
+        outputCommandPowerW.push(0);
+      } else if (config.enabled && splitState?.currentMode) {
+        outputCommandModes.push(splitState.currentMode);
+        const splitPower = Math.abs(Number(splitState.lastPower));
+        outputCommandPowerW.push(Number.isFinite(splitPower) ? Math.round(splitPower) : Math.abs(Math.round(actualPublishedCommands[index] || 0)));
+      } else {
+        const internal = Math.round(Number(actualInternalCommands[index]) || 0);
+        outputCommandModes.push(internal > 0 ? 'discharge' : internal < 0 ? 'charge' : 'idle');
+        outputCommandPowerW.push(Math.abs(Math.round(actualPublishedCommands[index] || 0)));
+      }
+    }
+
+    const preview = { ...(this.latestResult || {}) };
+    const fallbackStatus = readiness.ready
+      ? (controlEnabled ? 'HomeFlux EMS gereed' : this.getBatteryDisabledStatusText(storedSettings))
+      : `Wachten op data: ${(readiness.missing || []).join(', ')}`;
+
+    preview.statusText = String(preview.statusText || fallbackStatus);
+    if (!controlEnabled && readiness.ready) {
+      preview.statusText = this.getBatteryDisabledStatusText(storedSettings,
+        preview.statusText.replace(/^SIMULATIE · /, ''));
+    }
+    preview.inputReady = Boolean(readiness.ready);
+    preview.missingInputs = Array.isArray(readiness.missing) ? readiness.missing.slice() : [];
+    preview.degradedInputs = Array.isArray(readiness.degraded) ? readiness.degraded.slice() : [];
+    preview.priceDataReady = readiness.priceDataReady !== false;
+    preview.inputsReceived = readiness.received || {};
+    preview.controlEnabled = controlEnabled;
+    preview.canPublishCommands = Boolean(readiness.ready) && controlEnabled;
+    preview.calculatedCommands = Array.isArray(preview.calculatedCommands)
+      ? preview.calculatedCommands.slice(0, count)
+      : Array(count).fill(0);
+    preview.calculatedTotalCommandW = Number.isFinite(Number(preview.calculatedTotalCommandW))
+      ? Number(preview.calculatedTotalCommandW)
+      : (Number(preview.totalCommandW) || 0);
+
+    const calculatedInternalCommands = preview.calculatedCommands.slice(0, count).map(value => Math.round(Number(value) || 0));
+    preview.calculatedCommandModes = calculatedInternalCommands.map((value, index) => {
+      const config = this.getSplitBatteryConfig(index, storedSettings);
+      if (config.enabled) return this.getSplitDesiredMode(value, config);
+      return value > 0 ? 'discharge' : value < 0 ? 'charge' : 'idle';
+    });
+    preview.calculatedCommandPowerW = calculatedInternalCommands.map(value => Math.abs(value));
+    preview.outputCommands = controlEnabled ? actualPublishedCommands : Array(count).fill(0);
+    preview.outputTotalCommandW = controlEnabled ? actualPublishedTotal : 0;
+    preview.outputCommandModes = outputCommandModes;
+    preview.outputCommandPowerW = outputCommandPowerW;
+    preview.splitModeSwitchPendingSeconds = Array.from({ length: count }, (_, index) => {
+      if (!controlEnabled) return 0;
+      const config = this.getSplitBatteryConfig(index, storedSettings);
+      if (!config.enabled) return 0;
+      const splitState = this.splitCommandState[index];
+      const desiredMode = preview.calculatedCommandModes[index];
+      if (!splitState?.currentMode || splitState.currentMode === desiredMode) return 0;
+      const switchAt = this.getSplitNextModeSwitchAt(index, config);
+      return switchAt > statusNow ? Math.max(1, Math.ceil((switchAt - statusNow) / 1000)) : 0;
+    });
+    preview.warningText = this.latestResult?.warningText || '';
+    if (pauseInfo.active) {
+      preview.batteryCommandPauseActive = true;
+      preview.batteryCommandPauseStart = pauseInfo.start;
+      preview.batteryCommandPauseEnd = pauseInfo.end;
+      preview.statusText = `Batterijsturing gepauzeerd · ${pauseInfo.start}–${pauseInfo.end} · laatste setpoint behouden`;
+    } else {
+      preview.batteryCommandPauseActive = false;
+    }
+    const widgetTokens = this.getEmsWidgetTokens(preview, statusNow);
+    preview.decisionText = widgetTokens.emsdecision;
+    preview.decisionReason = widgetTokens.emsdecisionreasons;
+    preview.homeyEnergy = this.getHomeyEnergyStatus(storedSettings, new Date(statusNow));
+    preview.homeyEnergySource = this.getRawHomeyEnergyStatus(storedSettings, new Date(statusNow));
+    preview.externalEnergy = this.getExternalEnergyStatus(storedSettings, new Date(statusNow));
+    preview.externalEnergy2 = this.getExternalEnergyStatus(storedSettings, new Date(statusNow), 'external2');
+    preview.controlProfile = String(settings.controlProfile || 'normal');
+    preview.forcedMode = String(settings.forcedMode || 'auto');
+    preview.forcedModeResumeAt = Number(settings.forcedModeResumeAt) || 0;
+    preview.outputPvLimitPercent = this.lastPublishedPvLimitPercent ?? 100;
+    preview.pvLimitPercent = Number.isFinite(Number(preview.pvLimitPercent)) ? Number(preview.pvLimitPercent) : preview.outputPvLimitPercent;
+    preview.pvLimitTargetPowerW = Number(preview.pvLimitTargetPowerW) || 0;
+    preview.pvLimitCurtailmentW = Number(preview.pvLimitCurtailmentW) || 0;
+    preview.pvLimitTargetGridW = Number(preview.pvLimitTargetGridW) || 0;
+    preview.pvLimitPredictedGridW = Number(preview.pvLimitPredictedGridW) || 0;
+    preview.lastControlEvaluationAt = Number(this.lastControlEvalAt) || 0;
+    preview.nextCharge = this.getWidgetNextChargeStatus(statusNow);
+    preview.planningSummary = this.getWidgetPlanningSummary(statusNow);
+    const budget = this.planningCache?.energyBudget;
+    preview.energyBudget = budget?.ready && statusNow >= budget.calculatedAt && statusNow < budget.validUntil
+      ? budget : null;
+    // Select existing conditions only; do not infer communications failures
+    // from old SoC (SoC intentionally has no freshness expiry in HomeFlux).
+    preview.criticalAlert = !readiness.ready
+      ? { id: 'input', detail: (readiness.missing || []).join(', ') }
+      : preview.safetySocRecoveryActive
+        ? { id: 'safety_soc', detail: '' }
+        : this.balanceMonitor?.warningActive
+          ? { id: 'balance', detail: this.balanceMonitor.warningText || '' } : null;
+
+    // Read-only battery timing for the status widget. Use the ACTUAL internal
+    // battery output, not a theoretical/planned power, so the remaining time
+    // follows what HomeFlux is really asking the batteries to do right now.
+    const actualInternalTotalW = actualInternalCommands.reduce((sum, value) => sum + value, 0);
+    const timingSoc = Number(preview.avgSoc);
+    const timingPlanningTargetSoc = Number(preview.planningChargeTargetSoc ?? preview.targetSoc);
+    const timingGridTargetSoc = preview.baseMode === 'charge' && isDynamicContract(storedSettings)
+      && preview.tariff?.className === 'normal'
+      ? Math.min(timingPlanningTargetSoc, Number(storedSettings.dynamicNormalChargeMaxSoc))
+      : timingPlanningTargetSoc;
+    const timingTargetSoc = Number(preview.safetySocRecoveryActive ? preview.safetySoc
+      : preview.baseMode === 'manual_charge' || preview.action === 'pv_charge' ? storedSettings.maxSoc
+        : timingGridTargetSoc);
+    const timingSafetySoc = Number(preview.override === 'peak_shave' ? storedSettings.minSoc
+      : preview.ordinaryDischargeFloorSoc ?? preview.safetySoc ?? storedSettings.safetySoc);
+    const timingCapacityKwh = Number(preview.effectiveCapacityKwh);
+    const timingPowerW = Math.abs(actualInternalTotalW);
+    let batteryTiming = { direction: 'idle', powerW: timingPowerW, hours: null, targetSoc: null };
+    if (Number.isFinite(timingSoc) && Number.isFinite(timingCapacityKwh) && timingCapacityKwh > 0 && timingPowerW > 25) {
+      if (actualInternalTotalW < 0 && Number.isFinite(timingTargetSoc)) {
+        const energyKwh = Math.max(0, timingCapacityKwh * ((timingTargetSoc - timingSoc) / 100));
+        batteryTiming = {
+          direction: 'charge',
+          powerW: timingPowerW,
+          hours: energyKwh > 0 ? energyKwh / (timingPowerW / 1000) : 0,
+          targetSoc: timingTargetSoc,
+        };
+      } else if (actualInternalTotalW > 0 && Number.isFinite(timingSafetySoc)) {
+        const energyKwh = Math.max(0, timingCapacityKwh * ((timingSoc - timingSafetySoc) / 100));
+        batteryTiming = {
+          direction: 'discharge',
+          powerW: timingPowerW,
+          hours: energyKwh > 0 ? energyKwh / (timingPowerW / 1000) : 0,
+          targetSoc: timingSafetySoc,
+        };
+      }
+    }
+    preview.batteryTiming = batteryTiming;
+
+    const dynamicPriceRequired = isDynamicContract(storedSettings);
+    const effectivePrice = preview.homeyEnergy || {};
+    const priceLastUpdatedAt = Number(effectivePrice.lastUpdatedAt) || 0;
+    const priceAgeMs = priceLastUpdatedAt > 0 ? Math.max(0, statusNow - priceLastUpdatedAt) : null;
+    preview.priceData = {
+      required: dynamicPriceRequired,
+      ready: dynamicPriceRequired ? readiness.priceDataReady !== false : true,
+      fresh: dynamicPriceRequired ? String(effectivePrice.source || 'none') !== 'none' : true,
+      source: String(effectivePrice.source || 'none'),
+      sourceName: effectivePrice.sourceName || 'None',
+      fallbackEnabled: Boolean(effectivePrice.fallbackEnabled),
+      fallbackActive: Boolean(effectivePrice.fallbackActive),
+      fallbackReady: Boolean(effectivePrice.fallbackReady),
+      primary: effectivePrice.primary || null,
+      secondary: effectivePrice.secondary || null,
+      tertiary: effectivePrice.tertiary || null,
+      sources: effectivePrice.sources || [],
+      sourceOrder: effectivePrice.sourceOrder || [],
+      skippedSources: effectivePrice.skippedSources || [],
+      primarySource: effectivePrice.primarySource,
+      secondarySource: effectivePrice.secondarySource,
+      calibrationState: effectivePrice.calibrationState,
+      homeyFresh: Boolean(effectivePrice.homeyFresh),
+      externalCurrentFresh: Boolean(effectivePrice.externalCurrentFresh),
+      lastUpdatedAt: priceLastUpdatedAt,
+      ageSeconds: priceAgeMs === null ? null : Math.round(priceAgeMs / 1000),
+      refreshing: dynamicPriceRequired ? Boolean(this.homeyEnergy?.refreshing) : false,
+    };
+
+
+    // One read-only observation belongs to THIS status request only. A later
+    // status call must observe changed P1, battery commands and EV feedback.
+    const evObservation = { settings: storedSettings, at: statusNow, instances: [], control: null };
+    const evGridControl = this.getEvGridImportObservation(storedSettings, statusNow, evObservation);
+    preview.evGridControl = evGridControl;
+
+    const evStatuses = Array.from({ length: this.getEvCount(storedSettings) }, (_, index) => {
+      const instanceSettings = this.getEvObservationSettings(index, storedSettings, statusNow, evObservation, 'status');
+      const input = this.getEvInputSnapshot(index);
+      const runtime = index === 0 ? null : this.getExtraEv(index);
+      const decision = index === 0 ? this.latestEvDecision : runtime?.latestDecision;
+      const override = this.getEvSessionOverrideFor(index);
+      const session = this.getEvSessionDetectionRuntime(index) || {};
+      const outputTiming = this.getEvOutputTimingStatus(index, decision, storedSettings, statusNow, instanceSettings);
+      return {
+        instance: index + 1,
+        name: this.getEvInstanceName(index, storedSettings),
+        enabled: Boolean(instanceSettings.evEnabled),
+        socEnabled: instanceSettings.evSocEnabled !== false,
+        mode: this.getEffectiveEvModeFor(index, storedSettings),
+        configuredMode: String(instanceSettings.evMode || 'smart'),
+        controlType: this.getEvControlType(instanceSettings),
+        connected: Boolean(input?.connected),
+        soc: instanceSettings.evSocEnabled !== false && input?.seen?.soc ? Number(input.soc) : null,
+        socFreshness: this.getEvSocFreshness(index, instanceSettings, statusNow),
+        socPlanOverrideActive: Boolean(instanceSettings.evSocPlanOverrideActive),
+        centralPlan: evDashboard.plan(this, index),
+        lastKnownFeedback: !input?.seen?.connected && evPlanOptions.runtime(this)[index]?.feedback?.restored
+          ? { ...evPlanOptions.runtime(this)[index].feedback } : null,
+        planningSource: String(instanceSettings.evPlanningSource || 'settings'),
+        planningFlowInputReceived: Boolean(instanceSettings.evPlanningFlowInputReceived),
+        planningGuarantee: Boolean(instanceSettings.evPlanningGuarantee),
+        planningTargetKwh: Number.isFinite(Number(instanceSettings.evPlanningTargetKwh)) ? Number(instanceSettings.evPlanningTargetKwh) : null,
+        planningRemainingKwh: Number.isFinite(Number(instanceSettings.evPlanningRemainingKwh)) ? Number(instanceSettings.evPlanningRemainingKwh) : null,
+        planningTargetSoc: Number.isFinite(Number(instanceSettings.evPlanningTargetSoc)) ? Number(instanceSettings.evPlanningTargetSoc) : null,
+        planningTargetTime: String(instanceSettings.evPlanningTargetTime || instanceSettings.evTargetTime || '07:00'),
+        measuredPowerW: Math.round(this.getEvCommandedPowerW(index, storedSettings)),
+        measuredPowerSource: this.getEvControlTypeFor(index, storedSettings) === 'mode' ? 'homeflux_p1_estimate' : 'flow_current',
+        actualCurrentFresh: this.getEvMeasuredCurrent(index, input, statusNow).fresh,
+        actualCurrentA: input?.seen?.chargeCurrent ? Math.max(0, Number(input.chargeCurrentA) || 0) : 0,
+        received: { ...(input?.seen || {}), soc: instanceSettings.evSocEnabled !== false ? Boolean(input?.seen?.soc) : false },
+        override: {
+          active: Boolean(override?.mode),
+          mode: override?.mode ? String(override.mode) : '',
+          sessionStarted: Boolean(override?.sessionStarted),
+        },
+        session: {
+          state: String(session.state || 'idle'),
+          connectedAt: Math.max(0, Number(session.connectedAt) || 0),
+          startedAt: Math.max(0, Number(session.startedAt) || 0),
+          endedAt: Math.max(0, Number(session.endedAt) || 0),
+          endedReason: String(session.endedReason || ''),
+          endedLatched: Boolean(session.endedLatched),
+          socTargetReached: Boolean(session.socTargetReached),
+          detectionSource: String(session.detectionSource || ''),
+          baselineW: session.baselineW !== null && session.baselineW !== undefined && Number.isFinite(Number(session.baselineW))
+            ? Math.round(Number(session.baselineW)) : null,
+        },
+        ...(decision || {}),
+        outputCurrentA: index === 0 ? Math.max(0, Number(this.lastPublishedEvCurrentA) || 0) : Math.max(0, Number(runtime?.lastPublishedCurrentA) || 0),
+        outputChargeMode: index === 0 ? String(this.lastPublishedEvChargeMode || 'stop') : String(runtime?.lastPublishedChargeMode || 'stop'),
+        outputAllowed: index === 0 ? Boolean(this.lastPublishedEvAllowed) : Boolean(runtime?.lastPublishedAllowed),
+        nextOutputState: String(outputTiming.state || 'active'),
+        nextOutputPending: Boolean(outputTiming.pending),
+        nextOutputWaitingForInterval: Boolean(outputTiming.waitingForInterval),
+        nextOutputRemainingSeconds: Math.max(0, Number(outputTiming.remainingSeconds) || 0),
+        nextOutputWaitReason: String(outputTiming.waitReason || ''),
+        nextOutputCurrentA: Math.max(0, Number(outputTiming.nextCurrentA) || 0),
+        nextOutputChargeMode: String(outputTiming.nextChargeMode || ''),
+        nextOutputAllowed: Boolean(outputTiming.nextAllowed),
+        nextOutputReason: String(outputTiming.reason || decision?.reason || ''),
+        stopHoldRemainingSeconds: Math.max(0, Math.ceil(((index === 0 ? Number(this.evPeakGuardStopHoldUntil) : Number(runtime?.stopHoldUntil)) - statusNow) / 1000)),
+        batteryDischargeW: Math.max(0, Math.round(Number(this.state.lastTotalCommandW) || 0)),
+        evGridImportTargetW: Math.max(0, Math.round(Number(evGridControl.requestedTargetW) || 0)),
+        evGridImportActiveTargetW: Math.max(0, Math.round(Number(evGridControl.activeTargetW) || 0)),
+        evGridImportControlState: String(evGridControl.state || 'inactive'),
+        evGridImportGraceRemainingSeconds: Math.max(0, Math.round(Number(evGridControl.remainingSeconds) || 0)),
+        evGridImportWaiting: Array.isArray(evGridControl.waitingInstances) && evGridControl.waitingInstances.includes(index + 1),
+        evDetectedLoadW: evGridControl.detectedEvLoadW !== null && evGridControl.detectedEvLoadW !== undefined && Number.isFinite(Number(evGridControl.detectedEvLoadW))
+          ? Math.max(0, Math.round(Number(evGridControl.detectedEvLoadW))) : null,
+        evHouseBaselineW: evGridControl.houseBaselineW !== null && evGridControl.houseBaselineW !== undefined && Number.isFinite(Number(evGridControl.houseBaselineW))
+          ? Math.max(0, Math.round(Number(evGridControl.houseBaselineW))) : null,
+        evHouseToleranceW: evGridControl.houseToleranceW !== null && evGridControl.houseToleranceW !== undefined && Number.isFinite(Number(evGridControl.houseToleranceW))
+          ? Math.max(0, Math.round(Number(evGridControl.houseToleranceW))) : null,
+        evHouseLoadHold: Boolean(evGridControl.houseLoadHold),
+      };
+    });
+
+    const hvacStatuses = Array.from({ length: this.getHvacCount(storedSettings) }, (_, index) => {
+      const instanceSettings = this.getHvacInstanceSettings(index, storedSettings);
+      const input = this.getHvacInputSnapshot(index);
+      const runtime = index === 0 ? null : this.getExtraHvac(index);
+      const decision = index === 0 ? this.latestHvacDecision : runtime?.latestDecision;
+      return {
+        instance: index + 1,
+        configuredDirection: instanceSettings.hvacDirection || 'auto',
+        name: this.getHvacInstanceName(index, storedSettings),
+        enabled: Boolean(instanceSettings.hvacEnabled),
+        automaticControlEnabled: instanceSettings.hvacAutomaticControlEnabled !== false,
+        roomTemperatureC: input?.seen?.roomTemperature ? Number(input.roomTemperatureC) : null,
+        outdoorTemperatureC: input?.seen?.outdoorTemperature ? Number(input.outdoorTemperatureC) : null,
+        mode: input?.seen?.mode ? String(input.mode || 'off') : '',
+        setpointC: input?.seen?.setpoint ? Number(input.setpointC) : null,
+        fanSpeed: input?.seen?.fanSpeed ? Number(input.fanSpeed) : null,
+        received: { ...(input?.seen || {}) },
+        ...(decision || {}),
+        learning: hvacPermanent.status(this, index),
+        baselineSetpointC: index === 0 ? this.hvacBaselineSetpoint : runtime?.baselineSetpoint,
+        managedPowerOn: index === 0 ? Boolean(this.hvacManagedPowerOn) : Boolean(runtime?.managedPowerOn),
+        outputSetpointC: index === 0
+          ? (this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined && Number.isFinite(Number(this.lastPublishedHvacSetpoint)) ? Number(this.lastPublishedHvacSetpoint) : null)
+          : (runtime?.lastPublishedSetpoint !== null && runtime?.lastPublishedSetpoint !== undefined && Number.isFinite(Number(runtime.lastPublishedSetpoint)) ? Number(runtime.lastPublishedSetpoint) : null),
+        outputPowerOn: index === 0 ? this.lastPublishedHvacPower : runtime?.lastPublishedPower,
+        outputMode: index === 0 ? String(this.lastPublishedHvacMode || '') : String(runtime?.lastPublishedMode || ''),
+        outputFanSpeed: index === 0 ? this.lastPublishedHvacFanSpeed : runtime?.lastPublishedFanSpeed,
+        fanScale: this.getHvacFanScale(instanceSettings),
+      };
+    });
+
+    const boilerRuntime = this.boilerState || {};
+    const priorityRuntime = this.flexiblePriorityState || {};
+    const boilerStatus = {
+      enabled: this.getBoilerCount(storedSettings) > 0 && Boolean(storedSettings.boilerEnabled),
+      name: String(storedSettings.boilerName || 'Boiler'),
+      outputOn: Boolean(boilerRuntime.outputOn),
+      accumulatedMinutes: Math.max(0, Number(boilerRuntime.cycleAccumulatedMs) || 0) / 60000,
+      cycleMinutes: Math.max(1, Number(storedSettings.boilerCycleMinutes) || 90),
+      lastCompletedAt: Number(boilerRuntime.lastCompletedAt) || 0,
+      lastCompletedSource: String(boilerRuntime.lastCompletedSource || ''),
+      warmUntil: this.boilerState ? this.getBoilerWarmUntil(storedSettings) : 0,
+      ...(boilerRuntime.latestDecision || {}),
+    };
+    const priorityStatus = {
+      order: this.getFlexibleLoadPriorityOrder(storedSettings),
+      intervalMinutes: Math.max(1, Math.min(30, Number(storedSettings.priorityEvaluationMinutes) || 5)),
+      lastEvaluationAt: Number(priorityRuntime.lastEvaluationAt) || 0,
+      nextEvaluationAt: Number(priorityRuntime.nextEvaluationAt) || 0,
+      lastStartedId: String(priorityRuntime.lastStartedId || ''),
+    };
+
+    return this.localizeDisplay({
+      version: this.homey?.manifest?.version || require('./app.json').version,
+      settings: {
+        batteryCount: storedSettings.batteryCount,
+        hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
+        hybridWatchdogMinW: Number.isFinite(Number(storedSettings.hybridWatchdogMinW)) ? Number(storedSettings.hybridWatchdogMinW) : -300,
+        hybridWatchdogMaxW: Number.isFinite(Number(storedSettings.hybridWatchdogMaxW)) ? Number(storedSettings.hybridWatchdogMaxW) : 300,
+        evCount: this.getEvCount(storedSettings),
+        hvacCount: this.getHvacCount(storedSettings),
+        boilerCount: this.getBoilerCount(storedSettings),
+        boilerEnabled: this.getBoilerCount(storedSettings) > 0 && Boolean(storedSettings.boilerEnabled),
+        priorityEvaluationMinutes: Math.max(1, Math.min(30, Number(storedSettings.priorityEvaluationMinutes) || 5)),
+        contractType: storedSettings.contractType,
+        currencySymbol: String(storedSettings.currencySymbol || '€').trim() || '€',
+        dynamicPriceSource: String(storedSettings.dynamicPriceSource || 'homey'),
+        dynamicPriceSources: sourceOrder(storedSettings.dynamicPriceSource, storedSettings.dynamicPriceSources).filter(Boolean),
+        externalPrice1Name: sourceName('external', storedSettings),
+        externalPrice2Name: sourceName('external2', storedSettings),
+        peakShaveEnabled: storedSettings.peakShaveEnabled,
+        peakLimitW: storedSettings.peakLimitW,
+        dynamicUseBatteryNormalHours: Boolean(storedSettings.dynamicUseBatteryNormalHours),
+        dynamicNormalChargeEnabled: Boolean(storedSettings.dynamicNormalChargeEnabled),
+        dynamicNormalChargeMaxSoc: storedSettings.dynamicNormalChargeMaxSoc ?? 50,
+        batterySaveDischargeAboveSoc: storedSettings.batterySaveDischargeAboveSoc,
+        safetySoc: storedSettings.safetySoc,
+        minSoc: storedSettings.minSoc,
+        lowForecastSelfConsumptionMinKwh: storedSettings.lowForecastSelfConsumptionMinKwh,
+        lowForecastAutoSunnyEnabled: Boolean(storedSettings.lowForecastAutoSunnyEnabled),
+        lowForecastAutoSunnySoc: storedSettings.lowForecastAutoSunnySoc,
+        lowForecastAutoSunnyMinutes: storedSettings.lowForecastAutoSunnyMinutes,
+        lowForecastFixedEnabled: Boolean(storedSettings.lowForecastFixedEnabled),
+        lowForecastFixedDischargeToTarget: Boolean(storedSettings.lowForecastFixedDischargeToTarget),
+        lowForecastDynamicCheapEnabled: Boolean(storedSettings.lowForecastDynamicCheapEnabled),
+        lowForecastDynamicCheapDischargeToTarget: Boolean(storedSettings.lowForecastDynamicCheapDischargeToTarget),
+        lowForecastDynamicNormalEnabled: Boolean(storedSettings.lowForecastDynamicNormalEnabled),
+        lowForecastDynamicNormalDischargeToTarget: Boolean(storedSettings.lowForecastDynamicNormalDischargeToTarget),
+        lowForecastDynamicExpensiveEnabled: Boolean(storedSettings.lowForecastDynamicExpensiveEnabled),
+        lowForecastDynamicExpensiveDischargeToTarget: Boolean(storedSettings.lowForecastDynamicExpensiveDischargeToTarget),
+        controlProfile: storedSettings.controlProfile || 'normal',
+        pvDeltaThresholdW: storedSettings.pvDeltaThresholdW,
+        invertBatteryCommand: Boolean(storedSettings.invertBatteryCommand),
+        batteryCommandStepW: storedSettings.batteryCommandStepW,
+        exportLimitEnabled: Boolean(storedSettings.exportLimitEnabled),
+        minimumExportW: storedSettings.minimumExportW,
+        pvCommandIntervalSeconds: storedSettings.pvCommandIntervalSeconds,
+        chargeTestPassed: this.isChargeTestValid(storedSettings),
+        overrideResumeOnTariffChange: Boolean(storedSettings.overrideResumeOnTariffChange),
+        commandIntervalSeconds: storedSettings.commandIntervalSeconds,
+        batteryCommandPauseEnabled: Boolean(storedSettings.batteryCommandPauseEnabled),
+        batteryCommandPauseStart: storedSettings.batteryCommandPauseStart,
+        batteryCommandPauseEnd: storedSettings.batteryCommandPauseEnd,
+        exportLimitEnabled: Boolean(storedSettings.exportLimitEnabled),
+        minimumExportW: storedSettings.minimumExportW,
+        pvCurtailMinBatterySoc: storedSettings.pvCurtailMinBatterySoc,
+        evEnabled: Boolean(storedSettings.evEnabled),
+        evSocEnabled: storedSettings.evSocEnabled !== false,
+        evMode: this.getEffectiveEvMode(storedSettings),
+        evModeConfigured: String(storedSettings.evMode || 'smart'),
+        evSessionOverrideActive: Boolean(this.evSessionOverride?.mode),
+        evSessionOverrideMode: this.evSessionOverride?.mode ? String(this.evSessionOverride.mode) : '',
+        evSessionOverrideSessionStarted: Boolean(this.evSessionOverride?.sessionStarted),
+        evControlType: String(storedSettings.evControlType || 'current'),
+        evSmartPvPriority: String(storedSettings.evSmartPvPriority || 'battery_first'), // legacy read compatibility
+        evPvSharePercent: this.getEvPvSharePercent(storedSettings),
+        evSmartPvExportTargetW: Math.max(0, Number(storedSettings.evSmartPvExportTargetW) || 0),
+        evPeakGuardStopHoldSeconds: Math.max(0, Number(storedSettings.evPeakGuardStopHoldSeconds) || 0),
+        evPeakGuardStopHoldRemainingSeconds: Math.max(0, Math.ceil((Number(this.evPeakGuardStopHoldUntil) - Date.now()) / 1000)),
+        evSmartGridPriority: String(storedSettings.evSmartGridPriority || 'battery_first'),
+        hvacEnabled: Boolean(storedSettings.hvacEnabled),
+        hvacAutomaticControlEnabled: storedSettings.hvacAutomaticControlEnabled !== false,
+        hvacAllowFanControl: Boolean(storedSettings.hvacAllowFanControl),
+        hvacPriority: String(storedSettings.hvacPriority || 'comfort'),
+      },
+      chargeTest: {
+        passed: this.isChargeTestValid(storedSettings),
+        running: Boolean(this.chargeTestRunning),
+        awaitingConfirmation: Boolean(this.chargeTestAwaitingConfirmation),
+        stage: String(this.chargeTestStage || ''),
+        lastRunAt: Number(this.chargeTestLastRunAt) || 0,
+        commandPerBatteryW: this.toPublishedCommand(this.chargeTestStage === 'discharge' ? 100 : -100, storedSettings),
+        batteryCount: this.getBatteryCount(storedSettings),
+      },
+      hybridEms: this.getHybridEmsStatus(storedSettings),
+      inputs: {
+        gridPowerW: this.state.gridPowerW,
+        pvPowerW: this.state.pvPowerW,
+        forecastRemainingKwh: this.state.forecastRemainingKwh,
+        forecastDailyMaxKwh: this.state.forecastDailyMaxKwh,
+        forecastDailyMaxDate: this.state.forecastDailyMaxDate,
+        forecastTomorrowKwh: this.state.forecastTomorrowKwh,
+        forecastTomorrowDate: this.state.forecastTomorrowDate,
+        batterySoc: this.state.batterySoc.slice(0, count),
+        ev: Boolean(storedSettings.evEnabled) ? {
+          soc: storedSettings.evSocEnabled !== false ? this.state.evSoc : null,
+          connected: this.state.evConnected,
+          chargeCurrentA: this.state.evChargeCurrentA,
+          received: {
+            ...this.inputSeen.ev,
+            soc: storedSettings.evSocEnabled !== false ? Boolean(this.inputSeen.ev.soc) : false,
+          },
+        } : null,
+        hvac: Boolean(storedSettings.hvacEnabled) ? {
+          roomTemperatureC: this.state.hvacRoomTemperatureC,
+          outdoorTemperatureC: this.state.hvacOutdoorTemperatureC,
+          mode: this.state.hvacMode,
+          setpointC: this.state.hvacSetpointC,
+          fanSpeed: this.state.hvacFanSpeed,
+          received: { ...this.inputSeen.hvac },
+        } : null,
+        evs: evStatuses.map(item => ({
+          instance: item.instance, name: item.name, enabled: item.enabled, soc: item.soc,
+          connected: item.connected, chargeCurrentA: item.actualCurrentA, received: item.received,
+        })),
+        hvacs: hvacStatuses.map(item => ({
+          instance: item.instance, name: item.name, enabled: item.enabled,
+          roomTemperatureC: item.roomTemperatureC, outdoorTemperatureC: item.outdoorTemperatureC,
+          mode: item.mode, setpointC: item.setpointC, fanSpeed: item.fanSpeed, received: item.received,
+        })),
+      },
+      evs: evStatuses,
+      hvacs: hvacStatuses,
+      boiler: boilerStatus,
+      priority: priorityStatus,
+      ev: Boolean(storedSettings.evEnabled) ? {
+        ...(this.latestEvDecision || {}),
+        outputCurrentA: Number(this.lastPublishedEvCurrentA) >= 0 ? Number(this.lastPublishedEvCurrentA) : 0,
+        outputChargeMode: String(this.lastPublishedEvChargeMode || 'stop'),
+        controlType: this.getEvControlType(storedSettings),
+        outputAllowed: Boolean(this.lastPublishedEvAllowed),
+      } : null,
+      hvac: Boolean(storedSettings.hvacEnabled) ? {
+        ...(this.latestHvacDecision || {}),
+        baselineSetpointC: this.hvacBaselineSetpoint,
+        managedPowerOn: Boolean(this.hvacManagedPowerOn),
+        outputSetpointC: this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined && Number.isFinite(Number(this.lastPublishedHvacSetpoint)) ? Number(this.lastPublishedHvacSetpoint) : null,
+        outputMode: this.lastPublishedHvacMode || '',
+        outputFanSpeed: this.lastPublishedHvacFanSpeed,
+        fanScale: this.getHvacFanScale(storedSettings),
+      } : null,
+      ...preview,
+      sunChanceReserve: this.getSunChanceReserveStatus(storedSettings),
+      // Status/API values follow the configured external sign convention, just
+      // like the Flow tokens. The controller itself always keeps its internal
+      // positive=discharge / negative=charge convention.
+      calculatedCommands: (preview.calculatedCommands || []).map(value => this.toPublishedCommand(value, storedSettings)),
+      calculatedTotalCommandW: this.toPublishedCommand(preview.calculatedTotalCommandW ?? preview.totalCommandW, storedSettings),
+    });
+  }
+
+  setInput(body = {}) {
+    if ((body.ev && typeof body.ev === 'object') || Array.isArray(body.evs)) this.recordSavingsSample(Date.now());
+    const wasGridReady = this.getInputReadiness().ready;
+    let fastInputChanged = false;
+    let contextInputChanged = false;
+    let meterContextInputChanged = false;
+    let planningInputChanged = false;
+    let gridInputChanged = false;
+    const evStatusChanges = [];
+
+    const apiGridPowerW = parseFiniteInputNumber(body.gridPowerW);
+    if (body.gridPowerW !== undefined && apiGridPowerW !== null) {
+      this.recordDiagnosticCounter('gridInputs');
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      this.state.gridPowerW = apiGridPowerW;
+      this.inputSeen.grid = true;
+      this.inputUpdatedAt.grid = now;
+      this.recordGridSample(this.state.gridPowerW, now);
+      fastInputChanged = true;
+      gridInputChanged = true;
+      const inputSettings = this.getSettings();
+      // Hybrid EMS ownership is intentionally monitored only from the
+      // set_grid_power Flow input, which is the supported live P1 route.
+      const contextGridDelta = this.lastContextGridInputW === null
+        ? Infinity
+        : Math.abs(this.state.gridPowerW - this.lastContextGridInputW);
+      if (this.needsSlowMeterContext(inputSettings)
+        && (contextGridDelta >= 100 || this.hasActiveFlexibleOutput(inputSettings))) {
+        this.lastContextGridInputW = this.state.gridPowerW;
+        meterContextInputChanged = true;
+      }
+    }
+    if (body.pvPowerW !== undefined && parseFiniteInputNumber(body.pvPowerW) !== null) {
+      this.recordDiagnosticCounter('pvInputs');
+      const now = Date.now();
+      this.recordSavingsSample(now);
+      this.state.pvPowerW = Math.max(0, Number(body.pvPowerW));
+      this.inputSeen.pv = true;
+      this.inputUpdatedAt.pv = now;
+      this.updatePvPlanningState(this.state.pvPowerW, now);
+      this.noteAutoTunePvSample(this.state.pvPowerW, now);
+      fastInputChanged = true;
+      const inputSettings = this.getSettings();
+      const contextPvDelta = this.lastContextPvInputW === null
+        ? Infinity
+        : Math.abs(this.state.pvPowerW - this.lastContextPvInputW);
+      if (this.needsSlowMeterContext(inputSettings) && contextPvDelta >= 100) {
+        this.lastContextPvInputW = this.state.pvPowerW;
+        meterContextInputChanged = true;
+      }
+    }
+    if (body.forecastRemainingKwh !== undefined && parseFiniteInputNumber(body.forecastRemainingKwh) !== null) {
+      this.updateForecastInput(body.forecastRemainingKwh);
+      contextInputChanged = true;
+      planningInputChanged = true;
+    }
+    if (body.forecastTomorrowKwh !== undefined && parseFiniteInputNumber(body.forecastTomorrowKwh) !== null) {
+      this.updateForecastTomorrowInput(body.forecastTomorrowKwh);
+      contextInputChanged = true;
+      planningInputChanged = true;
+    }
+    if (Array.isArray(body.batterySoc)) {
+      body.batterySoc.slice(0, 8).forEach((value, index) => {
+        if (!Number.isFinite(Number(value))) return;
+        this.state.batterySoc[index] = Math.max(0, Math.min(100, Number(value)));
+        this.inputSeen.batterySoc[index] = true;
+        this.inputUpdatedAt.batterySoc[index] = Date.now();
+        fastInputChanged = true;
+        contextInputChanged = true;
+        planningInputChanged = true;
+      });
+    }
+    if (body.ev && typeof body.ev === 'object') {
+      const now = Date.now();
+      const connectionChanged = body.ev.connected !== undefined && this.hasBooleanInputChanged(
+        this.state.evConnected, Boolean(body.ev.connected), Boolean(this.inputSeen.ev.connected));
+      if (this.updateEvStatusInput(0, body.ev.connected, body.ev.chargeCurrentA, now)) evStatusChanges.push({ index: 0, connectionChanged });
+      if (Number.isFinite(Number(body.ev.soc))) {
+        const soc = Math.max(0, Math.min(100, Number(body.ev.soc)));
+        const changed = this.hasNumericInputChanged(this.state.evSoc, soc, Boolean(this.inputSeen.ev.soc), 0.01)
+          || !this.getEvSocFreshness(0, {
+            evSocFreshnessMinutes: this.getSettings().evSocFreshnessMinutes,
+          }, now).fresh;
+        this.state.evSoc = soc; this.inputSeen.ev.soc = true; this.inputUpdatedAt.ev.soc = now;
+        if (changed) this.markEvPlanChanged(0, 'api_soc');
+        contextInputChanged = changed || contextInputChanged;
+      }
+    }
+    if (body.hvac && typeof body.hvac === 'object') {
+      const now = Date.now();
+      if (Number.isFinite(Number(body.hvac.roomTemperatureC))) { this.state.hvacRoomTemperatureC = Number(body.hvac.roomTemperatureC); this.inputSeen.hvac.roomTemperature = true; this.inputUpdatedAt.hvac.roomTemperature = now; contextInputChanged = true; }
+      if (Number.isFinite(Number(body.hvac.outdoorTemperatureC))) { this.state.hvacOutdoorTemperatureC = Number(body.hvac.outdoorTemperatureC); this.inputSeen.hvac.outdoorTemperature = true; this.inputUpdatedAt.hvac.outdoorTemperature = now; contextInputChanged = true; }
+      if (body.hvac.mode !== undefined) { this.state.hvacMode = String(body.hvac.mode || 'off'); this.inputSeen.hvac.mode = true; this.inputUpdatedAt.hvac.mode = now; contextInputChanged = true; }
+      if (Number.isFinite(Number(body.hvac.setpointC))) { this.state.hvacSetpointC = Number(body.hvac.setpointC); this.inputSeen.hvac.setpoint = true; this.inputUpdatedAt.hvac.setpoint = now; contextInputChanged = true; }
+      if (Number.isFinite(Number(body.hvac.fanSpeed))) { this.state.hvacFanSpeed = Math.max(0, Number(body.hvac.fanSpeed)); this.inputSeen.hvac.fanSpeed = true; this.inputUpdatedAt.hvac.fanSpeed = now; contextInputChanged = true; }
+    }
+    if (Array.isArray(body.evs)) {
+      body.evs.slice(0, 4).forEach((value, index) => {
+        if (!value || typeof value !== 'object' || index === 0) return;
+        const runtime = this.getExtraEv(index);
+        if (!runtime) return;
+        const now = Date.now();
+        const connectionChanged = value.connected !== undefined && this.hasBooleanInputChanged(
+          runtime.state.connected, Boolean(value.connected), Boolean(runtime.seen.connected));
+        if (this.updateEvStatusInput(index, value.connected, value.chargeCurrentA, now)) evStatusChanges.push({ index, connectionChanged });
+        if (Number.isFinite(Number(value.soc))) {
+          const soc = Math.max(0, Math.min(100, Number(value.soc)));
+          const changed = this.hasNumericInputChanged(runtime.state.soc, soc, Boolean(runtime.seen.soc), 0.01)
+            || !this.getEvSocFreshness(index, {
+              evSocFreshnessMinutes: this.getSettings()[this.getEvSettingKey(index, 'SocFreshnessMinutes')],
+            }, now).fresh;
+          runtime.state.soc = soc; runtime.seen.soc = true; runtime.updatedAt.soc = now;
+          if (changed) this.markEvPlanChanged(index, 'api_soc');
+          contextInputChanged = changed || contextInputChanged;
+        }
+      });
+    }
+    if (Array.isArray(body.hvacs)) {
+      body.hvacs.slice(0, 10).forEach((value, index) => {
+        if (!value || typeof value !== 'object' || index === 0) return;
+        const runtime = this.getExtraHvac(index);
+        if (!runtime) return;
+        const now = Date.now();
+        if (Number.isFinite(Number(value.roomTemperatureC))) { runtime.state.roomTemperatureC = Number(value.roomTemperatureC); runtime.seen.roomTemperature = true; runtime.updatedAt.roomTemperature = now; contextInputChanged = true; }
+        if (value.mode !== undefined) { runtime.state.mode = String(value.mode || 'off'); runtime.seen.mode = true; runtime.updatedAt.mode = now; contextInputChanged = true; }
+        if (Number.isFinite(Number(value.setpointC))) { runtime.state.setpointC = Number(value.setpointC); runtime.seen.setpoint = true; runtime.updatedAt.setpoint = now; contextInputChanged = true; }
+        if (Number.isFinite(Number(value.fanSpeed))) { runtime.state.fanSpeed = Math.max(0, Number(value.fanSpeed)); runtime.seen.fanSpeed = true; runtime.updatedAt.fanSpeed = now; contextInputChanged = true; }
+      });
+    }
+
+    if (gridInputChanged) {
+      const inputSettings = this.getSettings();
+      this.recordEvHouseLoadSample(this.state.gridPowerW, Date.now(), inputSettings);
+      hvacPermanent.observe(this);
+      this.recordEvBatteryHouseReference(Date.now(), inputSettings);
+      const evLoadProtectionChanged = this.updateEvPortfolioLoadDetection(this.state.gridPowerW, Date.now(), inputSettings);
+      this.updateEvMeterContextRequest(inputSettings);
+      if (evLoadProtectionChanged) {
+        contextInputChanged = true;
+        body.force = true;
+      }
+    }
+    if (planningInputChanged) this.invalidatePlanningCache();
+    if (gridInputChanged) this.checkFlexibleSafetyFromGrid(Date.now(), this.getSettings());
+
+    const gridRecovered = !wasGridReady && this.getInputReadiness().ready;
+    if (gridRecovered && Boolean(this.getSettings().controlEnabled)) {
+      this.requestContextEvaluate(true, 'api_grid_recovered');
+    } else if (body.force) {
+      this.requestContextEvaluate(true, 'api_force');
+    } else {
+      // Process an API batch only after every field has been applied. One
+      // connection transition services all EVs; ordinary feedback is combined
+      // in the same cancellable request as the Flow input route.
+      const connection = evStatusChanges.find(change => change.connectionChanged);
+      if (connection) this.requestEvStatusContext(connection.index, true);
+      else for (const change of evStatusChanges) this.requestEvStatusContext(change.index, false);
+      if (fastInputChanged) this.requestEvaluate();
+      if (contextInputChanged || meterContextInputChanged) {
+        if (contextInputChanged || this.needsNonEvMeterContext(this.getSettings())
+          || !this.contextDirtyReasons?.has('api_context_input')) {
+          this.requestContextEvaluate(false, 'api_context_input', 0, false, contextInputChanged);
+        }
+      }
+    }
+    if (body.pvPowerW !== undefined && this.evContextRefresh?.requests.size) {
+      this.revalidateEvContextRequests(this.getSettings());
+    }
+    return this.latestResult || null;
+  }
+}
+
+module.exports = HomeFluxEmsApp;

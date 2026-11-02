@@ -1,0 +1,11 @@
+{
+  "title": {
+    "en": "EV 1 charging session has ended",
+    "nl": "Laadsessie EV 1 is beëindigd"
+  },
+  "hint": {
+    "en": "Use a reliable charger or vehicle end status. HomeFlux immediately withdraws EV 1 grid permission, sends Stop for mode control and resumes normal battery control. The end remains latched until EV 1 reconnects.",
+    "nl": "Gebruik een betrouwbare eindstatus van de lader of auto. HomeFlux trekt de netvrijgave van EV 1 onmiddellijk in, stuurt Stop bij modussturing en hervat de normale batterijsturing. Het einde blijft actief tot EV 1 opnieuw wordt aangesloten."
+  },
+  "deprecated": true
+}

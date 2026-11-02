@@ -1,0 +1,234 @@
+{
+  "version": "1.1.17",
+  "sourceBaseline": "HomeFlux-EMS-1.1.16-EV-configuratiecache-FINAL.zip",
+  "sourceZipSha256": "e3ccb6c39e42f286fc219f72c9801726d37802f742c5e9b416b2805f4f052989",
+  "testPrograms": 76,
+  "syntaxChecks": 28,
+  "plannerScenarioGroups": 14,
+  "productionScenarioGroups": 10,
+  "syntheticPriceData": true,
+  "productionResults": [
+    {
+      "name": "Gerrit kWh: full production replay",
+      "soc": false,
+      "energyKwh": 11.500000000000048,
+      "costEUR": 2.3000000000000096,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792792800000,
+          "on": true,
+          "currentA": 20
+        },
+        {
+          "at": 1792801800000,
+          "on": false,
+          "currentA": 0
+        }
+      ],
+      "deadlineMet": true,
+      "planBuilds": 1,
+      "planReuses": 823,
+      "portfolioCalculations": 861,
+      "cpuMs": 5310.778,
+      "wallMs": 4446.569552999999
+    },
+    {
+      "name": "Gerrit SoC: same production decisions",
+      "soc": true,
+      "energyKwh": 11.500000000000048,
+      "costEUR": 2.3000000000000096,
+      "starts": 1,
+      "stops": 1,
+      "interruptions": 0,
+      "events": [
+        {
+          "at": 1792792800000,
+          "on": true,
+          "currentA": 20
+        },
+        {
+          "at": 1792801800000,
+          "on": false,
+          "currentA": 0
+        }
+      ],
+      "deadlineMet": true,
+      "planBuilds": 1,
+      "planReuses": 818,
+      "portfolioCalculations": 858,
+      "cpuMs": 7476.541,
+      "wallMs": 6940.475101
+    },
+    {
+      "name": "Midnight and 1-second inputs reuse EV plan",
+      "planBuildsDuring180Seconds": 0,
+      "fastPathBuilds": 0,
+      "portfolios": 10
+    },
+    {
+      "name": "Battery midnight PV refresh independent of EV plan",
+      "nightTarget": "07:00",
+      "solarTarget": "17:00",
+      "forecastRemainingKwh": 6,
+      "promotedDailyForecastKwh": 9,
+      "initialPlanBuilds": 1,
+      "finalPlanBuilds": 1
+    },
+    {
+      "name": "New price JSON and invalid publication",
+      "identicalCurveReused": true,
+      "invalidCurveRetained": true,
+      "cheaperPublicationReplanned": true
+    },
+    {
+      "name": "Flow changes, repeats, disconnect and end latch",
+      "passed": true
+    },
+    {
+      "name": "Same-day and absolute two-boundary deadlines",
+      "sameDay": true,
+      "twoBoundaries": true
+    },
+    {
+      "name": "PV first and unavailable price source fallback",
+      "pvAvailableWhileWaiting": true,
+      "existingPriceFallback": true
+    },
+    {
+      "name": "Persistent lower measured current uses deliverable capacity",
+      "commandedA": 20,
+      "measuredA": 8,
+      "plannedPowerW": 1840
+    },
+    {
+      "name": "Current, mode, hybrid and shared Peak Guard",
+      "controlTypes": 3,
+      "sharedBudgetW": 5000
+    }
+  ],
+  "matchedCpuReplay": {
+    "1.1.16": {
+      "medianCpuMs": 439.044,
+      "medianFastCpuMs": 232.30800000000002,
+      "medianPortfolioCpuMs": 48.077999999999996,
+      "portfolioCalls": [
+        12,
+        12,
+        12
+      ],
+      "tariffScans": [
+        12,
+        12,
+        12
+      ],
+      "planBuildsDuringReplay": [
+        0,
+        0,
+        0
+      ],
+      "fastPathPlanBuilds": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1.1.17": {
+      "medianCpuMs": 347.457,
+      "medianFastCpuMs": 198.43499999999995,
+      "medianPortfolioCpuMs": 6.536,
+      "portfolioCalls": [
+        12,
+        12,
+        12
+      ],
+      "tariffScans": [
+        0,
+        0,
+        0
+      ],
+      "planBuildsDuringReplay": [
+        0,
+        0,
+        0
+      ],
+      "fastPathPlanBuilds": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "nonEvParity": [
+    {
+      "name": "battery",
+      "identical": true,
+      "contexts": 4,
+      "batteryPublications": 8,
+      "flexiblePublications": 1
+    },
+    {
+      "name": "pvExport",
+      "identical": true,
+      "contexts": 4,
+      "batteryPublications": 8,
+      "flexiblePublications": 1
+    },
+    {
+      "name": "hvac",
+      "identical": true,
+      "contexts": 4,
+      "batteryPublications": 2,
+      "flexiblePublications": 4
+    },
+    {
+      "name": "boiler",
+      "identical": true,
+      "contexts": 4,
+      "batteryPublications": 2,
+      "flexiblePublications": 3
+    },
+    {
+      "name": "combined",
+      "identical": true,
+      "contexts": 4,
+      "batteryPublications": 2,
+      "flexiblePublications": 10
+    }
+  ],
+  "unchangedCoreFiles": [
+    {
+      "file": "lib/ems-engine.js",
+      "sha256": "91785ee7fa58991cd1e190ac7679a6b82f30f864b587391747f96628ba9507ca"
+    },
+    {
+      "file": "lib/homey-energy.js",
+      "sha256": "16cc7c2ea2bc0b29e1216703ef63c90753f21ab13608818f1cfc7c4fab7b8265"
+    },
+    {
+      "file": "lib/external-prices.js",
+      "sha256": "d76ec85a82a3e9a2d0a93793a73be2a5e6048f8f77208929eccf5e66c20cb013"
+    },
+    {
+      "file": "lib/price-normalization.js",
+      "sha256": "859248914f8607976f52e149c44dccccab42386687def359ae370ab1c3601a74"
+    }
+  ],
+  "unchangedBatteryPlanningMethods": [
+    "getRuntimeSettings",
+    "getHomeyEngineSlots",
+    "getPlanningPhaseKey",
+    "refreshPlanningInContext",
+    "ensureForecastDayCurrent",
+    "activateNightPlanning",
+    "getEvSocPlanDeadlineAt"
+  ],
+  "limits": [
+    "Homey and vehicle I/O are simulated; no physical Homey/charger validation.",
+    "Actual future vehicle power, future site load and unpublished prices cannot be guaranteed.",
+    "Existing Flow cards retain their next-local-time semantics; this release adds no date picker.",
+    "Battery day classification and existing local-time deadline resolution are unchanged."
+  ]
+}

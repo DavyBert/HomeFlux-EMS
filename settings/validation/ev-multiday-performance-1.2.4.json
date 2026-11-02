@@ -1,0 +1,22 @@
+{
+  "simulatedHomey": true,
+  "homeyCpuMeasured": false,
+  "evs": 4,
+  "days": 7,
+  "coldCpuMs": 3.299,
+  "coldElapsedMs": 2.483396999999968,
+  "calls": 4000,
+  "cpuMs": 172.133,
+  "elapsedMs": 138.156068,
+  "extraBuilds": 0,
+  "newTimers": 0,
+  "retainedHeapDeltaBytes": 131840,
+  "configuredCurveIntervals": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "cacheJsonBytes": 1010,
+  "note": "Synchronous production planner evaluations with fixed inputs; deliberate repeated calls measure reuse cost, not an added live loop. No timer, device-read or feedback recorder is added."
+}

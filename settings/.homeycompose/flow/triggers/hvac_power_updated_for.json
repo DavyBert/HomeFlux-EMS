@@ -1,0 +1,80 @@
+{
+  "title": {
+    "en": "HVAC power command is updated",
+    "nl": "HVAC aan/uit-opdracht is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "state",
+      "type": "string",
+      "title": {
+        "en": "State",
+        "nl": "Status"
+      },
+      "example": "Aan"
+    },
+    {
+      "name": "state_value",
+      "type": "number",
+      "title": {
+        "en": "State (1/0)",
+        "nl": "Status (1/0)"
+      },
+      "example": 1
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Koelen met PV-overschot"
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[hvac]] power command is updated",
+    "nl": "[[hvac]] aan/uit-opdracht is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "dropdown",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "HVAC 1",
+            "nl": "HVAC 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "HVAC 2",
+            "nl": "HVAC 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "HVAC 3",
+            "nl": "HVAC 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "HVAC 4",
+            "nl": "HVAC 4"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

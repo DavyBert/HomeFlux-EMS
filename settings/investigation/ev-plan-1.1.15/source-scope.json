@@ -1,0 +1,70 @@
+{
+  "changed": [
+    "README.md",
+    "app.js",
+    ".homeychangelog.json",
+    "package.json",
+    "lib/flexible-loads.js",
+    "test/app-control.test.js"
+  ],
+  "added": [
+    "test/ev-plan-1.1.15.test.js",
+    "test/ev-plan-probe-1.1.15.cjs",
+    "test/ev-plan-comparison-1.1.15.cjs",
+    "test/ev-plan-clock-1.1.15.cjs",
+    "investigation/ev-plan-1.1.15/real-clock-after.json",
+    "investigation/ev-plan-1.1.15/source-scope.json",
+    "investigation/ev-plan-1.1.15/cpu-comparison.json",
+    "investigation/ev-plan-1.1.15/source-1.1.15-before-sha256.json",
+    "investigation/ev-plan-1.1.15/changes.patch",
+    "investigation/ev-plan-1.1.15/RAPPORT.txt",
+    "investigation/ev-plan-1.1.15/real-clock-before.json",
+    "investigation/ev-plan-1.1.15/measurements.csv",
+    "investigation/ev-plan-1.1.15/regression-check.log"
+  ],
+  "removed": [],
+  "changedAppMethods": [
+    "onInit",
+    "getDiagnosticsReport",
+    "getEvInstanceSettings",
+    "getInputMonitor",
+    "restoreEvEnergyPlanOverrides",
+    "restoreEvSocPlanOverrides",
+    "tickEvEnergyPlan",
+    "handleEvEnergyPlanConnectionTransition",
+    "setEvEnergyPlan",
+    "setEvSocPlan",
+    "simulatePlanning",
+    "refreshPlanningInContext",
+    "getPublicStatus"
+  ],
+  "addedAppMethods": [
+    "getEvSocPlanDeadlineAt",
+    "isEvPlanGoalCurrent"
+  ],
+  "byteIdenticalProtectedMethods": [
+    "requestEvaluate",
+    "evaluateFastNow",
+    "evaluateContextNow",
+    "getEvaluationState",
+    "getFastControlSnapshot",
+    "getPlannedBatteryGridLimitW",
+    "getEvGridImportControlStatus",
+    "checkFlexibleSafetyFromGrid",
+    "runContextHeartbeat",
+    "runEvHeartbeat",
+    "setEvContextRefreshRequest",
+    "revalidateEvContextRequests",
+    "clearEvContextRefresh",
+    "completeEvContextRefresh",
+    "requestContextEvaluate",
+    "publishEvPortfolioNow",
+    "calculateEvPortfolioDecisions",
+    "coordinateEvBatteryPriority",
+    "publishEvDecision",
+    "publishAdditionalEvDecision"
+  ],
+  "libraryFunctionsChanged": [
+    "calculateEvDecision"
+  ]
+}

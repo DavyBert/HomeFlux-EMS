@@ -1,0 +1,18 @@
+{
+  "passed": 9,
+  "cases": [
+    "Original 14 columns stay first; legacy days have blank EV values, not fictitious zero readings",
+    "Two EVs export central group and stable-slot subdivisions without adding energy or Savings",
+    "Shared energy appears once at group level and is never copied to individual EV columns",
+    "Only the unassigned battery share stays unknown; available direct PV is exported and missing differs from zero",
+    "CSV contains the household-first solar/grid split during battery charging, without changing general columns",
+    "Interval financial amounts retain negative prices and expose missing-price coverage",
+    "Compacted JSON history preserves retired EV slots; export does not depend on current EV settings",
+    "Mixed legacy/current days stay sorted and rectangular; currency suffixes apply to every money column",
+    "The production app CSV entry point exports current and historical EV daydata without changing stored totals"
+  ],
+  "productionFunctionsUsed": true,
+  "simulatedInputs": true,
+  "originalCsvBaselineCompared": false,
+  "nativeHomeyTested": false
+}

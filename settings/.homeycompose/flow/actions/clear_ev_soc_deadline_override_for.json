@@ -1,0 +1,55 @@
+{
+  "title": {
+    "en": "Clear EV planning override",
+    "nl": "Wis EV-planningsoverride"
+  },
+  "hint": {
+    "en": "Clears the persistent Flow minimum target for the selected EV, whether it was supplied as SoC or required kWh. HomeFlux immediately falls back to the target/deadline settings configured in the app.",
+    "nl": "Wist het blijvende Flow-minimumdoel voor de geselecteerde EV, zowel wanneer dit als SoC als via benodigde kWh werd ingestuurd. HomeFlux valt daarna onmiddellijk terug op de doel-/deadline-instellingen in de app."
+  },
+  "titleFormatted": {
+    "en": "Clear [[ev]] planning override",
+    "nl": "Wis [[ev]]-planningsoverride"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "dropdown",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "values": [
+        {
+          "id": "1",
+          "title": {
+            "en": "EV 1",
+            "nl": "EV 1"
+          }
+        },
+        {
+          "id": "2",
+          "title": {
+            "en": "EV 2",
+            "nl": "EV 2"
+          }
+        },
+        {
+          "id": "3",
+          "title": {
+            "en": "EV 3",
+            "nl": "EV 3"
+          }
+        },
+        {
+          "id": "4",
+          "title": {
+            "en": "EV 4",
+            "nl": "EV 4"
+          }
+        }
+      ]
+    }
+  ],
+  "deprecated": true
+}

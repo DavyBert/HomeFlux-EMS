@@ -1,0 +1,381 @@
+--- a/app.js
++++ b/app.js
+@@ -146,6 +146,7 @@
+     this.cachedRuntimeSettings = null;
+     this.fastResultSignature = '';
+     this.contextHeartbeatTimer = null;
++    this.evContextRefresh = { timer: null, due: false, generation: 0, requests: new Set(), reference: null };
+     // Low-priority housekeeping shares the configured slow-context cadence.
+     // The 60-second heartbeat remains only as a coarse watchdog for time/safety
+     // boundaries and decides whether this slower housekeeping pass is due.
+@@ -634,7 +635,7 @@
+     this.checkNightPlanningFallback();
+     await this.runContextEvaluation(true);
+     this.appInitializedAt = Date.now();
+-    this.log('HomeFlux EMS v1.1.12 initialized');
++    this.log('HomeFlux EMS v1.1.13 initialized');
+   }
+ 
+   refreshSettingsCache() {
+@@ -1695,7 +1696,7 @@
+     }
+     const report = {
+       schema: 'homeflux-diagnostics-v2',
+-      version: '1.1.12',
++      version: '1.1.13',
+       generatedAt,
+       session: {
+         active: Boolean(runtime.sessionActive),
+@@ -3130,6 +3131,98 @@
+     return Boolean(settings.exportLimitEnabled) || this.hasConfiguredFlexibleLoad(settings);
+   }
+ 
++  needsNonEvMeterContext(settings = this.getSettings()) {
++    if (Boolean(settings.exportLimitEnabled)) return true;
++    for (let index = 0; index < this.getHvacCount(settings); index += 1) {
++      if (Boolean(this.getHvacInstanceSettings(index, settings).hvacEnabled)) return true;
++    }
++    return this.getBoilerCount(settings) > 0 && Boolean(settings.boilerEnabled);
++  }
++
++  getEvContextMeterSnapshot(settings = this.getSettings()) {
++    const currents = [];
++    let connected = false;
++    for (let index = 0; index < this.getEvCount(settings); index += 1) {
++      const input = this.getEvInputSnapshot(index);
++      currents.push(Number(input?.chargeCurrentA) || 0);
++      if (!settings[this.getEvSettingKey(index, 'Enabled')] || !input?.connected
++        || this.getEvSessionDetectionRuntime(index)?.endedLatched) continue;
++      connected = true;
++    }
++    return { connected, currents, pvW: Number(this.state.pvPowerW) || 0,
++      // Remove battery response from the meter comparison. No settings
++      // expansion, tariff calculation or EV allocation belongs in this check.
++      siteW: (Number(this.state.gridPowerW) || 0) + (Number(this.state.lastTotalCommandW) || 0) };
++  }
++
++  clearEvContextRefresh(cancelled = false) {
++    const pending = this.evContextRefresh;
++    if (!pending) return;
++    if (cancelled && (pending.timer || pending.due)) this.recordDiagnosticCounter('evContextTimersCancelled');
++    if (pending.timer) clearTimeout(pending.timer);
++    pending.timer = null;
++    pending.due = false;
++    pending.generation += 1;
++    pending.requests.clear();
++  }
++
++  setEvContextRefreshRequest(reason, needed) {
++    const pending = this.evContextRefresh;
++    if (!pending) return;
++    if (!needed) {
++      if (pending.requests.delete(reason)) this.recordDiagnosticCounter('evContextRequestsWithdrawn');
++      if (!pending.requests.size) this.clearEvContextRefresh(true);
++      return;
++    }
++    this.recordDiagnosticCounter('evContextRequests');
++    pending.requests.add(reason);
++    if (pending.timer || pending.due) return;
++    this.recordDiagnosticCounter('evContextTimersStarted');
++    const timer = this.homey.setTimeout(() => {
++      if (pending.timer !== timer) return;
++      pending.timer = null;
++      if (!pending.requests.size) return;
++      pending.due = true;
++      const generation = pending.generation;
++      this.refreshEvOnlyContext({ deferredEvContext: true, evContextGeneration: generation })
++        .catch(err => this.error('Deferred EV context evaluation failed', err))
++        .finally(() => {
++          // A successful portfolio calculation consumes the request itself.
++          // On failure, allow a later real input to retry; never poll here.
++          if (pending.due && pending.generation === generation) this.clearEvContextRefresh();
++        });
++    }, 15000);
++    pending.timer = timer;
++  }
++
++  updateEvMeterContextRequest(settings = this.getSettings()) {
++    const pending = this.evContextRefresh;
++    if (!pending?.reference) return;
++    const current = this.getEvContextMeterSnapshot(settings);
++    const reference = pending.reference;
++    // Keep the existing 100 W meter-context threshold. No strategy or
++    // portfolio calculation takes place in this P1 observation.
++    this.setEvContextRefreshRequest('meter', current.connected &&
++      (Math.abs(current.siteW - reference.siteW) >= 100 || Math.abs(current.pvW - reference.pvW) >= 100));
++  }
++
++  requestEvStatusContext(index, connectionChanged) {
++    if (connectionChanged || !this.evContextRefresh?.reference) {
++      this.requestContextEvaluate(connectionChanged, `ev${index + 1}_status`);
++      return;
++    }
++    const input = this.getEvInputSnapshot(index);
++    this.setEvContextRefreshRequest(`feedback:${index}`, Boolean(input?.connected) &&
++      Math.abs((Number(input.chargeCurrentA) || 0) - (this.evContextRefresh.reference.currents[index] || 0)) >= 0.05);
++  }
++
++  completeEvContextRefresh(settings) {
++    if (!this.evContextRefresh) return;
++    if (this.evContextRefresh.requests.size) this.recordDiagnosticCounter('evContextRequestsSatisfied');
++    this.clearEvContextRefresh();
++    this.evContextRefresh.reference = this.getEvContextMeterSnapshot(settings);
++  }
++
+   hasActiveFlexibleOutput(settings = this.getSettings()) {
+     const evCount = this.getEvCount(settings);
+     for (let index = 0; index < evCount; index += 1) {
+@@ -5688,8 +5781,11 @@
+       if (this.needsSlowMeterContext(inputSettings)
+         && (contextGridDelta >= 100 || this.hasActiveFlexibleOutput(inputSettings))) {
+         this.lastContextGridInputW = value;
+-        this.requestContextEvaluate(false, 'grid_context', 0, false, false);
+-      }
++        if (this.needsNonEvMeterContext(inputSettings) || !this.contextDirtyReasons?.has('grid_context')) {
++          this.requestContextEvaluate(false, 'grid_context', 0, false, false);
++        }
++      }
++      this.updateEvMeterContextRequest(inputSettings);
+       if (!wasGridReady && Boolean(inputSettings.controlEnabled)) {
+         this.requestContextEvaluate(true, 'grid_recovered');
+       } else if (evLoadProtectionChanged) {
+@@ -5745,7 +5841,9 @@
+       const pvSettings = this.getSettings();
+       if (this.needsSlowMeterContext(pvSettings) && contextPvDelta >= 100) {
+         this.lastContextPvInputW = this.state.pvPowerW;
+-        this.requestContextEvaluate(false, 'pv_context', 0, false, false);
++        if (this.needsNonEvMeterContext(pvSettings) || !this.contextDirtyReasons?.has('pv_context')) {
++          this.requestContextEvaluate(false, 'pv_context', 0, false, false);
++        }
+       }
+       return true;
+     });
+@@ -5800,7 +5898,7 @@
+       if (current === null || current < 0) return false;
+       const connected = String(args.connected || 'no') === 'yes';
+       const connectionChanged = this.hasBooleanInputChanged(this.state.evConnected, connected, Boolean(this.inputSeen.ev?.connected));
+-      if (this.updateEvStatusInput(0, connected, current)) this.requestContextEvaluate(connectionChanged, 'ev1_status');
++      if (this.updateEvStatusInput(0, connected, current)) this.requestEvStatusContext(0, connectionChanged);
+       return true;
+     });
+ 
+@@ -5944,7 +6042,7 @@
+         if (!runtime || current === null || current < 0) return false;
+         const connected = String(args.connected || 'no') === 'yes';
+         const connectionChanged = this.hasBooleanInputChanged(runtime.state.connected, connected, Boolean(runtime.seen.connected));
+-        if (this.updateEvStatusInput(index, connected, current)) this.requestContextEvaluate(connectionChanged, `ev${instance}_status`);
++        if (this.updateEvStatusInput(index, connected, current)) this.requestEvStatusContext(index, connectionChanged);
+         return true;
+       });
+ 
+@@ -6293,6 +6391,7 @@
+   }
+ 
+   async onUninit() {
++    this.clearEvContextRefresh();
+     this.persistSavingsState(Date.now());
+     this.clearInputRequestSchedule();
+     this.clearEvSocRequestSchedule();
+@@ -9309,7 +9408,11 @@
+ 
+   calculateEvPortfolioDecisions(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, storedSettings = this.getSettings(), options = {}) {
+     const evCount = this.getEvCount(storedSettings);
+-    if (evCount <= 0) return [];
++    if (evCount <= 0) {
++      this.clearEvContextRefresh(true);
++      if (this.evContextRefresh) this.evContextRefresh.reference = null;
++      return [];
++    }
+     this.recordDiagnosticCounter('evPortfolioCalculations');
+     for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
+     const runtimeSettings = this.getRuntimeSettings(storedSettings);
+@@ -9698,6 +9801,7 @@
+     if (!smartEntries.length) {
+       const portfolioTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW));
+       for (const decision of decisions) decision.portfolioGridImportTargetW = portfolioTargetW;
++      this.completeEvContextRefresh(storedSettings);
+       return decisions;
+     }
+     const currentSmartPowerW = smartEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.currentPowerW) || 0), 0);
+@@ -9953,6 +10057,7 @@
+       } catch (_) { this.diagnostics.diagnosticRecordFailures = (this.diagnostics.diagnosticRecordFailures || 0) + 1; }
+     }
+     for (const decision of decisions) decision.portfolioGridImportTargetW = combinedPortfolioGridImportTargetW;
++    this.completeEvContextRefresh(storedSettings);
+     return decisions;
+   }
+ 
+@@ -10569,11 +10674,9 @@
+     if (this.evTimer) return;
+     this.evTimer = this.homey.setTimeout(() => {
+       this.evTimer = null;
+-      // Re-evaluate the complete flexible-load portfolio when the output timer
+-      // expires. A delayed EV1 publish must never fall back to the legacy
+-      // single-EV calculation, because that would bypass the current EV/PV
+-      // distribution and multi-EV allocation rules.
+-      this.requestContextEvaluate(true, 'ev1_output_timer');
++      // Keep the output deadline and physical multi-EV validation, without
++      // rerunning unrelated EMS planning or flexible-load modules.
++      this.refreshEvOnlyContext().catch(err => this.error('Deferred EV output failed', err));
+     }, delay);
+   }
+ 
+@@ -10722,7 +10825,7 @@
+     const delay = Math.max(1, Math.round(Number(waitMs) || 1));
+     runtime.timer = this.homey.setTimeout(() => {
+       runtime.timer = null;
+-      this.requestContextEvaluate(true, `ev${index + 1}_output_timer`);
++      this.refreshEvOnlyContext().catch(err => this.error('Deferred EV output failed', err));
+     }, delay);
+   }
+ 
+@@ -11912,6 +12015,15 @@
+   }
+ 
+   async publishEvPortfolioNow(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
++    // This pass services every EV. Supersede old output wakeups; the existing
++    // per-charger gates below rearm only the deadlines that are still needed.
++    if (this.evTimer) clearTimeout(this.evTimer);
++    this.evTimer = null;
++    for (let index = 1; index < 4; index += 1) {
++      const runtime = this.getExtraEv(index);
++      if (runtime?.timer) clearTimeout(runtime.timer);
++      if (runtime) runtime.timer = null;
++    }
+     const storedSettings = this.getSettings();
+     const evCount = this.getEvCount(storedSettings);
+     const batteryOutputEnabled = Boolean(storedSettings.controlEnabled)
+@@ -11954,6 +12066,7 @@
+     const portfolio = this.calculateEvPortfolioDecisions(
+       result, nextBatteryCommandW, currentBatteryCommandW, storedSettings, { physicalOnly },
+     );
++    if (options.deferredEvContext) this.recordDiagnosticCounter('evContextDeferredEvaluations');
+     // P1 readiness belongs to EV control itself, independently of battery
+     // configuration/test/output. Use the same gate in every portfolio route.
+     const evDecisions = [];
+@@ -12051,6 +12164,10 @@
+     // Serialize the shared EV budget, not the battery controller. Per-charger
+     // publication mutexes/intervals remain the final output gate.
+     while (this.evPortfolioPass) await this.evPortfolioPass;
++    // A regular or output pass may have handled this request while we waited
++    // for Homey I/O. Never execute a withdrawn/superseded timer request.
++    if (options.deferredEvContext && (!this.evContextRefresh?.due
++      || options.evContextGeneration !== this.evContextRefresh.generation)) return null;
+     let release;
+     const pass = new Promise(resolve => { release = resolve; });
+     this.evPortfolioPass = pass;
+@@ -12072,18 +12189,23 @@
+     const diagnosticCpu = this.startDiagnosticCpuSection('ev_heartbeat');
+     this.recordDiagnosticCounter('evHeartbeatEvaluations');
+     try {
+-      const published = await this.publishEvPortfolio(null, 0, 0, { evOnly: true });
+-      if (this.latestResult) {
+-        this.latestResult.evDecisions = published.evDecisions;
+-        this.latestResult.evDecision = published.evDecisions[0] || null;
+-        this.queueStatusUpdate(this.latestResult, false);
+-      }
++      await this.refreshEvOnlyContext();
+     } catch (err) {
+       this.error('EV heartbeat evaluation failed', err);
+     } finally {
+       this.endDiagnosticCpuSection(diagnosticCpu);
+       this.evHeartbeatRunning = false;
+     }
++  }
++
++  async refreshEvOnlyContext(options = {}) {
++    const published = await this.publishEvPortfolio(null, 0, 0, { ...options, evOnly: true });
++    if (published && this.latestResult) {
++      this.latestResult.evDecisions = published.evDecisions;
++      this.latestResult.evDecision = published.evDecisions[0] || null;
++      this.queueStatusUpdate(this.latestResult, false);
++    }
++    return published;
+   }
+ 
+   async publishFlexibleLoads(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
+@@ -14227,7 +14349,7 @@
+     const result = evaluate(simulationState, settings, simulatedAt);
+     const tariff = result.tariff || {};
+     return {
+-      version: '1.1.12',
++      version: '1.1.13',
+       simulatedAt: simulatedAt.getTime(),
+       simulatedLocalTime: `${String(simulatedParts.hour).padStart(2, '0')}:${String(simulatedParts.minute).padStart(2, '0')}`,
+       timezone,
+@@ -14300,7 +14422,7 @@
+     let plan;
+     try {
+       plan = {
+-        version: '1.1.12',
++        version: '1.1.13',
+         nightPlanningActive: this.isNightPlanningPhase(now),
+         planningDecisionSource: this.state.nightPlanningDecisionSource || (this.isNightPlanningPhase(now) ? 'overnight' : 'solar_day'),
+         ...buildSocPlan(state, settings, new Date(now)),
+@@ -14651,7 +14773,7 @@
+     };
+ 
+     return this.localizeDisplay({
+-      version: '1.1.12',
++      version: '1.1.13',
+       settings: {
+         batteryCount: storedSettings.batteryCount,
+         hybridEmsEnabled: Boolean(storedSettings.hybridEmsEnabled),
+@@ -14805,6 +14927,7 @@
+     let meterContextInputChanged = false;
+     let planningInputChanged = false;
+     let gridInputChanged = false;
++    const evStatusChanges = [];
+ 
+     const apiGridPowerW = parseFiniteInputNumber(body.gridPowerW);
+     if (body.gridPowerW !== undefined && apiGridPowerW !== null) {
+@@ -14871,7 +14994,9 @@
+     }
+     if (body.ev && typeof body.ev === 'object') {
+       const now = Date.now();
+-      contextInputChanged = this.updateEvStatusInput(0, body.ev.connected, body.ev.chargeCurrentA, now) || contextInputChanged;
++      const connectionChanged = body.ev.connected !== undefined && this.hasBooleanInputChanged(
++        this.state.evConnected, Boolean(body.ev.connected), Boolean(this.inputSeen.ev.connected));
++      if (this.updateEvStatusInput(0, body.ev.connected, body.ev.chargeCurrentA, now)) evStatusChanges.push({ index: 0, connectionChanged });
+       if (Number.isFinite(Number(body.ev.soc))) {
+         const soc = Math.max(0, Math.min(100, Number(body.ev.soc)));
+         const changed = this.hasNumericInputChanged(this.state.evSoc, soc, Boolean(this.inputSeen.ev.soc), 0.01)
+@@ -14894,7 +15019,9 @@
+         const runtime = this.getExtraEv(index);
+         if (!runtime) return;
+         const now = Date.now();
+-        contextInputChanged = this.updateEvStatusInput(index, value.connected, value.chargeCurrentA, now) || contextInputChanged;
++        const connectionChanged = value.connected !== undefined && this.hasBooleanInputChanged(
++          runtime.state.connected, Boolean(value.connected), Boolean(runtime.seen.connected));
++        if (this.updateEvStatusInput(index, value.connected, value.chargeCurrentA, now)) evStatusChanges.push({ index, connectionChanged });
+         if (Number.isFinite(Number(value.soc))) {
+           const soc = Math.max(0, Math.min(100, Number(value.soc)));
+           const changed = this.hasNumericInputChanged(runtime.state.soc, soc, Boolean(runtime.seen.soc), 0.01)
+@@ -14922,6 +15049,7 @@
+       this.recordEvHouseLoadSample(this.state.gridPowerW, Date.now(), inputSettings);
+       this.recordEvBatteryHouseReference(Date.now(), inputSettings);
+       const evLoadProtectionChanged = this.updateEvPortfolioLoadDetection(this.state.gridPowerW, Date.now(), inputSettings);
++      this.updateEvMeterContextRequest(inputSettings);
+       if (evLoadProtectionChanged) {
+         contextInputChanged = true;
+         body.force = true;
+@@ -14936,9 +15064,18 @@
+     } else if (body.force) {
+       this.requestContextEvaluate(true, 'api_force');
+     } else {
++      // Process an API batch only after every field has been applied. One
++      // connection transition services all EVs; ordinary feedback is combined
++      // in the same cancellable request as the Flow input route.
++      const connection = evStatusChanges.find(change => change.connectionChanged);
++      if (connection) this.requestEvStatusContext(connection.index, true);
++      else for (const change of evStatusChanges) this.requestEvStatusContext(change.index, false);
+       if (fastInputChanged) this.requestEvaluate();
+       if (contextInputChanged || meterContextInputChanged) {
+-        this.requestContextEvaluate(false, 'api_context_input', 0, false, contextInputChanged);
++        if (contextInputChanged || this.needsNonEvMeterContext(this.getSettings())
++          || !this.contextDirtyReasons?.has('api_context_input')) {
++          this.requestContextEvaluate(false, 'api_context_input', 0, false, contextInputChanged);
++        }
+       }
+     }
+     return this.latestResult || null;

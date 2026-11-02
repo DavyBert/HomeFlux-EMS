@@ -1,0 +1,454 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const Module = require('node:module');
+const originalLoad = Module._load;
+Module._load = function load(request, parent, isMain) {
+  if (request === 'homey') return { App: class App {} };
+  if (request === 'homey-api') return { HomeyAPI: {} };
+  return originalLoad.call(this, request, parent, isMain);
+};
+const HomeFluxEmsApp = require('../app');
+const { DEFAULTS } = require('../lib/ems-engine');
+Module._load = originalLoad;
+
+function triggerSpy() {
+  const calls = [];
+  return { calls, trigger: async (...args) => { calls.push(args); return true; } };
+}
+
+function makeApp() {
+  const app = Object.create(HomeFluxEmsApp.prototype);
+  const stored = new Map();
+  app.homey = {
+    clock: { getTimezone: () => 'UTC' },
+    settings: {
+      get: key => stored.has(key) ? stored.get(key) : null,
+      set: (key, value) => stored.set(key, value),
+    },
+  };
+  app.settingsCache = { ...DEFAULTS, timezone: 'UTC' };
+  const initializedAt = Date.now();
+  app.state = { batterySoc: [95], gridPowerW: -2500, pvPowerW: 0 };
+  app.inputSeen = { grid: true, batterySoc: [true], pv: false };
+  app.inputUpdatedAt = { grid: initializedAt, pv: 0 };
+  app.lastPublishedPvLimitPercent = 100;
+  app.boilerState = {
+    outputOn: false, cycleAccumulatedMs: 0, lastTickAt: 0, lastCompletedAt: 0,
+    lastCompletedDate: '', lastCompletedSource: '', activeSource: '', trackingStartedAt: 0,
+    lastPersistAt: 0, lastPublishedOutput: null,
+  };
+  app.flexiblePriorityState = { lastEvaluationAt: 0, nextEvaluationAt: 0, lastStartedId: '' };
+  return app;
+}
+
+(async () => {
+  const app = makeApp();
+  const settings = {
+    ...DEFAULTS,
+    timezone: 'UTC', batteryCount: 1,
+    boilerCount: 1, boilerEnabled: true, boilerStartSoc: 90, boilerStopSoc: 70,
+    boilerPowerW: 1800, boilerCycleMinutes: 90, boilerColdResetTime: '07:00',
+    boilerFallbackDays: 0, boilerTariffMinBatterySoc: 40, boilerTariffStopBatterySoc: 30, contractType: 'fixed',
+    hvacCount: 3, hvacEnabled: true, hvac2Enabled: false, hvac3Enabled: true,
+    flexibleLoadPriorityOrder: ['hvac3', 'boiler', 'hvac1', 'hvac2'],
+    priorityEvaluationMinutes: 5,
+  };
+  app.settingsCache = { ...settings };
+
+  // v0.4.13: the boiler PV route may only start on real solar surplus.
+  // Battery-created export is removed, while solar charging into the battery
+  // still counts as available PV surplus.
+  {
+    const pvApp = makeApp();
+    const pvSettings = { ...settings, boilerPowerW: 300 };
+    pvApp.settingsCache = { ...pvSettings };
+    const pvNow = Date.UTC(2026, 7, 26, 12, 0, 0);
+    pvApp.inputSeen.pv = true;
+    pvApp.inputUpdatedAt.pv = pvNow;
+
+    pvApp.state.pvPowerW = 0;
+    let pvDecision = pvApp.calculateBoilerDecision({}, pvSettings, {
+      now: pvNow, allowStart: true, gridPowerW: -500, currentBatteryCommandW: 1000,
+    });
+    assert.equal(pvDecision.pvSurplusW, 0);
+    assert.equal(pvDecision.on, false, 'battery-created export may not start the boiler');
+
+    pvApp.state.pvPowerW = 1000;
+    pvApp.inputUpdatedAt.pv = pvNow + 1000;
+    pvDecision = pvApp.calculateBoilerDecision({}, pvSettings, {
+      now: pvNow + 1000, allowStart: true, gridPowerW: -900, currentBatteryCommandW: 700,
+    });
+    assert.equal(pvDecision.pvSurplusW, 200);
+    assert.equal(pvDecision.on, false, 'only the solar share of export may count');
+
+    pvApp.state.pvPowerW = 2500;
+    pvApp.inputUpdatedAt.pv = pvNow + 2000;
+    pvDecision = pvApp.calculateBoilerDecision({}, pvSettings, {
+      now: pvNow + 2000, allowStart: true, gridPowerW: 0, currentBatteryCommandW: -2000,
+    });
+    assert.equal(pvDecision.pvSurplusW, 2000);
+    assert.equal(pvDecision.on, true, 'PV charging into the battery must count as solar surplus');
+  }
+
+  // v0.3.50: optional flexible-load modules can be configured as zero.
+  assert.equal(app.getEvCount({ evCount: 0 }), 0);
+  assert.equal(app.getHvacCount({ hvacCount: 0 }), 0);
+  assert.equal(app.getBoilerCount({ boilerCount: 0 }), 0);
+  assert.deepEqual(app.getFlexibleLoadPriorityOrder({ ...settings, boilerCount: 0, hvacCount: 0 }), []);
+
+  // Outdoor temperature is one shared HVAC climate input for every instance.
+  app.state.hvacOutdoorTemperatureC = 12.5;
+  app.inputSeen.hvac = { outdoorTemperature: true };
+  app.inputUpdatedAt = { ...app.inputUpdatedAt, hvac: { outdoorTemperature: 123456 } };
+  app.extraHvacInstances = [
+    { state: { roomTemperatureC: 20, outdoorTemperatureC: 99, mode: 'heat', setpointC: 21, fanSpeed: 100 }, seen: { roomTemperature: true, outdoorTemperature: false, mode: true, setpoint: true, fanSpeed: true }, updatedAt: { roomTemperature: 1, outdoorTemperature: 0, mode: 1, setpoint: 1, fanSpeed: 1 } },
+    { state: {}, seen: {}, updatedAt: {} },
+    { state: {}, seen: {}, updatedAt: {} },
+  ];
+  const hvac2Input = app.getHvacInputSnapshot(1);
+  assert.equal(hvac2Input.outdoorTemperatureC, 12.5);
+  assert.equal(hvac2Input.seen.outdoorTemperature, true);
+  assert.equal(hvac2Input.updatedAt.outdoorTemperature, 123456);
+
+  // EVs never enter the thermal priority list; disabled HVAC entries are removed.
+  assert.deepEqual(app.getFlexibleLoadPriorityOrder(settings), ['hvac3', 'boiler', 'hvac1']);
+  assert.equal(app.getPriorityEvaluationIntervalMs(settings), 5 * 60 * 1000);
+  app.finishFlexiblePriorityEvaluation(1000, settings, 'boiler');
+  assert.equal(app.flexiblePriorityState.nextEvaluationAt, 301000);
+  assert.equal(app.flexiblePriorityState.lastStartedId, 'boiler');
+
+  // Boiler waits for the priority manager although PV/SoC are sufficient.
+  const start = Date.UTC(2026, 7, 26, 20, 0, 0);
+  app.boilerState.lastTickAt = start;
+  app.boilerState.trackingStartedAt = start - (4 * 86400000);
+  app.inputSeen.pv = true;
+  app.state.pvPowerW = 5000;
+  app.inputUpdatedAt.pv = start;
+  let decision = app.calculateBoilerDecision({}, settings, { now: start, allowStart: false, gridPowerW: -2500 });
+  assert.equal(decision.startEligible, true);
+  assert.equal(decision.on, false);
+
+  // Granted start; 30 minutes later a low-SoC stop keeps cumulative progress.
+  decision = app.calculateBoilerDecision({}, settings, { now: start, allowStart: true, gridPowerW: -2500 });
+  assert.equal(decision.on, true);
+  decision = app.calculateBoilerDecision({}, settings, { now: start + (5 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, true, 'a PV-started cycle keeps running until its solar-hour SoC stop threshold');
+  app.state.batterySoc[0] = 60;
+  decision = app.calculateBoilerDecision({}, settings, { now: start + (30 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, false);
+  assert(Math.abs(app.boilerState.cycleAccumulatedMs - (30 * 60000)) < 2);
+
+  // Resume later and complete the remaining 60 minutes.
+  app.state.batterySoc[0] = 95;
+  const resumeAt = start + (40 * 60000);
+  app.inputUpdatedAt.pv = resumeAt;
+  decision = app.calculateBoilerDecision({}, settings, { now: resumeAt, allowStart: true, gridPowerW: -2500 });
+  assert.equal(decision.on, true);
+  decision = app.calculateBoilerDecision({}, settings, { now: resumeAt + (60 * 60000), allowStart: true, gridPowerW: -2500 });
+  assert.equal(decision.on, false);
+  assert.equal(decision.completedToday, true);
+  assert.equal(app.boilerState.cycleAccumulatedMs, 0);
+  assert.equal(app.getBoilerWarmUntil(settings), Date.UTC(2026, 7, 27, 7, 0, 0));
+
+  // After midnight the completed PV cycle remains warm until the fixed 07:00 reset.
+  const afterMidnight = Date.UTC(2026, 7, 27, 0, 30, 0);
+  decision = app.calculateBoilerDecision({}, settings, { now: afterMidnight, allowStart: true, gridPowerW: -2500 });
+  assert.equal(decision.on, false);
+  assert.equal(decision.warm, true);
+
+  // At the daily reset boundary the previous cycle becomes cold and a new
+  // boiler day starts, so later PV heating is eligible again.
+  const afterReset = Date.UTC(2026, 7, 27, 7, 1, 0);
+  app.inputUpdatedAt.pv = afterReset;
+  decision = app.calculateBoilerDecision({}, settings, { now: afterReset, allowStart: false, gridPowerW: -2500 });
+  assert.equal(decision.warm, false);
+  assert.equal(decision.completedToday, false);
+  assert.equal(decision.startEligible, true);
+
+  // A cycle completed before the reset only stays warm until that same day's 07:00.
+  app.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 5, 0, 0);
+  app.boilerState.warmUntilCache = null;
+  assert.equal(app.getBoilerWarmUntil(settings), Date.UTC(2026, 7, 28, 7, 0, 0));
+
+
+  // v0.7.6: tariff fallback counts fully missed solar-day windows instead of
+  // elapsed 24-hour periods since the previous cycle. A completion at 06:06
+  // therefore does not move the fallback to 06:06 on following days.
+  {
+    const solarDayApp = makeApp();
+    const solarDaySettings = {
+      ...settings,
+      boilerFallbackDays: 1,
+      boilerFixedChargeWindowEnabled: true,
+      boilerTariffPeriod: 'night',
+      boilerDayStartTime: '07:00',
+      boilerDayEndTime: '23:00',
+    };
+    solarDayApp.settingsCache = { ...solarDaySettings };
+    solarDayApp.state.pvPowerW = 0;
+    solarDayApp.inputSeen.pv = true;
+    solarDayApp.state.batterySoc[0] = 95;
+    solarDayApp.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 6, 6, 0);
+    solarDayApp.boilerState.warmUntilCache = null;
+    solarDayApp.boilerState.trackingStartedAt = Date.UTC(2026, 7, 20, 0, 0, 0);
+    const beforeDayEnd = Date.UTC(2026, 7, 28, 22, 59, 0);
+    solarDayApp.inputUpdatedAt.pv = beforeDayEnd;
+    let solarStatus = solarDayApp.getBoilerSolarFallbackStatus(beforeDayEnd, solarDaySettings);
+    assert.equal(solarStatus.missedSolarDays, 0);
+    assert.equal(solarStatus.fallbackDue, false);
+    assert.equal(solarStatus.nextFallbackAt, Date.UTC(2026, 7, 28, 23, 0, 0));
+
+    const afterDayEnd = Date.UTC(2026, 7, 28, 23, 1, 0);
+    solarDayApp.inputUpdatedAt.pv = afterDayEnd;
+    solarStatus = solarDayApp.getBoilerSolarFallbackStatus(afterDayEnd, solarDaySettings);
+    assert.equal(solarStatus.missedSolarDays, 1);
+    assert.equal(solarStatus.fallbackDue, true);
+    let solarDecision = solarDayApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      solarDaySettings,
+      { now: afterDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.tariffSelected, true);
+    assert.equal(solarDecision.on, true, 'one missed solar day must unlock tariff heating that same night');
+
+    // When the solar-day limit is reached but the current tariff is not one of
+    // the configured fallback tariffs, the status must say it is waiting for
+    // tariff rather than misleadingly returning to a PV-surplus reason.
+    const waitingTariffApp = makeApp();
+    waitingTariffApp.settingsCache = { ...solarDaySettings };
+    waitingTariffApp.state.pvPowerW = 0;
+    waitingTariffApp.inputSeen.pv = true;
+    waitingTariffApp.inputUpdatedAt.pv = afterDayEnd;
+    waitingTariffApp.state.batterySoc[0] = 95;
+    waitingTariffApp.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 6, 6, 0);
+    waitingTariffApp.boilerState.warmUntilCache = null;
+    solarDecision = waitingTariffApp.calculateBoilerDecision(
+      { tariff: { className: 'expensive' } },
+      solarDaySettings,
+      { now: afterDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.fallbackDue, true);
+    assert.equal(solarDecision.tariffSelected, false);
+    assert.match(solarDecision.reason, /wachten op toegestaan boilertarief/i);
+
+    const twoDayApp = makeApp();
+    const twoDaySettings = { ...solarDaySettings, boilerFallbackDays: 2 };
+    twoDayApp.settingsCache = { ...twoDaySettings };
+    twoDayApp.state.pvPowerW = 0;
+    twoDayApp.inputSeen.pv = true;
+    twoDayApp.state.batterySoc[0] = 95;
+    twoDayApp.boilerState.lastCompletedAt = Date.UTC(2026, 7, 28, 6, 6, 0);
+    twoDayApp.boilerState.warmUntilCache = null;
+    twoDayApp.boilerState.trackingStartedAt = Date.UTC(2026, 7, 20, 0, 0, 0);
+    twoDayApp.inputUpdatedAt.pv = afterDayEnd;
+    solarDecision = twoDayApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      twoDaySettings,
+      { now: afterDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.daysWithoutCycle, 1);
+    assert.equal(solarDecision.fallbackDue, false);
+    assert.equal(solarDecision.on, false, 'two-day fallback must still wait after the first missed solar day');
+    assert.equal(solarDecision.nextFallbackAt, Date.UTC(2026, 7, 29, 23, 0, 0));
+
+    const secondDayEnd = Date.UTC(2026, 7, 29, 23, 1, 0);
+    twoDayApp.inputUpdatedAt.pv = secondDayEnd;
+    solarDecision = twoDayApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      twoDaySettings,
+      { now: secondDayEnd, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.daysWithoutCycle, 2);
+    assert.equal(solarDecision.fallbackDue, true);
+    assert.equal(solarDecision.on, true, 'two missed solar days must unlock tariff heating after the second day');
+
+    // Exact Europe/Brussels regression from the field case: a cycle completed
+    // at 06:06 must make the 07:00-23:00 solar window count as one missed day,
+    // so the 01:00-07:00 night tariff is already eligible at 01:36 next night.
+    const brusselsApp = makeApp();
+    brusselsApp.homey.clock.getTimezone = () => 'Europe/Brussels';
+    const brusselsSettings = {
+      ...solarDaySettings,
+      timezone: 'Europe/Brussels',
+      boilerFallbackDays: 1,
+    };
+    brusselsApp.settingsCache = { ...brusselsSettings };
+    brusselsApp.state.pvPowerW = 0;
+    brusselsApp.inputSeen.pv = true;
+    brusselsApp.state.batterySoc[0] = 80;
+    brusselsApp.boilerState.lastCompletedAt = new Date('2026-09-13T06:06:00+02:00').getTime();
+    brusselsApp.boilerState.warmUntilCache = null;
+    const brusselsNight = new Date('2026-09-14T01:36:00+02:00').getTime();
+    brusselsApp.inputUpdatedAt.pv = brusselsNight;
+    solarDecision = brusselsApp.calculateBoilerDecision(
+      { tariff: { className: 'cheap' } },
+      brusselsSettings,
+      { now: brusselsNight, allowStart: true, gridPowerW: 0 },
+    );
+    assert.equal(solarDecision.missedSolarDays, 1);
+    assert.equal(solarDecision.fallbackDue, true);
+    assert.equal(solarDecision.tariffSelected, true);
+    assert.equal(solarDecision.on, true, 'Brussels 06:06 completion must allow the selected night tariff after the missed solar day');
+  }
+
+  // Tariff fallback waits until the battery reserve is reached and pauses
+  // again below that reserve without losing cumulative cycle progress.
+  const tariffSettings = {
+    ...settings,
+    boilerFallbackDays: 1,
+    boilerTariffMinBatterySoc: 40,
+    boilerTariffStopBatterySoc: 30,
+    boilerFixedChargeWindowEnabled: true,
+  };
+  app.boilerState.lastCompletedAt = 0;
+  app.boilerState.warmUntilCache = null;
+  app.boilerState.trackingStartedAt = start - (4 * 86400000);
+  app.boilerState.cycleAccumulatedMs = 10 * 60000;
+  app.boilerState.outputOn = false;
+  app.boilerState.activeSource = '';
+  app.state.pvPowerW = 0;
+  app.inputUpdatedAt.pv = start;
+  app.state.batterySoc[0] = 35;
+  const cheapTariff = { className: 'cheap' };
+  decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start, allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.tariffSelected, true);
+  assert.equal(decision.tariffAllowed, false);
+  assert.equal(decision.on, false);
+  assert.match(decision.reason, /40%/);
+
+  app.state.batterySoc[0] = 45;
+  decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + 60000, allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.tariffAllowed, true);
+  assert.equal(decision.on, true);
+  assert.equal(app.boilerState.activeSource, 'tariff');
+
+  // Hysteresis: after starting at 40%, the boiler stays on below 40% and
+  // only stops at the separate 30% threshold.
+  app.state.batterySoc[0] = 35;
+  decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (6 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, true);
+  assert.equal(decision.tariffStopBatterySoc, 30);
+
+  // Tariff boiler heating may stay on while Peak Guard asks the battery to
+  // assist. The current meter value includes the old battery setpoint; after
+  // applying the new 700 W discharge, the predicted import is safely below
+  // the 2500 W hard limit, so the boiler must NOT be switched off.
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    tariffSettings,
+    { now: start + (7 * 60000), allowStart: true, gridPowerW: 3000, currentBatteryCommandW: 0, nextBatteryCommandW: 700 },
+  );
+  assert.equal(decision.on, true);
+  assert.equal(decision.predictedGridAfterBatteryW, 2300);
+  assert.match(decision.reason, /Peak Guard ondersteund door batterij/);
+
+  app.state.batterySoc[0] = 30;
+  decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (11 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, false);
+  assert(app.boilerState.cycleAccumulatedMs >= 20 * 60000);
+
+  // It may not restart until the higher 40% start threshold is reached again.
+  app.state.batterySoc[0] = 35;
+  decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (12 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, false);
+  app.state.batterySoc[0] = 40;
+  decision = app.calculateBoilerDecision({ tariff: cheapTariff }, tariffSettings, { now: start + (13 * 60000), allowStart: true, gridPowerW: 0 });
+  assert.equal(decision.on, true);
+
+  // Peak Guard remains authoritative. Without the explicit battery-support
+  // option, tariff boiler heating is still shed immediately when the predicted
+  // meter position cannot stay below the configured hard limit.
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    tariffSettings,
+    { now: start + (14 * 60000), allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 0, nextBatteryCommandW: 500 },
+  );
+  assert.equal(decision.on, false);
+  assert.equal(decision.predictedGridAfterBatteryW, 2800);
+  assert.match(decision.reason, /niet haalbaar/);
+
+  // v0.6.6: when explicitly enabled, the battery may support an essential
+  // tariff boiler instead of shedding it while Peak Guard is asking for more
+  // discharge. The support window is bounded; if P1 still cannot be brought
+  // under the hard limit after the battery had time to react, the boiler yields.
+  app.boilerState.outputOn = true;
+  app.boilerState.activeSource = 'tariff';
+  app.boilerState.peakSupportRequestedAt = 0;
+  app.state.batterySoc[0] = 50;
+  const supportedTariffSettings = {
+    ...tariffSettings,
+    boilerPeakGuardBatterySupportEnabled: true,
+    maxTotalDischargeW: 4000,
+    minSoc: 10,
+    commandIntervalSeconds: 10,
+  };
+  const supportAt = start + (15 * 60000);
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt, allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 0, nextBatteryCommandW: 500 },
+  );
+  assert.equal(decision.on, true);
+  assert.equal(decision.peakGuardBatterySupportActive, true);
+  assert.equal(decision.peakGuardBatterySupportNeededW, 300);
+  assert.match(decision.reason, /batterij ondersteunt Peak Guard/);
+
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt + 20000, allowStart: true, gridPowerW: 3200, currentBatteryCommandW: 500, nextBatteryCommandW: 800 },
+  );
+  assert.equal(decision.on, true, 'boiler must stay on while battery support is converging');
+
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt + 40000, allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 500, nextBatteryCommandW: 800 },
+  );
+  assert.equal(decision.on, false, 'hard Peak Guard still sheds boiler after the bounded support window');
+  assert.match(decision.reason, /niet haalbaar/);
+
+  // If the battery is already at/below the boiler tariff stop reserve, support
+  // is never attempted even when the option is enabled.
+  app.boilerState.outputOn = true;
+  app.boilerState.activeSource = 'tariff';
+  app.boilerState.peakSupportRequestedAt = 0;
+  app.state.batterySoc[0] = 30;
+  decision = app.calculateBoilerDecision(
+    { tariff: cheapTariff, action: 'peak_shave', override: 'peak_shave' },
+    supportedTariffSettings,
+    { now: supportAt + 50000, allowStart: true, gridPowerW: 3300, currentBatteryCommandW: 0, nextBatteryCommandW: 500 },
+  );
+  assert.equal(decision.on, false);
+  assert.equal(decision.peakGuardBatterySupportActive, false);
+
+  // Boiler warmed status is a separate boolean output and also changes
+  // independently when the configured warm-hold expires.
+  app.boilerWarmedTrigger = triggerSpy();
+  app.boilerState.lastPublishedWarmed = null;
+  await app.publishBoilerDecision({ enabled: true, warm: true, on: false, outputCommand: null });
+  assert.deepEqual(app.boilerWarmedTrigger.calls[0][0], { warmed: true });
+  await app.publishBoilerDecision({ enabled: true, warm: false, on: false, outputCommand: null });
+  assert.deepEqual(app.boilerWarmedTrigger.calls[1][0], { warmed: false });
+
+  // Boiler output is one boolean token only.
+  app.boilerTrigger = triggerSpy();
+  app.boilerState.lastPublishedOutput = null;
+  await app.publishBoilerDecision({ on: true, outputCommand: true });
+  assert.deepEqual(app.boilerTrigger.calls[0][0], { on: true });
+
+  // Output tests route only to configured instances.
+  const previousGetSettingsForOutputTest = app.getSettings;
+  app.getSettings = () => ({ ...previousGetSettingsForOutputTest.call(app), evCount: 2 });
+  app.extraEvInstances = [{ sessionOverride:{}, state:{}, seen:{}, updatedAt:{} }, { sessionOverride:{}, state:{}, seen:{}, updatedAt:{} }, { sessionOverride:{}, state:{}, seen:{}, updatedAt:{} }];
+  app.extraEvTriggers = [{ current: triggerSpy(), allowed: triggerSpy(), mode: triggerSpy() }, {}, {}];
+  app.extraHvacTriggers = [{ power: triggerSpy(), mode: triggerSpy(), setpoint: triggerSpy(), fan: triggerSpy() }, {}, {}];
+  await app.testEvOutput({ instance: 2, output: 'current', currentA: 8 });
+  assert.equal(app.extraEvTriggers[0].current.calls[0][0].charge_current, 8);
+  await app.testHvacOutput({ instance: 2, output: 'power', on: true });
+  assert.equal(app.extraHvacTriggers[0].power.calls[0][0].state_value, 1);
+  app.getSettings = previousGetSettingsForOutputTest;
+
+  console.log('multi flexible-load tests passed');
+})().catch(err => { console.error(err); process.exit(1); });

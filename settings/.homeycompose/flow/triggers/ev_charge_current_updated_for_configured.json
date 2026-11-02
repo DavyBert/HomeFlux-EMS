@@ -1,0 +1,75 @@
+{
+  "title": {
+    "en": "EV charge current is updated",
+    "nl": "EV-laadstroom is bijgewerkt"
+  },
+  "hint": {
+    "en": "Use this output to set the EV charger current. Peak Guard can always reduce it. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Gebruik deze uitgang om de laadstroom van de EV-lader te sturen. Peak Guard kan deze altijd verlagen. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "tokens": [
+    {
+      "name": "charge_current",
+      "type": "number",
+      "title": {
+        "en": "Charge current (A)",
+        "nl": "Laadstroom (A)"
+      },
+      "example": 10
+    },
+    {
+      "name": "charge_power",
+      "type": "number",
+      "title": {
+        "en": "Estimated charge power (W)",
+        "nl": "Geschat laadvermogen (W)"
+      },
+      "example": 6900
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "title": {
+        "en": "Source",
+        "nl": "Bron"
+      },
+      "example": "pv"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "Laden met PV-overschot"
+    },
+    {
+      "name": "target_soc",
+      "type": "number",
+      "title": {
+        "en": "EV target SoC (%)",
+        "nl": "EV-doel SoC (%)"
+      },
+      "example": 80
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[ev]] charge current is updated",
+    "nl": "[[ev]]-laadstroom is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "ev",
+      "type": "autocomplete",
+      "title": {
+        "en": "EV",
+        "nl": "EV"
+      },
+      "placeholder": {
+        "en": "Select configured EV",
+        "nl": "Kies geconfigureerde EV"
+      }
+    }
+  ]
+}

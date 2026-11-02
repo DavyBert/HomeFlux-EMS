@@ -1,0 +1,600 @@
+'use strict';
+
+const { powerPerAmp } = require('../settings/ev-headroom');
+const { localParts } = require('./homey-energy');
+const { findCurrentTariff, isDynamicContract } = require('./ems-engine');
+
+function clamp(value, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function parseTime(value) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return (hour * 60) + minute;
+}
+
+function evPowerPerAmp(settings = {}) {
+  return powerPerAmp(settings.evPhases, settings.evVoltage, settings.evVoltageReference);
+}
+
+function evCurrentLimits(settings = {}) {
+  const minA = clamp(Math.round(Number(settings.evMinCurrentA) || 6), 1, 64);
+  const maxA = clamp(Math.round(Number(settings.evMaxCurrentA) || 32), minA, 64);
+  const standardA = clamp(Math.round(Number(settings.evStandardCurrentA) || 16), minA, maxA);
+  return { minA, maxA, standardA };
+}
+
+function evModeEstimatedCurrents(settings = {}) {
+  const smartA = clamp(Math.round(Number(settings.evModeSmartCurrentA) || Number(settings.evMinCurrentA) || 6), 1, 64);
+  const configuredStandardA = clamp(Math.round(Number(settings.evModeStandardCurrentA) || Number(settings.evStandardCurrentA) || 16), 1, 64);
+  // Smart is the lower-power fallback from Standard. Never underestimate a
+  // misconfigured Smart mode: if Standard is entered below Smart, treat
+  // Standard as at least Smart until the settings are corrected.
+  const standardA = Math.max(smartA, configuredStandardA);
+  return { smartA, standardA };
+}
+
+// Share only pure calendar results, never settings, plans or EV decisions.
+// Exact timestamps preserve the scan's existing seconds/milliseconds and DST
+// behaviour. A small LRU also accommodates different targets for multiple EVs.
+const NEXT_LOCAL_TIME_CACHE_LIMIT = 32;
+const nextLocalTimeCache = new Map();
+
+function findNextLocalTime(nowInput, timeValue, timezone = 'UTC') {
+  const now = nowInput instanceof Date ? nowInput : new Date(nowInput);
+  const targetMinute = parseTime(timeValue);
+  if (targetMinute === null) return new Date(now.getTime() + (24 * 60 * 60 * 1000));
+  const timestamp = now.getTime();
+  // Leave invalid dates and unusual timezone objects on the original path,
+  // including its exceptions/coercion. Failed scans are never cached.
+  const cacheKey = Number.isFinite(timestamp) && typeof timezone === 'string'
+    ? JSON.stringify([timestamp, targetMinute, timezone]) : null;
+  if (cacheKey !== null && nextLocalTimeCache.has(cacheKey)) {
+    const cached = nextLocalTimeCache.get(cacheKey);
+    nextLocalTimeCache.delete(cacheKey);
+    nextLocalTimeCache.set(cacheKey, cached);
+    return new Date(cached);
+  }
+  const remember = value => {
+    if (cacheKey !== null) {
+      nextLocalTimeCache.set(cacheKey, value);
+      if (nextLocalTimeCache.size > NEXT_LOCAL_TIME_CACHE_LIMIT) {
+        nextLocalTimeCache.delete(nextLocalTimeCache.keys().next().value);
+      }
+    }
+    return new Date(value);
+  };
+
+  // Scan absolute minutes and compare in Homey's timezone. This stays correct
+  // across DST transitions without manually constructing zoned Date objects.
+  for (let offset = 1; offset <= (26 * 60); offset += 1) {
+    const candidate = new Date(now.getTime() + (offset * 60000));
+    if (localParts(candidate, timezone).minuteOfDay === targetMinute) return remember(candidate.getTime());
+  }
+  return remember(now.getTime() + (24 * 60 * 60 * 1000));
+}
+
+function isEvTariffSelected(settings = {}, tariff = null) {
+  if (!tariff) return false;
+  const type = String(settings.contractType || '');
+  if (type === 'tou') {
+    const rateId = String(tariff.rateId || '');
+    const rate = (Array.isArray(settings.touRates) ? settings.touRates : []).find(item => String(item?.id || '') === rateId);
+    if (Boolean(rate?.avoidGridImport)) return false;
+    return Boolean(rate?.evChargeAllowed);
+  }
+  if (isDynamicContract(settings)) {
+    if (tariff.className === 'cheap') return Boolean(settings.evDynamicCheapEnabled);
+    if (tariff.className === 'expensive') return Boolean(settings.evDynamicExpensiveEnabled);
+    return Boolean(settings.evDynamicNormalEnabled);
+  }
+  // Fixed contract reuses the existing fixed charge window when requested.
+  return Boolean(settings.evFixedChargeWindowEnabled) && tariff.className === 'cheap';
+}
+
+function isEvEmergencyTariffSelected(settings = {}, tariff = null) {
+  if (String(settings.contractType || '') === 'tou') {
+    const rates = Array.isArray(settings.touRates) ? settings.touRates : [];
+    const rate = rates.find(item => String(item?.id || '') === String(tariff?.rateId || ''));
+    // Emergency permissions deliberately do not inherit Standard/PV or avoid-import permissions.
+    return rate ? rate.evEmergencyChargeAllowed !== false : rates.every(item => item.evEmergencyChargeAllowed !== false);
+  }
+  if (isDynamicContract(settings)) {
+    const allowed = {
+      cheap: settings.evEmergencyDynamicCheapEnabled !== false,
+      normal: settings.evEmergencyDynamicNormalEnabled !== false,
+      expensive: settings.evEmergencyDynamicExpensiveEnabled !== false,
+    };
+    if (settings.dynamicPriceDataReady === false || !tariff || !Object.hasOwn(allowed, tariff.className)) {
+      return Object.values(allowed).every(Boolean);
+    }
+    return allowed[tariff.className];
+  }
+  return tariff?.className === 'cheap'
+    ? settings.evEmergencyFixedWindowEnabled !== false
+    : settings.evEmergencyFixedOutsideWindowEnabled !== false;
+}
+
+function isTouAvoidGridImport(settings = {}, tariff = null) {
+  if (String(settings.contractType || '') !== 'tou' || !tariff) return false;
+  const rateId = String(tariff.rateId || '');
+  const rate = (Array.isArray(settings.touRates) ? settings.touRates : []).find(item => String(item?.id || '') === rateId);
+  return Boolean(rate?.avoidGridImport);
+}
+
+function getEvPvTariffPolicy(settings = {}, tariff = null) {
+  const type = String(settings.contractType || '');
+  const generalStartW = Math.max(0, Number(settings.evPvStartSurplusW) || 0);
+  const configuredGeneralStopW = Math.max(0, Number(settings.evPvStopSurplusW) || 0);
+  // Defensive hysteresis: a stop threshold above the start threshold can make
+  // an EV session start and immediately qualify for stopping. Clamp imported or
+  // manually edited settings to a stable effective stop threshold.
+  const generalStopW = Math.min(generalStartW, configuredGeneralStopW);
+  const configuredDelay = Number(settings.evPvStopDelaySeconds);
+  const generalDelay = Math.max(0, Number.isFinite(configuredDelay) ? configuredDelay : 60);
+  if (type !== 'tou' || !tariff) return { allowed: true, minSurplusW: generalStartW, stopSurplusW: generalStopW, stopGridImportW: 1000, stopDelaySeconds: generalDelay, hysteresisEnabled: true, gridTopUpAllowed: isEvTariffSelected(settings, tariff) };
+  const rateId = String(tariff.rateId || '');
+  const rate = (Array.isArray(settings.touRates) ? settings.touRates : []).find(item => String(item?.id || '') === rateId);
+  if (!rate) return { allowed: true, minSurplusW: generalStartW, stopSurplusW: generalStopW, stopGridImportW: 1000, stopDelaySeconds: generalDelay, hysteresisEnabled: true, gridTopUpAllowed: false };
+  const minSurplusW = Math.max(generalStartW, Math.max(0, Number(rate.evPvMinSurplusW) || 0));
+  return {
+    // Missing fields mean pre-v0.3.36 settings and must preserve the old
+    // behaviour where PV charging was eligible in every TOU category.
+    allowed: rate.evPvChargeAllowed !== false,
+    minSurplusW,
+    stopSurplusW: Math.min(minSurplusW, generalStopW),
+    stopGridImportW: Math.max(0, Number(rate.evPvStopGridImportW ?? 1000) || 0),
+    stopDelaySeconds: Math.max(0, Number.isFinite(Number(settings.evPvStopDelaySeconds)) ? Number(settings.evPvStopDelaySeconds) : (Number(rate.evPvStopDelaySeconds) || 60)),
+    hysteresisEnabled: true,
+    gridTopUpAllowed: Boolean(rate.evPvGridTopUpAllowed),
+  };
+}
+
+function countEvTariffMinutes(nowInput, deadlineInput, settings = {}, stepMinutes = 5) {
+  const now = nowInput instanceof Date ? nowInput : new Date(nowInput);
+  const deadline = deadlineInput instanceof Date ? deadlineInput : new Date(deadlineInput);
+  const step = Math.max(1, Math.round(Number(stepMinutes) || 5));
+  let selectedMinutes = 0;
+  let otherMinutes = 0;
+  const timezone = settings.timezone || 'UTC';
+  const baseDateKey = localParts(now, timezone).dateKey;
+  const dynamic = isDynamicContract(settings);
+  for (let at = now.getTime(); at < deadline.getTime(); at += step * 60000) {
+    const end = Math.min(deadline.getTime(), at + (step * 60000));
+    const minutes = Math.max(0, (end - at) / 60000);
+    const candidate = new Date(at);
+    // Dynamic engine slots are intentionally day-local. Never fabricate
+    // tomorrow's cheap hours from today's price pattern; unknown future slots
+    // count as non-selected until Homey supplies the new day.
+    const knownDynamicDay = !dynamic || localParts(candidate, timezone).dateKey === baseDateKey;
+    const tariff = knownDynamicDay ? findCurrentTariff(candidate, settings) : null;
+    if (knownDynamicDay && isEvTariffSelected(settings, tariff)) selectedMinutes += minutes;
+    else otherMinutes += minutes;
+  }
+  return { selectedMinutes, otherMinutes };
+}
+
+function quantizeCurrent(powerW, settings = {}, rounding = 'floor') {
+  const { minA, maxA } = evCurrentLimits(settings);
+  const perAmpW = evPowerPerAmp(settings);
+  if (!Number.isFinite(Number(powerW)) || Number(powerW) <= 0 || perAmpW <= 0) return 0;
+  const raw = Number(powerW) / perAmpW;
+  const amps = rounding === 'ceil' ? Math.ceil(raw) : Math.floor(raw);
+  if (amps < minA) return 0;
+  return clamp(amps, minA, maxA);
+}
+
+function calculateEvDecision(input = {}) {
+  const settings = input.settings || {};
+  const enabled = Boolean(settings.evEnabled);
+  const connected = Boolean(input.connected);
+  const requestedMode = ['emergency', 'soc_target', 'smart'].includes(String(settings.evMode || 'smart'))
+    ? String(settings.evMode || 'smart')
+    : 'smart';
+  const socEnabled = settings.evSocEnabled !== false;
+  // When SoC support is explicitly disabled, SoC is not merely 'missing': it is
+  // outside the EV strategy altogether. Treat a stale/manual soc_target mode as
+  // Smart so tariff, PV, kWh deadlines and Peak Guard continue without any SoC
+  // dependency or stale-SoC warning.
+  let mode = requestedMode === 'soc_target' && !socEnabled ? 'smart' : requestedMode;
+  const soc = Number(input.soc);
+  const socFreshnessMinutes = Math.max(1, Math.min(60, Math.round(Number(settings.evSocFreshnessMinutes) || 15)));
+  const socSeen = input.socSeen === undefined ? Number.isFinite(soc) : Boolean(input.socSeen);
+  const socFresh = input.socFresh === undefined ? Number.isFinite(soc) : Boolean(input.socFresh);
+  const socAgeMinutes = Number.isFinite(Number(input.socAgeMinutes)) ? Math.max(0, Number(input.socAgeMinutes)) : null;
+  const actualCurrentA = Math.max(0, Number(input.actualCurrentA) || 0);
+  const perAmpW = evPowerPerAmp(settings);
+  const actualPowerW = actualCurrentA * perAmpW;
+  const { minA, maxA, standardA } = evCurrentLimits(settings);
+  const controlType = ['current','mode','hybrid'].includes(String(settings.evControlType || 'current')) ? String(settings.evControlType || 'current') : 'current';
+  const { smartA: modeSmartA, standardA: modeStandardA } = evModeEstimatedCurrents(settings);
+  const planningMaxA = controlType === 'mode' ? Math.max(modeSmartA, modeStandardA) : maxA;
+  const maxPowerW = planningMaxA * perAmpW;
+  const targetSoc = mode === 'emergency' ? 100 : clamp(Number(settings.evTargetSoc) || 80, 0, 100);
+  const batteryKwh = Math.max(1, Number(settings.evBatteryCapacityKwh) || 60);
+  const now = input.now instanceof Date ? input.now : new Date(input.now || Date.now());
+  const timezone = settings.timezone || 'UTC';
+  const energyPlanActive = Boolean(settings.evEnergyPlanActive);
+  const configuredEnergyDeadline = Number(settings.evEnergyDeadlineAt);
+  const socPlanActive = socEnabled && Boolean(settings.evSocPlanActive);
+  const configuredSocDeadline = Number(settings.evSocDeadlineAt);
+  const deadline = settings.evWidgetPlan && Number(settings.evWidgetPlan.deadlineAt) > 0
+    ? new Date(Number(settings.evWidgetPlan.deadlineAt)) : energyPlanActive && Number.isFinite(configuredEnergyDeadline) && configuredEnergyDeadline > now.getTime()
+    ? new Date(configuredEnergyDeadline)
+    : (socPlanActive && Number.isFinite(configuredSocDeadline) && configuredSocDeadline > now.getTime()
+      ? new Date(configuredSocDeadline)
+      : findNextLocalTime(now, settings.evTargetTime || '07:00', timezone));
+  const usableSoc = socEnabled && socFresh && Number.isFinite(soc) ? soc : null;
+  const continueAfterSoc = !settings.evWidgetPlan && !energyPlanActive && settings.evAfterSocTarget === 'preferences';
+  const socTargetReached = enabled && connected && continueAfterSoc
+    && (Boolean(settings.evSocTargetReached) || (usableSoc !== null && usableSoc >= targetSoc
+      && settings.evSocTargetCompletionFresh !== false));
+  // Completing an opt-in SoC minimum removes deadline/Emergency authority,
+  // while ordinary Smart tariff/PV and portfolio limits remain authoritative.
+  if (socTargetReached) mode = 'smart';
+  const energyNeedKwh = socTargetReached ? 0 : energyPlanActive
+    ? Math.max(0, Number(settings.evEnergyNeedKwh) || 0)
+    : (usableSoc !== null ? Math.max(0, batteryKwh * ((targetSoc - usableSoc) / 100)) : null);
+  const tariff = input.tariff || findCurrentTariff(now, settings);
+  let selectedTariff = isEvTariffSelected(settings, tariff);
+  const avoidGridImportTariff = isTouAvoidGridImport(settings, tariff);
+  const socFallbackActive = socEnabled && mode !== 'emergency' && !energyPlanActive && !socFresh && !socTargetReached;
+  const minimumTargetReached = energyNeedKwh !== null && energyNeedKwh <= 0.001;
+  const guaranteeEnabled = Boolean(settings.evGuaranteeTarget) && energyNeedKwh !== null && !minimumTargetReached;
+  const allowUnselectedForDeadline = Boolean(settings.evAllowUnselectedTariffForDeadline);
+  // A guaranteed Flow/settings deadline is a hard minimum target. If selected
+  // tariffs alone cannot meet it, HomeFlux may use any tariff when needed.
+  // Peak Guard remains the absolute limiter later in this decision path.
+  const guarantee = guaranteeEnabled && allowUnselectedForDeadline;
+  const deadlinePlan = enabled && connected && mode !== 'emergency' && !minimumTargetReached
+    && !settings.evWidgetPlan?.completed && (!settings.evWidgetPlan || settings.evWidgetPlan.deadlineAt > now.getTime())
+    && typeof input.planDeadline === 'function' ? input.planDeadline({
+      deadlineAt: deadline.getTime(), energyNeedKwh, guarantee,
+      maxPowerW, minPowerW: (controlType === 'mode' ? modeSmartA : minA) * perAmpW,
+      standardPowerW: (controlType === 'mode' ? modeStandardA : standardA) * perAmpW,
+    }) : null;
+  if (deadlinePlan) selectedTariff = deadlinePlan.selectedNow;
+  const pvTariffPolicy = getEvPvTariffPolicy(settings, tariff);
+  const pvHeadroomW = Math.max(0, Number(input.pvHeadroomW) || 0);
+  const rawGridW = Number(input.gridPowerW) || 0;
+  const currentBatteryW = Number(input.currentBatteryCommandW) || 0;
+  const nextBatteryW = Number(input.nextBatteryCommandW) || 0;
+
+  const predictedGridAfterBatteryW = rawGridW + currentBatteryW - nextBatteryW;
+  const baseGridWithoutEvW = predictedGridAfterBatteryW - actualPowerW;
+  const exportBufferW = Boolean(settings.exportLimitEnabled) ? Math.max(0, Number(settings.minimumExportW) || 0) : 0;
+  const calculatedPvSurplusW = Math.max(0, -baseGridWithoutEvW - exportBufferW);
+  const calculatedPvAvailableW = Math.max(0, calculatedPvSurplusW + pvHeadroomW);
+  const overridePv = Number(input.pvAvailableWOverride);
+  const pvAvailableW = Number.isFinite(overridePv) ? Math.max(0, overridePv) : calculatedPvAvailableW;
+
+  const base = {
+    enabled,
+    connected,
+    mode,
+    socEnabled,
+    soc: usableSoc,
+    socSeen,
+    socFresh,
+    socAgeMinutes,
+    socFreshnessMinutes,
+    socFallbackActive,
+    socFallbackRecommendation: socFallbackActive ? 'Gebruik de Flowkaart “kWh nodig tegen tijd” met Doel gegarandeerd Ja/Nee voor betrouwbare doelplanning zonder voertuig-SoC.' : '',
+    targetSoc,
+    energyPlanActive,
+    planningType: energyPlanActive ? 'energy' : (socPlanActive ? 'soc_flow' : 'soc'),
+    deadlineAt: !socTargetReached && energyNeedKwh !== null ? deadline.getTime() : null,
+    energyNeedKwh,
+    actualCurrentA,
+    actualPowerW: Math.round(actualPowerW),
+    selectedTariff,
+    avoidGridImportTariff,
+    tariffLabel: String(tariff?.label || ''),
+    pvAvailableW: Math.round(pvAvailableW),
+    pvTariffAllowed: Boolean(pvTariffPolicy.allowed),
+    pvTariffMinSurplusW: Math.round(pvTariffPolicy.minSurplusW),
+    pvTariffStopSurplusW: Math.round(pvTariffPolicy.stopSurplusW || 0),
+    pvTariffStopGridImportW: Math.round(pvTariffPolicy.stopGridImportW),
+    pvTariffStopDelaySeconds: Math.round(pvTariffPolicy.stopDelaySeconds),
+    pvGridTopUpAllowed: Boolean(pvTariffPolicy.gridTopUpAllowed),
+    pvGridTopUpMode: ['off','minimum','full'].includes(String(settings.evPvGridTopUpMode || '')) ? String(settings.evPvGridTopUpMode) : 'full',
+    pvTariffHysteresisEnabled: Boolean(pvTariffPolicy.hysteresisEnabled),
+    tariffRateId: String(tariff?.rateId || tariff?.className || tariff?.kind || 'default'),
+    baseGridWithoutEvW: Math.round(baseGridWithoutEvW),
+    desiredCurrentA: 0,
+    desiredPowerW: 0,
+    requestedCurrentA: 0,
+    requestedPowerW: 0,
+    pvRequestPowerW: 0,
+    gridRequestPowerW: 0,
+    allowed: false,
+    source: 'off',
+    reason: '',
+    guaranteeActive: false,
+    targetReachable: true,
+    targetReachableOnSelectedTariffs: true,
+    ...(deadlinePlan ? { deadlinePlanning: true, deadlinePlanClass: deadlinePlan.className, deadlinePlanRateId: deadlinePlan.rateId,
+      deadlinePlanProvisional: Boolean(deadlinePlan.provisional), deadlinePlanPvCreditKwh: deadlinePlan.pvCreditKwh || 0,
+      deadlinePlanEvaluatedAt: deadlinePlan.evaluatedAt, deadlinePlanNextAt: deadlinePlan.nextAt,
+      deadlinePlanRevision: deadlinePlan.revision, deadlinePlanGoalRevision: deadlinePlan.goalRevision, deadlinePlanSettingsRevision: deadlinePlan.settingsRevision,
+      deadlinePlanKnownMinutes: deadlinePlan.knownMinutes, deadlinePlanMissingKwh: deadlinePlan.missingKwh,
+      deadlinePlanCostEUR: deadlinePlan.missingKwh > 0.001 ? null : deadlinePlan.costEUR } : {}),
+    targetWarning: '',
+    minimumTargetReached,
+    socTargetReached,
+    afterSocTarget: settings.evAfterSocTarget === 'preferences' ? 'preferences' : 'stop',
+    peakLimited: false,
+    requestedChargeMode: null,
+    effectiveChargeMode: null,
+    modeFallback: null,
+  };
+
+  if (!enabled) return { ...base, reason: 'EV-module uit' };
+  if (!connected) return { ...base, reason: 'EV niet aangesloten/beschikbaar' };
+  if (settings.evWidgetPlan?.completed) return { ...base, targetCompleted: energyPlanActive ? 'energy_target' : 'soc_target', reason: 'Laadsessie voltooid · widgetdoel bereikt' };
+  if (settings.evWidgetPlan && Number(settings.evWidgetPlan.deadlineAt) <= now.getTime()) return { ...base, targetReachable:false, targetWarning:'EV-deadline verstreken', reason:'EV-deadline verstreken · kies een nieuw einddoel' };
+  const completedByEnergy = energyPlanActive && energyNeedKwh !== null && energyNeedKwh <= 0.001;
+  const completedBySoc = usableSoc !== null && usableSoc >= targetSoc;
+  if (completedByEnergy || (completedBySoc && !continueAfterSoc)) return {
+    ...base, targetCompleted: completedByEnergy ? 'energy_target' : 'soc_target',
+    reason: completedByEnergy ? 'Laadsessie voltooid · gevraagde energie geleverd' : 'Laadsessie voltooid · SoC-doel bereikt',
+  };
+  if (mode === 'emergency' && !isEvEmergencyTariffSelected(settings, tariff)) {
+    return { ...base, emergencyTariffBlocked: true, reason: 'Emergency charge wacht op geselecteerd laadtarief' };
+  }
+
+  // The optional read-only observer measures ACTUAL tariff scans, not EV
+  // portfolio requests or calls that exit before the expensive scan.
+  // Two scans in one guaranteed decision often cover the same exact five-
+  // minute grid. Reuse the first scan's suffix only when the second interval
+  // starts exactly one step later and ends at the same deadline. No result is
+  // cached between decisions, EVs, tariffs, or timestamps.
+  let firstTariffWindow = null;
+  const scanTariffMinutes = (start, finish) => {
+    if (firstTariffWindow && start.getTime() === firstTariffWindow.start + 300000
+      && finish.getTime() === firstTariffWindow.end) {
+      const minutes = firstTariffWindow.result;
+      const firstSelected = isEvTariffSelected(settings, findCurrentTariff(new Date(firstTariffWindow.start), settings));
+      if (typeof input.observeTariffReuse === 'function') input.observeTariffReuse();
+      return {
+        selectedMinutes: minutes.selectedMinutes - (firstSelected ? 5 : 0),
+        otherMinutes: minutes.otherMinutes - (firstSelected ? 0 : 5),
+      };
+    }
+    const result = typeof input.observeTariffScan === 'function'
+      ? input.observeTariffScan(() => countEvTariffMinutes(start, finish, settings, 5))
+      : countEvTariffMinutes(start, finish, settings, 5);
+    if (!firstTariffWindow) firstTariffWindow = {
+      start: start.getTime(), end: finish.getTime(), result,
+    };
+    return result;
+  };
+  let deadlineTariffMinutes = null;
+  if (energyNeedKwh !== null && energyNeedKwh > 0.001 && mode !== 'emergency') {
+    const tariffMinutes = deadlineTariffMinutes = deadlinePlan ? null : scanTariffMinutes(now, deadline);
+    const selectedCapacityKwh = deadlinePlan ? deadlinePlan.selectedCapacityKwh : (tariffMinutes.selectedMinutes / 60) * (maxPowerW / 1000);
+    const totalCapacityKwh = (Math.max(0, deadline.getTime() - now.getTime()) / 3600000) * (maxPowerW / 1000);
+    base.targetReachableOnSelectedTariffs = energyNeedKwh <= selectedCapacityKwh + 0.001;
+    base.targetReachable = deadlinePlan ? deadlinePlan.targetReachable : energyNeedKwh <= totalCapacityKwh + 0.001;
+    if (!base.targetReachable) base.targetWarning = `EV-doel niet haalbaar: ${energyNeedKwh.toFixed(1)} kWh nodig vóór deadline`;
+    else if (!base.targetReachableOnSelectedTariffs) base.targetWarning = allowUnselectedForDeadline
+      ? `EV-doel vereist laden buiten geselecteerde tarieven`
+      : `EV-doel niet haalbaar binnen geselecteerde tarieven`;
+  }
+
+  let desiredA = 0;
+  let source = 'off';
+  let guaranteeActive = false;
+  const rawPvA = quantizeCurrent(pvAvailableW, settings, 'floor');
+  const pvThresholdMet = pvAvailableW >= pvTariffPolicy.minSurplusW;
+  // v0.3.37: the configured PV threshold is a START threshold. Once a TOU PV
+  // charging session is active, lower PV may continue to modulate the EV; the
+  // app-level net-import hysteresis decides when the session is actually stopped.
+  const pvSessionActive = Boolean(input.pvSessionActive) && Boolean(pvTariffPolicy.hysteresisEnabled);
+  const maxPvWaiting = settings.evWidgetPlan?.maxPv && deadlinePlan && !deadlinePlan.selectedNow && !deadlinePlan.guaranteeNow;
+  const topUpMode = maxPvWaiting ? 'off' : ['off','minimum','full'].includes(String(settings.evPvGridTopUpMode || '')) ? String(settings.evPvGridTopUpMode) : 'full';
+  const pvTopUpCanStart = Boolean(pvTariffPolicy.allowed)
+    && Boolean(pvTariffPolicy.gridTopUpAllowed)
+    && topUpMode !== 'off'
+    && pvAvailableW > 0.5
+    && (pvSessionActive || pvThresholdMet);
+  const modeSmartPowerReady = pvAvailableW >= (modeSmartA * perAmpW);
+  const smartPvA = pvTariffPolicy.allowed && (pvSessionActive || (pvThresholdMet && (controlType !== 'mode' || modeSmartPowerReady || pvTopUpCanStart)))
+    ? (controlType === 'mode' ? modeSmartA : rawPvA)
+    : 0;
+  let pvRequestPowerW = 0;
+  let gridRequestPowerW = 0;
+
+  if (mode === 'emergency') {
+    desiredA = controlType === 'mode' ? modeStandardA : maxA;
+    source = 'emergency';
+    pvRequestPowerW = Math.min(desiredA * perAmpW, rawPvA * perAmpW);
+    gridRequestPowerW = Math.max(0, (desiredA * perAmpW) - pvRequestPowerW);
+  } else {
+    // Smart and SoC-target modes both obey the EV's tariff/PV policy. SoC-target
+    // changes the goal, not the tariff permissions. A guaranteed deadline may
+    // leave the selected tariffs only when explicitly enabled and only when the
+    // minimum cannot otherwise be secured. Emergency uses its own tariff permissions.
+    // Per TOU tariff the user can independently allow standard charging, PV
+    // charging and grid top-up. Available PV can still offset grid demand once
+    // charging is allowed for another valid reason.
+    desiredA = smartPvA;
+    source = desiredA > 0 ? 'pv' : 'off';
+    pvRequestPowerW = Math.min(desiredA * perAmpW, pvAvailableW);
+
+    // Grid top-up may bridge a real PV surplus that is below the charger's
+    // minimum controllable current. Without this bootstrap the quantized PV
+    // current becomes 0 A and the top-up path can never start.
+    if (desiredA <= 0 && pvTopUpCanStart) {
+      desiredA = controlType === 'mode' ? modeSmartA : minA;
+      source = 'pv+topup';
+    }
+    if (desiredA > 0 && Boolean(pvTariffPolicy.gridTopUpAllowed) && topUpMode !== 'off') {
+      const beforeTopUpA = desiredA;
+      desiredA = Math.max(desiredA, topUpMode === 'minimum' ? (controlType === 'mode' ? modeSmartA : minA) : (controlType === 'mode' ? modeStandardA : standardA));
+      if (desiredA > beforeTopUpA) source = 'pv+topup';
+    }
+
+    if (selectedTariff) {
+      const beforeTariffA = desiredA;
+      desiredA = Math.max(desiredA, controlType === 'mode' ? modeStandardA : standardA);
+      source = desiredA > beforeTariffA ? (beforeTariffA > 0 ? 'pv+tariff' : 'tariff') : source;
+
+      if (deadlinePlan) {
+        desiredA = Math.max(desiredA, controlType === 'mode' ? modeStandardA : quantizeCurrent(deadlinePlan.powerW, settings, 'ceil'));
+      } else if (guaranteeEnabled && energyNeedKwh !== null) {
+        // Same immutable inputs and window as the reachability check above.
+        // Keep this local to one decision; the future-start window below is
+        // different and must retain its own calculation.
+        const minutes = (deadlineTariffMinutes || scanTariffMinutes(now, deadline)).selectedMinutes;
+        if (minutes > 0) {
+          const requiredSelectedPowerW = (energyNeedKwh * 1000) / (minutes / 60);
+          desiredA = Math.max(desiredA, controlType === 'mode' ? modeStandardA : quantizeCurrent(requiredSelectedPowerW, settings, 'ceil'));
+        }
+      }
+      gridRequestPowerW = Math.max(0, (desiredA * perAmpW) - pvRequestPowerW);
+    } else if (guarantee && energyNeedKwh !== null && !deadlinePlan) {
+      const stepMs = 5 * 60000;
+      const futureStart = new Date(Math.min(deadline.getTime(), now.getTime() + stepMs));
+      const future = scanTariffMinutes(futureStart, deadline);
+      const selectedFutureKwh = (future.selectedMinutes / 60) * (maxPowerW / 1000);
+      const deficitKwh = Math.max(0, energyNeedKwh - selectedFutureKwh);
+      const otherHoursNeeded = maxPowerW > 0 ? deficitKwh / (maxPowerW / 1000) : Infinity;
+      const otherHoursFuture = future.otherMinutes / 60;
+      if (deficitKwh > 0.001 && otherHoursNeeded >= Math.max(0, otherHoursFuture - (5 / 60))) {
+        desiredA = controlType === 'mode' ? modeStandardA : maxA;
+        source = 'guarantee';
+        guaranteeActive = true;
+        gridRequestPowerW = Math.max(0, (desiredA * perAmpW) - pvRequestPowerW);
+      }
+    }
+
+    if (deadlinePlan?.guaranteeNow && guarantee) {
+      desiredA = controlType === 'mode' ? modeStandardA : maxA;
+      source = 'guarantee';
+      guaranteeActive = true;
+      gridRequestPowerW = Math.max(0, (desiredA * perAmpW) - pvRequestPowerW);
+    }
+
+    // Once Smart charging is allowed for any reason, available PV should still
+    // offset grid demand even if PV itself was not eligible to START charging
+    // in the current tariff category.
+    if (desiredA > 0) {
+      pvRequestPowerW = Math.min(desiredA * perAmpW, pvAvailableW);
+      gridRequestPowerW = Math.max(0, (desiredA * perAmpW) - pvRequestPowerW);
+    }
+  }
+
+  if (controlType === 'mode' && desiredA > 0) {
+    const standardModeRequested = mode === 'emergency' || mode === 'soc_target' || ['tariff','guarantee','pv+tariff','pv+topup'].includes(source);
+    base.requestedChargeMode = standardModeRequested ? 'standard' : 'smart';
+    base.effectiveChargeMode = base.requestedChargeMode;
+    desiredA = standardModeRequested ? modeStandardA : modeSmartA;
+  }
+  desiredA = clamp(Math.round(desiredA), 0, controlType === 'mode' ? 64 : maxA);
+  if (controlType !== 'mode' && desiredA > 0 && desiredA < minA) desiredA = 0;
+  const requestedA = desiredA;
+  const requestedPowerW = requestedA * perAmpW;
+  pvRequestPowerW = Math.min(requestedPowerW, Math.max(0, pvRequestPowerW));
+  gridRequestPowerW = Math.max(0, requestedPowerW - pvRequestPowerW);
+
+  // Direct use of this helper still gets an absolute Peak Guard. The app-level
+  // coordinator may set skipPeakLimit=true while it allocates the same peak room
+  // between EV and planned home-battery charging according to the user's priority.
+  if (!Boolean(input.skipPeakLimit) && Boolean(settings.peakShaveEnabled)) {
+    const softTargetW = Math.max(0, (Number(settings.peakLimitW) || 0) - Math.max(0, Number(settings.peakSoftMarginW) || 0));
+    const maxEvPowerByPeakW = Math.max(0, softTargetW - baseGridWithoutEvW);
+    if (controlType === 'mode') {
+      const availableA = Math.max(0, Math.floor(maxEvPowerByPeakW / perAmpW));
+      if (desiredA > availableA) {
+        base.peakLimited = true;
+        // A mode-only charger cannot be continuously current-clamped, but it
+        // can still step down from Standard to Smart. Keep charging whenever
+        // the configured Smart estimate fits inside the remaining Peak Guard
+        // headroom; STOP is only the final fallback.
+        if (base.effectiveChargeMode === 'standard' && modeSmartA <= availableA) {
+          desiredA = modeSmartA;
+          base.effectiveChargeMode = 'smart';
+          base.modeFallback = 'smart';
+        } else {
+          desiredA = 0;
+          base.effectiveChargeMode = 'stop';
+        }
+      }
+    } else {
+      const peakA = quantizeCurrent(maxEvPowerByPeakW, settings, 'floor');
+      if (desiredA > peakA) {
+        desiredA = peakA;
+        base.peakLimited = true;
+      }
+    }
+  }
+
+  const desiredPowerW = desiredA * perAmpW;
+  let reason = '';
+  if (desiredA <= 0) {
+    if (base.peakLimited) reason = 'Peak Guard laat noch Standaard noch Slim EV-laadvermogen toe';
+    else if (mode !== 'emergency' && selectedTariff) reason = 'Tarief geselecteerd, maar laadvermogen past niet binnen Peak Guard';
+    else if (mode !== 'emergency' && pvAvailableW > 0 && !pvTariffPolicy.allowed) reason = 'PV-laden uit voor huidig tarief';
+    else if (mode !== 'emergency' && pvAvailableW > 0 && pvTariffPolicy.minSurplusW > 0 && !pvThresholdMet) reason = `PV-overschot onder tariefdrempel ${Math.round(pvTariffPolicy.minSurplusW)} W`;
+    else if (mode !== 'emergency' && pvAvailableW > 0 && pvAvailableW < minA * perAmpW) reason = `PV-overschot onder minimum ${minA} A`;
+    else if (mode === 'soc_target') reason = 'SoC-doel wacht op PV-overschot of geselecteerd tarief';
+    else if (mode === 'smart') reason = 'Wachten op PV-overschot of geselecteerd tarief';
+    else reason = 'Geen laadvermogen beschikbaar';
+  } else if (mode === 'emergency') reason = 'Emergency charge · maximaal vermogen';
+  else if (source === 'guarantee') reason = 'Deadline vereist laden buiten geselecteerd tarief';
+  else if (source === 'pv+topup') reason = `PV-laden met netaanvulling (${base.pvGridTopUpMode})`;
+  else if (source.includes('tariff')) reason = mode === 'soc_target'
+    ? `Op SoC-doel · laden tijdens ${tariff?.label || 'geselecteerd tarief'}`
+    : `Standaard laden tijdens ${tariff?.label || 'geselecteerd tarief'}`;
+  else reason = mode === 'soc_target' ? 'Op SoC-doel · laden met PV-overschot' : 'Laden met PV-overschot';
+  if (base.modeFallback === 'smart' && desiredA > 0) {
+    reason += ` · Standaard (${modeStandardA} A) past niet binnen Peak Guard → Slim (${modeSmartA} A)`;
+  } else if (base.peakLimited && desiredA > 0) reason += ' · begrensd door Peak Guard';
+  if (socTargetReached) {
+    reason = desiredA > 0
+      ? `SoC-doel bereikt · ${reason}`
+      : 'SoC-doel bereikt · wacht op PV-overschot of geselecteerd tarief';
+  }
+  if (socFallbackActive) {
+    const state = !socEnabled
+      ? 'EV-SoC niet beschikbaar'
+      : (socSeen
+        ? `EV-SoC ouder dan ${socFreshnessMinutes} min`
+        : `EV-SoC ontbreekt langer dan ${socFreshnessMinutes} min`);
+    const fallback = 'fallback: laden volgens PV/tarief en beschikbare netruimte';
+    const advice = 'gebruik “kWh nodig tegen tijd” met Doel gegarandeerd Ja/Nee voor betrouwbare doelplanning';
+    reason = `${state} · ${fallback} · ${advice}${reason ? ` · ${reason}` : ''}`;
+  }
+
+  return {
+    ...base,
+    desiredCurrentA: desiredA,
+    desiredPowerW: Math.round(desiredPowerW),
+    requestedCurrentA: requestedA,
+    requestedPowerW: Math.round(requestedPowerW),
+    pvRequestPowerW: Math.round(pvRequestPowerW),
+    gridRequestPowerW: Math.round(gridRequestPowerW),
+    allowed: desiredA > 0,
+    source,
+    reason,
+    guaranteeActive,
+  };
+}
+
+module.exports = {
+  evPowerPerAmp,
+  evCurrentLimits,
+  evModeEstimatedCurrents,
+  findNextLocalTime,
+  isEvTariffSelected,
+  getEvPvTariffPolicy,
+  countEvTariffMinutes,
+  calculateEvDecision,
+};

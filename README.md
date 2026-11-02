@@ -19,7 +19,7 @@ The core battery control and planning can now run. Optional day/night planning m
 
 The optional Charging strategy tab offers spread charging with a power correction, or maximum safe charging from the start, as late as possible with a 15-minute reserve, or centred on the cheapest interval. For variable prices, centring is used only if the full block is cheaper than the standard spread plan. Day/night and annual/seasonal settings are independent.
 
-Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels and optional tariff/PV temperature control, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
+Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels, optional direct/parallel tariff and PV control and shared heat sources, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
 For the complete functionality, configuration and all Flow cards, see:  
 https://github.com/DavyBert/HomeFlux-EMS/discussions/3
@@ -27,6 +27,12 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.15
+
+Per-HVAC direct tariff/PV switching and parallel dispatch of known loads share available power with a modulation margin, HVAC budget and Peak Guard. Linked thermostats reserve their shared heat source once. Manual learning waits for an isolated reliable measurement; direct and shared control disable separate automatic learning. The automatic-control Flow accepts an optional standby temperature and sends OFF when power control is permitted.
+
+Direct schakelen per HVAC bij tariefwissel of stabiel PV-overschot en parallelle sturing van bekende verbruikers verdelen het beschikbare vermogen met modulatiemarge, HVAC-budget en Peak Guard. Gekoppelde thermostaten reserveren hun gedeelde warmtebron eenmaal. Handmatig leren wacht op een afzonderlijke betrouwbare meting; directe en gedeelde sturing schakelen afzonderlijk automatisch leren uit. De Flow voor automatische sturing aanvaardt een optionele stand-bytemperatuur en stuurt Uit wanneer aan/uit-sturing toegestaan is.
 
 ### 1.2.14
 

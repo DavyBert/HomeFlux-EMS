@@ -1,0 +1,51 @@
+{
+  "previousVersion": "1.2.4",
+  "changedAppMethods": [
+    "recordSavingsSample"
+  ],
+  "unchangedEvMethods": 153,
+  "identicalFlowSnapshots": 7,
+  "baseline": {
+    "iterations": 600,
+    "warmupInputs": 1000,
+    "positiveCurrentFeedbackA": [
+      10,
+      8
+    ],
+    "elapsedMs": 448.47729300000015,
+    "cpuMs": 484.622,
+    "retainedHeapDeltaBytes": 130400,
+    "extraContexts": 1,
+    "extraFlexibleWrites": 0,
+    "counts": {
+      "gridInputs": 1603,
+      "fastEvaluations": 1603,
+      "contextEvaluations": 20,
+      "planningCalculations": 1,
+      "widgetEnergyBudgetCalculations": 1
+    }
+  },
+  "current": {
+    "iterations": 600,
+    "warmupInputs": 1000,
+    "positiveCurrentFeedbackA": [
+      10,
+      8
+    ],
+    "elapsedMs": 390.49358899999993,
+    "cpuMs": 425.64,
+    "retainedHeapDeltaBytes": 129224,
+    "extraContexts": 1,
+    "extraFlexibleWrites": 0,
+    "counts": {
+      "gridInputs": 1603,
+      "fastEvaluations": 1603,
+      "contextEvaluations": 20,
+      "planningCalculations": 1,
+      "widgetEnergyBudgetCalculations": 1
+    }
+  },
+  "simulatedHomey": true,
+  "homeyCpuPercentMeasured": false,
+  "measurementNote": "Single sequential container comparison after other tests completed; not a Homey CPU percentage or a long-term leak measurement."
+}

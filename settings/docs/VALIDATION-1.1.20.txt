@@ -1,0 +1,117 @@
+HomeFlux EMS 1.1.20 — validatie
+Datum: 24 oktober 2026
+Basis: geleverde 1.1.19-broncode, inclusief eerdere nachtplanreparaties.
+
+Resultaat
+Een app-herstart verwijderde positieve EV-Flow-doelen niet algemeen: opslag
+en herstel bestonden al. Wel zijn twee concrete kWh-herstartfouten aangetoond:
+recente voortgang werd bij normaal afsluiten niet geforceerd opgeslagen, en
+een logisch beëindigde laadsessie kon na herstart als nieuwe aansluiting
+worden gezien. Daardoor kon een voltooid kWh-doel opnieuw worden gevuld.
+Deze fouten zijn hersteld. De eerder geteste Peak Guard-correctie is opgenomen.
+
+Blijvende Flow-doelen
+- SoC- en kWh-doelen blijven opgeslagen met hun ingestelde tijd en garantie,
+  ook na app-/Homey-herstart, voltooiing, stoppen of loskoppelen van de EV.
+- Alleen Wis EV-planning verwijdert de Flow-override. Een expliciet nieuw
+  Flow-doel vervangt het vorige doel, ook wanneer het doeltype verandert.
+- Normaal afsluiten schrijft de actuele resterende kWh naar Homey Settings.
+- Herstart met dezelfde aangesloten EV vult een voltooid doel niet opnieuw.
+  Ook oudere opgeslagen voltooiingen worden voorzichtig behandeld.
+- Een werkelijk waargenomen loskoppeling en nieuwe aansluiting begint,
+  zoals voorheen, een nieuwe telsessie voor het bewaarde kWh-doel.
+- SoC-herstel zet onmiddellijk een deadline volgens de opgeslagen HH:mm.
+  Nieuwe SoC-invoer blijft nodig om actuele laadbeslissingen te nemen.
+- Bewuste betekeniswijziging: 0 kWh is een blijvend, reeds bereikt doel,
+  geen impliciete wisopdracht. Ongeldige invoer wist evenmin een doel.
+- De bestaande herhaalde deadline-/daglogica blijft bestaan. Verstrijken
+  van een deadline verwijdert het bewaarde Flow-doel niet.
+
+Reproductie met productiefuncties
+test/ev-persistence-1.1.20.test.js: negen scenariogroepen; echte startup-
+harness, Homey Settings en Flow-acties, zonder vervangende planningslogica.
+Vier EV-slots, beide doeltypen, drie opeenvolgende verse app-instanties,
+opgeslagen 06:30 tegenover algemene 07:00, garantie, voltooiing, stoppen,
+module-instellingen, verborgen EV-slots, dagwissel en DST zijn gecontroleerd.
+Expliciet wissen en vervanging door een ander Flow-doel zijn meegenomen.
+Vergelijking met ongewijzigde 1.1.19-productiecode:
+  voortgang bij normaal afsluiten: opgeslagen restant 15 -> 12 kWh;
+  voltooid doel na herstart met aangesloten kabel: restant 15 -> 0 kWh;
+  werkelijk nieuwe aansluiting: doel opnieuw 15 kWh, bestaand gedrag.
+100 herhaalde identieke doelen vullen het restant niet onbedoeld aan.
+
+Peak Guard
+Het gezamenlijke budget telde EV-vermogen conceptueel al terug bij de
+gemeten netafname. De fout zat bij modussturing: een te hoge huislastreferentie
+kon aanwezig EV-vermogen op nul schatten, terwijl verse positieve laadstroom
+wel beschikbaar was. Daardoor ontbrak dat vermogen in de terugtelling.
+Verse positieve stroom krijgt nu voorrang in de fysieke EV-vermogensrekening,
+de laadstroom en de detectie van een mode-only laadsessie. Detectie controleert
+ook of het totale fysieke verbruik die stroom plausibel kan bevatten; de
+bestaande beveiliging tegen afwezige laadlast blijft daardoor behouden.
+0 A blijft bij mode-only integraties bruikbaar als placeholder zonder echte
+stroomsensor: de bestaande P1-/modusschatting blijft dan werken.
+
+test/ev-peak-1.1.20.test.js: acht scenariogroepen, echte app-/Flow-/P1-paden.
+Gesimuleerde invoer: Hybrid EMS; mode-only EV, 16 A driefasig, huis 700 W,
+huislastreferentie 4.000 W, gemeten net circa 11.785 W, Peak Guard 15.000 W,
+soft margin 100 W, hold 300 s, elke seconde invoer gedurende 660 s.
+De externe batterij is in deze geïsoleerde test uitgeschakeld/idle.
+Ongewijzigde 1.1.19: drie onterechte stops; 1.1.20: nul onterechte stops.
+De eerste gesimuleerde stop viel op seconde 1; de gemelde eerste minuut is
+niet exact gereproduceerd. De betrokken configuratievoorwaarde is aangetoond,
+maar de volledige configuratie van de fysieke Peblar/SMA-opstelling ontbreekt.
+
+Verder getest: echte overschrijding houdt de 300 s stop, verouderde stroom
+geeft conservatieve fallback, 8 A werkelijk tegenover 16 A gevraagd telt met
+werkelijke levering, current/hybrid EV-sturing en twee mode-EV's delen veilig
+één budget. Bestaande batterij-/Peak Guard-regressies blijven slagen.
+
+Diagnostiek
+Volledige planningsdiagnostiek bij ev_decision bevat peakGuardAccounting
+voor de gezamenlijke niet-Smart/Emergency-berekening: netvermogen,
+batterijontlading, gereserveerde batterijlading, aanwezig gezamenlijk en
+individueel EV-vermogen, gevraagde maxima, budget, limiet/marge en gebruikte
+huislast-/mode-inschatting. Vermogenswijzigingen worden voor de logsignature
+op 100 W afgerond om onnodige herhaallogs te beperken.
+
+Volledige verificatie
+- 80 testprogramma's geslaagd, inclusief alle 78 bestaande programma's.
+- 30 JavaScript-syntaxcontroles geslaagd.
+- 17 nieuwe gerichte productiescenariogroepen (9 persistentie + 8 Peak Guard).
+- Bestaande CPU-regressie: bij 1 s en 10 s feedback in 180 s beide 2 context-
+  berekeningen en 7 portfolio-evaluaties; geen nieuwe volledige herplanning
+  of meerdaagse prijsanalyse in het snelle pad.
+- Versie 1.1.20 op alle vijf locaties; Nederlandse/Engelse release notes,
+  Flow-hints en instellingenhelp bijgewerkt.
+- Batterijnachtplanner, EMS-engine, EV-deadlineplanner, flexible-loads en
+  Homey Energy-verwerking zijn bytegelijk aan 1.1.19.
+- Geen nieuwe dependencies. Tests uitgevoerd onder Node 24.22.1.
+
+Grenzen
+Dit zijn productiecode-tests met gesimuleerde Homey-, tijd-, P1- en EV-invoer;
+geen fysieke Homey-, Peblar- of SMA-test en geen Homey Store-validatie.
+Er zijn geen afzonderlijke vergelijkingsmodellen gebruikt voor de bovengenoemde
+reparaties: de voor/na-resultaten gebruiken beide echte app-code.
+Abrupt stroomverlies of kill kan de laatste voortgang sinds het periodieke
+checkpoint (maximaal circa vijf minuten) verliezen. Het ingestelde doel blijft
+opgeslagen. Tijdens offline tijd wordt geen fictieve laadenergie toegerekend.
+Een loskoppeling en heraansluiting die volledig tijdens offline tijd gebeuren
+zijn zonder nieuwe fysieke input niet bewijsbaar; een voltooid doel blijft
+dan voorzichtig voltooid tot een waargenomen nieuwe aansluitcyclus.
+Dit is dus geen garantie voor perfecte kWh-meting tijdens een stroomuitval.
+De bestaande 07:00-fallback is niet gewijzigd; herstel van een opgeslagen
+06:30-Flow-doel is wel getest en overschrijft die algemene fallback correct.
+
+Bewijsbestanden in validation/
+tests-1.1.20.json en tests-1.1.20.log: volledige geslaagde testrun.
+syntax-1.1.20.json en release-1.1.20.json: syntax-/versiecontrole.
+ev-persistence-comparison-1.1.20.json: vergelijking met 1.1.19.
+ev-peak-comparison-1.1.20.json: vergelijking met 1.1.19 en Peak Guard-waarden.
+ev-persistence-1.1.20.json en ev-peak-1.1.20.json: laatste normale testrun.
+
+Herhalen
+npm test
+npm run check
+HEMS_BASELINE_ROOT=/absoluut/pad/naar/1.1.19/HomeFlux-EMS node test/ev-persistence-1.1.20.test.js
+HEMS_BASELINE_ROOT=/absoluut/pad/naar/1.1.19/HomeFlux-EMS node test/ev-peak-1.1.20.test.js

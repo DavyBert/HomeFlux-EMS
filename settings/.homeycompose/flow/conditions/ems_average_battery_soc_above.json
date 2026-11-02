@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Average battery SoC is above [[soc]]%",
+    "nl": "Gemiddelde batterij-SoC is hoger dan [[soc]]%"
+  },
+  "args": [
+    {
+      "name": "soc",
+      "type": "number",
+      "title": {
+        "en": "SoC (%)",
+        "nl": "SoC (%)"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Average battery SoC is above [[soc]]%",
+    "nl": "Gemiddelde batterij-SoC is hoger dan [[soc]]%"
+  }
+}

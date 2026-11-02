@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "EV override",
+    "nl": "EV-override"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/ev-override.svg"
+}

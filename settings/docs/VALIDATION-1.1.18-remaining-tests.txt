@@ -1,0 +1,271 @@
+RUN 17/78 test/regressions-0.7.8.test.js
+v0.7.8 regression tests passed
+EXIT 0 in 0.65s
+RUN 18/78 test/regressions-0.7.9.test.js
+v0.7.9 EV coordination regression tests passed
+EXIT 0 in 5.12s
+RUN 19/78 test/regressions-0.7.10.test.js
+v0.7.10 EV session, house-load and PV top-up regression tests passed
+EXIT 0 in 0.36s
+RUN 20/78 test/regressions-0.7.11.test.js
+v0.7.11 night target-SoC EV charging regression tests passed
+EXIT 0 in 1.03s
+RUN 21/78 test/flow-slot-cards.test.js
+v0.7.12 Flow migration tests passed (120 preserved cards, 25 generic cards, 72 isolated output routes, 440 real input scenarios)
+EXIT 0 in 5.81s
+RUN 22/78 test/configured-flow-cards.test.js
+configured Flow selectors passed (31 dynamic cards, 716 queries, 364 input comparisons, 300 condition comparisons, 72 three-generation output routes)
+EXIT 0 in 5.11s
+RUN 23/78 test/regressions-0.7.15.test.js
+0.7.15 regressions OK
+EXIT 0 in 0.32s
+RUN 24/78 test/regressions-0.7.16.test.js
+0.7.16 voltage, battery capacity, balancing and migration regressions passed
+EXIT 0 in 0.49s
+RUN 25/78 test/voltage-ui-0.7.16.test.js
+0.7.16 phase-specific voltage options, migration and UI switching passed
+EXIT 0 in 0.23s
+RUN 26/78 test/regressions-0.8.1.test.js
+0.8.1 command cooldown tests passed: t=7 no output -> t=8 immediate; actual writes remain rate-limited
+EXIT 0 in 0.40s
+RUN 27/78 test/regressions-0.8.2.test.js
+0.8.2 residual-error regressions passed: import/export, <20 W correction, 7 s command interval, noise and battery limits
+EXIT 0 in 0.46s
+RUN 28/78 test/regressions-0.8.3.test.js
+0.8.3 startup regressions passed: finite translation mutations, read time-outs, fresh defaults and preserved upgrades
+EXIT 0 in 0.76s
+RUN 29/78 test/regressions-0.8.4.test.js
+0.8.4 regressions passed: formula import, four source modes, calibrated failover/recovery, persistence, EV tariff controls and widget prices
+EXIT 0 in 0.96s
+RUN 30/78 test/regressions-0.8.7.test.js
+live charge undefined -667 667
+0.8.7: normal charging opt-in, SoC ceiling, deadline, cheap charging and missing prices passed
+0.8.7: PV capture, Peak Guard and settings persistence passed
+EXIT 0 in 0.65s
+RUN 31/78 test/pv-plan-feedback.test.js
+PV-plan feedback passed: fixed/TOU/dynamic, stable zero, fast/full paths, stale PV, cloud, grid charging, SoC and power limits
+EXIT 0 in 0.59s
+RUN 32/78 test/regressions-0.9.1.test.js
+current priority steady states: {"battery_first":{"battery":-5000,"evW":1380},"share":{"battery":-3380,"evW":3220},"ev_first":{"battery":-160,"evW":6440}}
+hybrid priority steady states: {"battery_first":{"battery":-5000,"evW":1380},"share":{"battery":-3380,"evW":3220},"ev_first":{"battery":-160,"evW":6440}}
+mode priority steady states: {"battery_first":{"battery":-5000,"evW":0},"share":{"battery":-4300,"evW":2300},"ev_first":{"battery":-2000,"evW":4600}}
+0.9.1 battery/EV regression tests passed
+EXIT 0 in 4.38s
+RUN 33/78 test/regressions-0.9.2.test.js
+0.9.2: restart band, full recharge cycle, phase/target changes, PV, Safety recovery, limits, normal-price ceiling and persistence passed
+EXIT 0 in 0.59s
+RUN 34/78 test/regressions-0.9.3.test.js
+0.9.3: English UI/runtime translations, composite reasons, idempotence, Dutch preservation, fallback language, Flow values and API errors passed
+EXIT 0 in 0.80s
+RUN 35/78 test/regressions-0.9.5.test.js
+0.9.5 sunshine reserve: boundaries, dates, midnight, stale inputs, persistence, opt-in, discharge, PV, Safety SoC, Peak Guard and translations passed
+EXIT 0 in 0.54s
+RUN 36/78 test/regressions-0.9.7.test.js
+0.9.7: context-only planning, input coalescing, throttle, shared deadline, read-only status, manual refresh, phase/midnight, publication, pause and fast-loop isolation passed
+EXIT 0 in 0.69s
+RUN 37/78 test/regressions-0.9.8.test.js
+0.9.8: consecutive PV samples, all averages, expiry/cadence, no repeated stable evaluations, night zero, live P1 corrections, cooldown, newest input, async/failed publication and Flow/API paths passed
+EXIT 0 in 1.78s
+RUN 38/78 test/regressions-0.9.9.test.js
+0.9.9 Autotune scheduling regression tests passed
+EXIT 0 in 0.29s
+RUN 39/78 test/regressions-1.0.0.test.js
+standard: active / airfryer / pause / resume / fast swap passed
+smart: active / airfryer / pause / resume / fast swap passed
+v1.0.0 EV pause, resume, completion and physical budget scenarios passed
+EXIT 0 in 0.60s
+RUN 40/78 test/efficiency.test.js
+Multi-battery efficiency tests passed, including sticky charging and real output handovers.
+EXIT 0 in 1.49s
+RUN 41/78 test/price-sources-1.0.6.test.js
+1.0.6 price-source tests passed: migration, 15 priority permutations, shared parser, 120h, DST, three-stage fallback, retained Flows, atomic import, restart persistence and widget curves
+EXIT 0 in 0.90s
+RUN 42/78 test/price-ui-1.0.6.test.js
+1.0.6 UI tests passed: checkbox-only selection, dynamic priorities, unavailable source visibility, null prices, stable widget numbering, NL/EN reasons, three SVG curves and currency
+EXIT 0 in 0.23s
+RUN 43/78 test/price-alignment-names-1.0.6.test.js
+1.0.6 alignment/name tests passed: current-day calibration, robust outliers, insufficient overlap/variation, mixed resolutions, actual repeated-hour arrays and fallback, genuine quarters, incomplete hours, Brussels timestamps/DST, A/B/C failover/recovery, cache/restart, formula-free fitting, live Flow names/stable IDs and original widget curves
+EXIT 0 in 1.78s
+RUN 44/78 test/fast-control-audit-1.0.6.test.js
+1.0.6 fast-control audit passed: planned charge export/import, real Flow/API inputs, efficiency on/off, repeated feedback, fixed cooldown/coalescing, averaging, unchanged output, startup/context, pause, Peak Guard, output mutex, SoC and Hybrid safeguards.
+EXIT 0 in 1.56s
+RUN 45/78 test/planning-limits-1.0.7.test.js
+1.0.7 regression tests passed: 8 contract/phase combinations, 100% defaults, grid limits, recalculation, cached/full control, PV/clouds, safety/manual/Peak Guard, hysteresis, unchanged floors, NL/EN widget, EV display and upgrade/restart.
+EXIT 0 in 1.58s
+RUN 46/78 test/charge-feedback-1.0.8.test.js
+1.0.8 charge feedback regression passed: stable/noisy P1, minute expiry, PV source/capture, import/Peak Guard, target/SoC/limits/balancing, unavailable battery, safety/manual, Hybrid, stale input, split timers, flexible-load targets and concurrent publication.
+EXIT 0 in 2.41s
+RUN 47/78 test/idle-guard-1.0.8.test.js
+1.0.8 idle guard passed: stable/gaming P1, soft Peak Guard/hard SoC, all individual active/mixed setpoints, zero-output confirmation/failure, stale/missing data, pending work, PV/averaging, planning/mode/state changes, bookkeeping and flexible-load/Split/Hybrid fallbacks.
+EXIT 0 in 2.46s
+RUN 48/78 test/context-refresh-1.0.10.test.js
+1.0.10 context refresh regression passed: real Flow/API scheduler, unchanged deadlines, structural invalidation, live budgets/SoC/forecast/limits, minute expiry, export/Peak Guard, pending/Split/Hybrid, reentrant scheduling and heartbeat propagation.
+EXIT 0 in 3.59s
+RUN 49/78 test/ev-feedback-1.0.11.test.js
+1.0.11 measured EV feedback: 28 real-scheduler scenarios passed.
+┌─────────┬──────────────────────────────────────┬───────────┬─────────┬──────────┬──────────────────┐
+│ (index) │ scenario                             │ measuredA │ EVgridW │ batteryW │ batteryPublishes │
+├─────────┼──────────────────────────────────────┼───────────┼─────────┼──────────┼──────────────────┤
+│ 0       │ 'three-phase-16A'                    │ 16        │ 11085   │ 631      │ 1                │
+│ 1       │ 'three-phase-14A'                    │ 14        │ 9699    │ 631      │ 1                │
+│ 2       │ 'three-phase-8A'                     │ 8         │ 5543    │ 631      │ 1                │
+│ 3       │ 'three-phase-6A'                     │ 6         │ 4157    │ 631      │ 1                │
+│ 4       │ 'single-phase-8A'                    │ 8         │ 1840    │ 631      │ 1                │
+│ 5       │ 'hybrid-8A'                          │ 8         │ 5543    │ 630      │ 5                │
+│ 6       │ 'above-command-20A'                  │ 20        │ 13856   │ 631      │ 1                │
+│ 7       │ 'above-grid-budget'                  │ 16        │ 11085   │ 631      │ 9                │
+│ 8       │ 'new-command-with-existing-feedback' │ 8         │ 5543    │ 631      │ 1                │
+│ 9       │ 'zero-current'                       │ 0         │ 0       │ 631      │ 3                │
+│ 10      │ 'disconnect'                         │ 0         │ 0       │ 631      │ 3                │
+│ 11      │ 'session-end'                        │ 0         │ 0       │ 631      │ 3                │
+│ 12      │ 'missing-feedback'                   │ 8         │ 0       │ 6000     │ 2                │
+│ 13      │ 'expired-and-restored-feedback'      │ 8         │ 5543    │ 630      │ 5                │
+│ 14      │ 'tariff-disabled'                    │ 0         │ 0       │ 631      │ 1                │
+│ 15      │ 'tariff-permission-change'           │ 0         │ 0       │ 631      │ 3                │
+│ 16      │ 'scheduled-tariff-boundary'          │ 0         │ 0       │ 631      │ 3                │
+│ 17      │ 'grid-budget-change'                 │ 0         │ 0       │ 631      │ 3                │
+│ 18      │ 'pv-and-house-variation'             │ 8         │ 3143    │ 7        │ 9                │
+│ 19      │ 'planned-battery-charge'             │ 8         │ 5543    │ -1151    │ 5                │
+│ 20      │ 'peak-guard'                         │ 0         │ 0       │ 6000     │ 2                │
+│ 21      │ 'explicit-battery-support'           │ 6         │ 0       │ 4787     │ 8                │
+│ 22      │ 'legacy-bypass-ignored'              │ 8         │ 5543    │ 631      │ 1                │
+│ 23      │ 'mode-only-detection'                │ 16        │ 11085   │ 631      │ 3                │
+│ 24      │ 'split-battery-outputs'              │ 8         │ 5543    │ 730      │ 2                │
+│ 25      │ 'hybrid-battery-control'             │ 8         │ 5543    │ 631      │ 1                │
+│ 26      │ 'two-EVs-partial-feedback'           │ 8         │ 5543    │ 2010     │ 3                │
+│ 27      │ 'pending-ev-publication'             │ 8         │ 5543    │ 631      │ 1                │
+└─────────┴──────────────────────────────────────┴───────────┴─────────┴──────────┴──────────────────┘
+EXIT 0 in 17.81s
+RUN 50/78 test/settings-cache-1.0.12.test.js
+1.0.12 settings cache passed: genuine startup, EV disabled/four slots, legacy mode tolerances, snapshots and cache rebuild.
+EXIT 0 in 1.26s
+RUN 51/78 test/pv-source-1.1.1.test.js
+1.1.1 PV source: production startup/settings/cache, Flow/API, no PV-only evaluations, live vs average, expiry, adaptive live, raw peak protection and 7-second coalescing passed.
+EXIT 0 in 1.38s
+RUN 52/78 test/active-charge-1.1.2.test.js
+Active charging: 13 production-cache scenarios passed.
+EXIT 0 in 5.10s
+RUN 53/78 test/source-switch-1.1.3.test.js
+1.1.3 source-switch: fixed cap, raw Peak Guard, stale output, synchronous reuse, newest timer inputs and proof expiry passed.
+EXIT 0 in 0.99s
+RUN 54/78 test/night-forecast-1.1.4.test.js
+1.1.4 night median: Flow/API, odd/even/zero, invalid input, read-only sampling, midnight, PV/day remaining, sunset reset, sustained forecast, dark-day rollover, actual SoC, Peak Guard, DST and restart passed.
+EXIT 0 in 1.07s
+RUN 55/78 test/independent-ev-1.1.5.test.js
+Independent EV: 55 production-cache scenarios passed (matrix, settings transitions, safety, missing battery test, simulation budgets, pending/failure and multi-EV).
+EXIT 0 in 40.18s
+RUN 56/78 test/diagnostics-1.1.6.test.js
+Compact diagnostics: 37 production-path checks passed (deltas/reconstruction/lifecycle/bounds/EV feedback/publication/off).
+EXIT 0 in 4.39s
+RUN 57/78 test/ev-battery-protection-1.1.6.test.js
+1.1.6 EV battery protection: 14 scheduler scenarios passed.
+EXIT 0 in 11.51s
+RUN 58/78 test/soc-completion-1.1.9.test.js
+1.1.9 SoC completion: 55 decision/scheduler scenarios passed.
+EXIT 0 in 16.09s
+RUN 59/78 test/ev-battery-transition-1.1.9.test.js
+1.1.9 EV battery transitions: 33 scenarios passed.
+EXIT 0 in 13.18s
+RUN 60/78 test/split-resend-seconds-1.1.10.test.js
+1.1.10 split resend: migration, restart, eight batteries, 1-second timer, interval edits, mode-only outputs and safety gates passed.
+EXIT 0 in 0.50s
+RUN 61/78 test/ev-pv-house-first-1.1.11.test.js
+1.1.11 PV first for household: 72 cloud/STOP scenarios passed (production scheduler and Flow outputs).
+EXIT 0 in 20.30s
+RUN 62/78 test/ev-input-work-1.1.12.test.js
+1.1.12 EV input work: 29 scenarios passed.
+EXIT 0 in 37.04s
+RUN 63/78 test/ev-deadline-cache-1.1.12.test.js
+1.1.12 EV deadline cache: 238 reference/boundary checks passed.
+EXIT 0 in 2.94s
+RUN 64/78 test/ev-duplicate-cpu-1.1.12.test.js
+[
+  {
+    "interval": 10,
+    "seconds": 180,
+    "cpuMs": 288.918,
+    "wallMs": 259.0339680000001,
+    "contexts": 2,
+    "portfolio": 7,
+    "reasons": {
+      "grid_context": 1,
+      "ev_house_load_protection": 2
+    }
+  },
+  {
+    "interval": 1,
+    "seconds": 180,
+    "cpuMs": 238.24,
+    "wallMs": 219.1277560000001,
+    "contexts": 2,
+    "portfolio": 7,
+    "reasons": {
+      "grid_context": 1,
+      "ev_house_load_protection": 2
+    }
+  }
+]
+EXIT 0 in 1.61s
+RUN 65/78 test/ev-context-delay-1.1.13.test.js
+1.1.13 deferred EV context: 20 scenarios passed.
+EXIT 0 in 7.62s
+RUN 66/78 test/input-monitor-1.1.14.test.js
+1.1.14 Input Monitor: 19 scenarios passed.
+EXIT 0 in 0.49s
+RUN 67/78 test/input-monitor-ui-1.1.14.test.js
+1.1.14 Input Monitor UI: polling, visibility, sorting, warning recovery, manual/auto stop, JSON download, errors and cleanup passed.
+EXIT 0 in 0.20s
+RUN 68/78 test/ev-work-1.1.15.test.js
+1.1.15 EV work: 22 targeted scenarios passed.
+EXIT 0 in 4.38s
+RUN 69/78 test/ev-plan-1.1.15.test.js
+1.1.15 EV planning: 33 scenarios and 975 exact calendar/DST comparisons passed.
+EXIT 0 in 17.28s
+RUN 70/78 test/ev-work-1.1.16.test.js
+1.1.16 EV work: 9 concurrent, safety and status scenarios passed.
+EXIT 0 in 4.13s
+RUN 71/78 test/planning-monitor-1.1.16.test.js
+1.1.16 planning monitor: 6 frequency, attribution, real planner, freeze and status scenarios passed.
+EXIT 0 in 1.24s
+RUN 72/78 test/ev-plan-centralization-1.1.16.test.js
+1.1.16 EV planning centralization: 32 exact decision comparisons, Flow revision, Live status and 40 deadline projections passed.
+EXIT 0 in 0.95s
+RUN 73/78 test/ev-physical-settings-1.1.16.test.js
+1.1.16 physical settings: 648 tariff/electrical parity checks and 180 active-SoC accounting passes.
+EXIT 0 in 4.08s
+RUN 74/78 test/ev-physical-config-cache-1.1.16.test.js
+1.1.16 EV physical config cache: stable reuse, internal/external invalidation, TOU change invalidation, override isolation, plan independence and passive monitoring passed.
+EXIT 0 in 0.81s
+RUN 75/78 test/ev-deadline-planner-1.1.17.test.js
+1.1.17 deadline planner: 14 scenario groups passed.
+EXIT 0 in 0.22s
+RUN 76/78 test/ev-deadline-integration-1.1.17.test.js
+1.1.17 deadline integration: 10 production scenario groups passed.
+EXIT 0 in 14.93s
+RUN 77/78 test/battery-night-1.1.18.test.js
+PASS Production replay: overnight goal met outside daily cheap hours
+PASS Cost per delivered kWh and normalized equal-energy comparison
+PASS Already charging across midnight keeps window and chosen intervals
+PASS CPU and calculation counts: 180 unchanged one-second meter inputs
+PASS Forecast promotion, live correction in both directions and plan/display agreement
+PASS Late forecast correction exposes infeasible target
+PASS Partial, missing and newly published prices
+PASS PV capture above planning cap and authoritative day transition
+PASS Hourly prices use the same deadline and do not change public classes
+PASS Normal-price permission keeps its own SoC cap
+PASS Restart reconstructs the same remaining window from persisted dated forecasts
+PASS DST absolute hours and local forecast tomorrow dates
+PASS Price hysteresis retains feasible sessions; material savings replan
+PASS Near-equal scattered quarters prefer one session; early PV end starts now
+PASS Shared Peak Guard and EV deadline plan remain independent
+1.1.18 battery night: 15 production/planner scenarios passed.
+EXIT 0 in 18.16s
+RUN 78/78 test/night-restart-1.1.18.test.js
+PASS Screenshot reproduction: inferred night targets tomorrow and correct PV after evening restart
+PASS Low SoC still gets future windows with available overnight prices
+PASS Morning restart and explicit dark-night continuation stay on today
+PASS Actual PV start returns to existing day forecast and sunset debounce
+PASS 20:00 fallback and midnight preserve the corrected target and median
+PASS Custom target times, fixed/TOU and cache avoid per-P1 calendar rebuilding
+1.1.18 evening restart: 6 production-path scenarios passed.
+EXIT 0 in 0.81s

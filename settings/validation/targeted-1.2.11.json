@@ -1,0 +1,80 @@
+{
+  "version": "1.2.11",
+  "passed": 12,
+  "total": 12,
+  "results": [
+    {
+      "test": "peak-guard-all-modes-1.2.11",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "blocked-feedback-1.2.10",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "engine",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "fast-control-audit-1.0.6",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "idle-guard-1.0.8",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "app-control",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "battery-settings-isolation-1.2.8",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "multi-flexible-loads",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "settings-startup",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "widget",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "planning-monitor-1.1.16",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    },
+    {
+      "test": "ev-grid-permission-1.2.5",
+      "passed": true,
+      "exitCode": 0,
+      "failure": null
+    }
+  ],
+  "scope": "Standby/Peak Guard takeover and release, all engine modes, unchanged blocked-output optimizations, safety/SoC/output timing, flexible-load limits and metadata; independent full suite not run."
+}

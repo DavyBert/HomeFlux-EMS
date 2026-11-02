@@ -1,0 +1,33 @@
+{
+  "sourceVersion": "1.2.2",
+  "simulatedHomey": true,
+  "hardwareTested": false,
+  "note": "Expected failures against unchanged 1.2.2 production functions; identical scenarios pass against 1.2.3.",
+  "results": [
+    {
+      "name": "fixed: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache",
+      "passed": false,
+      "observedFailure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+    },
+    {
+      "name": "tou: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache",
+      "passed": false,
+      "observedFailure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+    },
+    {
+      "name": "dynamic: five-minute WAF refresh with reached goal and a clean 60-minute battery-plan cache",
+      "passed": false,
+      "observedFailure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+    },
+    {
+      "name": "07:00 before PV start: day WAF uses raw remaining-today, not the continuing night median",
+      "passed": false,
+      "observedFailure": "AssertionError [ERR_ASSERTION]: {\"ready\":true,\"valueKwh\":4.308333333333334,\"calculatedAt\":1792994340000,\"targetAt\":1792994400000,\"validUntil\":1792994400000,\"phase\":\"night\",\"targetSoc\":80,\"dischargeFloorSoc\":80,\"remainingHours\":0.016666666666666666,\"planningTargetSoc\":80,\"targetSource\":\"night_planning_goal\",\"solarKwh\":0,\"solarSource\":\"no_pv_credit_before_morning_target\",\"householdDailyKwh\":16.8,\"householdSource\":\"expectedEnergyNeedKwh\",\"householdDays\":0,\"householdKwh\":0.011666666666666667,\"batteryAvailableKwh\":4.32,\"batteryGoalNeedKwh\":0,\"batteryBalanceKwh\":4.32,\"evReservedKwh\":0}"
+    },
+    {
+      "name": "17:00 with PV still active: remaining today and household demand extend to next morning",
+      "passed": false,
+      "observedFailure": "AssertionError [ERR_ASSERTION]: {\"ready\":true,\"valueKwh\":11.988333333333333,\"calculatedAt\":1793030340000,\"targetAt\":1793030400000,\"validUntil\":1793030400000,\"phase\":\"day\",\"targetSoc\":100,\"dischargeFloorSoc\":100,\"remainingHours\":0.016666666666666666,\"planningTargetSoc\":80,\"targetSource\":\"day_maximum_soc\",\"solarKwh\":12,\"solarSource\":\"today_remaining\",\"householdDailyKwh\":16.8,\"householdSource\":\"expectedEnergyNeedKwh\",\"householdDays\":0,\"householdKwh\":0.011666666666666667,\"batteryAvailableKwh\":0,\"batteryGoalNeedKwh\":0,\"batteryBalanceKwh\":0,\"evReservedKwh\":0}"
+    }
+  ]
+}

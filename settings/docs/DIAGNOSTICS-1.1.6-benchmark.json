@@ -1,0 +1,231 @@
+{
+  "runs": {
+    "before": [
+      {
+        "cpuUs": 315945,
+        "configurationBytes": 550545,
+        "exportBytes": 907165,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 328297,
+        "configurationBytes": 550545,
+        "exportBytes": 907163,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 328356,
+        "configurationBytes": 550545,
+        "exportBytes": 907164,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 348762,
+        "configurationBytes": 550545,
+        "exportBytes": 907163,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 350195,
+        "configurationBytes": 550545,
+        "exportBytes": 907166,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 351040,
+        "configurationBytes": 550545,
+        "exportBytes": 907164,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 339802,
+        "configurationBytes": 550545,
+        "exportBytes": 907165,
+        "snapshots": 31,
+        "configurationRecords": 31,
+        "evEvents": 0,
+        "recordingFailures": 0
+      }
+    ],
+    "after": [
+      {
+        "cpuUs": 305929,
+        "configurationBytes": 23592,
+        "exportBytes": 158765,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 338515,
+        "configurationBytes": 23592,
+        "exportBytes": 158765,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 338768,
+        "configurationBytes": 23592,
+        "exportBytes": 158765,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 326839,
+        "configurationBytes": 23592,
+        "exportBytes": 158765,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 342824,
+        "configurationBytes": 23592,
+        "exportBytes": 158764,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 339667,
+        "configurationBytes": 23592,
+        "exportBytes": 158765,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 330044,
+        "configurationBytes": 23592,
+        "exportBytes": 158765,
+        "snapshots": 1,
+        "configurationRecords": 31,
+        "evEvents": 14,
+        "recordingFailures": 0
+      }
+    ],
+    "off": [
+      {
+        "cpuUs": 313228,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 331006,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 330914,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 323402,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 326014,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 339199,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      },
+      {
+        "cpuUs": 329025,
+        "configurationBytes": 2,
+        "exportBytes": 1541,
+        "snapshots": 0,
+        "configurationRecords": 0,
+        "evEvents": 0,
+        "recordingFailures": 0
+      }
+    ]
+  },
+  "summary": {
+    "before": {
+      "medianCpuMs": 339.802,
+      "minCpuMs": 315.945,
+      "maxCpuMs": 351.04,
+      "configurationBytes": 550545,
+      "exportBytes": 907165,
+      "snapshots": 31,
+      "configurationRecords": 31,
+      "evEvents": 0
+    },
+    "after": {
+      "medianCpuMs": 338.515,
+      "minCpuMs": 305.929,
+      "maxCpuMs": 342.824,
+      "configurationBytes": 23592,
+      "exportBytes": 158765,
+      "snapshots": 1,
+      "configurationRecords": 31,
+      "evEvents": 14
+    },
+    "off": {
+      "medianCpuMs": 329.025,
+      "minCpuMs": 313.228,
+      "maxCpuMs": 339.199,
+      "configurationBytes": 2,
+      "exportBytes": 1541,
+      "snapshots": 0,
+      "configurationRecords": 0,
+      "evEvents": 0
+    }
+  }
+}

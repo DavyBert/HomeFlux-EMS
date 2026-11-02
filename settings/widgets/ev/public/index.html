@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HomeFlux EV</title>
+<style>
+:root{color-scheme:light dark;--ink:#182e39;--muted:#6c7c82;--line:#e4ebeb;--tile:#f1f6f5;--green:#16795e;--glow:#dff4e8;--bg:#fff;--warning:#9b640e}
+@media(prefers-color-scheme:dark){:root{--ink:#edf7f5;--muted:#9eb1b5;--line:#304441;--tile:#203632;--green:#65dba2;--glow:#1b4536;--bg:#152924;--warning:#f7c46c}}
+*{box-sizing:border-box}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--homey-background-color,var(--bg))}
+main{padding:18px}button{font:inherit;border:1px solid var(--line);background:var(--tile);color:inherit;cursor:pointer;min-height:44px;border-radius:13px;padding:8px 12px;touch-action:manipulation}button:hover{border-color:var(--green)}button:focus-visible{outline:2px solid var(--green);outline-offset:2px}button:disabled{opacity:.5;cursor:wait}button.active{background:var(--glow);border-color:var(--green);color:var(--green)}button.confirm{background:var(--green);color:var(--bg)}
+.widget-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;justify-content:space-between;gap:8px}.widget-header .mark{flex:0 0 8px}.widget-header .brand{gap:6px;white-space:nowrap}.widget-header .eyebrow{font-size:9px;letter-spacing:1px}.view-switch{display:grid;width:172px;grid-template-columns:repeat(var(--view-count,3),minmax(0,1fr));gap:2px;background:var(--tile);border-radius:11px;padding:2px}.view-switch button{width:100%;min-width:0;white-space:nowrap;border-color:transparent;background:transparent;min-height:34px;padding:6px 3px;font-size:10px;border-radius:9px}.view-switch button.active{background:var(--glow);border-color:var(--green);color:var(--green)}.section>.top{flex-wrap:wrap}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700}.brand{display:flex;align-items:center;gap:8px}.mark{width:8px;height:8px;background:var(--green);border-radius:50%}h1{min-width:0;overflow-wrap:anywhere;font-size:21px;margin:6px 0;font-weight:650}h2{font-size:14px;margin:0 0 12px}.muted{color:var(--muted);font-size:12px}.pill{border:1px solid var(--line);border-radius:20px;padding:6px 9px;font-size:11px;white-space:nowrap}.selectors{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}.selectors button{font-size:12px;min-height:35px;padding:6px 12px}.section{border-top:1px solid var(--line);margin-top:17px;padding-top:17px}.summary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.summary>div{min-width:0}.goal{font-size:21px;line-height:1.25;font-weight:650;letter-spacing:-.3px;overflow-wrap:anywhere}.row{display:flex;gap:7px;margin:8px 0}.row button{font-weight:600;flex:1 1 0;min-width:0;display:flex;justify-content:center;align-items:center;height:44px}.guarantee{height:44px;display:flex;align-items:center;justify-content:space-between;width:100%;font-size:12px;margin-top:9px}.feedback{min-height:30px;padding:7px 0 0;font-size:11px;color:var(--muted)}.feedback.error{color:var(--warning)}.solar{display:flex;align-items:flex-end;gap:7px;margin:4px 0;color:var(--green)}.km{font-size:51px;line-height:1.07;letter-spacing:-2px;font-weight:650}.unit{font-size:18px;margin-bottom:5px}.sub{font-size:11px;color:var(--muted)}.bar{height:8px;display:flex;border-radius:8px;overflow:hidden;background:var(--tile);margin:17px 0 10px}.pv{background:#44b77e}.grid{background:#93aac5}.battery{background:#d7ad62}.unknown{background:repeating-linear-gradient(45deg,#b7bcb9 0 3px,#e3e7e4 3px 6px)}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}.metric b{display:block;font-size:17px;font-weight:600;margin-top:4px}.metric small{color:var(--muted);font-size:11px}.dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}@media(min-width:350px){.metrics{grid-template-columns:repeat(3,1fr)}}.note{font-size:10px;color:var(--muted);line-height:1.5;margin:12px 0 0}.periods{display:flex;gap:2px;flex:0 0 auto}.top h2{white-space:nowrap}.periods button{width:36px;border:0;background:transparent;min-height:32px;padding:5px 7px;font-size:10px;border-radius:8px}.periods button.active{background:var(--tile);color:var(--ink)}.empty{padding:25px 0;color:var(--muted)}@media(max-width:300px){main{padding:12px}.widget-header .eyebrow{font-size:9px;letter-spacing:1px}.widget-header .brand{gap:6px}.goal{font-size:19px}.km{font-size:43px}.periods button{padding:5px}.row button{padding:8px 4px}}
+.ev-status-row{display:flex;align-items:center;gap:7px;min-width:0;margin-top:8px}.ev-status-row h1{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px;margin:0}.ev-charge-state{font-size:11px;white-space:nowrap;color:var(--muted)}.ev-status-row .pill{font-size:10px;padding:5px 7px}.ev-active-plan{margin-top:7px;color:var(--muted);font-size:11px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ev-soc{white-space:nowrap}@media(max-width:300px){.ev-status-row{gap:5px}.ev-status-row h1{font-size:16px}.ev-charge-state,.ev-status-row .pill{font-size:9px}.ev-status-row .pill{padding:4px 5px}}
+.planning-days{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px}.planning-days button{font-size:11px;padding:6px 3px;min-height:38px}.deadline-date{font-size:11px;color:var(--muted);margin-top:3px}.manual-deadline{display:flex;gap:6px;margin-top:9px}.manual-deadline input{min-width:0;width:100%;border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--tile);color:var(--ink);font:inherit;font-size:12px}.manual-deadline button{font-size:11px}@keyframes hide-notice{to{visibility:hidden;height:0;margin:0;overflow:hidden}}.plan-notice{animation:hide-notice 0s linear forwards;font-size:11px;color:var(--warning);margin-top:7px}.clear-plan{font-size:11px;margin-top:8px;width:100%;min-height:36px;background:transparent}.emergency.active:not(.confirm){background:rgba(230,151,30,.16);border-color:var(--warning);color:var(--warning)}.status-summary .summary{margin-bottom:0}.status-summary .goal{font-size:20px}@media(max-width:310px){.widget-header{grid-template-columns:1fr}.view-switch{width:100%;justify-self:stretch}}
+</style></head><body><main id="app"></main>
+<script src="controller.js"></script><script>
+'use strict';
+let H, prefs, payload, selected, section='status', period='day', controller, confirmTimer, active=true, generation=0, inFlight=null, feedback='', error=false, pointer=null,lastHeight=0,storageKey='';
+let manualDeadline={};
+const language=()=>t('language')==='nl'?'nl':'en';
+const deadlineText=p=>p?.deadlineLabel?.[language()]||'';
+const host=document.getElementById('app');
+const t=key=>H.__(`evWidget.${key}`), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(v,d=1)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toLocaleString(undefined,{maximumFractionDigits:d}):'—';
+function button(key,label,change,css=''){
+ const s=controller.snapshot(), confirm=s.pending?.key===key && Date.now()<s.pending.expiresAt;
+ return `<button data-key="${esc(key)}" data-change="${esc(JSON.stringify(change))}" class="${css} ${confirm?'confirm':''}" ${s.busy?'disabled':''}>${esc(confirm?t('confirm'):label)}</button>`;
+}
+function activeScheduleText(ev){
+ const p=ev.schedule;
+ if(!p)return t('noActivePlan');
+ if(p.mode==='emergency')return t('emergencyPlan');
+ const mode=t(p.mode==='soc_target'?'socTargetPlan':'smartPlan');
+ if(ev.plan?.owner==='widget'){const goal=num(ev.plan.value,1)+(ev.plan.type==='soc'?'%':' kWh');return `${t('planningTab')}: ${ev.plan.days?t('daysAhead').replace('{n}',ev.plan.days):t('standard')} · ${goal} · ${deadlineText(ev.plan)}${ev.plan.completed?' · '+t('targetReached'):ev.plan.expired?' · '+t('expired'):''}`;}
+ if(p.continuing)return `${mode} · ${t('targetReachedPreferences')}`;
+ if(p.completed)return `${mode} · ${t('targetReached')}`;
+ if(!p.target)return mode;
+ const target=num(p.target.value,1)+(p.target.type==='soc'?'%':' kWh');
+ return `${mode} · ${target} ${t('byTime')} ${deadlineText(ev.plan)||p.time}${p.guaranteed?' · '+t('guaranteedPlan'):''}`;
+}
+function viewState(){
+ const views=[['status','statusTab',prefs.showStatus!==false],['scheduler','planningTab',prefs.showScheduler!==false],['insights','insightsTab',prefs.showInsights!==false]].filter(v=>v[2]);
+ if(!views.some(v=>v[0]===section))section=views[0]?.[0]||'status';
+ return {views,switchable:prefs.switchSections===true&&views.length>1};
+}
+function statusSummary(ev){
+ // Read-only projection of the central plan/schedule. A local incomplete draft
+ // is never presented as an active target and no deadline is calculated here.
+ const emergency=ev.schedule?.mode==='emergency',p=ev.plan;
+ const goal=emergency?{type:'soc',value:100}:p?{type:p.type,value:p.value}:ev.schedule?.target;
+ const time=emergency||!goal?null:p?.time||ev.schedule?.time;
+ const date=emergency?'':deadlineText(p);
+ return `<section class="section status-summary" aria-label="${esc(t('statusTab'))}"><div class="summary"><div><div class="eyebrow">${esc(t('target'))}</div><span class="goal">${goal?num(goal.value,1)+(goal.type==='soc'?'%':' kWh'):'—'}</span></div><div style="text-align:right"><div class="eyebrow">${esc(t('readyBy'))}</div><span class="goal">${time?esc(time):'—'}</span>${date?`<div class="deadline-date">${esc(date)}</div>`:''}</div></div></section>`;
+}
+function render(){
+ if(!H||!payload)return;
+ const ev=payload.evs.find(e=>e.id===selected), s=controller.snapshot();
+ if(!ev){host.innerHTML=`<div class="eyebrow">HOMEFLUX EV</div><p class="empty">${esc(t('noEv'))}</p>`;return;}
+ const activePlan=activeScheduleText(ev);
+ const {views,switchable}=viewState();
+ let html=`<div class="widget-header"><div class="brand"><span class="mark"></span><span class="eyebrow">HOMEFLUX EV</span></div>${switchable?`<div class="view-switch" style="--view-count:${views.length}" role="group" aria-label="${esc(t('sectionSwitch'))}">${views.map(([view,label])=>`<button data-section="${view}" class="${section===view?'active':''}" aria-pressed="${section===view}">${esc(t(label))}</button>`).join('')}</div>`:''}</div><div class="ev-status-row"><h1 title="${esc(ev.name)}">${esc(ev.name)}</h1><span class="ev-charge-state">${esc(t('states.'+ev.state))}</span><span class="pill">${esc(t(ev.connected===null?'unknown':ev.connected?'connected':'disconnected'))}</span></div><div title="${esc(activePlan)}" class="ev-active-plan">${esc(activePlan)}${ev.soc===null||ev.soc===undefined?'':` <span class="ev-soc">· SoC ${num(ev.soc,0)}%</span>`}</div>`;
+ if(ev.feedbackStale)html+=`<div class="note">${esc(t('staleFeedback'))}</div>`;
+ if(ev.flowDeferred)html+=`<div class="plan-notice" style="animation-delay:${Math.max(0,(ev.flowDeferredUntil-Date.now())/1000)}s">${esc(t('flowDeferred'))}</div>`;
+ if(payload.evs.length>1)html+=`<div class="selectors">${payload.evs.map(e=>`<button data-ev="${e.id}" class="${e.id===selected?'active':''}">${esc(e.name)}</button>`).join('')}</div>`;
+ // In the combined layout Planning already contains the same target summary.
+ // Keep existing combined/Insights-only layouts unchanged. Status-only is compact.
+ if(prefs.showStatus!==false&&(switchable?section==='status':prefs.showScheduler===false&&prefs.showInsights===false))html+=statusSummary(ev);
+ if(prefs.showScheduler!==false&&(!switchable||section==='scheduler')){
+  const p=ev.plan, mode=ev.presets.mode, goals=ev.presets[mode], emergency=ev.schedule?.mode==='emergency';
+  const goal=emergency?{type:'soc',value:100}:p?{type:p.type,value:p.value}:s.draft.target, time=emergency?null:p?.time||s.draft.time;
+  const draft=!emergency&&!p&&(goal||time||s.draft.guaranteed!==undefined);
+  html+=`<section class="section"><div class="summary"><div><div class="eyebrow">${esc(t('target'))}${draft?' · '+esc(t('draft')):''}</div><span class="goal">${goal?num(goal.value,1)+(goal.type==='soc'?'%':' kWh'):'—'}</span></div><div style="text-align:right"><div class="eyebrow">${esc(t('readyBy'))}</div><span class="goal">${time?esc(time):'—'}</span>${!emergency&&p?.deadlineLabel?`<div class="deadline-date">${esc(deadlineText(p))}</div>`:''}</div></div>`;
+  html+=`<div class="row">${goals.map((v,i)=>button('goal'+i,num(v,1)+(mode==='soc'?'%':' kWh'),{target:{type:mode,value:v}},goal?.type===mode&&goal.value===v?'active':'')).join('')}</div>`;
+  html+=`<div class="row">${ev.presets.times.map((v,i)=>button('time'+i,v,{time:v},time===v?'active':'')).join('')}</div>`;
+  const guaranteed=p?.guaranteed??s.draft.guaranteed??false;
+  html+=button('guaranteed',`${t('guaranteed')}: ${t(guaranteed?'on':'off')}`,{guaranteed:!guaranteed},'guarantee '+(guaranteed?'active':''));
+  const days=p?.days??s.draft.days??0,maxPv=p?.maxPv??s.draft.maxPv??false;
+  html+=`<div class="eyebrow" style="margin-top:14px">${esc(t('planningMode'))}</div><div class="planning-days">${Array.from({length:8},(_,n)=>button('days'+n,n?t('daysAhead').replace('{n}',n):t('standard'),{days:n},days===n?'active':'')).join('')}</div>`;
+  if(days>0){html+=`<div class="manual-deadline"><input aria-label="${esc(t('endDate'))}" type="date" id="endDate" value="${esc(manualDeadline.dateKey||p?.deadlineLabel?.dateKey||'')}"><input aria-label="${esc(t('endTime'))}" type="time" id="endTime" value="${esc(manualDeadline.time||time||'')}"></div>`;html+=button('deadline',t('applyDeadline'),{deadline:{dateKey:manualDeadline.dateKey||p?.deadlineLabel?.dateKey||'',time:manualDeadline.time||time||''}},'clear-plan');}
+  html+=button('maxPv',`${t('maxPv')}: ${t(maxPv?'on':'off')}`,{maxPv:!maxPv},'guarantee '+(maxPv?'active':''));
+  html+=button('emergency',`${t('emergencyButton')}: ${t(emergency?'on':'off')}`,{mode:emergency?'smart':'emergency'},'guarantee emergency '+(emergency?'active':''));
+  if(p&&!emergency)html+=`<p class="note">${esc(t('emergencyClearsPlan'))}</p>`;
+  if(p?.provisional)html+=`<p class="note">${esc(t('provisional'))}</p>`;
+  if(p)html+=button('clear',t('clearPlan'),{clear:true},'clear-plan');
+  html+=`<div role="status" class="feedback ${error?'error':''}">${esc(s.busy?t('saving'):s.pending?t('tapAgain'):feedback||(!p?t('choosePlan'):t('doubleTap')))}</div></section>`;
+ }
+ if(prefs.showInsights!==false&&(!switchable||section==='insights')){
+  const m=ev.insights, kwh=m?.kwh||0, total=kwh||1;
+  html+=`<section class="section"><div class="top"><h2>${esc(t('insights'))}</h2><div class="periods">${['day','week','month','all'].map(v=>`<button data-period="${v}" class="${v===period?'active':''}">${esc(t(v))}</button>`).join('')}</div></div>`;
+  html+=`<div class="solar"><span class="km">${m?num(m.solarKm,0):'—'}</span><span class="unit">km</span></div><div class="sub">${esc(t('solarKm'))}</div>`;
+  html+=`<div class="bar" aria-label="${esc(t('energySplit'))}">${[['pv','pvKwh'],['grid','gridKwh'],['battery','batteryKwh'],['unknown','unknownKwh']].map(([css,key])=>`<span class="${css}" style="width:${Math.max(0,Math.min(100,100*(m?.[key]||0)/total))}%"></span>`).join('')}</div>`;
+  const money=v=>payload.currency+' '+num(v,2);
+  html+=`<div class="metrics"><div class="metric"><small><i class="dot pv"></i>${esc(t('solarEnergy'))}</small><b>${m?num(m.pvKwh)+' kWh':'—'}</b></div><div class="metric"><small><i class="dot grid"></i>${esc(t('gridEnergy'))}</small><b>${m?num(m.gridKwh)+' kWh':'—'}</b></div><div class="metric"><small>${esc(t('solarShare'))}</small><b>${m&&kwh?num(100*m.pvKwh/kwh,0)+'%':'—'}</b></div><div class="metric"><small>${esc(t('unknownEnergy'))}</small><b>${m?num(m.unknownKwh)+' kWh':'—'}</b></div><div class="metric"><small>${esc(t(ev.incomplete?'knownCost':'chargingCost'))}</small><b>${m?esc(money(m.gridCost+m.solarValue)):'—'}</b></div><div class="metric"><small>${esc(t('savings'))}</small><b>${m?esc(money(m.solarSavings)):'—'}</b></div></div>`;
+  const notes=[ev.incomplete?t('incomplete'):'',m?.unpricedKwh>0?t('unpriced'):'',payload.sharedKwh>0?t('shared'):''].filter(Boolean);
+  if(notes.length)html+=`<p class="note">${esc(notes.join(' '))}</p>`;
+  html+='</section>';
+ }
+ if(!views.length)html+=`<p class="empty">${esc(t('enableSection'))}</p>`;
+ host.innerHTML=html;const height=host.scrollHeight+2;if(height!==lastHeight){lastHeight=height;Promise.resolve(H.setHeight?.(height)).catch(()=>{});}
+}
+async function refresh(){
+ if(!active)return;
+ const token=++generation, chosen=selected, requestedPeriod=period;
+ try{const data=await H.api('GET',`/?period=${requestedPeriod}`,{});
+  if(!active||token!==generation||chosen!==selected||requestedPeriod!==period)return;
+  payload=data;
+  if(!data.evs.some(e=>e.id===selected)){selected=data.evs[0]?.id||null;controller.select(selected);}
+  controller.update(data.evs.find(e=>e.id===selected)?.plan||null);render();
+ }catch(e){if(active&&token===generation){feedback=t('errors.network');error=true;if(!payload)host.textContent=feedback;else render();}}
+}
+async function activate(el){
+ if(!active)return;
+ if(el.dataset.section){
+  const {views,switchable}=viewState();
+  if(!switchable||!views.some(v=>v[0]===el.dataset.section))return;
+  manualDeadline={};clearTimeout(confirmTimer);controller.cancel();section=el.dataset.section;
+  try{if(storageKey)localStorage.setItem(storageKey+'_view',section);}catch(_){}
+  render();return;
+ }
+ if(el.dataset.ev){manualDeadline={};selected=el.dataset.ev;try{if(storageKey)localStorage.setItem(storageKey,selected);}catch(_){}generation++;controller.select(selected);controller.update(payload.evs.find(e=>e.id===selected)?.plan||null);feedback='';error=false;render();refresh();return;}
+ if(el.dataset.period){period=el.dataset.period;generation++;await refresh();return;}
+ if(!el.dataset.key)return;
+ const {switchable}=viewState();
+ if(prefs.showScheduler===false||(switchable&&section!=='scheduler'))return;
+ clearTimeout(confirmTimer);
+ try{const result=await controller.tap(el.dataset.key,JSON.parse(el.dataset.change));
+  if(result.confirm)confirmTimer=setTimeout(()=>controller.cancel(),5000);
+  if(result.draft){feedback=t('choosePlan');error=false;}
+  if(result.success){manualDeadline={};feedback=t('saved');error=false;await refresh();}
+ }catch(e){feedback=t('errors.'+(String(e.message).match(/evWidget\.errors\.(ev|input|incomplete|changed|network)/)?.[1]||'network'));error=true;await refresh();}
+ render();
+}
+function onHomeyReady(Homey){
+ H=Homey;prefs=H.getSettings();if(document.documentElement)document.documentElement.lang=t('language');
+ try{const id=H.getWidgetInstanceId?.();if(id){storageKey='homeflux_ev_'+id;const saved=localStorage.getItem(storageKey);if(/^[1-4]$/.test(saved))selected=saved;const savedView=localStorage.getItem(storageKey+'_view');if(['status','scheduler','insights'].includes(savedView))section=savedView;}}catch(_){}
+ controller=HomeFluxEvController.create({send:body=>H.api('POST','/schedule',body),changed:render,
+  nonce:()=>globalThis.crypto?.randomUUID?.().replace(/-/g,'')||Math.random().toString(36).slice(2)});
+ if(selected)controller.select(selected);
+ host.addEventListener('input',e=>{if(!['endDate','endTime'].includes(e.target.id))return;manualDeadline={dateKey:host.querySelector('#endDate')?.value||'',time:host.querySelector('#endTime')?.value||''};clearTimeout(confirmTimer);if(controller.snapshot().pending)controller.cancel();const b=host.querySelector('[data-key=deadline]');if(b)b.dataset.change=JSON.stringify({deadline:manualDeadline});});
+ host.addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(b)pointer={id:e.pointerId,x:e.clientX,y:e.clientY,button:b,moved:false};});
+ host.addEventListener('pointermove',e=>{if(pointer&&Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>8)pointer.moved=true;});
+ host.addEventListener('pointercancel',()=>{pointer=null;controller.cancel();});
+ host.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(e.detail!==0&&(!pointer||pointer.button!==b||pointer.moved)){pointer=null;controller.cancel();return;}pointer=null;activate(b);});
+ const changed=()=>{if(active)refresh();};
+ H.on('homeflux.ev.changed',changed);
+ function hide(){manualDeadline={};active=false;generation++;pointer=null;clearTimeout(confirmTimer);controller.invalidate();}
+ function show(){if(!active){active=true;refresh();}}
+ document.addEventListener('visibilitychange',()=>document.hidden?hide():show());
+ window.addEventListener('pagehide',hide);window.addEventListener('pageshow',show);window.addEventListener('unload',()=>{hide();H.off?.('homeflux.ev.changed',changed);});
+ H.ready();refresh();
+}
+</script></body></html>

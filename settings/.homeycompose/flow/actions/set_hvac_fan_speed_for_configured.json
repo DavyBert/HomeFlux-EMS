@@ -1,0 +1,39 @@
+{
+  "title": {
+    "en": "Set HVAC fan speed",
+    "nl": "Stel HVAC-ventilatorsnelheid in"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "autocomplete",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "placeholder": {
+        "en": "Select configured HVAC",
+        "nl": "Kies geconfigureerde HVAC"
+      }
+    },
+    {
+      "name": "speed",
+      "type": "number",
+      "title": {
+        "en": "Fan speed value",
+        "nl": "Ventilatorsnelheid waarde"
+      },
+      "min": 0,
+      "max": 10000,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[hvac]] fan speed to [[speed]]",
+    "nl": "Stel [[hvac]]-ventilatorsnelheid in op [[speed]]"
+  },
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

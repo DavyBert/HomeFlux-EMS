@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "Current tariff",
+    "nl": "Huidig tarief"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/tariff.svg"
+}

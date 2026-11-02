@@ -1,0 +1,2910 @@
+{
+  "identicalTimedBatteryTraces": true,
+  "scenarios": {
+    "gridNoise": {
+      "before": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 601,
+          "fastImmediate": 21,
+          "fastEvaluations": 21,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 540,
+          "fastReasonFeedback": 80,
+          "fastScheduled": 10,
+          "statusPublishes": 21,
+          "fastIdleGuardBypassPendingCommand": 60,
+          "fastCoalesced": 50,
+          "fastNoCommandChange": 10,
+          "fastFeedbackUnchangedSkipped": 520,
+          "fastChargeUnchangedSkipped": 520,
+          "fastSkipped": 520
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 21,
+            "wallMs": 17.895740999999987,
+            "maxWallMs": 3.542044000000004
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 7.3365870000000655,
+            "maxWallMs": 2.372259000000014
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 4.690215999999992,
+            "maxWallMs": 1.5775999999999897
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 1.1794549999998765,
+            "maxWallMs": 0.13229899999998906
+          },
+          "fast_feedback_preflight": {
+            "calls": 600,
+            "wallMs": 45.99153899999993,
+            "maxWallMs": 5.081485999999984
+          },
+          "status_publish": {
+            "calls": 21,
+            "wallMs": 1.8593160000000921,
+            "maxWallMs": 0.1966070000000002
+          }
+        },
+        "processCpuMs": 117.619,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 601,
+          "fastImmediate": 21,
+          "fastEvaluations": 21,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 540,
+          "fastReasonFeedback": 80,
+          "fastScheduled": 10,
+          "statusPublishes": 21,
+          "fastIdleGuardBypassPendingCommand": 60,
+          "fastCoalesced": 50,
+          "fastNoCommandChange": 10,
+          "fastFeedbackUnchangedSkipped": 520,
+          "fastChargeUnchangedSkipped": 520,
+          "fastSkipped": 520
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 21,
+            "wallMs": 22.14862400000021,
+            "maxWallMs": 2.6125620000000254
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 8.759667000000093,
+            "maxWallMs": 1.5912910000000124
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 5.5856569999998555,
+            "maxWallMs": 1.3866319999999632
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 1.5524420000004397,
+            "maxWallMs": 0.1251879999999801
+          },
+          "fast_feedback_preflight": {
+            "calls": 600,
+            "wallMs": 47.05631800000128,
+            "maxWallMs": 1.3547330000000102
+          },
+          "status_publish": {
+            "calls": 21,
+            "wallMs": 2.48886200000004,
+            "maxWallMs": 0.27315199999998185
+          }
+        },
+        "processCpuMs": 180.2,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    },
+    "mixedNoise": {
+      "before": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 601,
+          "fastImmediate": 541,
+          "fastEvaluations": 541,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 540,
+          "fastReasonZone": 7,
+          "fastScheduled": 10,
+          "statusPublishes": 550,
+          "fastIdleGuardBypassPendingCommand": 60,
+          "fastCoalesced": 50,
+          "fastNoCommandChange": 530,
+          "fastReasonFeedback": 593
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 541,
+            "wallMs": 316.84327900000034,
+            "maxWallMs": 3.4653579999999238
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 6.615400000000079,
+            "maxWallMs": 1.3903970000000072
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 2.4417530000000625,
+            "maxWallMs": 0.32256600000005164
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 1.716152999998883,
+            "maxWallMs": 0.03572400000007292
+          },
+          "status_publish": {
+            "calls": 550,
+            "wallMs": 29.106698999999026,
+            "maxWallMs": 2.174480000000017
+          },
+          "fast_feedback_preflight": {
+            "calls": 593,
+            "wallMs": 39.89667499999911,
+            "maxWallMs": 0.18752299999994193
+          }
+        },
+        "processCpuMs": 478.408,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 601,
+          "fastImmediate": 21,
+          "fastEvaluations": 21,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 540,
+          "fastReasonZone": 7,
+          "fastScheduled": 10,
+          "statusPublishes": 29,
+          "fastIdleGuardBypassPendingCommand": 60,
+          "fastCoalesced": 50,
+          "fastNoCommandChange": 10,
+          "fastFeedbackUnchangedSkipped": 520,
+          "fastChargeUnchangedSkipped": 520,
+          "fastChargeSourceOnlySkipped": 350,
+          "fastSkipped": 520,
+          "fastReasonFeedback": 73,
+          "chargeSourcePresentationUpdates": 10
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 21,
+            "wallMs": 23.28841900000009,
+            "maxWallMs": 3.35288300000002
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 8.653789000000074,
+            "maxWallMs": 3.0070409999999583
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 2.937091000000123,
+            "maxWallMs": 0.4125330000000531
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 1.2693159999988666,
+            "maxWallMs": 0.07040600000004815
+          },
+          "status_publish": {
+            "calls": 29,
+            "wallMs": 9.081801000000269,
+            "maxWallMs": 0.5088380000000825
+          },
+          "fast_feedback_preflight": {
+            "calls": 593,
+            "wallMs": 41.034201999999254,
+            "maxWallMs": 1.2537620000000516
+          }
+        },
+        "processCpuMs": 148.634,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    },
+    "mixedTOU": {
+      "before": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 601,
+          "fastImmediate": 541,
+          "fastEvaluations": 541,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 540,
+          "fastReasonZone": 7,
+          "fastScheduled": 10,
+          "statusPublishes": 550,
+          "fastIdleGuardBypassPendingCommand": 60,
+          "fastCoalesced": 50,
+          "fastNoCommandChange": 530,
+          "fastReasonFeedback": 593
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 541,
+            "wallMs": 234.43538000000024,
+            "maxWallMs": 2.2390179999999873
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 4.315141000000153,
+            "maxWallMs": 0.5783429999999044
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 1.633113000000094,
+            "maxWallMs": 0.260703000000035
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 1.2624910000018872,
+            "maxWallMs": 0.021893999999974767
+          },
+          "status_publish": {
+            "calls": 550,
+            "wallMs": 21.30311899999981,
+            "maxWallMs": 0.47899200000006203
+          },
+          "fast_feedback_preflight": {
+            "calls": 593,
+            "wallMs": 28.620462999999404,
+            "maxWallMs": 0.32744400000001406
+          }
+        },
+        "processCpuMs": 344.166,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 601,
+          "fastImmediate": 21,
+          "fastEvaluations": 21,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 540,
+          "fastReasonZone": 7,
+          "fastScheduled": 10,
+          "statusPublishes": 29,
+          "fastIdleGuardBypassPendingCommand": 60,
+          "fastCoalesced": 50,
+          "fastNoCommandChange": 10,
+          "fastFeedbackUnchangedSkipped": 520,
+          "fastChargeUnchangedSkipped": 520,
+          "fastChargeSourceOnlySkipped": 350,
+          "fastSkipped": 520,
+          "fastReasonFeedback": 73,
+          "chargeSourcePresentationUpdates": 10
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 21,
+            "wallMs": 14.550764000000072,
+            "maxWallMs": 2.381582999999864
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 4.919851999999537,
+            "maxWallMs": 1.7281869999999344
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 1.9253640000001724,
+            "maxWallMs": 0.22936600000002727
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 0.6946460000006027,
+            "maxWallMs": 0.030325999999831765
+          },
+          "status_publish": {
+            "calls": 29,
+            "wallMs": 4.767897000000403,
+            "maxWallMs": 0.2491259999999329
+          },
+          "fast_feedback_preflight": {
+            "calls": 593,
+            "wallMs": 23.9850040000008,
+            "maxWallMs": 0.17096799999990253
+          }
+        },
+        "processCpuMs": 80.34,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    },
+    "variablePV": {
+      "before": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 662,
+          "fastImmediate": 591,
+          "fastEvaluations": 591,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "pvInputs": 61,
+          "fastIdleGuardBypassActiveSetpoint": 591,
+          "fastReasonFeedback": 594,
+          "fastScheduled": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassPendingCommand": 70,
+          "fastReasonZone": 7,
+          "fastCoalesced": 60,
+          "statusPublishes": 551,
+          "fastNoCommandChange": 580,
+          "fastReasonPvLive": 60
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 591,
+            "wallMs": 233.54732300000592,
+            "maxWallMs": 2.642080999999962
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 3.813102000000299,
+            "maxWallMs": 0.6423990000000686
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 2.1153199999998833,
+            "maxWallMs": 0.4187620000000152
+          },
+          "fast_idle_guard": {
+            "calls": 661,
+            "wallMs": 1.204296000000113,
+            "maxWallMs": 0.05467299999986608
+          },
+          "fast_feedback_preflight": {
+            "calls": 594,
+            "wallMs": 23.11942299999987,
+            "maxWallMs": 0.3174189999999726
+          },
+          "status_publish": {
+            "calls": 551,
+            "wallMs": 29.448986999999534,
+            "maxWallMs": 0.7761709999999766
+          }
+        },
+        "processCpuMs": 314.247,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 662,
+          "fastImmediate": 71,
+          "fastEvaluations": 71,
+          "calculatedSetpointTriggers": 11,
+          "fastCommandChange": 11,
+          "batteryCommandPublishes": 11,
+          "pvInputs": 61,
+          "fastIdleGuardBypassActiveSetpoint": 591,
+          "fastReasonFeedback": 74,
+          "fastScheduled": 11,
+          "gridInputs": 600,
+          "fastIdleGuardBypassPendingCommand": 70,
+          "fastReasonZone": 7,
+          "fastCoalesced": 60,
+          "statusPublishes": 90,
+          "fastNoCommandChange": 60,
+          "fastFeedbackUnchangedSkipped": 520,
+          "fastChargeUnchangedSkipped": 520,
+          "fastChargeSourceOnlySkipped": 520,
+          "fastSkipped": 520,
+          "fastReasonPvLive": 60,
+          "chargeSourcePresentationUpdates": 10
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 71,
+            "wallMs": 54.37485000000015,
+            "maxWallMs": 1.6553869999997914
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 11,
+            "wallMs": 3.8447220000002744,
+            "maxWallMs": 0.501267000000098
+          },
+          "battery_command_publish": {
+            "calls": 11,
+            "wallMs": 2.3202219999998306,
+            "maxWallMs": 0.2873130000000401
+          },
+          "fast_idle_guard": {
+            "calls": 661,
+            "wallMs": 1.1161099999965245,
+            "maxWallMs": 0.006308999999873777
+          },
+          "fast_feedback_preflight": {
+            "calls": 594,
+            "wallMs": 33.68647299999816,
+            "maxWallMs": 0.28750399999989895
+          },
+          "status_publish": {
+            "calls": 90,
+            "wallMs": 19.318104999998695,
+            "maxWallMs": 0.6351180000001477
+          }
+        },
+        "processCpuMs": 147.203,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888600000,
+            "total": -1151,
+            "batteries": [
+              -1151,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888780000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888900000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1179,
+            "batteries": [
+              -1179,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    },
+    "cloudsAndPeakGuard": {
+      "before": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 611,
+          "fastImmediate": 185,
+          "fastEvaluations": 185,
+          "calculatedSetpointTriggers": 32,
+          "fastCommandChange": 42,
+          "batteryCommandPublishes": 42,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 382,
+          "fastReasonZone": 65,
+          "fastScheduled": 36,
+          "statusPublishes": 208,
+          "fastIdleGuardBypassPendingCommand": 228,
+          "fastCoalesced": 182,
+          "fastNoCommandChange": 143,
+          "fastReasonFeedback": 174,
+          "pvInputs": 10,
+          "fastFeedbackUnchangedSkipped": 59,
+          "fastChargeUnchangedSkipped": 59,
+          "fastSkipped": 208,
+          "fastSkipStableSignal": 149,
+          "fastReasonPeakTransition": 90,
+          "fastReasonPvLive": 9,
+          "fastReasonPeakActive": 26
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 185,
+            "wallMs": 78.67213399999991,
+            "maxWallMs": 1.124176000000034
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 32,
+            "wallMs": 5.921720000000505,
+            "maxWallMs": 0.4425579999999627
+          },
+          "battery_command_publish": {
+            "calls": 42,
+            "wallMs": 6.713018999999804,
+            "maxWallMs": 0.5333650000000034
+          },
+          "fast_idle_guard": {
+            "calls": 610,
+            "wallMs": 0.9140540000016699,
+            "maxWallMs": 0.1327000000001135
+          },
+          "status_publish": {
+            "calls": 208,
+            "wallMs": 7.453428999999005,
+            "maxWallMs": 0.2919299999998657
+          },
+          "fast_feedback_preflight": {
+            "calls": 233,
+            "wallMs": 10.90359599999897,
+            "maxWallMs": 0.8045440000000781
+          }
+        },
+        "processCpuMs": 140.112,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888410000,
+            "total": -3879,
+            "batteries": [
+              -1430,
+              -1479,
+              -970,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888417000,
+            "total": -3879,
+            "batteries": [
+              -970,
+              -970,
+              -970,
+              -969
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888435000,
+            "total": -1137,
+            "batteries": [
+              -570,
+              0,
+              -283,
+              -284
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888442000,
+            "total": -1137,
+            "batteries": [
+              -855,
+              0,
+              -282,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888449000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888460000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888467000,
+            "total": 1053,
+            "batteries": [
+              1053,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888474000,
+            "total": 1047,
+            "batteries": [
+              1047,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888481000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888488000,
+            "total": 1053,
+            "batteries": [
+              1053,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888495000,
+            "total": 1047,
+            "batteries": [
+              1047,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888502000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888509000,
+            "total": 1053,
+            "batteries": [
+              1053,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888516000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888560000,
+            "total": -1602,
+            "batteries": [
+              -1201,
+              -401,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888567000,
+            "total": -1602,
+            "batteries": [
+              -801,
+              -801,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888585000,
+            "total": -2308,
+            "batteries": [
+              -1154,
+              -1154,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888610000,
+            "total": -1300,
+            "batteries": [
+              -975,
+              -325,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888617000,
+            "total": -1300,
+            "batteries": [
+              -1300,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888710000,
+            "total": -3879,
+            "batteries": [
+              -1430,
+              -1479,
+              -970,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888717000,
+            "total": -3879,
+            "batteries": [
+              -970,
+              -970,
+              -970,
+              -969
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888760000,
+            "total": -1160,
+            "batteries": [
+              -581,
+              0,
+              -290,
+              -289
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888767000,
+            "total": -1160,
+            "batteries": [
+              -871,
+              0,
+              0,
+              -289
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888774000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888781000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888810000,
+            "total": 247,
+            "batteries": [
+              247,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888817000,
+            "total": 250,
+            "batteries": [
+              250,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888824000,
+            "total": 253,
+            "batteries": [
+              253,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888831000,
+            "total": 247,
+            "batteries": [
+              247,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888838000,
+            "total": 250,
+            "batteries": [
+              250,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888845000,
+            "total": 253,
+            "batteries": [
+              253,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888852000,
+            "total": 247,
+            "batteries": [
+              247,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888859000,
+            "total": 250,
+            "batteries": [
+              250,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888866000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888885000,
+            "total": -1608,
+            "batteries": [
+              -1206,
+              -402,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888892000,
+            "total": -1608,
+            "batteries": [
+              -804,
+              -804,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888910000,
+            "total": -1174,
+            "batteries": [
+              -881,
+              -293,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888917000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1303,
+            "batteries": [
+              -1303,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 611,
+          "fastImmediate": 63,
+          "fastEvaluations": 63,
+          "calculatedSetpointTriggers": 32,
+          "fastCommandChange": 42,
+          "batteryCommandPublishes": 42,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 382,
+          "fastReasonZone": 65,
+          "fastScheduled": 36,
+          "statusPublishes": 87,
+          "fastIdleGuardBypassPendingCommand": 228,
+          "fastCoalesced": 182,
+          "fastNoCommandChange": 21,
+          "fastFeedbackUnchangedSkipped": 181,
+          "fastChargeUnchangedSkipped": 181,
+          "fastChargeSourceOnlySkipped": 82,
+          "fastSkipped": 330,
+          "pvInputs": 10,
+          "fastSkipStableSignal": 149,
+          "fastReasonPeakTransition": 90,
+          "fastReasonFeedback": 52,
+          "fastReasonPvLive": 9,
+          "fastReasonPeakActive": 26,
+          "chargeSourcePresentationUpdates": 4
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 63,
+            "wallMs": 39.929171999998516,
+            "maxWallMs": 1.1598500000000058
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 32,
+            "wallMs": 6.9114799999995284,
+            "maxWallMs": 0.6695150000000467
+          },
+          "battery_command_publish": {
+            "calls": 42,
+            "wallMs": 7.762518999999884,
+            "maxWallMs": 0.4789180000000215
+          },
+          "fast_idle_guard": {
+            "calls": 610,
+            "wallMs": 0.7807890000010502,
+            "maxWallMs": 0.03455200000007608
+          },
+          "status_publish": {
+            "calls": 87,
+            "wallMs": 6.37442199999964,
+            "maxWallMs": 0.3170979999999872
+          },
+          "fast_feedback_preflight": {
+            "calls": 233,
+            "wallMs": 12.8575359999993,
+            "maxWallMs": 0.26681299999995645
+          }
+        },
+        "processCpuMs": 101.637,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888410000,
+            "total": -3879,
+            "batteries": [
+              -1430,
+              -1479,
+              -970,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888417000,
+            "total": -3879,
+            "batteries": [
+              -970,
+              -970,
+              -970,
+              -969
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888435000,
+            "total": -1137,
+            "batteries": [
+              -570,
+              0,
+              -283,
+              -284
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888442000,
+            "total": -1137,
+            "batteries": [
+              -855,
+              0,
+              -282,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888449000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888460000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888467000,
+            "total": 1053,
+            "batteries": [
+              1053,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888474000,
+            "total": 1047,
+            "batteries": [
+              1047,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888481000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888488000,
+            "total": 1053,
+            "batteries": [
+              1053,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888495000,
+            "total": 1047,
+            "batteries": [
+              1047,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888502000,
+            "total": 1050,
+            "batteries": [
+              1050,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888509000,
+            "total": 1053,
+            "batteries": [
+              1053,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888516000,
+            "total": -1142,
+            "batteries": [
+              -1142,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888540000,
+            "total": -1146,
+            "batteries": [
+              -1146,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888560000,
+            "total": -1602,
+            "batteries": [
+              -1201,
+              -401,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888567000,
+            "total": -1602,
+            "batteries": [
+              -801,
+              -801,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888585000,
+            "total": -2308,
+            "batteries": [
+              -1154,
+              -1154,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888610000,
+            "total": -1300,
+            "batteries": [
+              -975,
+              -325,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888617000,
+            "total": -1300,
+            "batteries": [
+              -1300,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888660000,
+            "total": -1155,
+            "batteries": [
+              -1155,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888710000,
+            "total": -3879,
+            "batteries": [
+              -1430,
+              -1479,
+              -970,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888717000,
+            "total": -3879,
+            "batteries": [
+              -970,
+              -970,
+              -970,
+              -969
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888760000,
+            "total": -1160,
+            "batteries": [
+              -581,
+              0,
+              -290,
+              -289
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888767000,
+            "total": -1160,
+            "batteries": [
+              -871,
+              0,
+              0,
+              -289
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888774000,
+            "total": -1160,
+            "batteries": [
+              -1160,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888781000,
+            "total": -1165,
+            "batteries": [
+              -1165,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888810000,
+            "total": 247,
+            "batteries": [
+              247,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888817000,
+            "total": 250,
+            "batteries": [
+              250,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888824000,
+            "total": 253,
+            "batteries": [
+              253,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888831000,
+            "total": 247,
+            "batteries": [
+              247,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888838000,
+            "total": 250,
+            "batteries": [
+              250,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888845000,
+            "total": 253,
+            "batteries": [
+              253,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888852000,
+            "total": 247,
+            "batteries": [
+              247,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888859000,
+            "total": 250,
+            "batteries": [
+              250,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": "peak_shave"
+          },
+          {
+            "at": 1791888866000,
+            "total": -1170,
+            "batteries": [
+              -1170,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888885000,
+            "total": -1608,
+            "batteries": [
+              -1206,
+              -402,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888892000,
+            "total": -1608,
+            "batteries": [
+              -804,
+              -804,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888910000,
+            "total": -1174,
+            "batteries": [
+              -881,
+              -293,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888917000,
+            "total": -1174,
+            "batteries": [
+              -1174,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888960000,
+            "total": -1303,
+            "batteries": [
+              -1303,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    },
+    "socAndModes": {
+      "before": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 605,
+          "fastImmediate": 113,
+          "fastEvaluations": 113,
+          "calculatedSetpointTriggers": 5,
+          "fastCommandChange": 5,
+          "batteryCommandPublishes": 5,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 581,
+          "fastReasonZone": 15,
+          "fastScheduled": 3,
+          "statusPublishes": 116,
+          "fastIdleGuardBypassPendingCommand": 19,
+          "fastCoalesced": 16,
+          "fastNoCommandChange": 108,
+          "fastReasonFeedback": 112,
+          "fastSkipStableSignal": 473,
+          "fastSkipped": 473
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 113,
+            "wallMs": 47.92129400000067,
+            "maxWallMs": 1.7782529999999497
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 5,
+            "wallMs": 1.3739709999995284,
+            "maxWallMs": 0.4422869999998511
+          },
+          "battery_command_publish": {
+            "calls": 5,
+            "wallMs": 0.913738999999623,
+            "maxWallMs": 0.2780800000000454
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 0.5947370000021692,
+            "maxWallMs": 0.046890999999959604
+          },
+          "status_publish": {
+            "calls": 116,
+            "wallMs": 2.7111269999995784,
+            "maxWallMs": 0.2598720000000867
+          },
+          "fast_feedback_preflight": {
+            "calls": 112,
+            "wallMs": 4.868177999999489,
+            "maxWallMs": 0.14594000000010965
+          }
+        },
+        "processCpuMs": 82.073,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -874,
+            "batteries": [
+              -874,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -874,
+            "batteries": [
+              -874,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -874,
+            "batteries": [
+              -874,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      },
+      "after": {
+        "p1Updates": 600,
+        "counters": {
+          "fastRequests": 605,
+          "fastImmediate": 9,
+          "fastEvaluations": 9,
+          "calculatedSetpointTriggers": 5,
+          "fastCommandChange": 5,
+          "batteryCommandPublishes": 5,
+          "gridInputs": 600,
+          "fastIdleGuardBypassActiveSetpoint": 581,
+          "fastReasonZone": 15,
+          "fastScheduled": 3,
+          "statusPublishes": 15,
+          "fastIdleGuardBypassPendingCommand": 19,
+          "fastCoalesced": 16,
+          "fastNoCommandChange": 4,
+          "fastFeedbackUnchangedSkipped": 104,
+          "fastChargeUnchangedSkipped": 104,
+          "fastChargeSourceOnlySkipped": 70,
+          "fastSkipped": 577,
+          "fastReasonFeedback": 8,
+          "chargeSourcePresentationUpdates": 5,
+          "fastSkipStableSignal": 473
+        },
+        "sections": {
+          "fast_evaluation": {
+            "calls": 9,
+            "wallMs": 5.678524000000834,
+            "maxWallMs": 0.9753810000001977
+          },
+          "calculated_setpoint_trigger": {
+            "calls": 5,
+            "wallMs": 1.2183170000002974,
+            "maxWallMs": 0.4381010000001879
+          },
+          "battery_command_publish": {
+            "calls": 5,
+            "wallMs": 0.9072300000002542,
+            "maxWallMs": 0.25641700000005585
+          },
+          "fast_idle_guard": {
+            "calls": 600,
+            "wallMs": 0.5025460000056228,
+            "maxWallMs": 0.06357600000001185
+          },
+          "status_publish": {
+            "calls": 15,
+            "wallMs": 1.651061000000027,
+            "maxWallMs": 0.3085449999998673
+          },
+          "fast_feedback_preflight": {
+            "calls": 112,
+            "wallMs": 6.165900999998939,
+            "maxWallMs": 0.2801929999995991
+          }
+        },
+        "processCpuMs": 40.478,
+        "traces": [
+          {
+            "at": 1791888360000,
+            "total": -1133,
+            "batteries": [
+              -1133,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888420000,
+            "total": -1137,
+            "batteries": [
+              -1137,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888480000,
+            "total": -874,
+            "batteries": [
+              -874,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          },
+          {
+            "at": 1791888720000,
+            "total": -874,
+            "batteries": [
+              -874,
+              0,
+              0,
+              0
+            ],
+            "mode": "self_consumption",
+            "override": null
+          },
+          {
+            "at": 1791888840000,
+            "total": -874,
+            "batteries": [
+              -874,
+              0,
+              0,
+              0
+            ],
+            "mode": "charge",
+            "override": null
+          }
+        ]
+      }
+    }
+  }
+}

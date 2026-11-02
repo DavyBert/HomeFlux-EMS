@@ -34,6 +34,7 @@ const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelecte
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 const savingsHistory = require('./lib/savings-history');
 const hvacPermanent = require('./lib/hvac-permanent');
+const hvacCoordination = require('./lib/hvac-coordination');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
 const EV_PHYSICAL_CONFIG_SUFFIXES = new Set([
@@ -777,6 +778,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.nightForecastMedian = null; this.setSetting('_nightForecastHold', null);
     }
     if (!widgetPreference && this.settingsCache && !Object.is(this.settingsCache[key], value)) this.invalidateEvPhysicalConfig(key);
+    if (/^hvac/.test(String(key)) && this.settingsCache && !Object.is(this.settingsCache[key], value)) { this.hvacConfigRevision=(this.hvacConfigRevision||0)+1; hvacPermanent.cancel(this); }
     this.homey.settings.set(key, value);
     if (this.settingsCache && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
       this.settingsCache[key] = value;
@@ -1238,7 +1240,7 @@ class HomeFluxEmsApp extends Homey.App {
     return this.getHvacCount(settings) ? { ...settings, hvacLearning: Array.from({length:this.getHvacCount(settings)}, (_,i)=>hvacPermanent.status(this,i)) } : settings;
   }
 
-  recheckHvac(body = {}) { return hvacPermanent.recheck(this, Number(body.instance)-1, body.direction || 'both'); }
+  recheckHvac(body = {}) { return body.action === 'learnNow' ? hvacCoordination.manualRequest(this, Number(body.instance)-1) : hvacPermanent.recheck(this, Number(body.instance)-1, body.direction || 'both'); }
 
   createDiagnosticsRuntime({ startedAt = 0, expiresAt = 0, options = null } = {}) {
     const now = Date.now();
@@ -3560,12 +3562,14 @@ class HomeFluxEmsApp extends Homey.App {
     const gridW = Number(this.state.gridPowerW);
     if (!Number.isFinite(gridW)) return;
     this.updateEvPvImportSafety(now, settings);
+    const hvacPvReady = hvacCoordination.observeSurplus(this, now);
 
     let reason = '';
     if (this.hasActiveFlexibleOutput(settings) && Boolean(settings.peakShaveEnabled)) {
       const peak = Math.max(0, Number(settings.peakLimitW) || 0);
       if (gridW >= peak) reason = 'peak_guard';
     }
+    if (!reason && hvacCoordination.budgetAlarm(this, now, settings)) reason = 'hvac_budget';
     if (!reason) {
       const hvacCount = this.getHvacCount(settings);
       for (let index = 0; index < hvacCount; index += 1) {
@@ -3576,6 +3580,8 @@ class HomeFluxEmsApp extends Homey.App {
         if (gridW >= threshold) { reason = `hvac${index + 1}_fast_reset`; break; }
       }
     }
+
+    if (!reason && hvacPvReady) reason = 'hvac_pv_direct';
 
     // Only the transition into an urgent state requests an immediate slow pass.
     // Remaining above the same threshold does not recalculate on every P1 value.
@@ -4012,6 +4018,28 @@ class HomeFluxEmsApp extends Homey.App {
     }
   }
 
+  async setHvacAutomaticControlFor(index, args = {}) {
+    if (index >= this.getHvacCount()) return true;
+    const enabled = String(args.enabled || 'yes') === 'yes';
+    const temperature = args.standby_temperature;
+    const hasTemperature = temperature !== undefined && temperature !== null && temperature !== '';
+    if (hasTemperature && (!Number.isFinite(Number(temperature)) || Number(temperature) < 5 || Number(temperature) > 99)) throw new Error('Stand-bytemperatuur moet tussen 5 en 99 °C liggen.');
+    const key = this.getHvacSettingKey(index, 'AutomaticControlEnabled');
+    const standbyKey = 'hvacCoordination';
+    // Missing optional arguments preserve saved settings and old Flows.
+    if (hasTemperature) {
+      const saved=this.getSettings()[standbyKey]||[];const config=saved[index]||{};const standby=Math.round(Number(temperature)*2)/2;
+      if(config.StandbyTemperatureC!==standby)this.setSetting(standbyKey,Array.from({length:10},(_,i)=>i===index?{...config,StandbyTemperatureC:standby}:saved[i]||{...hvacPermanent.fields.Coordination}));
+    }
+    if ((this.getSettings()[key] !== false) !== enabled) this.setSetting(key, enabled);
+    if (!enabled) {
+      hvacPermanent.cancel(this);
+      const d = this.calculateHvacControlFor(index, this.latestResult, this.latestEvDecision, this.state.lastTotalCommandW, this.state.lastTotalCommandW, { allowStart: false });
+      await this.publishHvacDecisionFor(index, d);
+    } else this.requestContextEvaluate(true, 'hvac_automatic_control');
+    return true;
+  }
+
   getHvacInstanceSettings(index, source = this.getSettings()) {
     const fields = [
       ...Object.keys(hvacPermanent.fields),
@@ -4021,7 +4049,8 @@ class HomeFluxEmsApp extends Homey.App {
       'AllowPowerControl','AllowModeControl','AllowSetpointControl','AllowFanControl','FanMinValue','FanMaxValue','FanStepValue',
     ];
     const settings = { ...source };
-    for (const suffix of fields) settings[`hvac${suffix}`] = source[this.getHvacSettingKey(index, suffix)];
+    for (const suffix of fields) if(suffix!=='Coordination')settings[`hvac${suffix}`] = source[this.getHvacSettingKey(index, suffix)];
+    settings.hvacCoordination=source.hvacCoordination?.[index]||hvacPermanent.fields.Coordination;
     return settings;
   }
 
@@ -6124,7 +6153,8 @@ class HomeFluxEmsApp extends Homey.App {
     const input = this.getHvacInputSnapshot(index);
     const runtime = index === 0 ? null : this.getExtraHvac(index);
     const decision = index === 0 ? this.latestHvacDecision : runtime?.latestDecision;
-    const rawMode = String(decision?.modeCommand || input?.mode || (index === 0 ? this.lastPublishedHvacMode : runtime?.lastPublishedMode) || '');
+    const power=index===0?this.lastPublishedHvacPower:runtime?.lastPublishedPower;
+    const rawMode = power===false?'off':String((index === 0 ? this.lastPublishedHvacMode : runtime?.lastPublishedMode) || input?.mode || decision?.modeCommand || '');
     const modeLabels = { cool: 'Koelen', heat: 'Verwarmen', auto: 'Auto', fan: 'Ventileren', dry: 'Ontvochtigen', off: 'Uit' };
     const modeLabel = modeLabels[rawMode.toLowerCase()] || (rawMode || 'Wachten op data');
     const commanded = decision?.setpointCommand !== null && decision?.setpointCommand !== undefined ? Number(decision.setpointCommand) : NaN;
@@ -6132,7 +6162,7 @@ class HomeFluxEmsApp extends Homey.App {
     const publishedRaw = index === 0 ? this.lastPublishedHvacSetpoint : runtime?.lastPublishedSetpoint;
     const current = currentRaw === null || currentRaw === undefined ? NaN : Number(currentRaw);
     const published = publishedRaw === null || publishedRaw === undefined ? NaN : Number(publishedRaw);
-    const setpoint = Number.isFinite(commanded) ? commanded : Number.isFinite(current) ? current : Number.isFinite(published) ? published : null;
+    const setpoint = Number.isFinite(published) ? published : Number.isFinite(current) ? current : Number.isFinite(commanded) ? commanded : null;
     const boost = Boolean(decision?.boostActive || (index === 0 ? this.hvacBaselineSetpoint !== null : runtime?.baselineSetpoint !== null));
     const boostLabel = decision?.energySource === 'battery' ? 'Batterij-boost' : 'PV-boost';
     return `${name}: ${boost ? `${boostLabel} · ` : ''}${modeLabel}${setpoint !== null ? ` · ${setpoint.toFixed(1).replace('.0', '')} °C` : ''}`;
@@ -6753,7 +6783,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.state.hvacMode = nextMode;
       this.inputSeen.hvac.mode = true;
       this.inputUpdatedAt.hvac.mode = Date.now();
-      if (changed) this.requestContextEvaluate(false, 'hvac1_mode');
+      if (changed) { hvacPermanent.inputChanged(this, 0, 'mode', nextMode); this.requestContextEvaluate(false, 'hvac1_mode'); }
       return true;
     });
 
@@ -6773,7 +6803,7 @@ class HomeFluxEmsApp extends Homey.App {
         && Math.abs(value - Number(this.lastPublishedHvacSetpoint)) < 0.11) {
         this.lastPublishedHvacSetpoint = value;
       }
-      if (changed) this.requestContextEvaluate(false, 'hvac1_setpoint');
+      if (changed) { hvacPermanent.inputChanged(this, 0, 'setpoint', value); this.requestContextEvaluate(false, 'hvac1_setpoint'); }
       return true;
     });
 
@@ -6788,19 +6818,11 @@ class HomeFluxEmsApp extends Homey.App {
       this.state.hvacFanSpeed = normalized;
       this.inputSeen.hvac.fanSpeed = true;
       this.inputUpdatedAt.hvac.fanSpeed = Date.now();
-      if (changed) this.requestContextEvaluate(false, 'hvac1_fan');
+      if (changed) { hvacPermanent.inputChanged(this, 0, 'fan', normalized); this.requestContextEvaluate(false, 'hvac1_fan'); }
       return true;
     });
 
-    this.slotFlowCards.registerAction('set_hvac1_automatic_control', async args => {
-      if (this.getHvacCount() < 1) return true;
-      const enabled = String(args.enabled || 'yes') === 'yes';
-      if ((this.getSettings().hvacAutomaticControlEnabled !== false) === enabled) return true;
-      this.setSetting('hvacAutomaticControlEnabled', enabled);
-      // The settings 'set' event requests one fresh EMS evaluation only when
-      // the value actually changes; no extra timer or polling loop is needed.
-      return true;
-    });
+    this.slotFlowCards.registerAction('set_hvac1_automatic_control', args => this.setHvacAutomaticControlFor(0, args));
 
 
 
@@ -6894,7 +6916,7 @@ class HomeFluxEmsApp extends Homey.App {
         runtime.state.mode = nextMode;
         runtime.seen.mode = true;
         runtime.updatedAt.mode = Date.now();
-        if (changed) this.requestContextEvaluate(false, `hvac${instance}_mode`);
+        if (changed) { hvacPermanent.inputChanged(this, index, 'mode', nextMode); this.requestContextEvaluate(false, `hvac${instance}_mode`); }
         return true;
       });
       this.slotFlowCards.registerAction(`set_hvac${instance}_setpoint`, async args => {
@@ -6911,7 +6933,7 @@ class HomeFluxEmsApp extends Homey.App {
         if (Number.isFinite(Number(runtime.lastPublishedSetpoint)) && Math.abs(value - Number(runtime.lastPublishedSetpoint)) < 0.11) {
           runtime.lastPublishedSetpoint = value;
         }
-        if (changed) this.requestContextEvaluate(false, `hvac${instance}_setpoint`);
+        if (changed) { hvacPermanent.inputChanged(this, index, 'setpoint', value); this.requestContextEvaluate(false, `hvac${instance}_setpoint`); }
         return true;
       });
       this.slotFlowCards.registerAction(`set_hvac${instance}_fan_speed`, async args => {
@@ -6924,17 +6946,10 @@ class HomeFluxEmsApp extends Homey.App {
         runtime.state.fanSpeed = normalized;
         runtime.seen.fanSpeed = true;
         runtime.updatedAt.fanSpeed = Date.now();
-        if (changed) this.requestContextEvaluate(false, `hvac${instance}_fan`);
+        if (changed) { hvacPermanent.inputChanged(this, index, 'fan', normalized); this.requestContextEvaluate(false, `hvac${instance}_fan`); }
         return true;
       });
-      this.slotFlowCards.registerAction(`set_hvac${instance}_automatic_control`, async args => {
-        if (index >= this.getHvacCount()) return true;
-        const enabled = String(args.enabled || 'yes') === 'yes';
-        const key = this.getHvacSettingKey(index, 'AutomaticControlEnabled');
-        if ((this.getSettings()[key] !== false) === enabled) return true;
-        this.setSetting(key, enabled);
-        return true;
-      });
+      this.slotFlowCards.registerAction(`set_hvac${instance}_automatic_control`, args => this.setHvacAutomaticControlFor(index, args));
     }
 
     flow.getActionCard('set_forced_mode').registerRunListener(async args => {
@@ -12505,19 +12520,36 @@ class HomeFluxEmsApp extends Homey.App {
       return decision;
     };
 
+    if (!automaticControlEnabled) {
+      const restored = restoreImmediately('Automatische HVAC-sturing uit');
+      // A permanent thermostat need not have a legacy boost baseline or an
+      // earlier ON receipt. The explicit permission is sufficient for OFF.
+      if (settings.hvacAllowPowerControl) restored.powerCommand = false;
+      if (settings.hvacCoordination?.StandbyTemperatureC !== null && settings.hvacCoordination?.StandbyTemperatureC !== undefined
+        && settings.hvacCoordination?.StandbyTemperatureC !== '' && Number.isFinite(Number(settings.hvacCoordination?.StandbyTemperatureC)) && settings.hvacAllowSetpointControl) {
+        restored.setpointCommand = Math.round(Math.max(5, Math.min(99, Number(settings.hvacCoordination?.StandbyTemperatureC))) * 2) / 2;
+      }
+      restored.automaticControlOff = true;
+      restored.hvacRevision = this.hvacConfigRevision || 0;
+      return restored;
+    }
+
     if (!enabled) {
+      const owned = this.hvacPermanentRuntime?.units?.[instanceIndex];
+      if (owned?.setpoint !== null && owned?.setpoint !== undefined && !owned.powerOff && !owned.legacyCoordinated) {
+        const restored=restoreImmediately('HVAC-module uit · permanente sturing stoppen');
+        if(settings.hvacAllowPowerControl)restored.powerCommand=false;
+        if(settings.hvacAllowSetpointControl&&Number.isFinite(room))restored.setpointCommand=Math.round(Math.max(5,Math.min(99,room))*2)/2;
+        restored.moduleControlOff=true;return restored;
+      }
       if (this.hvacBaselineSetpoint !== null || this.hvacManagedPowerOn) return restoreImmediately('HVAC-module uit · regeling terug naar normaal');
       decision.reason = 'HVAC-module uit';
       return decision;
     }
 
-    if (!automaticControlEnabled) {
-      if (this.hvacBaselineSetpoint !== null || this.hvacManagedPowerOn) return restoreImmediately('Automatische HVAC-sturing uit · regeling terug naar normaal');
-      decision.reason = 'Automatische HVAC-sturing uit';
-      return decision;
-    }
 
-    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart });
+
+    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, portfolio: options.hvacPortfolio });
 
     // A stale P1 value may never be interpreted as current PV surplus or spare
     // Peak Guard headroom. Existing HomeFlux-managed HVAC sessions fail safe by
@@ -12567,7 +12599,7 @@ class HomeFluxEmsApp extends Homey.App {
     const evStartsGridCharge = Boolean(evDecision)
       && ['tariff', 'guarantee', 'pv+tariff'].includes(String(evDecision.source || ''))
       && Number(evDecision.desiredCurrentA || 0) > Number(evDecision.actualCurrentA || 0) + 0.5;
-    const fastReset = Boolean(result?.override === 'peak_shave') || predictedGridAfterEvW >= fastImportW || evStartsGridCharge;
+    const fastReset = Boolean(options.hvacBudgetSafety) || Boolean(result?.override === 'peak_shave') || predictedGridAfterEvW >= fastImportW || evStartsGridCharge;
 
     const hasPublishedHvacSetpoint = this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined
       && Number.isFinite(Number(this.lastPublishedHvacSetpoint));
@@ -12804,7 +12836,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   calculateHvacControlFor(index, result = this.latestResult, evDecision = this.latestEvDecision, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
-    const settings = this.getHvacInstanceSettings(index, options.storedSettings || this.getSettings());
+    const settings = options.hvacPortfolio?.settings[index] || this.getHvacInstanceSettings(index, options.storedSettings || this.getSettings());
     return this.withHvacRuntime(index, () => this.calculateHvacControl(
       result,
       evDecision,
@@ -12838,12 +12870,29 @@ class HomeFluxEmsApp extends Homey.App {
       while (slot.pending) {
         const next = slot.pending;
         slot.pending = null;
+        if(next.moduleControlOff&&safeIndex<this.getHvacCount()&&this.getHvacInstanceSettings(safeIndex).hvacEnabled)continue;
+        if (next.automaticControlOff && this.getHvacInstanceSettings(safeIndex).hvacAutomaticControlEnabled !== false) continue;
         const learningCandidate = hvacPermanent.legacyCandidate(this, safeIndex, next);
         if (!hvacPermanent.beforePublish(this, safeIndex, next)) continue;
+        if(next.permanent&&next.outputChanged===false){
+          hvacPermanent.published(this,safeIndex,next);
+          if(safeIndex>0&&!slot.pending)this.getExtraHvac(safeIndex).latestDecision=next;
+          continue;
+        }
         try {
           await this._publishHvacDecisionNowFor(safeIndex, next);
           if (next.permanent) hvacPermanent.published(this, safeIndex, next);
-          else if (learningCandidate) hvacPermanent.begin(this, safeIndex, learningCandidate, Date.now());
+          else if ((next.automaticControlOff || next.moduleControlOff) && next.outputChanged!==false) {
+            const u=hvacPermanent.unit(this,safeIndex);u.powerOff=next.moduleControlOff||next.powerCommand===false;
+            if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
+            hvacPermanent.persist(this);
+          } else if (next.legacyCoordinated) {
+            const u=hvacPermanent.unit(this,safeIndex);u.legacyCoordinated=true;u.mode=next.direction;
+            if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
+            hvacPermanent.persist(this);
+            if(learningCandidate?.manualLearning&&next.outputChanged!==false)hvacPermanent.begin(this,safeIndex,learningCandidate,Date.now());
+          } else if (learningCandidate && next.outputChanged!==false) hvacPermanent.begin(this, safeIndex, learningCandidate, Date.now());
+          if (!next.permanent && this.hvacPermanentRuntime?.units?.[safeIndex]?.legacyCoordinated && !next.boostActive) { this.hvacPermanentRuntime.units[safeIndex].powerOff=true; hvacPermanent.persist(this); }
         } catch (error) {
           if (next.permanent) { hvacPermanent.cancel(this); this.markContextDirty('hvac_publication_retry', false); }
           throw error;
@@ -13309,11 +13358,14 @@ class HomeFluxEmsApp extends Homey.App {
     if (!initialSync && (decision.outputCommand === null || decision.outputCommand === undefined)) return;
     const on = initialSync ? Boolean(decision.on) : Boolean(decision.outputCommand);
     if (this.boilerState.lastPublishedOutput === on) return;
+    hvacPermanent.cancel(this);
     if (this.boilerTrigger) await this.boilerTrigger.trigger(this.localizeDisplayTokens({ on }));
     this.boilerState.lastPublishedOutput = on;
   }
 
   isHvacManagedActiveFor(index) {
+    const u = this.hvacPermanentRuntime?.units?.[index];
+    if (u && !u.legacyCoordinated && u.setpoint !== null && u.setpoint !== undefined && !u.powerOff && !u.outdoorStopped) return true;
     if (index === 0) return this.hvacBaselineSetpoint !== null || Boolean(this.hvacManagedPowerOn);
     const runtime = this.getExtraHvac(index);
     return Boolean(runtime && (runtime.baselineSetpoint !== null || runtime.managedPowerOn));
@@ -13673,10 +13725,13 @@ class HomeFluxEmsApp extends Homey.App {
     const runHvac = result?._runHvacContextPass !== false;
     if (runHvac) hvacPermanent.slowTick(this);
     const configuredHvacCount = this.getHvacCount(storedSettings);
+    const hvacPortfolio = runHvac ? hvacCoordination.prepare(this, storedSettings, result) : null;
     const hvacCount = runHvac ? configuredHvacCount : 0;
     const hvacDecisions = Array.from({length:configuredHvacCount}, (_,i)=>i===0?this.latestHvacDecision:this.getExtraHvac(i)?.latestDecision || null);
     const hvacPreviews = Array(hvacCount).fill(null);
     const priorityDue = this.isFlexiblePriorityEvaluationDue(Date.now(), storedSettings);
+    const hvacPriorityOrder = this.getFlexibleLoadPriorityOrder(storedSettings);
+    if(hvacPortfolio)hvacPortfolio.priorityOrder=hvacPriorityOrder;
 
     for (let index = 0; index < hvacCount; index += 1) {
       const active = this.isHvacManagedActiveFor(index);
@@ -13688,7 +13743,8 @@ class HomeFluxEmsApp extends Homey.App {
         currentBatteryCommandW,
         {
           storedSettings,
-          allowStart: active && !hvacPermanent.enabled(this.getHvacInstanceSettings(index, storedSettings)),
+          allowStart: active && !hvacPermanent.enabled(hvacPortfolio.settings[index]),
+          hvacPortfolio,
           totalActualEvPowerW,
           totalDesiredEvPowerW,
         },
@@ -13713,16 +13769,22 @@ class HomeFluxEmsApp extends Homey.App {
         for (let index = 0; index < hvacCount; index += 1) {
           if (Boolean(hvacPreviews[index]?.startEligible) && (hvacPreviews[index]?.permanent || !this.isHvacManagedActiveFor(index))) eligible.set(`hvac${index + 1}`, true);
         }
-        grantedId = this.getFlexibleLoadPriorityOrder(storedSettings).find(id => eligible.get(id)) || '';
+        grantedId = hvacPriorityOrder.find(id => eligible.get(id)) || '';
       }
       this.finishFlexiblePriorityEvaluation(Date.now(), storedSettings, grantedId || (evStartedThisCycle ? 'ev' : ''));
+    }
+
+    if (runHvac) {
+      hvacPortfolio.externalReservedW = grantedId === 'boiler' && !this.boilerState.outputOn && boilerDecision?.startEligible ? Math.max(0,Number(storedSettings.boilerPowerW)||1800) : 0;
+      hvacCoordination.plan(this, hvacPortfolio, hvacPreviews, grantedId, evStartedThisCycle);
     }
 
     for (let index = 0; index < hvacCount; index += 1) {
       const id = `hvac${index + 1}`;
       const active = this.isHvacManagedActiveFor(index);
       let decision = hvacPreviews[index];
-      if ((!active || decision?.permanent) && grantedId === id) {
+      if (!decision?.permanent && active && hvacPortfolio?.budgetSafety) decision=this.calculateHvacControlFor(index,result,evDecisions[0]||null,nextBatteryCommandW,currentBatteryCommandW,{storedSettings,allowStart:false,hvacBudgetSafety:true,totalActualEvPowerW,totalDesiredEvPowerW});
+      if (!decision?.permanent && !active && (!decision?.legacyCoordinated && grantedId === id || decision?.coordinated)) {
         decision = this.calculateHvacControlFor(
           index,
           result,
@@ -13737,6 +13799,10 @@ class HomeFluxEmsApp extends Homey.App {
           },
         );
       }
+      if (!decision?.permanent && hvacPreviews[index]?.coordinated) {
+        const admitted=hvacPreviews[index];
+        Object.assign(decision,{coordinated:true,legacyCoordinated:true,hvacAdmission:admitted.hvacAdmission,increase:true,direction:admitted.direction,suppressAutoLearning:true,sampleGridW:hvacPortfolio.sampleGridW});
+      }
       hvacDecisions[index] = decision;
       if (index === 0) this.latestHvacDecision = decision;
       else {
@@ -13745,6 +13811,8 @@ class HomeFluxEmsApp extends Homey.App {
       }
       await this.publishHvacDecisionFor(index, decision);
     }
+
+    if (runHvac) hvacCoordination.commit(this, hvacPortfolio, totalActualEvPowerW);
 
     // HVAC instances removed from the configured count are restored once when
     // HomeFlux still owns an active session.
@@ -13763,7 +13831,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.boilerState.outputOn && grantedId === 'boiler') {
       boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
         allowStart: true,
-        gridPowerW: adjustedGridW,
+        gridPowerW: adjustedGridW + (hvacPortfolio?.siteReservedW || 0),
         currentBatteryCommandW,
         nextBatteryCommandW: boilerNextBatteryCommandW,
       });
@@ -13780,7 +13848,7 @@ class HomeFluxEmsApp extends Homey.App {
         due: priorityDue,
         grantedId,
         nextEvaluationAt: Number(this.flexiblePriorityState.nextEvaluationAt) || 0,
-        order: this.getFlexibleLoadPriorityOrder(storedSettings),
+        order: hvacPriorityOrder,
       },
     };
   }
@@ -14958,6 +15026,9 @@ class HomeFluxEmsApp extends Homey.App {
       const hybridDelegated = this.updateHybridEmsDelegation(result, storedSettings, now);
 
       this.latestResult = result;
+      if (Number(result.nextEventAt) > now && Array.from({length:this.getHvacCount(storedSettings)}, (_,i)=>storedSettings.hvacCoordination?.[i]?.DirectTariffEnabled).some(Boolean)) {
+        this.scheduleContextEvaluationAt(Number(result.nextEventAt));
+      }
       this.rememberBatteryFeedbackMemo(result, evaluationState, storedSettings, now);
       this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
       const batteryWantsChange = !hybridDelegated && Boolean(result.canPublishCommands) && this.commandChangedEnough(result);
@@ -15037,12 +15108,16 @@ class HomeFluxEmsApp extends Homey.App {
       // EV/input-triggered contexts may run sooner than the ordinary slow tick.
       // They reuse HVAC decisions until the slow cadence is due. Retain the
       // existing urgent safety context for Peak Guard and legacy fast reset.
-      const hvacSafety = (this.activeContextDiagnosticReasons || []).some(reason => reason === 'peak_guard' || /^hvac\d+_fast_reset$/.test(reason));
-      result._runHvacContextPass = hvacSafety || !this.lastHvacContextEvalAt
+      const hvacSafety = (this.activeContextDiagnosticReasons || []).some(reason => reason === 'peak_guard' || /^hvac|^setting:hvac/.test(reason));
+      const hvacTariffChanged = hvacCoordination.tariffKey(result) !== hvacCoordination.tariffKey(this.latestResult);
+      result._runHvacContextPass = hvacSafety || hvacTariffChanged || !this.lastHvacContextEvalAt
         || now - this.lastHvacContextEvalAt >= this.getSlowControlIntervalMs(storedSettings);
       if (result._runHvacContextPass) this.lastHvacContextEvalAt = now;
 
       this.latestResult = result;
+      if (Number(result.nextEventAt) > now && Array.from({length:this.getHvacCount(storedSettings)}, (_,i)=>storedSettings.hvacCoordination?.[i]?.DirectTariffEnabled).some(Boolean)) {
+        this.scheduleContextEvaluationAt(Number(result.nextEventAt));
+      }
       this.rememberBatteryFeedbackMemo(result, evaluationState, storedSettings, now);
       this.triggerCalculatedSetpoint(result).catch(err => this.error('Calculated battery setpoint trigger failed', err));
       this.queueStatusUpdate(result, forceStatus);
@@ -16430,6 +16505,7 @@ class HomeFluxEmsApp extends Homey.App {
         outputSetpointC: index === 0
           ? (this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined && Number.isFinite(Number(this.lastPublishedHvacSetpoint)) ? Number(this.lastPublishedHvacSetpoint) : null)
           : (runtime?.lastPublishedSetpoint !== null && runtime?.lastPublishedSetpoint !== undefined && Number.isFinite(Number(runtime.lastPublishedSetpoint)) ? Number(runtime.lastPublishedSetpoint) : null),
+        outputPowerOn: index === 0 ? this.lastPublishedHvacPower : runtime?.lastPublishedPower,
         outputMode: index === 0 ? String(this.lastPublishedHvacMode || '') : String(runtime?.lastPublishedMode || ''),
         outputFanSpeed: index === 0 ? this.lastPublishedHvacFanSpeed : runtime?.lastPublishedFanSpeed,
         fanScale: this.getHvacFanScale(instanceSettings),

@@ -1,0 +1,48 @@
+{
+  "title": {
+    "en": "HVAC setpoint command is updated",
+    "nl": "HVAC-setpoint is bijgewerkt"
+  },
+  "tokens": [
+    {
+      "name": "setpoint",
+      "type": "number",
+      "title": {
+        "en": "Setpoint (C)",
+        "nl": "Setpoint (C)"
+      },
+      "example": 21.5
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "PV-overschot weg - setpoint geleidelijk terug"
+    }
+  ],
+  "titleFormatted": {
+    "en": "[[hvac]] setpoint command is updated",
+    "nl": "[[hvac]]-setpoint is bijgewerkt"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "autocomplete",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "placeholder": {
+        "en": "Select configured HVAC",
+        "nl": "Kies geconfigureerde HVAC"
+      }
+    }
+  ],
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

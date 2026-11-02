@@ -1,0 +1,10 @@
+{
+  "title": {
+    "en": "Refresh Homey Energy prices",
+    "nl": "Vernieuw Homey Energy prijzen"
+  },
+  "hint": {
+    "en": "Refreshes Homey's own dynamic electricity price data for monitoring.",
+    "nl": "Leest Homey's eigen dynamische elektriciteitsprijzen opnieuw in voor monitoring."
+  }
+}

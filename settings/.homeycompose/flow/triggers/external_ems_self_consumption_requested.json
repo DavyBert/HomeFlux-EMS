@@ -1,0 +1,30 @@
+{
+  "title": {
+    "en": "Set external EMS to self consumption",
+    "nl": "Stel externe EMS in op zelfconsumptie"
+  },
+  "hint": {
+    "en": "Fires when Hybrid EMS delegates pure self-consumption to the external EMS, and once more if the watchdog requests a retry.",
+    "nl": "Start wanneer Hybrid EMS pure zelfconsumptie overdraagt aan de externe EMS en nogmaals wanneer de watchdog een nieuwe poging vraagt."
+  },
+  "tokens": [
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "en": "Reason",
+        "nl": "Reden"
+      },
+      "example": "pure_self_consumption"
+    },
+    {
+      "name": "retry",
+      "type": "number",
+      "title": {
+        "en": "Retry (0/1)",
+        "nl": "Nieuwe poging (0/1)"
+      },
+      "example": 0
+    }
+  ]
+}

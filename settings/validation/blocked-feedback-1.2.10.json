@@ -1,0 +1,105 @@
+{
+  "version": "1.2.10",
+  "simulatedHomey": true,
+  "physicalHomeyTested": false,
+  "passed": 24,
+  "results": [
+    {
+      "name": "self_consumption, 0 disconnected EV: stable blocked output reuses idle proof with PV",
+      "p1": 240,
+      "fast": 4,
+      "stateBuilds": 8,
+      "contexts": 4
+    },
+    {
+      "name": "self_consumption, 1 disconnected EV: stable blocked output reuses idle proof with PV",
+      "p1": 240,
+      "fast": 3,
+      "stateBuilds": 8,
+      "contexts": 5
+    },
+    {
+      "name": "avoid_import, 0 disconnected EV: stable blocked output reuses idle proof with PV",
+      "p1": 240,
+      "fast": 4,
+      "stateBuilds": 8,
+      "contexts": 4
+    },
+    {
+      "name": "avoid_import, 1 disconnected EV: stable blocked output reuses idle proof with PV",
+      "p1": 240,
+      "fast": 3,
+      "stateBuilds": 8,
+      "contexts": 5
+    },
+    {
+      "name": "solar_capture, 0 disconnected EV: stable blocked output reuses idle proof with PV",
+      "p1": 240,
+      "fast": 4,
+      "stateBuilds": 8,
+      "contexts": 4
+    },
+    {
+      "name": "solar_capture, 1 disconnected EV: stable blocked output reuses idle proof with PV",
+      "p1": 240,
+      "fast": 3,
+      "stateBuilds": 8,
+      "contexts": 5
+    },
+    {
+      "name": "self_consumption: new PV export immediately leaves the idle proof and is captured"
+    },
+    {
+      "name": "avoid_import: new PV export immediately leaves the idle proof and is captured"
+    },
+    {
+      "name": "solar_capture: new PV export immediately leaves the idle proof and is captured"
+    },
+    {
+      "name": "self_consumption: Peak Guard can use energy below the strategy floor but never below hard minimum"
+    },
+    {
+      "name": "avoid_import: Peak Guard can use energy below the strategy floor but never below hard minimum"
+    },
+    {
+      "name": "solar_capture: Peak Guard can use energy below the strategy floor but never below hard minimum"
+    },
+    {
+      "name": "self_consumption: repeated peak at hard minimum is cheap, fresh SoC restores Peak Guard immediately"
+    },
+    {
+      "name": "avoid_import: repeated peak at hard minimum is cheap, fresh SoC restores Peak Guard immediately"
+    },
+    {
+      "name": "solar_capture: repeated peak at hard minimum is cheap, fresh SoC restores Peak Guard immediately"
+    },
+    {
+      "name": "self_consumption: new export still charges at hard minimum after a blocked peak"
+    },
+    {
+      "name": "avoid_import: new export still charges at hard minimum after a blocked peak"
+    },
+    {
+      "name": "solar_capture: new export still charges at hard minimum after a blocked peak"
+    },
+    {
+      "name": "Disabled boiler clock/preview changes do not invalidate proof; real boiler output or peak request does"
+    },
+    {
+      "name": "Unknown/reconnected EV and nonzero EV feedback/output bypass the inactive-EV proof"
+    },
+    {
+      "name": "Pending writes, stale/missing inputs and changed SoC/mode/context retain existing fallback paths"
+    },
+    {
+      "name": "Live and averaged export both bypass idle; a peak transition is processed even before hard-floor reuse"
+    },
+    {
+      "name": "Standby keeps real battery output zero for both export and high import"
+    },
+    {
+      "name": "All active engine modes retain baseline results across contracts, SoC and import/export; standby is explicitly zero",
+      "identicalActiveModeCombinations": 384
+    }
+  ]
+}

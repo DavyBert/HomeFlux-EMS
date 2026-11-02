@@ -803,6 +803,7 @@
       if (!hvac || !hvac.enabled || hvac.automaticControlEnabled === false) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
       const reason = String(hvac.reason || '').toLowerCase();
       if (reason.includes('peak guard')) return tr(Homey, 'widget.status.hvacPeakGuard', 'Stopped by Peak Guard');
+      if(hvac.outputPowerOn===false)return tr(Homey,'widget.status.off','Off');
       if (hvac.permanent) {
         if (hvac.waiting) return reasonText(hvac.reason, Homey) || tr(Homey, 'widget.status.evWaiting', 'Waiting');
         if (hvac.periodicHeating) return tr(Homey, 'widget.status.hvacPeriodicHeating', 'Periodic heating');
@@ -1091,11 +1092,11 @@
           const head=document.createElement('tr');
           [tr(Homey,'widget.status.device','Device'),tr(Homey,'widget.status.target','Target'),tr(Homey,'widget.status.room','Room')].forEach(t=>{const c=document.createElement('th');c.textContent=t;c.style.textAlign=head.children.length?'right':'left';head.appendChild(c);});table.appendChild(head);
           hvacs.forEach(h=>{const row=document.createElement('tr'),name=document.createElement('td'),goal=document.createElement('td'),actual=document.createElement('td');
-            const mode=h.outputMode || h.currentMode || h.mode;
+            const mode=h.outputPowerOn===false?'off':h.outputMode || h.currentMode || h.mode;
             const goalValue=h.learning?.publishedSetpointC ?? h.outputSetpointC;
             const unpublished=h.permanent&&h.desiredSetpointC!=null&&(goalValue==null||Math.abs(h.desiredSetpointC-goalValue)>.1);
             const waiting=Boolean(h.waiting)||unpublished,demand=h.roomTemperatureC!=null&&goalValue!=null&&(mode==='heat'?h.roomTemperatureC<goalValue-.25:mode==='cool'?h.roomTemperatureC>goalValue+.25:false);
-            const pv=h.energySource==='pv'&&!waiting&&demand&&h.enabled;
+            const pv=h.energySource==='pv'&&!waiting&&demand&&h.enabled&&h.automaticControlEnabled!==false&&h.outputPowerOn!==false;
             const nameLine=document.createElement('div');nameLine.className='hvac-summary-name';
             const nameText=document.createElement('span');nameText.className='hvac-summary-name-text';nameText.textContent=String(h.name||'HVAC');nameLine.appendChild(nameText);
             if(['heat','cool'].includes(mode))nameLine.appendChild(hvacSummaryIcon(mode));

@@ -1,0 +1,205 @@
+HomeFlux EMS 1.1.15 – CPU-belasting door EV-planningsdoelen via Flow
+Aanvullende correctie binnen 1.1.15, 23 oktober 2026
+
+Uitkomst
+Vier overbodige routes zijn aangetoond en gericht aangepast:
+1. Identieke SoC- en kWh-doelkaarten bouwden opnieuw een deadline op, schreven beide override-arrays weg en vroegen direct een volledige EMS-context aan.
+2. Een al actief SoC-Flow-doel zocht bij het opbouwen van EV-instellingen telkens opnieuw zijn deadline. Dit gebeurde ook vanuit P1-verwerking en statusuitlezingen. De bestaande exacte-timestampcache hielp niet tussen nieuwe seconden/milliseconden. Dit is een structurele kostenbron zonder nieuwe Flow-doelinputs.
+3. Een settings-event voor interne EV-plandoelopslag kon via de algemene settingslistener nog een extra EMS-context aanvragen. Deze route is gereproduceerd met asynchrone callbacks voor gewijzigde opgeslagen waarden; de exacte eventfrequentie op Freds firmware is niet gemeten.
+4. Bij laden op een geselecteerd tarief telde calculateEvDecision() hetzelfde tariefvenster twee keer, met exact dezelfde invoer. Dat werk wordt nu alleen binnen die ene synchrone beslissing hergebruikt.
+
+Het onderscheid dat voor Fred essentieel is
+SoC: zowel herhaald insturen van het doel als het blijvend verwerken van een eenmaal ingesteld doel kon CPU kosten. In de stabiele proef bleef het portfolio vijf keer per vijf minuten lopen, maar de kalenderzoektocht kostte toch veel CPU vanuit configuratieopbouw in het P1-pad.
+kWh: een geldig toekomstig kWh-plan had die deadlinezoektocht per P1 al niet. Herhaald insturen van hetzelfde doel was wel duur en zette bovendien remainingKwh en lastTickAt opnieuw. Tijdens werkelijk laden bleek de dubbele tariefvensterberekening een afzonderlijk knelpunt. Het echte, begrensde tellen van geleverde energie blijft nodig.
+Dit bewijst reproduceerbare codeproblemen. Het bewijst niet hoeveel procent van Freds Homey-CPU door ieder probleem afzonderlijk wordt veroorzaakt, of dat zijn Flow de doelkaart iedere seconde uitvoert.
+
+Bron en versie
+Uitgegaan van de meest recente beschikbare HomeFlux-EMS-v1.1.15.zip, inclusief de eerdere EV-/CPU-optimalisaties en Input Monitor. app.js is voor aanvang bytegelijk met die bundel gecontroleerd. De originele bron is apart uitgepakt voor alle voor/na-proeven. De versie in app.json, .homeycompose/app.json, package.json en package-lock.json blijft 1.1.15. De oorspronkelijke .homeyignore blijft byte-identiek. NL/EN-release notes bij 1.1.15 zijn aangevuld.
+De vier verouderde 1.1.13-metadatavelden in diagnostiek, live status, planning en simulatie lezen nu de werkelijke manifestversie, met app.json als fallback. De bestaande Input Monitor-versieleverancier gebruikt dezelfde veilige fallback. Er is geen batterij- of planningformule hiervoor veranderd.
+
+Kaarten en volledige route
+Voor beide vormen bestaan dezelfde drie routes:
+- Genummerd: set_ev1_soc_deadline t/m set_ev4_soc_deadline en set_ev1_energy_deadline t/m set_ev4_energy_deadline.
+- Dropdown: set_ev_soc_deadline_for / set_ev_energy_deadline_for.
+- Geconfigureerde selectie: set_ev_soc_deadline_for_configured / set_ev_energy_deadline_for_configured.
+ConfiguredFlowCards valideert de selectie en routeert naar de dropdown; SlotFlowCards routeert vervolgens naar exact dezelfde genummerde handler. De handler roept setEvSocPlan() of setEvEnergyPlan() aan. Deze compatibiliteitslagen maken geen tweede interne Flow-aanroep. Dezelfde duplicate-controle geldt dus voor EV 1–4 en alle kaartvarianten.
+
+Voorheen: validatie -> deadlinezoektocht -> sessie opnieuw bewapenen -> plan muteren -> persistEvSocPlanOverrides()/persistEvEnergyPlanOverrides() -> waarschuwing wissen -> requestContextEvaluate(true). Daarna: evaluateContextNow() -> fysieke EV-controle, batterij-evaluatie en coordinateEvBatteryPriority() -> EV-portfolio. Publicatie via publishFlexibleLoads()/publishEvPortfolioNow() kan een tweede, fysiek gevalideerd portfolio berekenen. Status-/tokenpublicatie loopt asynchroon verder. Een later settings-event voor de opslag kon via de algemene settingslistener nog een context starten.
+De afzonderlijke kaart set_evN_soc en haar twee selectieroutes leveren gemeten SoC, geen nieuw minimumdoel. Bestaande wijzigingsdetectie (0,01 procentpunt) en SoC-houdbaarheid blijven werken. Identieke verse SoC-feedback vraagt geen nieuwe context; de oude zware deadlinezoektocht vóór die filtering is door kalenderhergebruik veel goedkoper.
+clear_evN_soc_deadline_override en selectievarianten wissen beide planningsvormen zoals voorheen. Sessiemodus-overrides, expliciete sessiestop en gewone configuratiekaarten behouden hun werking. Er is geen aparte kaart die de interne remainingKwh rechtstreeks overschrijft: de kWh-kaart stelt een persistent minimum voor de sessie in en HomeFlux houdt levering bij. Een andere aangeleverde kWh-waarde blijft een echte nieuwe doelstelling; zij activeert geen SoC-doel.
+Er is geen intern automatisch pad aangetroffen van een statuspublicatie terug naar een doelkaart. Een door de gebruiker aangesloten Flow kan zo'n keten maken; daarvoor moet de ontvangen Flow-reeks worden bekeken. Veel intern rekenwerk op zich bewijst geen Flow-loop.
+
+Wijzigingen
+Identieke doelen
+- Vergelijking gebeurt na lichte numerieke/tijd-/booleanvalidatie, vóór getSettings(), kalenderzoektocht, herbewapening, mutatie, opslag en contextaanvraag.
+- Sleutel: doelwaarde, HH:mm, garantie, actieve eigenaar/planningsvorm, tijdzone en dezelfde deadline-occurrence. Alleen floating-pointruis tot 1e-9 wordt genegeerd; echte verschillen, ook kleine geldige kWh-wijzigingen, blijven verwerkt. Er wordt niet op de kaartstap van 0,1 kWh afgerond.
+- Bij kWh wordt het ingestuurde blijvende targetKwh vergeleken; de afnemende remainingKwh is voortgang. Het herhalen van hetzelfde minimum vult geleverde energie niet opnieuw aan en reset lastTickAt niet.
+- Een identiek doel binnen dezelfde periode herstart geen voltooid minimum. Een ander doel, gewijzigde deadline/garantie, een nieuwe dagelijkse deadline-occurrence, een tijdzonewijziging, wissen of opnieuw aansluiten blijft de bestaande herbewapening kunnen uitvoeren. Runtimevelden targetOccurrenceAt/targetTimezone onderscheiden de ingestelde periode van een automatisch doorgeschoven displaydeadline. Ze voegen geen instellingen- of persistenceschema toe.
+- Restore reconstrueert die lichte identiteit; reconnect werkt de kWh-identiteit bij. Reeds geleverde energie blijft bij herhaalde input na restore behouden. De bestaande gezamenlijke opslag bij een echte doelwijziging blijft gehandhaafd; die kan ook de andere EV-plannen vastleggen.
+
+Kalenderwerk voor een actief SoC-doel
+getEvSocPlanDeadlineAt() vraagt voor huidige Homey-datums de bestaande zuivere kalenderzoekfunctie aan op de UTC-minuut en telt daarna exact de oorspronkelijke seconden/milliseconden terug bij het resultaat. Alleen het zoekanker is gedeeld; de zichtbare en gebruikte deadline wordt niet afgerond. Doeltijd en tijdzone blijven deel van de bestaande cachekey. DST, de scan die de huidige doelminuut overslaat en de 26-uursfallback blijven gelijk. Historische datums vóór 2000 houden het oude pad, vanwege historische tijdzones met seconde-offsets. Er is geen globale cache voor instellingen, EV-beslissingen, energiebehoefte, fysieke EV-toestand of portfolio's toegevoegd. De bestaande pure LRU blijft begrensd op 32 entries en gebruikt geen timer.
+
+kWh-administratie
+Een actieve tick zonder tijdsinterval, stroom, verse levering of resterende energie hoeft geen volledig instellingenobject te bouwen. lastTickAt wordt nog steeds bijgewerkt. De bestaande helper wordt wel aangeroepen als een deadline verstreken is, zodat diens rollover-bijwerking behouden blijft. Bij echte levering wordt dezelfde formule gebruikt, met dezelfde fysieke stroom, fasen/spanning, sessiestatus en horizon van maximaal 60 seconden. Geen energie integreren uit een gewenst laadcommando.
+
+Interne settings-events
+Alleen evSocDeadlineOverrides en evEnergyDeadlineOverrides krijgen een vroege EV-controle in de bestaande settingslistener. Mutatie en de expliciete contextaanvraag zijn al door de doelhandler afgehandeld. Werkelijke energievoltooiing behoudt haar directe STOP-/contextpad. De opslagcallback maakt daarom geen extra algemene context of invalidatie van tarief-/planningscaches. Als planningsdiagnostiek actief is, wordt de bestaande gerichte instellingsdelta wel geregistreerd. De volledige diagnostische configuratiehistorie blijft reconstructeerbaar (bestaande 37 controles slagen).
+
+Tariefvensters
+calculateEvDecision() bewaart zijn al berekende countEvTariffMinutes(now, deadline, settings, 5) lokaal voor het geselecteerde-tariefpad. De tweede identieke zoektocht vervalt. Er is geen await of mutatie van relevante invoer tussen deze twee gebruikspunten. Een volgende beslissing, andere EV of ander tarief krijgt eigen werk. Het gegarandeerde pad voor niet-geselecteerde tarieven gebruikt een verschoven futureStart en behoudt daarom zijn afzonderlijke vensterberekening. Geen hergebruik over verschillende vensters, budgets of asynchrone publicaties.
+
+Timer en overige regelingen
+De bestaande gedeelde timer van 15000 ms, zijn vaste deadline, generaties, P1-annulering en hervalidatie bij afloop/na publicatiewachten zijn ongewijzigd. Een identieke doelkaart start of verlengt niets en handelt een wachtende meterafwijking niet kunstmatig af. Een werkelijk nieuw operator-/plandoel gebruikt de bestaande directe contextaanvraag; dat is geen gewone deferred-meteroptimalisatie. Beide gevallen zijn getest.
+Peak Guard, stroomverlagingen, disconnect, STOP, fysieke restbelasting en bescherming tegen ongewenste batterijontlading houden hun directe bestaande paden. De portfolio's voor coördinatie en fysieke publicatie zijn niet algemeen samengevoegd: hun budgetten/async-afhankelijkheden kunnen verschillen. Het lokale tariefvensterhergebruik verandert die validatie niet.
+Geen wijziging aan P1-frequentie, algemene contextcadans, batterijstrategie/planning, PV-capture/curtailment/exportlimieten, HVAC, boiler, multi-batteryverdeling, instellingen of Flow-kaartschema's. De batterij-engine en alle niet-EV-functies in flexible-loads.js zijn bytegelijk aan de referentie. De specifieke beschermde app-functies staan in source-scope.json.
+
+Meetmethode
+28 profielen van 300 virtuele seconden. Per profiel en versie drie afzonderlijke schone Node-processen voor proces-CPU en wall-clock, plus één afzonderlijke geïnstrumenteerde run voor functie-aantallen en functie-CPU. Totaal 224 uitvoeringen / 112 voor-na-paren. Volgorde voor/na wisselt. Dezelfde instellingen, inputs, diagnostiekopties en gesimuleerde apparaten per paar. De besturing en publicatieroutes zijn echt; Homey-I/O en tijd zijn gesimuleerd. De schone CPU-runs hebben geen meetwrappers rond productiefuncties; gesimuleerde I/O en de expliciete settings-eventadapter blijven aanwezig. Mediane CPU = user + system via process.cpuUsage(); wall-clock via performance.now(). GC voor/na het meetblok valt buiten de CPU-tijd.
+Functie-CPU is inclusief geneste functies en mag niet worden opgeteld tot een totaal. Bij asynchrone methoden meet de functiewrapper alleen de synchrone aanloop; de totale proces-CPU bevat ook gedraineerde vervolgcallbacks en timerwerk. De inline energiebehoefteberekening valt onder calculateEvDecision; daarvoor is geen fictieve losse tijd verzonnen.
+Profielen met settings-events simuleren callbacks voor gewijzigde persistente waarden; ze zijn geen opname van Homey-firmware-events. P1 en actieve-metercorrectie blijven in alle scenario's lopen. Bij de nabije dynamische deadline blijft SoC bewust vers, zodat de garantie ook na de kwartiergrens wordt getest.
+Dit zijn hostmilliseconden voor 300 VIRTUELE seconden, geen Homey-CPU-percentages en geen voorspelling van hardwarewinst. Kleine verschillen rond ongewijzigde profielen vallen mede onder proces-/JIT-/GC-variatie. Het ongewijzigde kWh-plan op STOP toont bijvoorbeeld vrijwel geen CPU-winst; de belangrijke verbeteringen zitten in het aangetoonde werk.
+
+Werk per 300 P1-inputs
+De kolommen tellen werkelijk uitgevoerde functies. Een context/heartbeat kan meerdere fysieke controles of portfolio's toevoegen. Aanvragen zijn afzonderlijk aanwezig in de ruwe counters; ze zijn geen uitgevoerde berekeningen.
+Profiel | Context vóór -> na | Portfolio | Fysieke EV-controles | Instellingenopbouw | Tariefvensters | Kalenderconversies | EV-opslagacties
+disconnected | 0->0 | 0->0 | 300->300 | 11->11 | 0->0 | 0->0 | 0->0
+connected | 0->0 | 5->5 | 305->305 | 686->686 | 5->5 | 5685->5685 | 0->0
+soc-active | 0->0 | 5->5 | 305->305 | 686->686 | 5->5 | 341305->5685 | 0->0
+energy-active | 0->0 | 5->5 | 305->305 | 697->686 | 5->5 | 0->0 | 0->0
+soc-disconnected | 0->0 | 0->0 | 300->300 | 11->11 | 0->0 | 12514->5685 | 0->0
+energy-disconnected | 0->0 | 0->0 | 300->300 | 17->11 | 0->0 | 0->0 | 0->0
+soc-repeat | 300->0 | 605->5 | 606->306 | 7588->688 | 605->5 | 341305->5685 | 600->0
+energy-repeat | 300->0 | 605->5 | 606->306 | 8199->688 | 605->5 | 341305->0 | 600->0
+soc-repeat50 | 6->0 | 17->5 | 311->305 | 824->686 | 17->5 | 341305->5685 | 12->0
+energy-repeat50 | 6->0 | 17->5 | 311->305 | 847->686 | 17->5 | 6824->0 | 12->0
+soc-feedback | 0->0 | 5->5 | 306->306 | 988->988 | 5->5 | 341305->5685 | 0->0
+soc-live | 0->0 | 5->5 | 605->605 | 2186->2186 | 5->5 | 341305->5685 | 0->0
+soc-change | 3->3 | 11->11 | 308->308 | 755->755 | 17->17 | 343105->10362 | 6->6
+energy-change | 3->3 | 11->11 | 308->308 | 772->755 | 17->17 | 3478->3478 | 6->6
+soc-charging | 5->5 | 16->16 | 311->311 | 1157->1157 | 32->16 | 341305->5685 | 0->0
+energy-charging | 5->5 | 16->16 | 311->311 | 1179->1168 | 32->16 | 0->0 | 1->1
+soc-dynamic-guarantee | 6->6 | 18->18 | 312->312 | 1185->1185 | 36->18 | 341305->5685 | 0->0
+energy-dynamic-guarantee | 6->6 | 18->18 | 312->312 | 1209->1196 | 36->18 | 0->0 | 1->1
+soc-feedback1 | 0->0 | 5->5 | 306->306 | 1282->1282 | 5->5 | 341305->5685 | 0->0
+energy-feedback1 | 0->0 | 5->5 | 306->306 | 1287->982 | 5->5 | 0->0 | 0->0
+soc-charging-mode | 5->5 | 16->16 | 311->311 | 1169->1169 | 32->16 | 341305->5685 | 0->0
+energy-charging-mode | 5->5 | 16->16 | 311->311 | 1191->1180 | 32->16 | 0->0 | 1->1
+soc-dynamic-imminent-guarantee | 6->6 | 18->18 | 312->312 | 661->661 | 36->35 | 1105->15 | 0->0
+energy-dynamic-imminent-guarantee | 6->6 | 18->18 | 312->312 | 685->672 | 36->35 | 0->0 | 1->1
+soc-repeat-settings-events | 300->0 | 605->5 | 606->306 | 7588->688 | 605->5 | 341305->5685 | 600->0
+energy-repeat-settings-events | 600->0 | 1205->5 | 906->306 | 15699->688 | 1205->5 | 341305->0 | 600->0
+soc-change-settings-events | 6->3 | 17->11 | 311->308 | 824->755 | 25->17 | 343105->10362 | 6->6
+energy-change-settings-events | 6->3 | 17->11 | 311->308 | 847->755 | 25->17 | 3478->3478 | 6->6
+
+Mediane proces-CPU en wall-clock (ms)
+Profiel | CPU vóór -> na | Minder CPU | Wall-clock vóór -> na
+disconnected | 69.1->66.3 | 4.2% | 53.4->48.1
+connected | 168.9->174.8 | -3.5% | 144.7->150.9
+soc-active | 1502.3->177.9 | 88.2% | 1454.8->147.3
+energy-active | 148.7->149.2 | -0.3% | 119.3->120.0
+soc-disconnected | 123.0->102.3 | 16.8% | 101.7->79.1
+energy-disconnected | 82.5->72.1 | 12.6% | 61.7->50.9
+soc-repeat | 5524.4->183.6 | 96.7% | 5086.7->149.4
+energy-repeat | 5316.6->170.2 | 96.8% | 4950.5->137.8
+soc-repeat50 | 1632.9->175.1 | 89.3% | 1574.5->144.4
+energy-repeat50 | 282.2->156.4 | 44.6% | 237.4->124.7
+soc-feedback | 1428.5->182.5 | 87.2% | 1383.5->154.9
+soc-live | 1722.1->414.7 | 75.9% | 1639.2->353.0
+soc-change | 1544.8->287.5 | 81.4% | 1488.4->244.0
+energy-change | 241.4->221.6 | 8.2% | 204.9->188.2
+soc-charging | 1712.0->270.2 | 84.2% | 1655.7->230.0
+energy-charging | 326.3->257.8 | 21.0% | 280.5->215.7
+soc-dynamic-guarantee | 2014.2->577.7 | 71.3% | 1868.8->482.6
+energy-dynamic-guarantee | 717.3->635.4 | 11.4% | 588.6->527.3
+soc-feedback1 | 1593.7->241.8 | 84.8% | 1523.9->188.6
+energy-feedback1 | 208.6->205.3 | 1.6% | 167.6->166.9
+soc-charging-mode | 1747.7->299.6 | 82.9% | 1682.0->255.4
+energy-charging-mode | 341.9->269.2 | 21.3% | 298.5->222.8
+soc-dynamic-imminent-guarantee | 403.4->382.5 | 5.2% | 334.6->317.3
+energy-dynamic-imminent-guarantee | 389.4->356.3 | 8.5% | 321.0->296.0
+soc-repeat-settings-events | 5536.4->208.6 | 96.2% | 5100.4->177.4
+energy-repeat-settings-events | 8959.6->144.6 | 98.4% | 8504.3->119.6
+soc-change-settings-events | 1647.5->262.9 | 84.0% | 1584.5->225.6
+energy-change-settings-events | 277.9->220.0 | 20.8% | 243.6->186.9
+
+Selectie van functie-CPU uit de geïnstrumenteerde runs (inclusief geneste calls; geen som maken)
+
+soc-active
+Functie | Aanroepen vóór -> na | CPU ms vóór -> na
+setEvSocPlan | 0->0 | 0.000->0.000
+setEvEnergyPlan | 0->0 | 0.000->0.000
+getEvInstanceSettings | 686->686 | 1541.143->67.087
+findNextLocalTime | 686->686 | 1503.896->38.941
+tickEvEnergyPlan | 11->11 | 0.027->0.029
+calculateEvDecision | 5->5 | 25.478->31.620
+countEvTariffMinutes | 5->5 | 25.271->31.448
+calculateEvPortfolioDecisions | 5->5 | 28.756->34.115
+getEvGridImportControlStatus | 305->305 | 1530.434->88.453
+evaluateContextNow | 0->0 | 0.000->0.000
+evaluateFastNow | 6->6 | 4.800->4.803
+
+energy-charging
+Functie | Aanroepen vóór -> na | CPU ms vóór -> na
+setEvSocPlan | 0->0 | 0.000->0.000
+setEvEnergyPlan | 0->0 | 0.000->0.000
+getEvInstanceSettings | 1179->1168 | 33.155->30.843
+findNextLocalTime | 0->0 | 0.000->0.000
+tickEvEnergyPlan | 22->22 | 3.064->1.858
+calculateEvDecision | 16->16 | 166.390->87.092
+countEvTariffMinutes | 32->16 | 165.852->85.478
+calculateEvPortfolioDecisions | 16->16 | 177.386->94.140
+getEvGridImportControlStatus | 311->311 | 29.425->31.996
+evaluateContextNow | 5->5 | 124.603->68.291
+evaluateFastNow | 7->7 | 7.566->7.492
+
+energy-repeat-settings-events
+Functie | Aanroepen vóór -> na | CPU ms vóór -> na
+setEvSocPlan | 0->0 | 0.000->0.000
+setEvEnergyPlan | 300->300 | 4781.297->1.208
+getEvInstanceSettings | 15699->688 | 341.162->18.744
+findNextLocalTime | 300->0 | 1362.546->0.000
+tickEvEnergyPlan | 1211->11 | 43.586->0.071
+calculateEvDecision | 1205->5 | 5327.603->22.537
+countEvTariffMinutes | 1205->5 | 5297.018->22.356
+calculateEvPortfolioDecisions | 1205->5 | 5645.802->23.913
+getEvGridImportControlStatus | 906->306 | 99.856->31.990
+evaluateContextNow | 600->0 | 5425.467->0.000
+evaluateFastNow | 0->6 | 0.000->4.727
+
+Controle met werkelijk voortlopende klok
+De kalenderwinst is niet uitsluitend afkomstig van een bevroren replayklok. Een aparte proef roept getEvInstanceSettings() 300 keer met een actief SoC-doel aan, na telkens een echte korte timerpauze. Diagnostiek staat uit. In beide uitvoeringen zijn alle 300 waargenomen Date.now()-waarden verschillend. Deze proeven lopen na elkaar op echte tijd; absolute timestamps zijn daarom geen gelijk invoerpaar. De exacte deadlinegelijkheid is apart door de 975 referentietests bewezen.
+Kalenderconversies: 159900->533. CPU binnen instellingenopbouw: 611.084->30.410 ms. Totale proces-CPU inclusief timeradministratie: 650.109->67.101 ms. Wall-clock inclusief bewust wachten: 1212.880->656.580 ms. Geen meetfouten.
+
+Verificatie en bewijslimieten
+- npm run check: 69 testscripts en syntaxcontroles slagen. Ook alle bestaande batterij-, PV-, HVAC-, boiler-, multi-battery-, prijsbron-, EV-beschermings-, deadline-, timer-, Flow- en Input Monitor-regressies.
+- Nieuwe doelgerichte test: 33 scenario's plus 975 exacte kalender-/DST-vergelijkingen, waaronder alle ondersteunde IANA-zones op de controle-instanten, ontbrekende/dubbele lokale tijden, doelminuut, seconden/milliseconden, historische seconde-offsets en foutpaden.
+- 224 vergelijkende uitvoeringen: alle batterij- en EV-commando's, publicatietijdstippen en gecontroleerde energie-/deadline-/regelstatussnapshots zijn in alle 112 paren identiek. Het bewust voorkomen van reset/herstart door identieke input tijdens/na levering is apart als bugcorrectie getest.
+- Identieke doelkaarten 300 keer: geen configuratieopbouw, opslag of contextaanvraag vanuit die handlers. Input Monitor telt alle 300 werkelijk ontvangen updates, ook via de drie compatibiliteitsroutes.
+- Werkelijke waarde-, deadline-, garantie-, planningsvorm- en tijdzonewijzigingen blijven verwerkt. Nieuwe deadline-occurrence en restore/reconnect behouden hun werking. Meerdere EV's hebben eigen doelen; geen cache van hun laadbeslissing.
+- Correct kWh-verbruik uit feedback; geen refill bij identieke input, correcte hervatting bij reconnect, deadline-rollover zonder levering en geen onbedoelde herbewapening van een voltooid doel binnen dezelfde periode.
+- Een actieve SoC-planning alleen veroorzaakt geen nieuwe strategie-/energietelling bij iedere P1; de gevonden dure kalenderzoektocht in instellingenopbouw is gericht verminderd. De noodzakelijke actuele fysieke checks blijven bestaan.
+- Bij geselecteerd tarief: één tariefvenster per beslissing. Bij het verschoven garantievenster: beide verschillende berekeningen blijven. Dynamische kwartierprijzen met gegarandeerd doel zijn zowel op gunstig tarief als over de kwartiergrens naar noodzakelijke garantie getest; current en mode laden zijn apart opgenomen.
+- Reguliere 15 s-bundeling, herstel van verdwenen aanvragen, publicatiewachten, onmiddellijke Peak Guard-STOP, restbelasting en EV zonder batterij/regeling uit blijven afgedekt door de bestaande plus nieuwe tests.
+
+Niet bewezen: dat Fred een echte Flow-loop heeft, welke van de doelkaarten hij op welke frequentie uitvoert, welk percentage van zijn Homey-CPU bij de kalender-/tarief-/inputroutes hoort, of hoeveel hardwarewinst deze patch exact geeft. Een ongewijzigd actief kWh-plan had al geen SoC-kalenderscan per P1. Werkelijk gewijzigde doelen blijven volgens het bestaande directe pad herplannen; dit is geen nieuwe throttle voor een stroom van verschillende doelen. Geheugenvelden per replay zijn beschikbaar; er wordt geen precieze geheugenbesparing of langdurige fysieke apparaatstabiliteit geclaimd.
+
+Diagnostiek en instrumentatie
+Alle bestaande tellers blijven op dezelfde werkpunten staan. Nieuwe lichte tellers: evSocTargetInputs/Unchanged, evEnergyTargetInputs/Unchanged, evEnergyAccountingIdleSkipped en evPlanPersistenceEventsSkipped. Geen productieprofiler, tijdmeting per P1, extra timer/polling of uitgebreide log toegevoegd. De profilers zitten uitsluitend in test/ en worden via .homeyignore niet naar Homey geüpload. De bestaande Input Monitor-code en interface zijn byte-identiek; diens versieleverancier in app.js leest de werkelijke versie.
+
+Gewijzigde functies en bestanden
+app.js: onInit (alleen twee EV-persistencekeys in de settingslistener), getEvSocPlanDeadlineAt (nieuw), getEvInstanceSettings (SoC-kalenderpad), restoreEvEnergyPlanOverrides/restoreEvSocPlanOverrides en handleEvEnergyPlanConnectionTransition (lichte runtime-identiteit), isEvPlanGoalCurrent (nieuw), setEvSocPlan, setEvEnergyPlan en tickEvEnergyPlan. Alleen versievelden aangepast in getDiagnosticsReport, getInputMonitor (versieleverancier), simulatePlanning, refreshPlanningInContext en getPublicStatus.
+lib/flexible-loads.js: uitsluitend calculateEvDecision, met lokaal hergebruik van het identieke tariefvenster. findNextLocalTime, de bestaande 32-entrycache, countEvTariffMinutes en alle niet-EV-functies zijn ongewijzigd.
+package.json: extra tests/checks, geen versie-/dependencywijziging. test/app-control.test.js: de versieassertie volgt app.json. Nieuwe testbestanden: ev-plan-1.1.15.test.js, ev-plan-probe-1.1.15.cjs, ev-plan-comparison-1.1.15.cjs en ev-plan-clock-1.1.15.cjs. README.md/.homeychangelog.json: aangevulde NL/EN-release notes binnen 1.1.15. Geen versieverhoging.
+
+Bestanden en herhalen
+cpu-comparison.json bevat alle 224 uitvoeringen, functie-CPU/aantallen, aanvraag-/uitvoeringstellers, per-fasegegevens, opslag, actuatortraces, snapshots en proces-/geheugenmetingen. measurements.csv geeft de compacte matrix. real-clock-before/after.json bevat de echte-klokcontrole. regression-check.log bevat de volledige controle-uitvoer. changes.patch en source-scope.json tonen de afbakening; source-1.1.15-before-sha256.json legt de referentiebron vast.
+Vanuit de bijgewerkte bronmap:
+  npm run check
+  EV_PLAN_COMPARISON_OUTPUT=/pad/naar/resultaat.json node test/ev-plan-comparison-1.1.15.cjs /pad/naar/oorspronkelijke-1.1.15
+  node --expose-gc test/ev-plan-clock-1.1.15.cjs /pad/naar/oorspronkelijke-1.1.15
+  node --expose-gc test/ev-plan-clock-1.1.15.cjs /pad/naar/bijgewerkte-1.1.15
+EV_PLAN_RUNS en EV_PLAN_SECONDS regelen de matrix; EV_PLAN_FILTER kiest profielen. De oorspronkelijke 1.1.15-bron staat niet dubbel in deze ZIP en blijft via de vorige bundelversie beschikbaar.
+
+Conclusie
+De twee planningsmethoden hebben verschillende structurele kosten. Actief SoC vroeg ook zonder nieuwe doelinputs herhaald zwaar kalenderwerk; herhaalde SoC- én kWh-doelen forceerden bovendien planning en opslag. Tijdens geselecteerd-tarief-laden was er een aantoonbaar dubbel tariefvenster. Deze routes zijn gericht verminderd, met behoud van fysieke controles, deadlinegedrag en laaduitkomsten in de vergelijkende proeven. De appversie blijft 1.1.15.

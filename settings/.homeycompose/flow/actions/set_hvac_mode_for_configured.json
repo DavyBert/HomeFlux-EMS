@@ -1,0 +1,73 @@
+{
+  "title": {
+    "en": "Set HVAC mode",
+    "nl": "Stel HVAC-modus in"
+  },
+  "args": [
+    {
+      "name": "hvac",
+      "type": "autocomplete",
+      "title": {
+        "en": "HVAC",
+        "nl": "HVAC"
+      },
+      "placeholder": {
+        "en": "Select configured HVAC",
+        "nl": "Kies geconfigureerde HVAC"
+      }
+    },
+    {
+      "name": "mode",
+      "type": "dropdown",
+      "title": {
+        "en": "Mode",
+        "nl": "Modus"
+      },
+      "values": [
+        {
+          "id": "off",
+          "title": {
+            "en": "Off",
+            "nl": "Uit"
+          }
+        },
+        {
+          "id": "cool",
+          "title": {
+            "en": "Cooling",
+            "nl": "Koelen"
+          }
+        },
+        {
+          "id": "heat",
+          "title": {
+            "en": "Heating",
+            "nl": "Verwarmen"
+          }
+        },
+        {
+          "id": "auto",
+          "title": {
+            "en": "Auto",
+            "nl": "Automatisch"
+          }
+        },
+        {
+          "id": "fan",
+          "title": {
+            "en": "Fan only",
+            "nl": "Alleen ventilatie"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "en": "Set [[hvac]] mode to [[mode]]",
+    "nl": "Stel [[hvac]]-modus in op [[mode]]"
+  },
+  "hint": {
+    "en": "Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  }
+}

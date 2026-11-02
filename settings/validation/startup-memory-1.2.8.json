@@ -1,0 +1,27 @@
+{
+  "upgrade": {
+    "allocatedKiBByFunction": {
+      "refreshSettingsCache": 1660.25,
+      "prepareControlContext": 1499.03125,
+      "evaluate": 1440.921875,
+      "buildSocPlan": 1636.7890625,
+      "batterySettings": 0
+    },
+    "totalAllocatedMiB": 6.090812683105469
+  },
+  "v128": {
+    "allocatedKiBByFunction": {
+      "refreshSettingsCache": 1628.1484375,
+      "prepareControlContext": 16.625,
+      "evaluate": 24.5546875,
+      "buildSocPlan": 24.9609375,
+      "batterySettings": 115.9140625
+    },
+    "totalAllocatedMiB": 1.7677764892578125
+  },
+  "notes": [
+    "Simulated Homey startup with Node v24.22.1; Homey SDK and resource monitor are mocked.",
+    "Sampling allocations include the new batterySettings helper; totals are allocations, not simultaneous live heap or a Homey memory-limit measurement.",
+    "The full app settings and upgrade writes remain intact; the battery-only calculation projection excludes HVAC fields."
+  ]
+}

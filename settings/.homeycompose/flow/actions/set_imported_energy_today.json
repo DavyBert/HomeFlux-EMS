@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Set imported energy today",
+    "nl": "Geïmporteerde energie vandaag"
+  },
+  "hint": {
+    "en": "Send the cumulative grid-import energy for today in kWh. HomeFlux uses it only to proportionally correct the live calculated grid-consumption and battery-charging totals for Savings.",
+    "nl": "Stuur de cumulatieve netafname van vandaag in kWh. HomeFlux gebruikt deze alleen om de live berekende waarden voor rechtstreeks netverbruik en netladen in Winst evenredig te corrigeren."
+  },
+  "args": [
+    {
+      "name": "energy",
+      "type": "number",
+      "title": {
+        "en": "Imported energy today (kWh)",
+        "nl": "Geïmporteerde energie vandaag (kWh)"
+      },
+      "min": 0,
+      "max": 10000,
+      "step": 0.001
+    }
+  ],
+  "titleFormatted": {
+    "en": "Imported energy today is [[energy]] kWh",
+    "nl": "Geïmporteerde energie vandaag is [[energy]] kWh"
+  }
+}

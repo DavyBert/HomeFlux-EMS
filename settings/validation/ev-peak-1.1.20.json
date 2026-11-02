@@ -1,0 +1,641 @@
+[
+  {
+    "name": "Mode cannot bypass an uncertain high house reference using Flow amperes",
+    "current": {
+      "type": "mode",
+      "seconds": 660,
+      "baseline": 4000,
+      "houseW": 700,
+      "feedback": "fresh",
+      "actualA": null,
+      "evs": 1,
+      "batteryEnabled": false,
+      "stopCount": 0,
+      "events": [],
+      "finalAmps": [
+        6
+      ],
+      "finalAccounting": {
+        "gridPowerW": 4857,
+        "batteryDischargeW": 0,
+        "reservedBatteryChargeW": 0,
+        "currentEvPowerW": 0,
+        "currentInstancePowerW": 0,
+        "maxRequestedEvPowerW": 11085,
+        "peakBudgetW": 10043,
+        "peakLimitW": 15000,
+        "peakSoftMarginW": 100,
+        "houseBaselineW": 4000,
+        "observedModePowerW": 0
+      },
+      "cpuMs": 4354.649
+    },
+    "baseline": null
+  },
+  {
+    "name": "Actual lower delivery stays authoritative and kWh progress counts measured current",
+    "measuredA": 8,
+    "requestedA": 16,
+    "deliveredKwh": 0.046188021535170876
+  },
+  {
+    "name": "Genuine peak overload still stops and retains the 300-second hold",
+    "type": "mode",
+    "seconds": 20,
+    "baseline": 4000,
+    "houseW": 13000,
+    "feedback": "fresh",
+    "actualA": null,
+    "evs": 1,
+    "batteryEnabled": false,
+    "stopCount": 1,
+    "events": [
+      {
+        "second": 1,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 24085.125168440813,
+        "measuredFresh": true,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 24085,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 0,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": 11085.125168440814
+        }
+      }
+    ],
+    "finalAmps": [
+      0
+    ],
+    "finalAccounting": {
+      "gridPowerW": 13000,
+      "batteryDischargeW": 0,
+      "reservedBatteryChargeW": 0,
+      "currentEvPowerW": 0,
+      "currentInstancePowerW": 0,
+      "maxRequestedEvPowerW": 11085,
+      "peakBudgetW": 1900,
+      "peakLimitW": 15000,
+      "peakSoftMarginW": 100,
+      "houseBaselineW": 4000,
+      "observedModePowerW": 0
+    },
+    "cpuMs": 137.249
+  },
+  {
+    "name": "Stale positive telemetry falls back conservatively instead of financing false headroom",
+    "type": "current",
+    "seconds": 125,
+    "baseline": 4000,
+    "houseW": 700,
+    "feedback": "stale",
+    "actualA": null,
+    "evs": 1,
+    "batteryEnabled": false,
+    "stopCount": 8,
+    "events": [
+      {
+        "second": 62,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 69,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 70,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 77,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 78,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 85,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 86,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 93,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 94,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 101,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 102,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 109,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 110,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 117,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 118,
+        "ev": 1,
+        "on": false,
+        "amps": 0,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": false,
+        "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 3115,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      },
+      {
+        "second": 125,
+        "ev": 1,
+        "on": true,
+        "amps": 16,
+        "gridPowerW": 700,
+        "measuredFresh": false,
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 700,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 0,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      }
+    ],
+    "finalAmps": [
+      16
+    ],
+    "finalAccounting": {
+      "gridPowerW": 700,
+      "batteryDischargeW": 0,
+      "reservedBatteryChargeW": 0,
+      "currentEvPowerW": 0,
+      "currentInstancePowerW": 0,
+      "maxRequestedEvPowerW": 11085,
+      "peakBudgetW": 11085,
+      "peakLimitW": 15000,
+      "peakSoftMarginW": 100,
+      "houseBaselineW": 4000,
+      "observedModePowerW": null
+    },
+    "cpuMs": 677.248
+  },
+  {
+    "name": "Mode-only integration without current measurement retains P1 inference",
+    "type": "mode",
+    "seconds": 125,
+    "baseline": 700,
+    "houseW": 700,
+    "feedback": "zero",
+    "actualA": null,
+    "evs": 1,
+    "batteryEnabled": false,
+    "stopCount": 0,
+    "events": [],
+    "finalAmps": [
+      16
+    ],
+    "finalAccounting": {
+      "gridPowerW": 11785,
+      "batteryDischargeW": 0,
+      "reservedBatteryChargeW": 0,
+      "currentEvPowerW": 11085,
+      "currentInstancePowerW": 11085,
+      "maxRequestedEvPowerW": 11085,
+      "peakBudgetW": 11085,
+      "peakLimitW": 15000,
+      "peakSoftMarginW": 100,
+      "houseBaselineW": 700,
+      "observedModePowerW": 11085.125168440814
+    },
+    "cpuMs": 775.073
+  },
+  {
+    "name": "Current and hybrid charger control retain safe physical accounting",
+    "reports": [
+      {
+        "type": "current",
+        "seconds": 90,
+        "baseline": 4000,
+        "houseW": 700,
+        "feedback": "fresh",
+        "actualA": null,
+        "evs": 1,
+        "batteryEnabled": false,
+        "stopCount": 0,
+        "events": [],
+        "finalAmps": [
+          16
+        ],
+        "finalAccounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 11085,
+          "currentInstancePowerW": 11085,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        },
+        "cpuMs": 504.564
+      },
+      {
+        "type": "hybrid",
+        "seconds": 90,
+        "baseline": 4000,
+        "houseW": 700,
+        "feedback": "fresh",
+        "actualA": null,
+        "evs": 1,
+        "batteryEnabled": false,
+        "stopCount": 0,
+        "events": [],
+        "finalAmps": [
+          16
+        ],
+        "finalAccounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 11085,
+          "currentInstancePowerW": 11085,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        },
+        "cpuMs": 564.343
+      }
+    ]
+  },
+  {
+    "name": "Multiple mode EVs share one Peak Guard budget",
+    "type": "mode",
+    "seconds": 90,
+    "baseline": 4000,
+    "houseW": 700,
+    "feedback": "fresh",
+    "actualA": null,
+    "evs": 2,
+    "batteryEnabled": false,
+    "stopCount": 0,
+    "events": [
+      {
+        "second": 7,
+        "ev": 2,
+        "on": true,
+        "amps": 6,
+        "gridPowerW": 11785.125168440814,
+        "measuredFresh": true,
+        "reason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+        "accounting": {
+          "gridPowerW": 11785,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 7785,
+          "currentInstancePowerW": 0,
+          "maxRequestedEvPowerW": 22170,
+          "peakBudgetW": 10900,
+          "peakLimitW": 15000,
+          "peakSoftMarginW": 100,
+          "houseBaselineW": 4000,
+          "observedModePowerW": null
+        }
+      }
+    ],
+    "finalAmps": [
+      6,
+      6
+    ],
+    "finalAccounting": {
+      "gridPowerW": 9014,
+      "batteryDischargeW": 0,
+      "reservedBatteryChargeW": 0,
+      "currentEvPowerW": 5014,
+      "currentInstancePowerW": 2507,
+      "maxRequestedEvPowerW": 22170,
+      "peakBudgetW": 10900,
+      "peakLimitW": 15000,
+      "peakSoftMarginW": 100,
+      "houseBaselineW": 4000,
+      "observedModePowerW": null
+    },
+    "cpuMs": 649.149,
+    "predictedGridW": 9013.843876330611
+  },
+  {
+    "name": "Full planning diagnostic exposes Emergency-only Peak Guard arithmetic",
+    "accounting": {
+      "gridPowerW": 11785,
+      "batteryDischargeW": 0,
+      "reservedBatteryChargeW": 0,
+      "currentEvPowerW": 11085,
+      "currentInstancePowerW": 11085,
+      "maxRequestedEvPowerW": 11085,
+      "peakBudgetW": 11085,
+      "peakLimitW": 15000,
+      "peakSoftMarginW": 100,
+      "houseBaselineW": 700,
+      "observedModePowerW": 11085.125168440814
+    }
+  }
+]

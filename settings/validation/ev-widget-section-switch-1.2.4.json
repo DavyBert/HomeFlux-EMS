@@ -1,0 +1,32 @@
+{
+  "version": "1.2.4",
+  "change": "Opt-in Planning / Insights header switch",
+  "default": false,
+  "setting": "switchSections",
+  "baseSha256": "e0f592347fd847fcbc6bd1ef386afb65a07ca39f564980aca810a0488d90fc76",
+  "baseLibraryVersion": 8,
+  "changedFiles": [
+    "README.md",
+    "app.json",
+    "docs/ev-dashboard-1.2.4.md",
+    "locales/en.json",
+    "locales/nl.json",
+    "test/ev-widget-ui-1.2.4.test.js",
+    "validation/ev-widget-ui-1.2.4.json",
+    "widgets/ev/public/index.html",
+    "widgets/ev/widget.compose.json"
+  ],
+  "widgetDomCases": 25,
+  "schedulerCases": 21,
+  "additionalPassedSuites": [
+    "widget.test.js",
+    "settings-translations.test.js"
+  ],
+  "staticRenderCases": 16,
+  "nativeHomeyTested": false,
+  "browserTested": false,
+  "performanceRemeasured": false,
+  "entirePriorSuiteRerun": false,
+  "plannerAndControlAndAccountingByteUnchanged": true,
+  "tabSwitchExtraApiRequests": 0
+}

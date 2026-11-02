@@ -88,6 +88,7 @@ for (const d of CONFIGURED_CARDS) {
       },
     }))];
   }
+  if (d.id === 'set_hvac_automatic_control_for_configured') expectedArgs.push({ name:'standby_temperature', type:'number', required:false, min:5, max:99, step:0.5, title:{en:'Standby temperature (optional)',nl:'Stand-bytemperatuur (optioneel)'}, placeholder:{en:'Leave empty to retain setting',nl:'Leeg = instelling behouden'} });
   assert.deepEqual(card.args.filter(a => a.name !== d.argument), expectedArgs);
   const arg = card.args.find(a => a.name === d.argument);
   assert.equal(arg.type, 'autocomplete');

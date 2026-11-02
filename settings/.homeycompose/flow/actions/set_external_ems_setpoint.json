@@ -1,0 +1,27 @@
+{
+  "title": {
+    "en": "Report external EMS battery power",
+    "nl": "Rapporteer batterijvermogen externe EMS"
+  },
+  "hint": {
+    "en": "Report the actual battery power used by the external EMS back to HomeFlux while Hybrid EMS is delegated. Positive = discharge, negative = charge.",
+    "nl": "Rapporteer tijdens Hybrid EMS het werkelijk gebruikte batterijvermogen van de externe EMS aan HomeFlux. Positief = ontladen, negatief = laden."
+  },
+  "args": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "External EMS battery power (W)",
+        "nl": "Batterijvermogen externe EMS (W)"
+      },
+      "min": -50000,
+      "max": 50000,
+      "step": 1
+    }
+  ],
+  "titleFormatted": {
+    "en": "Report external EMS battery power: [[power]] W",
+    "nl": "Rapporteer batterijvermogen externe EMS: [[power]] W"
+  }
+}

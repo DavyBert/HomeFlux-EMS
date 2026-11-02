@@ -1,0 +1,136 @@
+[
+  {
+    "kind": "syntax",
+    "file": "app.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "syntax",
+    "file": "lib/ems-status-tags.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "syntax",
+    "file": "test/widget-decision-1.2.14.test.js",
+    "passed": true,
+    "output": "PASS 1.2.14 widget decisions: 32 NL/EN action/reason/fallback cases, EV/boiler contradictions, real night plan, pending output, pause, stale input and read-only status.\n"
+  },
+  {
+    "kind": "syntax",
+    "file": "test/widget.test.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "syntax",
+    "file": "test/settings-startup.test.js",
+    "passed": true,
+    "output": ""
+  },
+  {
+    "kind": "regression",
+    "file": "test/widget-decision-1.2.14.test.js",
+    "passed": true,
+    "seconds": 0.19,
+    "output": "PASS 1.2.14 widget decisions: 32 NL/EN action/reason/fallback cases, EV/boiler contradictions, real night plan, pending output, pause, stale input and read-only status.\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/features-1.2.9.test.js",
+    "passed": true,
+    "seconds": 0.404,
+    "output": "1.2.9: 16 scenario groups passed (56 EV extension combinations plus lifecycle, tags and compatibility).\n",
+    "initialFailure": "Fixture combined inputReady=true with waiting_input and disabled live control. It also changed an irrelevant mode description while an explicit pause reason remained authoritative.",
+    "fixtureCorrection": "Seeded matching live readiness/control and a real non-waiting base mode; changing the tested reason now changes the explicit pause reason. Existing changed-only and API/Logic equality assertions remain intact."
+  },
+  {
+    "kind": "regression",
+    "file": "test/widget.test.js",
+    "passed": true,
+    "seconds": 0.053,
+    "output": "widget tests passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/settings-startup.test.js",
+    "passed": true,
+    "seconds": 0.089,
+    "output": "settings startup tests passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/input-warnings-widget-1.2.12.test.js",
+    "passed": true,
+    "seconds": 0.224,
+    "output": "PASS input warning widget: real Flow receipts/recovery, NL/EN, overflow, critical priority, unchanged WAF/status, no control work or timers\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/settings-translations.test.js",
+    "passed": true,
+    "seconds": 0.055,
+    "output": "settings translation bundle tests passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/charge-strategy-control-1.2.12.test.js",
+    "passed": true,
+    "seconds": 0.285,
+    "output": "PASS charge strategy control: slow-only planning, fast/heartbeat reuse, changing load, restart, migration and single month selector\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/app-control.test.js",
+    "passed": true,
+    "seconds": 0.785,
+    "output": "HomeFlux EMS app control tests: OK\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/features-control-1.2.9.test.js",
+    "passed": true,
+    "seconds": 1.524,
+    "output": "1.2.9 control: 4 production-path groups passed; Current/Hybrid/Mode, four EVs, Peak Guard, P1 cache and SoC completion.\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-widget-regression-1.2.4.test.js",
+    "passed": true,
+    "seconds": 1.264,
+    "output": "EV source/Flow regression and performance comparison passed baseline not supplied\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/ev-widget-emergency-1.2.4.test.js",
+    "passed": true,
+    "seconds": 0.205,
+    "output": "EV widget Emergency: 7 groups passed\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/hvac-ui-1.2.7.test.js",
+    "passed": true,
+    "seconds": 0.953,
+    "output": "HVAC UI: 80 conditional-field combinations plus 1920 comfort/activation/source combinations, 10-channel form schema and three-column widget DOM checks passed.\n"
+  },
+  {
+    "kind": "regression",
+    "file": "test/multi-flexible-loads.test.js",
+    "passed": true,
+    "seconds": 0.134,
+    "output": "multi flexible-load tests passed\n"
+  },
+  {
+    "kind": "syntax",
+    "file": "test/features-1.2.9.test.js",
+    "passed": true
+  },
+  {
+    "kind": "metadata",
+    "file": "startup logging and loop detection",
+    "passed": true,
+    "version": "1.2.14"
+  }
+]

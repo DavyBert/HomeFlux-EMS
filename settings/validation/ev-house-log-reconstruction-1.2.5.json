@@ -1,0 +1,4520 @@
+{
+  "version": "1.2.5-house-publication-fix",
+  "inputBaselineZipSha256": "3cf65de95d6d9378fa3d5eff0f088169077999f39a09bfa5da868995b1297599",
+  "method": "independent logged Emergency decision snapshots; real detector, allocator and output policy",
+  "exactContinuousInputReplay": false,
+  "physicalHardwareTested": false,
+  "assumptions": [
+    "PV receipt timestamps absent: PV assumed fresh at each decision",
+    "Recorded house baseline and published EV state restored per snapshot; omitted prehistory is not invented",
+    "Only existing physical battery command is allowed; no unrecorded pending candidate grants support",
+    "Recorded restart hold is restored when its remaining duration is explicitly logged",
+    "The transient cfg-9 persisted widget goal contradicts the recorded Emergency runtime branch; the logged explicit-clear branch is restored for those snapshots",
+    "The 5,500-W baseline sensitivity is hypothetical only and is not substituted for any historical measurement",
+    "No between-snapshot P1 interpolation; new decisions are not propagated into a fictional physical plant"
+  ],
+  "logs": [
+    {
+      "name": "Geplakte tekst(20261027-150928).txt",
+      "generatedAt": 1793113757497,
+      "totalRecordedDecisions": 53,
+      "originalPublishedStops": [
+        {
+          "at": 1793112826691,
+          "id": "evt-6"
+        },
+        {
+          "at": 1793112926749,
+          "id": "evt-27"
+        },
+        {
+          "at": 1793113035994,
+          "id": "evt-39"
+        },
+        {
+          "at": 1793113096249,
+          "id": "evt-51"
+        },
+        {
+          "at": 1793113432650,
+          "id": "evt-84"
+        },
+        {
+          "at": 1793113704224,
+          "id": "evt-117"
+        }
+      ],
+      "testedEmergencyDecisions": 46,
+      "newStopDecisions": 25,
+      "budgetStops": 7,
+      "restartHolds": 18,
+      "activeToStop": [
+        "evt-79"
+      ],
+      "sensitivity": {
+        "eventId": "evt-79",
+        "at": 1793113432407,
+        "gridW": 8608,
+        "pvW": 763,
+        "batteryW": -100,
+        "baselineW": 5500,
+        "source": "emergency",
+        "transientWidgetGoal": false,
+        "publicationProof": null,
+        "published": {
+          "currentA": 0,
+          "mode": "smart",
+          "allowed": true,
+          "publishedAt": 1793113156476
+        },
+        "originalCalculated": {
+          "currentA": 0,
+          "powerW": 0,
+          "mode": "stop",
+          "allowed": false
+        },
+        "originalOutput": {
+          "currentA": 0,
+          "mode": "stop",
+          "allowed": false
+        },
+        "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+        "originalCurrentEvW": 0,
+        "observedEvW": 3770.9999999999995,
+        "newCalculated": {
+          "currentA": 16,
+          "mode": "smart",
+          "allowed": true
+        },
+        "output": {
+          "currentA": 16,
+          "mode": "smart",
+          "allowed": true,
+          "stopReason": null
+        },
+        "reason": "Emergency charge · maximaal vermogen",
+        "accounting": {
+          "gridPowerW": 8608,
+          "batteryDischargeW": 0,
+          "reservedBatteryChargeW": 0,
+          "currentEvPowerW": 3771,
+          "currentInstancePowerW": 3771,
+          "maxRequestedEvPowerW": 11085,
+          "peakBudgetW": 11085,
+          "peakLimitW": 19500,
+          "peakSoftMarginW": 10,
+          "houseBaselineW": 5500,
+          "observedModePowerW": 3770.9999999999995
+        },
+        "batterySupportW": 0,
+        "importedAllowanceW": 11085,
+        "sourceValid": true,
+        "siteW": 9271,
+        "detectedW": 0,
+        "minPlausibleEvW": 3325.5375505322445
+      },
+      "results": [
+        {
+          "eventId": "evt-33",
+          "at": 1793113035627,
+          "gridW": 6521,
+          "pvW": 769,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": true,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793112926749
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 72 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6521,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7190,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-40",
+          "at": 1793113036059,
+          "gridW": 6666,
+          "pvW": 769,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113035994
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 71 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6666,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7335,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-41",
+          "at": 1793113059949,
+          "gridW": 6334,
+          "pvW": 1013,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113035994
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 47 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6334,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7247,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-42",
+          "at": 1793113066323,
+          "gridW": 6474,
+          "pvW": 1013,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113035994
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 41 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6474,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7387,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-43",
+          "at": 1793113078441,
+          "gridW": 6583,
+          "pvW": 1031,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113035994
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 29 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6583,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7514,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-44",
+          "at": 1793113089713,
+          "gridW": 6940,
+          "pvW": 1031,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113035994
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 18 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6940,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7871,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-47",
+          "at": 1793113096028,
+          "gridW": 6461,
+          "pvW": 1031,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113035994
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 11 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6461,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7392,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-52",
+          "at": 1793113113910,
+          "gridW": 12334,
+          "pvW": 1031,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113096249
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 12334,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 7156,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": false,
+          "siteW": 13265,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-54",
+          "at": 1793113126292,
+          "gridW": 12889,
+          "pvW": 1031,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113096249
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 12889,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 6601,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": false,
+          "siteW": 13820,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-55",
+          "at": 1793113149767,
+          "gridW": 6751,
+          "pvW": 1007,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113096249
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6751,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7658,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-59",
+          "at": 1793113156277,
+          "gridW": 7044,
+          "pvW": 1007,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113096249
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7044,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7951,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-64",
+          "at": 1793113186335,
+          "gridW": 6673,
+          "pvW": 827,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6673,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 7400,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-65",
+          "at": 1793113192166,
+          "gridW": 5393,
+          "pvW": 806,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5393,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6099,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-66",
+          "at": 1793113216038,
+          "gridW": 5914,
+          "pvW": 806,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5914,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6620,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-67",
+          "at": 1793113239921,
+          "gridW": 7265,
+          "pvW": 806,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7265,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 7971,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-68",
+          "at": 1793113246298,
+          "gridW": 6716,
+          "pvW": 806,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6716,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 7422,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-69",
+          "at": 1793113252226,
+          "gridW": 7237,
+          "pvW": 794,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7237,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 7931,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-70",
+          "at": 1793113270919,
+          "gridW": 6238,
+          "pvW": 794,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6238,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6932,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-71",
+          "at": 1793113302901,
+          "gridW": 5389,
+          "pvW": 794,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5389,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6083,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-72",
+          "at": 1793113312284,
+          "gridW": 5518,
+          "pvW": 775,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5518,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6193,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-73",
+          "at": 1793113340908,
+          "gridW": 5289,
+          "pvW": 775,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5289,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 5964,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-74",
+          "at": 1793113366303,
+          "gridW": 5142,
+          "pvW": 775,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5142,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 5817,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-75",
+          "at": 1793113372348,
+          "gridW": 5223,
+          "pvW": 774,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5223,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 5897,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-76",
+          "at": 1793113387900,
+          "gridW": 5807,
+          "pvW": 774,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5807,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6481,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-77",
+          "at": 1793113406888,
+          "gridW": 6354,
+          "pvW": 774,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6354,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 7028,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-78",
+          "at": 1793113426301,
+          "gridW": 7371,
+          "pvW": 774,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7371,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 8045,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-79",
+          "at": 1793113432407,
+          "gridW": 8608,
+          "pvW": 763,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": {
+            "simulatedHomeyIo": true,
+            "sent": [
+              {
+                "component": "mode",
+                "tokens": {
+                  "charge_mode": "stop",
+                  "reason": "Peak Guard allows no combined EV charging power"
+                }
+              },
+              {
+                "component": "allowed",
+                "tokens": {
+                  "allowed": "No",
+                  "allowed_value": 0,
+                  "reason": "Peak Guard allows no combined EV charging power"
+                }
+              }
+            ],
+            "resultingMode": "stop",
+            "resultingAllowed": false,
+            "stopHoldUntil": 1793113612407
+          },
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113156476
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 8608,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 10882,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": true,
+          "siteW": 9271,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-86",
+          "at": 1793113447926,
+          "gridW": 10248,
+          "pvW": 763,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 10248,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 9242,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": false,
+          "siteW": 10911,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-87",
+          "at": 1793113463901,
+          "gridW": 13942,
+          "pvW": 763,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 13942,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 5548,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": false,
+          "siteW": 14605,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-88",
+          "at": 1793113478933,
+          "gridW": 7850,
+          "pvW": 613,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 134 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7850,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 8363,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-90",
+          "at": 1793113486347,
+          "gridW": 8069,
+          "pvW": 613,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 127 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 8069,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 8582,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-91",
+          "at": 1793113492166,
+          "gridW": 8434,
+          "pvW": 613,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 8434,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11056,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": false,
+          "siteW": 8947,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-93",
+          "at": 1793113507886,
+          "gridW": 8076,
+          "pvW": 613,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 105 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 8076,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 8589,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-95",
+          "at": 1793113546308,
+          "gridW": 8457,
+          "pvW": 613,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "output": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "insufficient_safe_budget"
+          },
+          "reason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "accounting": {
+            "gridPowerW": 8457,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11033,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 0,
+          "sourceValid": false,
+          "siteW": 8970,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-97",
+          "at": 1793113552229,
+          "gridW": 7047,
+          "pvW": 607,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 61 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7047,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7554,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-99",
+          "at": 1793113567909,
+          "gridW": 6771,
+          "pvW": 607,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 45 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6771,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7278,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-100",
+          "at": 1793113586888,
+          "gridW": 5791,
+          "pvW": 607,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 26 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5791,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 6298,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-101",
+          "at": 1793113606307,
+          "gridW": 5048,
+          "pvW": 600,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 7 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5048,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 5548,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-102",
+          "at": 1793113612287,
+          "gridW": 4769,
+          "pvW": 599,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 1 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 4769,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 5268,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-103",
+          "at": 1793113666310,
+          "gridW": 5397,
+          "pvW": 599,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113432650
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5397,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 5896,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-109",
+          "at": 1793113672346,
+          "gridW": 6238,
+          "pvW": 598,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113666549
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6238,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6736,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-110",
+          "at": 1793113687898,
+          "gridW": 7079,
+          "pvW": 598,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113666549
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7079,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 7577,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-111",
+          "at": 1793113703872,
+          "gridW": 10880,
+          "pvW": 598,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793113666549
+          },
+          "originalCalculated": {
+            "currentA": 0,
+            "powerW": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalOutput": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "Peak Guard laat geen gezamenlijk EV-laadvermogen toe",
+          "originalCurrentEvW": 0,
+          "observedEvW": 4264.604519774012,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 10880,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 4265,
+            "currentInstancePowerW": 4265,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 4264.604519774012
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 11378,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-118",
+          "at": 1793113721889,
+          "gridW": 5269,
+          "pvW": 598,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113704224
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 163 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 5269,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 5767,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-120",
+          "at": 1793113726300,
+          "gridW": 7303,
+          "pvW": 598,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113704224
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 158 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 7303,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7801,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-121",
+          "at": 1793113732405,
+          "gridW": 6807,
+          "pvW": 599,
+          "batteryW": -100,
+          "baselineW": 7113.395480225988,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793113704224
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false
+          },
+          "originalReason": "EV stopwachttijd · herstart opnieuw beoordelen over 152 s",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "stop",
+            "allowed": false,
+            "stopReason": "restart_hold"
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 6807,
+            "batteryDischargeW": 0,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 19500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7113.395480225988,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 7306,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        }
+      ]
+    },
+    {
+      "name": "Geplakte tekst(20261028-151211).txt",
+      "generatedAt": 1793200320946,
+      "totalRecordedDecisions": 24,
+      "originalPublishedStops": [],
+      "testedEmergencyDecisions": 24,
+      "newStopDecisions": 0,
+      "budgetStops": 0,
+      "restartHolds": 0,
+      "activeToStop": [],
+      "sensitivity": null,
+      "results": [
+        {
+          "eventId": "evt-2",
+          "at": 1793199923958,
+          "gridW": 995,
+          "pvW": 3172,
+          "batteryW": 2500,
+          "baselineW": 8302.663386727689,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793199788851
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 995,
+            "batteryDischargeW": 2500,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 8302.663386727689,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": false,
+          "siteW": 6667,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-11",
+          "at": 1793199968059,
+          "gridW": 4610,
+          "pvW": 3156,
+          "batteryW": 5000,
+          "baselineW": 8302.663386727689,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793199788851
+          },
+          "originalCalculated": {
+            "currentA": 6,
+            "powerW": 4157,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+          "accounting": {
+            "gridPowerW": 4610,
+            "batteryDischargeW": 5000,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 6880,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 8302.663386727689,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 4157,
+          "sourceValid": false,
+          "siteW": 12766,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-15",
+          "at": 1793199968883,
+          "gridW": 4742,
+          "pvW": 3156,
+          "batteryW": 5000,
+          "baselineW": 8302.663386727689,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "stop",
+            "allowed": false,
+            "publishedAt": 1793199788851
+          },
+          "originalCalculated": {
+            "currentA": 6,
+            "powerW": 4157,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+          "accounting": {
+            "gridPowerW": 4742,
+            "batteryDischargeW": 5000,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 6748,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 8302.663386727689,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 4157,
+          "sourceValid": false,
+          "siteW": 12898,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-23",
+          "at": 1793199982159,
+          "gridW": 1802,
+          "pvW": 3156,
+          "batteryW": 5000,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 6,
+            "powerW": 4157,
+            "mode": "smart",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 6,
+            "mode": "smart",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen · verdeeld volgens EV-gewicht · begrensd door gezamenlijke Peak Guard",
+          "accounting": {
+            "gridPowerW": 1802,
+            "batteryDischargeW": 5000,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 9688,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 4157,
+          "sourceValid": true,
+          "siteW": 9958,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-26",
+          "at": 1793200007835,
+          "gridW": -117,
+          "pvW": 3042,
+          "batteryW": 3600,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": -117,
+            "batteryDischargeW": 3600,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6525,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-32",
+          "at": 1793200028098,
+          "gridW": 42,
+          "pvW": 3030,
+          "batteryW": 3200,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 42,
+            "batteryDischargeW": 3200,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6272,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-36",
+          "at": 1793200040880,
+          "gridW": 810,
+          "pvW": 3030,
+          "batteryW": 2500,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 810,
+            "batteryDischargeW": 2500,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6340,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-43",
+          "at": 1793200084836,
+          "gridW": -4,
+          "pvW": 3030,
+          "batteryW": 3100,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": -4,
+            "batteryDischargeW": 3100,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6126,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-44",
+          "at": 1793200088063,
+          "gridW": -226,
+          "pvW": 3005,
+          "batteryW": 3100,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": -226,
+            "batteryDischargeW": 3100,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 5879,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-46",
+          "at": 1793200100943,
+          "gridW": 307,
+          "pvW": 3005,
+          "batteryW": 3100,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 307,
+            "batteryDischargeW": 3100,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6412,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-52",
+          "at": 1793200148066,
+          "gridW": 398,
+          "pvW": 2921,
+          "batteryW": 2500,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 398,
+            "batteryDischargeW": 2500,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 5819,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-53",
+          "at": 1793200149202,
+          "gridW": 151,
+          "pvW": 2921,
+          "batteryW": 2500,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "smart",
+            "allowed": true,
+            "publishedAt": 1793199969169
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 151,
+            "batteryDischargeW": 2500,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 5572,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-59",
+          "at": 1793200161003,
+          "gridW": 765,
+          "pvW": 2921,
+          "batteryW": 2700,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 0,
+          "observedEvW": 0,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 765,
+            "batteryDischargeW": 2700,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 0,
+            "currentInstancePowerW": 0,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 0
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 6386,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-61",
+          "at": 1793200170872,
+          "gridW": 11760,
+          "pvW": 2921,
+          "batteryW": 2700,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 9982,
+          "observedEvW": 9982.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 11760,
+            "batteryDischargeW": 2700,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 9982,
+            "currentInstancePowerW": 9982,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 9982.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 17381,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-71",
+          "at": 1793200197826,
+          "gridW": 9757,
+          "pvW": 2921,
+          "batteryW": 4100,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 9379,
+          "observedEvW": 9379.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 9757,
+            "batteryDischargeW": 4100,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 9379,
+            "currentInstancePowerW": 9379,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 9379.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 16778,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-81",
+          "at": 1793200208063,
+          "gridW": 9481,
+          "pvW": 2909,
+          "batteryW": 4100,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 9091,
+          "observedEvW": 9091.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 9481,
+            "batteryDischargeW": 4100,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 9091,
+            "currentInstancePowerW": 9091,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 9091.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 16490,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-98",
+          "at": 1793200223821,
+          "gridW": 10269,
+          "pvW": 2909,
+          "batteryW": 4400,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 10179,
+          "observedEvW": 10179.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 10269,
+            "batteryDischargeW": 4400,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 10179,
+            "currentInstancePowerW": 10179,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 10179.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 17578,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-100",
+          "at": 1793200230930,
+          "gridW": 10065,
+          "pvW": 2909,
+          "batteryW": 4400,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 9975,
+          "observedEvW": 9975.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 10065,
+            "batteryDischargeW": 4400,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 9975,
+            "currentInstancePowerW": 9975,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 9975.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 17374,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-105",
+          "at": 1793200246808,
+          "gridW": 11317,
+          "pvW": 2909,
+          "batteryW": 3800,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 10627,
+          "observedEvW": 10627.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 11317,
+            "batteryDischargeW": 3800,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 10627,
+            "currentInstancePowerW": 10627,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 10627.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 18026,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-110",
+          "at": 1793200261844,
+          "gridW": 10184,
+          "pvW": 2827,
+          "batteryW": 4200,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 9812,
+          "observedEvW": 9812.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 10184,
+            "batteryDischargeW": 4200,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 9812,
+            "currentInstancePowerW": 9812,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 9812.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 17211,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-112",
+          "at": 1793200268065,
+          "gridW": 9904,
+          "pvW": 2806,
+          "batteryW": 4200,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 9511,
+          "observedEvW": 9511.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 9904,
+            "batteryDischargeW": 4200,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 9511,
+            "currentInstancePowerW": 9511,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 9511.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 16910,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-117",
+          "at": 1793200282167,
+          "gridW": 8950,
+          "pvW": 2806,
+          "batteryW": 4600,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 8957,
+          "observedEvW": 8957.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 8950,
+            "batteryDischargeW": 4600,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 8957,
+            "currentInstancePowerW": 8957,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 8957.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 16356,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-121",
+          "at": 1793200297823,
+          "gridW": 8677,
+          "pvW": 2806,
+          "batteryW": 4400,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 8484,
+          "observedEvW": 8484.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 8677,
+            "batteryDischargeW": 4400,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 8484,
+            "currentInstancePowerW": 8484,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 8484.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 15883,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        },
+        {
+          "eventId": "evt-126",
+          "at": 1793200319818,
+          "gridW": 11231,
+          "pvW": 2806,
+          "batteryW": 4000,
+          "baselineW": 7398.8383624286525,
+          "source": "emergency",
+          "transientWidgetGoal": false,
+          "publicationProof": null,
+          "published": {
+            "currentA": 0,
+            "mode": "standard",
+            "allowed": true,
+            "publishedAt": 1793200149438
+          },
+          "originalCalculated": {
+            "currentA": 16,
+            "powerW": 11085,
+            "mode": "standard",
+            "allowed": true
+          },
+          "originalOutput": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "originalReason": "Emergency charge · maximaal vermogen",
+          "originalCurrentEvW": 10638,
+          "observedEvW": 10638.161637571347,
+          "newCalculated": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true
+          },
+          "output": {
+            "currentA": 16,
+            "mode": "standard",
+            "allowed": true,
+            "stopReason": null
+          },
+          "reason": "Emergency charge · maximaal vermogen",
+          "accounting": {
+            "gridPowerW": 11231,
+            "batteryDischargeW": 4000,
+            "reservedBatteryChargeW": 0,
+            "currentEvPowerW": 10638,
+            "currentInstancePowerW": 10638,
+            "maxRequestedEvPowerW": 11085,
+            "peakBudgetW": 11085,
+            "peakLimitW": 16500,
+            "peakSoftMarginW": 10,
+            "houseBaselineW": 7398.8383624286525,
+            "observedModePowerW": 10638.161637571347
+          },
+          "batterySupportW": 0,
+          "importedAllowanceW": 11085,
+          "sourceValid": true,
+          "siteW": 18037,
+          "detectedW": 0,
+          "minPlausibleEvW": 3325.5375505322445
+        }
+      ]
+    }
+  ]
+}

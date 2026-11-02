@@ -1,0 +1,40 @@
+{
+  "changed": [
+    ".homeychangelog.json",
+    ".homeycompose/app.json",
+    "README.md",
+    "app.js",
+    "app.json",
+    "locales/en.json",
+    "locales/nl.json",
+    "package-lock.json",
+    "package.json",
+    "settings/index.html",
+    "settings/translations/en.json",
+    "settings/translations/nl.json",
+    "test/ev-recording-audit-1.2.4.test.js",
+    "test/planning-monitor-1.1.16.test.js",
+    "test/settings-startup.test.js",
+    "test/widget.test.js",
+    "validation/battery-night-1.1.18.json",
+    "validation/ev-deadline-integration.json",
+    "validation/ev-peak-1.1.20.json",
+    "validation/ev-recording-audit-1.2.4.json",
+    "validation/ev-widget-regression-1.2.4.json",
+    "validation/waf-continuity-1.2.3.json",
+    "validation/widget-insights-1.2.1.json"
+  ],
+  "added": [
+    "docs/EV-REGISTRATION-1.2.5.md",
+    "test/ev-grid-permission-1.2.5.test.js",
+    "test/ev-mode-recording-1.2.5.test.js",
+    "test/ev-recording-comparison-1.2.5.cjs",
+    "validation/ev-grid-permission-1.2.5.json",
+    "validation/ev-mode-recording-1.2.5.json",
+    "validation/ev-performance-1.2.5.json",
+    "validation/ev-recording-comparison-1.2.5.json",
+    "validation/release-1.2.5.json"
+  ],
+  "deleted": [],
+  "allWidgetFilesUnchanged": true
+}

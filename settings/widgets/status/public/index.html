@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeFlux EMS status</title>
+  <style>
+    :root {
+      --hf-muted: var(--homey-text-color-light, rgba(127,127,127,.85));
+      --hf-row: rgba(127,127,127,.08);
+      --hf-border: rgba(127,127,127,.16);
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; margin: 0; min-height: 100%; }
+    body {
+      overflow: hidden;
+      background: var(--homey-background-color, transparent);
+      color: var(--homey-text-color, inherit);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    #widget { width: 100%; padding: 8px; }
+    .stack { display: grid; gap: 8px; }
+    .decision {
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: var(--hf-row);
+      border: 1px solid var(--hf-border);
+    }
+    .eyebrow { color: var(--hf-muted); font-size: 10px; line-height: 1.1; }
+    .decision { display: flex; align-items: center; gap: 10px; }
+    .decision-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .decision-messages { display: grid; }
+    .decision-messages .decision-value { grid-area: 1 / 1; }
+    .decision-reserve { visibility: hidden; }
+    .energy-budget { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: var(--hf-border); font-size: 12px; font-weight: 750; line-height: 1.1; }
+    .energy-budget small { font-size: 9px; margin-top: 2px; }
+    :root { --hf-positive: #00822a; --hf-attention: #b34b00; --hf-critical: #db0025;
+      --hf-activity: #005ce6; --hf-solar: #916300; }
+    @media (prefers-color-scheme: dark) {
+      :root { --hf-positive: #00ef70; --hf-attention: #ff9d00; --hf-critical: #ff4a64;
+        --hf-activity: #42a5ff; --hf-solar: #ffdc00; }
+    }
+    .metric-value[class*="tone-"], .item-state[class*="tone-"], .decision-value[class*="tone-"] { font-weight: 800; }
+    .tone-positive { color: var(--hf-positive); }
+    .tone-attention { color: var(--hf-attention); }
+    .tone-critical { color: var(--hf-critical); }
+    .tone-activity { color: var(--hf-activity); }
+    .tone-solar { color: var(--hf-solar); }
+    .decision-value { margin-top: 3px; font-size: 15px; line-height: 1.2; font-weight: 750; }
+    .input-warnings { margin-top: 5px; color: var(--hf-attention); font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+    .input-warning + .input-warning { margin-top: 3px; }
+    .input-warnings summary { cursor: pointer; margin-top: 3px; }
+    .decision-reason { margin-top: 4px; font-size: 11.5px; line-height: 1.25; font-weight: 650; }
+    .section { display: grid; gap: 4px; }
+    .section-title { font-size: 11px; font-weight: 750; line-height: 1.15; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    .metric, .item {
+      min-width: 0;
+      padding: 6px 7px;
+      border-radius: 8px;
+      background: var(--hf-row);
+    }
+    .metric-label, .item-sub { color: var(--hf-muted); font-size: 9.5px; line-height: 1.15; }
+    .metric-value { margin-top: 2px; font-size: 11.5px; line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
+    .item-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .item-name { min-width: 0; font-size: 11.5px; line-height: 1.2; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-state { margin-top: 3px; font-size: 11px; line-height: 1.2; font-weight: 650; overflow-wrap: anywhere; }
+    .item-reason { margin-top: 3px; font-size: 10px; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
+    .item-sub { margin-top: 3px; }
+    .hvac-summary-table { font-size: 11.5px; line-height: 1.2; font-weight: 700; }
+    .hvac-summary-table th { color: var(--hf-muted); font-size: 9.5px; line-height: 1.15; font-weight: 600; }
+    .hvac-summary-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .hvac-summary-tariff { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 9.5px; }
+    .hvac-summary-table { background: var(--hf-row); color: inherit; border-radius: 8px; overflow: hidden; }
+    .hvac-summary-table tr, .hvac-summary-table th, .hvac-summary-table td { background: transparent; color: inherit; }
+    .hvac-summary-table th:not(:first-child), .hvac-summary-table td:not(:first-child) { text-align: right; white-space: nowrap; }
+    .hvac-summary-table th:first-child { width: 44%; }
+    .hvac-summary-table td:first-child { font-weight: 750; }
+    .hvac-summary-name { display: flex; align-items: center; gap: 4px; min-width: 0; }
+    .hvac-summary-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hvac-summary-name svg, .hvac-summary-tariff svg { display: inline-block; flex: 0 0 14px; }
+    .hvac-summary-icon-heat { color: var(--hf-attention); }
+    .hvac-summary-icon-cool { color: var(--hf-activity); }
+    .hvac-summary-icon-sun { color: var(--hf-solar); }
+    .hvac-summary-icon-wait { color: var(--hf-attention); }
+    .error { padding: 8px; color: var(--hf-muted); font-size: 11px; line-height: 1.3; }
+    .hidden { display: none; }
+  
+/* UI-only hint: 25 seconds collapsed, then 5 seconds visible per 30-second cycle. */
+.emergency-target-hint {
+  overflow: hidden;
+  max-height: 0;
+  visibility: hidden;
+  margin-top: 0;
+  animation: emergency-target-hint-cycle 30s steps(1, end) infinite;
+}
+@keyframes emergency-target-hint-cycle {
+  0% { max-height: 0; visibility: hidden; margin-top: 0; }
+  83.33333333333333%, 100% { max-height: 16em; visibility: visible; margin-top: .3em; }
+}
+  </style>
+</head>
+<body>
+  <div id="widget"><div id="content" class="stack"></div><div id="error" class="error hidden"></div></div>
+  <script type="text/javascript">
+    function tr(Homey, key, fallback) {
+      try {
+        const translated = Homey.__(key);
+        return translated && translated !== key ? translated : fallback;
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function enabled(settings, id, fallback = true) {
+      return settings[id] === undefined || settings[id] === null ? fallback : Boolean(settings[id]);
+    }
+
+    function known(value) {
+      return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+    }
+
+    function budgetView(budget, colors, now = Date.now()) {
+      const valid = budget?.ready && known(budget.valueKwh)
+        && now >= budget.calculatedAt && now < budget.validUntil;
+      if (!valid) return { text: '--', background: '', valid: false };
+      const number = Number(budget.valueKwh);
+      const rounded = Math.round(number * 10) / 10;
+      // Continuous, saturated red (-4) -> orange (+1) -> green (+7).
+      // Keep yellow/green darker so white text retains sufficient contrast.
+      const hue = number <= 1 ? Math.max(0, Math.min(1, (number + 4) / 5)) * 30
+        : 30 + Math.max(0, Math.min(1, (number - 1) / 6)) * 90;
+      const lightness = hue <= 30 ? 42 - hue * 0.3
+        : hue <= 60 ? 33 - (hue - 30) / 3 : 23 + (hue - 60) / 20;
+      return { text: `${rounded >= 0 ? '+' : ''}${rounded.toLocaleString(undefined,
+        { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`,
+        background: colors ? `hsl(${hue}, 96%, ${lightness}%)` : '', valid: true };
+    }
+
+    function criticalAlertText(alert, Homey) {
+      const labels = {
+        input: ['alertInput', 'Warning: grid measurement missing or outdated'],
+        safety_soc: ['alertSafetySoc', 'Warning: battery safety reserve is being restored'],
+        balance: ['alertBalance', 'Warning: battery imbalance is worsening'],
+      };
+      const label = labels[alert?.id];
+      return label ? tr(Homey, `widget.status.${label[0]}`, label[1]) : '';
+    }
+
+    function metricTone(kind, status) {
+      if (kind === 'soc' && known(status.avgSoc)) {
+        if (known(status.settings?.minSoc) && status.avgSoc <= status.settings.minSoc) return 'critical';
+        if (known(status.settings?.safetySoc) && status.avgSoc <= status.settings.safetySoc) return 'attention';
+        if (known(status.planningChargeTargetSoc ?? status.targetSoc)
+          && status.avgSoc >= (status.planningChargeTargetSoc ?? status.targetSoc)) return 'positive';
+      }
+      if (kind === 'target' && known(status.avgSoc) && known(status.planningChargeTargetSoc ?? status.targetSoc)
+        && status.avgSoc >= (status.planningChargeTargetSoc ?? status.targetSoc)) return 'positive';
+      if (kind === 'output') {
+        // Use explicit internal direction; published watt signs can be inverted.
+        const modes = status.outputCommandModes || [];
+        if (modes.includes('charge') && !modes.includes('discharge')) return 'positive';
+        if (modes.includes('discharge')) return 'activity';
+      }
+      if (kind === 'forecast' && status.planningSummary?.ready && status.planningSummary.forecastKwh > 0) return 'solar';
+      if (kind === 'peak' && status.override === 'peak_shave') return 'attention';
+      return '';
+    }
+
+    // The 5-second presentation clock only updates existing DOM nodes.
+    // A status refresh never resets an active alert's alternation phase.
+    let alertIdentity = '', alertStartedAt = 0;
+    function updateDecisionDisplay(status, settings, Homey, now = Date.now()) {
+      const alert = enabled(settings, 'showCriticalAlerts') ? status.criticalAlert : null;
+      const text = criticalAlertText(alert, Homey);
+      const identity = text ? alert.id : '';
+      if (identity !== alertIdentity) { alertIdentity = identity; alertStartedAt = now; }
+      const warning = Boolean(text) && Math.floor(Math.max(0, now - alertStartedAt) / 5000) % 2 === 1;
+      const value = document.getElementById('decision-value');
+      if (value) {
+        value.textContent = warning ? text : emsDecision(status, Homey);
+        value.className = 'decision-value' + (warning && enabled(settings, 'statusColors') ? ' tone-critical' : '');
+        value.title = warning ? String(alert.detail || text) : '';
+      }
+      const reason = document.getElementById('decision-reason');
+      if (reason) reason.style.visibility = warning ? 'hidden' : '';
+      const circle = document.getElementById('energy-budget');
+      if (circle) {
+        const view = budgetView(status.energyBudget, enabled(settings, 'statusColors'), now);
+        circle.firstChild.textContent = view.text;
+        circle.style.background = view.background;
+        circle.style.color = view.background ? '#fff' : '';
+        const label = tr(Homey, 'widget.status.energyBudget', 'Estimated extra household energy until the planning target');
+        circle.title = `${label}: ${view.text} kWh` + (view.valid ? ` · ${formatTime(status.energyBudget.targetAt)}` : '');
+        if (view.valid && known(status.energyBudget.targetSoc)) {
+          circle.title += ' · ' + tr(Homey, 'widget.status.energyBudgetBatteryTarget', 'Battery reserve: {soc}%')
+            .replace('{soc}', Number(status.energyBudget.targetSoc).toLocaleString());
+        }
+        circle.setAttribute('aria-label', circle.title);
+      }
+    }
+
+    function formatW(value) {
+      const watts = Math.round(Number(value) || 0);
+      return `${watts > 0 ? '+' : ''}${watts.toLocaleString()} W`;
+    }
+
+    function formatC(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toFixed(1).replace('.0', '')} °C` : '—';
+    }
+
+    function formatSoc(value) {
+      const number = Number(value);
+      return known(value) ? `${number.toFixed(1).replace('.0', '')}%` : '—';
+    }
+
+    function formatTime(value) {
+      const at = Number(value);
+      if (!(at > 0)) return '';
+      try {
+        return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function formatDurationMs(ms) {
+      const totalMinutes = Math.max(0, Math.ceil((Number(ms) || 0) / 60000));
+      const days = Math.floor(totalMinutes / 1440);
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0) parts.push(`${hours}u`);
+      if (minutes > 0 || !parts.length) parts.push(`${minutes}m`);
+      return parts.join(' ');
+    }
+
+    function nextTariffText(status, Homey) {
+      const label = String(status.nextEventLabel || status.tariff?.nextLabel || '').trim();
+      if (!label) return '—';
+      const rawAt = status.nextEventAt ?? status.tariff?.nextAt;
+      const numericAt = Number(rawAt);
+      const parsedAt = Number.isFinite(numericAt) && numericAt > 0 ? numericAt : Date.parse(String(rawAt || ''));
+      const nextAt = Number.isFinite(parsedAt) ? parsedAt : 0;
+      const time = formatTime(nextAt);
+      const remaining = nextAt > Date.now() ? formatDurationMs(nextAt - Date.now()) : '';
+      const until = remaining ? `${tr(Homey, 'widget.status.in', 'in')} ${remaining}` : '';
+      return [label, time, until].filter(Boolean).join(' · ');
+    }
+
+    function priceSourceName(source, Homey, status = {}) {
+      const info = status.priceData || {};
+      const entry = (info.sources || [info.primary, info.secondary, info.tertiary].filter(Boolean)).find(data => data.source === source);
+      const custom = entry?.name || (source === 'external2' ? status.settings?.externalPrice2Name : source === 'external' ? status.settings?.externalPrice1Name : '');
+      return String(custom || '').trim() || (source === 'homey' ? 'Homey Energy' : source === 'external2' ? 'External Price 2' : 'External Price 1');
+    }
+
+    function alignmentText(data, Homey) {
+      const reasons = {
+        insufficient_overlap: ['priceInsufficientOverlap', 'Insufficient overlap'],
+        insufficient_variation: ['priceInsufficientVariation', 'Insufficient price variation'],
+        incompatible_curves: ['priceIncompatibleCurves', 'Price curves do not reliably match'],
+        expired: ['priceAlignmentExpired', 'Price alignment expired'],
+        alignment_current_outlier: ['priceCurrentOutlier', 'Current price deviates from reference'],
+      };
+      if (data.reason === 'alignment_current_outlier') return tr(Homey, 'widget.status.priceCurrentOutlier', reasons.alignment_current_outlier[1]);
+      if (data.normalized && data.ready) return tr(Homey, 'widget.status.priceAlignmentReady', 'Price alignment ready');
+      const reason = reasons[data.calibrationState];
+      return reason ? tr(Homey, 'widget.status.' + reason[0], reason[1]) : tr(Homey, 'widget.status.priceAlignmentWaiting', 'Waiting for price alignment');
+    }
+
+    function priceDataText(status, Homey) {
+      const info = status.priceData || {};
+      if (!info.required) return tr(Homey, 'widget.status.priceConfigured', 'Configured tariff');
+      if (!info.ready || info.source === 'none') return tr(Homey, 'widget.status.priceUnavailable', 'Unavailable');
+      const role = info.fallbackActive
+        ? tr(Homey, 'widget.status.secondaryActive', 'Secondary source active')
+        : tr(Homey, 'widget.status.primaryActive', 'Primary source active');
+      const parts = [priceSourceName(info.source, Homey, status), role];
+      if (info.fallbackEnabled) parts.push(info.fallbackReady
+        ? tr(Homey, 'widget.status.secondaryReady', 'Secondary source ready')
+        : tr(Homey, 'widget.status.secondaryNotReady', 'Secondary source not ready'));
+      if (info.ageSeconds != null && Number.isFinite(Number(info.ageSeconds))) {
+        const minutes = Math.max(0, Math.floor(Number(info.ageSeconds) / 60));
+        parts.push(minutes < 1 ? tr(Homey, 'widget.status.updatedNow', 'updated just now')
+          : tr(Homey, 'widget.status.updatedMinutes', 'updated {minutes} min ago').replace('{minutes}', minutes));
+      }
+      return parts.join(' · ');
+    }
+
+    function currencySymbol(status) {
+      const symbol = String(status?.settings?.currencySymbol ?? '€').trim();
+      return symbol || '€';
+    }
+
+    function sourcePriceText(status, Homey, secondary = false) {
+      const info = status.priceData || {};
+      const data = secondary ? info.secondary : info.primary;
+      if (!data) return secondary ? tr(Homey, 'widget.status.noSecondaryPrice', 'No secondary source') : '—';
+      const price = value => value == null || !Number.isFinite(Number(value)) ? '—' : `${currencySymbol(status)} ${Number(value).toFixed(4)}/kWh`;
+      const parts = [priceSourceName(data.source, Homey, status), price(secondary ? data.sourcePrice : data.price)];
+      if (secondary && data.normalized) parts.push('→ ' + price(data.price));
+      if (secondary && !data.normalized) parts.push(tr(Homey, 'widget.status.priceAlignmentWaiting', 'Waiting for price alignment'));
+      else if (!data.ready) parts.push(tr(Homey, 'widget.status.priceUnavailable', 'Unavailable'));
+      return parts.join(' · ');
+    }
+
+    function renderSourcePrices(grid, status, settings, Homey) {
+      const info = status.priceData || {};
+      if (!info.required) return;
+      const sources = info.sources || [info.primary, info.secondary, info.tertiary].filter(Boolean);
+      sources.forEach((data, index) => {
+        const toggle = index === 0 ? 'showPrimaryPrice' : index === 1 ? 'showSecondaryPrice' : 'showTertiaryPrice';
+        if (!enabled(settings, toggle)) return;
+        const price = value => value == null || !Number.isFinite(Number(value)) ? '—'
+          : `${currencySymbol(status)} ${Number(value).toFixed(4)}/kWh`;
+        const parts = [priceSourceName(data.source, Homey, status), price(data.sourcePrice)];
+        if (!data.available) {
+          parts.push(data.reason === 'stale' ? tr(Homey, 'widget.status.priceStale', 'Stale price data') : data.reason === 'no_price_slots'
+            ? tr(Homey, 'widget.status.priceNoData', 'No price data received')
+            : data.reason === 'no_current_price_slot'
+              ? tr(Homey, 'widget.status.priceNoCurrentSlot', 'No price for the current time')
+              : tr(Homey, 'widget.status.priceUnavailable', 'Unavailable'));
+        } else if (index > 0) {
+          if (data.normalized) parts.push('→ ' + price(data.price));
+          parts.push(alignmentText(data, Homey));
+        }
+        if (data.ready && data.source === info.source) parts.push('✓');
+        addMetric(grid, `${tr(Homey, 'widget.status.price', 'Price')} ${index + 1}`, parts.join(' · '));
+      });
+    }
+
+    function renderPriceCurves(grid, status, Homey) {
+      const curves = status.priceCurves || [];
+      if (!curves.length) return;
+      const colors = {homey:'#467fbd',external:'#4f8a10',external2:'#bd7d26'};
+      const points = curves.flatMap(curve=>curve.points);
+      const xMin=Math.min(...points.map(point=>point[0])), xMax=Math.max(...points.map(point=>point[0]));
+      let yMin=Math.min(...points.map(point=>point[1])), yMax=Math.max(...points.map(point=>point[1]));
+      if(yMax===yMin){yMin-=.01;yMax+=.01;}
+      const x=value=>45+(value-xMin)/Math.max(1,xMax-xMin)*420;
+      const y=value=>100-(value-yMin)/(yMax-yMin)*85;
+      const card=document.createElement('div');card.className='metric';card.style.gridColumn='1 / -1';
+      const title=document.createElement('div');title.className='metric-label';
+      title.textContent=tr(Homey,'widget.status.priceCurves','Price curves · original prices');card.appendChild(title);
+      const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 480 130');svg.style.width='100%';svg.setAttribute('role','img');svg.setAttribute('aria-label',title.textContent);
+      function label(px,py,text) {const el=document.createElementNS(ns,'text');el.setAttribute('x',px);el.setAttribute('y',py);el.setAttribute('fill','currentColor');el.setAttribute('font-size','10');el.textContent=text;svg.appendChild(el);}
+      curves.forEach(curve=> {
+        const interval=(curve.intervalMinutes || status.homeyEnergy?.decisionIntervalMinutes || 15)*60000;
+        let path='',last=null;
+        curve.points.forEach(point=> {
+          if(last !== null && point[0]-last>interval*1.5) path+=' ';
+          path+=`${last===null || point[0]-last>interval*1.5?'M':'L'}${x(point[0]).toFixed(1)},${y(point[1]).toFixed(1)} `;
+          last=point[0];
+        });
+        const el=document.createElementNS(ns,'path');el.setAttribute('d',path);el.setAttribute('fill','none');el.setAttribute('stroke',colors[curve.source]);el.setAttribute('stroke-width','2');svg.appendChild(el);
+      });
+      label(0,18,yMax.toFixed(3));label(0,103,yMin.toFixed(3));
+      const date=value=>new Date(value).toLocaleString([], {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      label(45,122,date(xMin));label(340,122,date(xMax));card.appendChild(svg);
+      curves.forEach((curve,index)=> {
+        const priority = (status.priceData?.sources || []).findIndex(data => data.source === curve.source);
+        const legend=document.createElement('div');legend.style.fontSize='10px';legend.style.color=colors[curve.source];
+        legend.textContent=`${tr(Homey,'widget.status.price','Price')} ${(priority < 0 ? index : priority)+1} · ${priceSourceName(curve.source,Homey,status)} · ${currencySymbol(status)}/kWh`;
+        card.appendChild(legend);
+      });
+      grid.appendChild(card);
+    }
+
+    function nextChargeText(status, Homey) {
+      const charge = status.nextCharge || {};
+      const state = String(charge.state || 'waiting');
+      const target = Number.isFinite(Number(charge.targetSoc)) ? formatSoc(charge.targetSoc) : '';
+      if (state === 'not_needed') {
+        const base = tr(Homey, 'widget.status.chargeNotNeeded', 'Do not charge');
+        return target ? `${base} · ${tr(Homey, 'widget.status.target', 'target')} ${target}` : base;
+      }
+      if (state === 'no_price_data') return tr(Homey, 'widget.status.chargeNoPriceData', 'Charging needed · no price data');
+      if (state === 'no_window') return tr(Homey, 'widget.status.chargeNoWindow', 'Charging needed · no charging window');
+      if (state !== 'active' && state !== 'planned') return tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning');
+
+      const parts = [state === 'active'
+        ? tr(Homey, 'widget.status.chargeActive', 'Active')
+        : tr(Homey, 'widget.status.chargePlanned', 'Planned')];
+      const start = formatTime(charge.startAt);
+      const end = formatTime(charge.endAt);
+      if (start && end) parts.push(`${start}–${end}`);
+      const power = Math.max(0, Math.round(Number(charge.powerW) || 0));
+      if (power > 0) parts.push(`${power.toLocaleString()} W`);
+      if (target) parts.push(`${tr(Homey, 'widget.status.target', 'target')} ${target}`);
+      return parts.join(' · ');
+    }
+
+    function formatKwh(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toFixed(2).replace(/\.?0+$/, '')} kWh` : '—';
+    }
+
+    function planningPhaseText(status, Homey) {
+      const plan = status.planningSummary || {};
+      if (!plan.ready) return tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning');
+      const phase = String(plan.phase || '');
+      const phaseText = phase === 'night'
+        ? tr(Homey, 'widget.status.nightPlan', 'Night plan')
+        : tr(Homey, 'widget.status.dayPlan', 'Day plan');
+      const target = formatTime(plan.targetAt);
+      return target ? `${phaseText} · ${tr(Homey, 'widget.status.until', 'until')} ${target}` : phaseText;
+    }
+
+    function planningForecastText(status, Homey) {
+      const plan = status.planningSummary || {};
+      if (!plan.ready) return tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning');
+      const source = String(plan.forecastSource || 'none');
+      const labels = {
+        today_remaining: tr(Homey, 'widget.status.forecastRemainingToday', 'Remaining today'),
+        today_full: tr(Homey, 'widget.status.forecastToday', 'PV today'),
+        today_full_fallback: tr(Homey, 'widget.status.forecastTodayFallback', 'PV today · fallback'),
+        tomorrow: tr(Homey, 'widget.status.forecastTomorrow', 'PV tomorrow'),
+        none: tr(Homey, 'widget.status.forecastUnavailable', 'No forecast'),
+      };
+      return labels[source] || labels.none;
+    }
+
+    function hybridControlOwnerText(status, Homey) {
+      const hybrid = status.hybridEms || {};
+      if (hybrid.available === false) return tr(Homey, 'widget.status.controlOwnerNoBattery', 'No home battery');
+      if (String(hybrid.owner || '') === 'external' || Boolean(hybrid.delegated)) {
+        const mode = String(hybrid.mode || status.baseMode || '');
+        const modeText = mode === 'avoid_import'
+          ? tr(Homey, 'widget.status.modeAvoidImport', 'Avoid grid import')
+          : tr(Homey, 'widget.status.modeSelfConsumption', 'Self-consumption');
+        return `${tr(Homey, 'widget.status.controlOwnerExternal', 'External EMS')} · ${modeText}`;
+      }
+      const state = String(hybrid.status || 'inactive');
+      if (!hybrid.enabled) return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridOff', 'Hybrid off')}`;
+      if (state === 'homeflux_peak_guard') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · Peak Guard`;
+      if (state === 'homeflux_peak_guard_cooldown') {
+        const seconds = Math.max(0, Math.ceil(Number(hybrid.peakGuardCooldownRemainingSeconds) || 0));
+        return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · Peak Guard cooldown ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+      }
+      if (state === 'homeflux_fallback') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridFallback', 'Hybrid fallback')}`;
+      if (state === 'handover_wait') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridHandoverWait', 'handover waiting')}`;
+      if (state === 'homeflux_priority') return `${tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux')} · ${tr(Homey, 'widget.status.hybridHomeFluxPriority', 'planning/safety')}`;
+      return tr(Homey, 'widget.status.controlOwnerHomeFlux', 'HomeFlux');
+    }
+
+    function emsMode(status, Homey) {
+      const modes = {
+        auto: tr(Homey, 'widget.status.modeAuto', 'Automatic'),
+        self_consumption: tr(Homey, 'widget.status.modeSelfConsumption', 'Self-consumption'),
+        solar_capture: tr(Homey, 'widget.status.modeSolarCapture', 'Save battery'),
+        avoid_import: tr(Homey, 'widget.status.modeAvoidImport', 'Avoid grid import'),
+        manual_charge: tr(Homey, 'widget.status.modeManualCharge', 'Manual charging'),
+        standby: tr(Homey, 'widget.status.modeStandby', 'Standby'),
+      };
+      return modes[String(status.forcedMode || 'auto')] || String(status.forcedMode || 'auto');
+    }
+
+    function emsDecision(status, Homey) {
+      if (typeof status.decisionText === 'string') return status.decisionText;
+      const state = emsDecisionState(status);
+      if (state === 'input') return tr(Homey, 'widget.status.decisionWaitingInput', 'Waiting for data');
+      if (state === 'stop') return tr(Homey, 'widget.status.decisionSafetyStop', 'Safety stop');
+      if (state === 'off') return tr(Homey, 'widget.status.decisionBatteryOff', 'Battery control off');
+      if (state === 'pause') return tr(Homey, 'widget.status.decisionPaused', 'Battery control paused');
+      if (state === 'external') return tr(Homey, 'widget.status.decisionExternal', 'External EMS control');
+      if (state === 'pending') return tr(Homey, 'widget.status.decisionPending', 'Waiting for battery output');
+      if (state === 'peak_limited') return tr(Homey, 'widget.status.decisionPeakLimited', 'Peak Guard limited');
+      const action = String(status.action || 'idle');
+      const actionLabels = {
+        peak_shave: tr(Homey, 'widget.status.decisionPeakShave', 'Peak Guard support'),
+        grid_and_pv_charge: tr(Homey, 'widget.status.decisionGridPvCharge', 'Charging from grid and solar'),
+        grid_charge: tr(Homey, 'widget.status.decisionGridCharge', 'Charging from grid'),
+        pv_charge: tr(Homey, 'widget.status.decisionPvCharge', 'Charging from solar'),
+        avoid_grid_import: tr(Homey, 'widget.status.decisionAvoidImport', 'Avoiding grid import'),
+        discharge: tr(Homey, 'widget.status.decisionDischarge', 'Discharging battery'),
+      };
+      if (actionLabels[action]) return actionLabels[action];
+      const base = String(status.baseMode || '');
+      if (base === 'charge' && status.safetySocRecoveryActive) return tr(Homey, 'widget.status.decisionWaitingCharge', 'Waiting to charge');
+      if (base === 'standby') return tr(Homey, 'widget.status.decisionStandby', 'Standby');
+      if (base === 'charge' || base === 'solar_capture' || status.batteryPauseCode || status.batteryDischargeBlockedByEv)
+        return tr(Homey, 'widget.status.decisionSaveBattery', 'Saving battery');
+      if (base === 'manual_charge') return tr(Homey, 'widget.status.decisionWaitingCharge', 'Waiting to charge');
+      if (base === 'avoid_import') return tr(Homey, 'widget.status.decisionAvoidImport', 'Avoiding grid import');
+      return tr(Homey, 'widget.status.decisionSelfConsumption', 'Self-consumption');
+    }
+
+    function emsDecisionReason(status, Homey) {
+      if (typeof status.decisionReason === 'string') return status.decisionReason;
+      const state = emsDecisionState(status);
+      if (state === 'input') return tr(Homey, 'widget.status.alertInput', 'Warning: grid measurement missing or outdated');
+      if (state === 'stop') return tr(Homey, 'widget.status.reasonSafetyStop', 'Battery output is held at zero by the active safety stop');
+      if (state === 'off') return tr(Homey, 'widget.status.reasonBatteryOff', 'HomeFlux battery output is disabled');
+      if (state === 'pause') return tr(Homey, 'widget.status.reasonPaused', 'Battery control is paused; the last published setpoint is retained');
+      if (state === 'external') return tr(Homey, 'widget.status.reasonExternal', 'Battery control has been handed over to the external EMS');
+      if (state === 'pending') return tr(Homey, 'widget.status.reasonPending', 'The new battery command has not been published yet; the existing output still applies');
+      if (state === 'peak_limited') return tr(Homey, 'widget.status.reasonPeakLimited', 'Peak Guard cannot request more battery support within the active limits');
+      const action = String(status.action || 'idle');
+      // Actual actions take precedence over reasons from a future charging plan.
+      if (action === 'peak_shave') return tr(Homey, 'widget.status.reasonPeakGuard', 'Peak Guard is intervening above the configured grid limit');
+      if (action === 'grid_charge' || action === 'grid_and_pv_charge') return tr(Homey, 'widget.status.reasonGridCharge', 'The battery needs charging to reach its target within the active charging window');
+      if (action === 'pv_charge') return tr(Homey, 'widget.status.reasonPvCharge', 'Solar surplus is available to charge the battery');
+      if (action === 'avoid_grid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
+      if (action === 'discharge') return tr(Homey, 'widget.status.reasonDischarge', 'The battery is supplying the current shortfall between consumption and solar');
+
+      if (status.batteryDischargeBlockedByEv) return tr(Homey, 'widget.status.reasonEvDischargeBlocked', 'Battery discharge is blocked during EV charging');
+      const pauseReason = String(status.batteryPauseReason || '').trim();
+      if (pauseReason) return pauseReason;
+      const pauseCode = String(status.batteryPauseCode || '');
+      const rawSoc = status.batteryDischargeFloorSoc ?? status.ordinaryDischargeFloorSoc;
+      const pauseSocText = rawSoc !== null && rawSoc !== undefined && Number.isFinite(Number(rawSoc)) ? `${Number(rawSoc).toFixed(1)}%` : '';
+      if (pauseCode === 'planning_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedPlanning', 'Discharge paused at protected planning target')} ${pauseSocText}`.trim();
+      if (pauseCode === 'discharge_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedFloor', 'Discharge paused at configured discharge SoC')} ${pauseSocText}`.trim();
+      if (pauseCode === 'minimum_soc') return `${tr(Homey, 'widget.status.reasonDischargePausedMinimum', 'Discharge paused at minimum SoC')} ${pauseSocText}`.trim();
+      const strategy = status.tariff?.chargeStrategy;
+      if (status.baseMode === 'charge' && !status.safetySocRecoveryActive
+        && strategy?.mode === 'maximum' && !strategy.active
+        && !(strategy.missingKwh > 0.000001) && !strategy.reserveMissed)
+        return tr(Homey, 'widget.status.reasonChargeDeferred', 'No grid charging is requested now; battery energy is being preserved until charging is needed');
+      const mode = String(status.modeLabel || '').trim();
+      const separator = mode.indexOf('·');
+      if (separator >= 0) return mode.slice(separator + 1).trim();
+      const warning = String(status.warningText || '').trim();
+      if (warning) return warning;
+      const base = String(status.baseMode || '');
+      if (base === 'solar_capture') return tr(Homey, 'widget.status.reasonSaveBattery', 'Battery energy is being preserved for later use');
+      if (base === 'charge') return tr(Homey, 'widget.status.reasonChargeDeferred', 'No grid charging is requested now; battery energy is being preserved until charging is needed');
+      if (base === 'manual_charge') return tr(Homey, 'widget.status.reasonManualCharge', 'Manual charging mode is active');
+      if (base === 'avoid_import') return tr(Homey, 'widget.status.reasonAvoidImport', 'Grid import is being avoided by the active EMS/tariff rule');
+      if (base === 'standby') return tr(Homey, 'widget.status.reasonStandby', 'Standby mode is active');
+      return tr(Homey, 'widget.status.reasonBalanced', 'Grid balance is around the configured target');
+    }
+
+    function emsDecisionState(status) {
+      if (status.inputReady === false || status.baseMode === 'waiting_input') return 'input';
+      if (status.baseMode === 'safety_stop') return 'stop';
+      if (status.controlEnabled === false) return 'off';
+      if (status.batteryCommandPauseActive) return 'pause';
+      if (status.decisionExternalControl || status.hybridEms?.owner === 'external' || status.hybridEms?.delegated && !status.hybridEms?.takeover) return 'external';
+      if (status.decisionOutputPending) return 'pending';
+      if ((status.action || 'idle') === 'idle' && status.override === 'peak_shave') return 'peak_limited';
+      return '';
+    }
+
+    function batteryTargetText(status) {
+      return formatSoc(status.planningChargeTargetSoc ?? status.targetSoc);
+    }
+
+    function batteryBoundaryText(status, Homey) {
+      const parts = [];
+      const automatic = String(status.forcedMode || 'auto') === 'auto';
+      if (automatic && status.planningSocLimitActive && !status.safetySocRecoveryActive) {
+        const label = status.planningPhase === 'night'
+          ? tr(Homey, 'widget.status.nightPlanningMaximum', 'Night planning maximum')
+          : tr(Homey, 'widget.status.dayPlanningMaximum', 'Day planning maximum');
+        parts.push(`${label} ${formatSoc(status.planningMaxSoc)}`);
+      }
+      const floor = status.override === 'peak_shave' ? status.settings?.minSoc : status.ordinaryDischargeFloorSoc;
+      if (automatic && floor !== null && floor !== undefined && Number.isFinite(Number(floor))) {
+        const label = status.override === 'peak_shave'
+          ? tr(Homey, 'widget.status.peakGuardFloor', 'Peak Guard minimum')
+          : status.sunChanceReserve?.active && Number(status.sunChanceReserve.floorSoc) >= Number(floor)
+            ? tr(Homey, 'widget.status.sunChanceFloor', 'Sunshine reserve minimum')
+            : tr(Homey, 'widget.status.dischargeFloor', 'Discharge minimum');
+        parts.push(`${label} ${formatSoc(floor)}`);
+      }
+      return parts.join(' · ');
+    }
+
+    function batteryTimingText(status, Homey) {
+      const timing = status.batteryTiming || {};
+      const direction = String(timing.direction || 'idle');
+      if (direction !== 'charge' && direction !== 'discharge') return null;
+      const hours = Number(timing.hours);
+      const targetSoc = Number(timing.targetSoc);
+      if (!Number.isFinite(hours) || !Number.isFinite(targetSoc)) return null;
+      const totalMinutes = Math.max(0, Math.ceil(hours * 60));
+      const duration = formatDurationMs(totalMinutes * 60000);
+      if (direction === 'charge') {
+        return {
+          label: tr(Homey, 'widget.status.batteryFullIn', 'Full to target'),
+          value: hours <= 0 ? tr(Homey, 'widget.status.batteryAtTarget', 'Target reached') : `${duration} · ${tr(Homey, 'widget.status.target', 'target')} ${formatSoc(targetSoc)}`,
+        };
+      }
+      return {
+        label: tr(Homey, 'widget.status.batteryFloorIn', 'To discharge minimum'),
+        value: hours <= 0 ? tr(Homey, 'widget.status.batteryAtFloor', 'Discharge minimum reached') : `${duration} · ${tr(Homey, 'widget.status.dischargeFloor', 'Discharge minimum')} ${formatSoc(targetSoc)}`,
+      };
+    }
+
+    function reasonText(reason, Homey) {
+      let text = String(reason || '').trim();
+      if (!text) return '';
+      text = text.replace(/^Emergency charge\s*·\s*(?:maximaal vermogen|maximum power)/, tr(Homey, 'widget.status.evEmergencyCharging', 'Emergency charge to 100%'));
+      if (text === 'Emergency charge wacht op geselecteerd laadtarief') return tr(Homey, 'widget.status.evEmergencyTariffWait', 'Emergency charge waiting for selected tariff');
+      return `${tr(Homey, 'widget.status.reason', 'Reason')}: ${text}`;
+    }
+
+    function coordinationPower(value) {
+      const watts = Math.max(0, Math.round(Number(value) || 0));
+      if (watts >= 1000) return `${(watts / 1000).toFixed(watts % 1000 === 0 ? 0 : 1)} kW`;
+      return `${watts} W`;
+    }
+
+    function evReasonForWidget(reason, ev) {
+      const text = String(reason || '').trim();
+      // The existing allocator already distinguishes PV, grid and battery
+      // energy. Show its split only while PV really contributes to this EV.
+      const hasSolarSurplus = Number(ev?.pvPoolBudgetW ?? ev?.pvAvailableW) > 0.5
+        && Number(ev?.pvAllocatedW) > 0.5;
+      if (hasSolarSurplus) return text;
+      return text.replace(/\s*·\s*(?:PV-verdeling EV|PV allocation EV|PV distribution EV)\s+\d+(?:\.\d+)?%\s*\/\s*(?:batterij|battery)\s+\d+(?:\.\d+)?%/gi, '').trim();
+    }
+
+    function evBatteryCoordinationText(ev, Homey) {
+      const supportW = Math.max(0, Number(ev?.batterySupportAllocatedW) || 0);
+      const batteryW = Math.max(0, Number(ev?.batteryDischargeW) || 0);
+      const gridTargetW = Math.max(0, Number(ev?.evGridImportActiveTargetW) || 0);
+      const desiredA = Math.max(0, Number(ev?.desiredCurrentA) || 0);
+      if (Boolean(ev?.evHouseLoadHold)) {
+        const baseline = Number(ev?.evHouseBaselineW);
+        const reference = ev?.evHouseBaselineW !== null && ev?.evHouseBaselineW !== undefined && Number.isFinite(baseline)
+          ? ` · ${tr(Homey, 'widget.status.evHouseReference', 'house reference')} ${coordinationPower(baseline)}` : '';
+        return `${tr(Homey, 'widget.status.evNoLoadGridStopped', 'No EV load detected for 1 minute · grid permission withdrawn')}${reference}`;
+      }
+      if (String(ev?.evGridImportControlState || '') === 'house_load_observation') {
+        const seconds = Math.max(0, Math.round(Number(ev?.evGridImportGraceRemainingSeconds) || 0));
+        return tr(Homey, 'widget.status.evHouseObservation', 'House load is back near its reference · EV grid permission stops in {seconds}s if this continues')
+          .replace('{seconds}', seconds);
+      }
+      if (supportW > 0) {
+        return tr(Homey, 'widget.status.evBatterySupport', 'Home battery intentionally supports the EV with {power} extra charging power')
+          .replace('{power}', coordinationPower(supportW));
+      }
+      if (Boolean(ev?.evGridImportWaiting) && batteryW > 0) {
+        if (String(ev?.evGridImportControlState || '') === 'waiting_command') {
+          return tr(Homey, 'widget.status.evBatteryWaitingCommand', 'Battery temporarily discharges {power} while the lower EV setpoint ({amps} A) is waiting to be sent')
+            .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0));
+        }
+        return tr(Homey, 'widget.status.evBatteryWaitingResponse', 'Battery temporarily discharges {power} while waiting for fresh EV feedback confirming {amps} A')
+          .replace('{power}', coordinationPower(batteryW)).replace('{amps}', desiredA.toFixed(0));
+      }
+      if (gridTargetW > 0) {
+        const key = batteryW > 0 ? 'widget.status.evGridImportTargetBattery' : 'widget.status.evGridImportTarget';
+        const fallback = batteryW > 0
+          ? 'EV grid import allowed up to {target}; battery control compensates only above this EV share · current battery discharge {power}'
+          : 'EV grid import allowed up to {target}; battery control does not compensate this EV share';
+        return tr(Homey, key, fallback)
+          .replace('{target}', coordinationPower(gridTargetW)).replace('{power}', coordinationPower(batteryW));
+      }
+      return '';
+    }
+
+    function isEmergencyCharge(ev) {
+      return String(ev?.mode || '') === 'emergency' || String(ev?.source || '') === 'emergency';
+    }
+
+    function evPlanningTargetText(ev, Homey) {
+      if (!ev || !ev.enabled) return '';
+      if (isEmergencyCharge(ev)) return ''; // Render the timed hint separately from persistent status/reasons.
+      if(ev.centralPlan){
+        const p=ev.centralPlan,lang=tr(Homey,'evWidget.language','en');
+        const target=p.value+(p.type==='soc'?'%':' kWh');
+        return `${tr(Homey,'evWidget.target','Charging target')}: ${target} · ${p.deadlineLabel?.[lang]||p.time}${p.completed?' · '+tr(Homey,'evWidget.targetReached','Target reached'):p.expired?' · '+tr(Homey,'evWidget.expired','Deadline expired'):''}${p.maxPv?' · Max PV':''}${p.guaranteed?' · '+tr(Homey,'evWidget.guaranteedPlan','guaranteed'):''}`;
+      }
+      const source = String(ev.planningSource || 'settings');
+      const time = String(ev.planningTargetTime || '07:00');
+      const guarantee = Boolean(ev.planningGuarantee);
+      let target = '';
+      if (source === 'flow_energy') {
+        const kwh = Math.max(0, Number(ev.planningTargetKwh) || 0);
+        const remaining = Math.max(0, Number(ev.planningRemainingKwh) || 0);
+        target = `${kwh.toFixed(1).replace('.0', '')} kWh ${tr(Homey, 'widget.status.minimumBy', 'minimum by')} ${time}`;
+        if (remaining <= 0.001) target += ` · ${tr(Homey, 'widget.status.minimumReached', 'minimum reached')}`;
+        else target += ` · ${remaining.toFixed(1).replace('.0', '')} kWh ${tr(Homey, 'widget.status.remaining', 'remaining')}`;
+      } else {
+        const soc = Number(ev.planningTargetSoc);
+        if (Number.isFinite(soc)) target = `${Math.round(soc)}% ${tr(Homey, 'widget.status.minimumBy', 'minimum by')} ${time}`;
+        else target = tr(Homey, 'widget.status.noSocTarget', 'no SoC target configured');
+      }
+      if (source === 'settings') {
+        return `${tr(Homey, 'widget.status.noFlowTarget', 'No Flow target received')} · ${tr(Homey, 'widget.status.settingsFallback', 'settings')} ${target}`;
+      }
+      const policy = guarantee
+        ? tr(Homey, 'widget.status.guaranteedAllTariffs', 'guaranteed · all tariffs if required')
+        : tr(Homey, 'widget.status.favourableOnly', 'not guaranteed · favourable moments only');
+      return `${tr(Homey, 'widget.status.flowTarget', 'Flow target')} · ${target} · ${policy}`;
+    }
+
+    function evNextDecisionText(ev, Homey) {
+      if (!ev || !ev.enabled || !ev.connected) return '';
+      const parts = [];
+      const controlType = String(ev.controlType || 'current');
+      const nextValue = controlType === 'mode'
+        ? String(ev.nextOutputChargeMode || 'stop').toUpperCase()
+        : controlType === 'hybrid'
+          ? `${String(ev.nextOutputChargeMode || 'stop').toUpperCase()} · ${Math.max(0, Number(ev.nextOutputCurrentA) || 0)} A`
+          : `${Math.max(0, Number(ev.nextOutputCurrentA) || 0)} A`;
+      const permission = ev.nextOutputAllowed
+        ? tr(Homey, 'widget.status.evAllowed', 'allowed')
+        : tr(Homey, 'widget.status.evNotAllowed', 'not allowed');
+      if (ev.nextOutputPending) {
+        parts.push(`${tr(Homey, 'widget.status.evNextDecision', 'Next')} ${nextValue} · ${permission}`);
+        if (ev.nextOutputWaitingForInterval) {
+          const seconds = Math.max(0, Math.ceil(Number(ev.nextOutputRemainingSeconds) || 0));
+          parts.push(tr(Homey, 'widget.status.evWaitingOutputTimer', 'waiting {seconds}s for minimum EV output interval').replace('{seconds}', seconds));
+        } else {
+          parts.push(tr(Homey, 'widget.status.evReadyNextOutput', 'ready for next EV output'));
+        }
+      } else if (!isEmergencyCharge(ev)) {
+        parts.push(tr(Homey, 'widget.status.evDecisionActive', 'Current EV decision is active'));
+      }
+      const stopHold = Math.max(0, Math.ceil(Number(ev.stopHoldRemainingSeconds) || 0));
+      if (stopHold > 0) {
+        parts.push(tr(Homey, 'widget.status.evWaitingStopHold', 'waiting {seconds}s for EV restart hold').replace('{seconds}', stopHold));
+      }
+      const need = Number(ev.energyNeedKwh);
+      if (!isEmergencyCharge(ev) && Number.isFinite(need)) {
+        const deadline = Number(ev.deadlineAt);
+        const deadlineText = Number.isFinite(deadline) && deadline > 0 ? new Date(deadline).toLocaleString([], { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+        const feasible = ev.targetReachable === false
+          ? tr(Homey, 'widget.status.evTargetNotFeasible', 'not feasible')
+          : ev.targetReachableOnSelectedTariffs === false
+            ? tr(Homey, 'widget.status.evTargetExtraTariff', 'extra tariff needed')
+            : tr(Homey, 'widget.status.evTargetFeasible', 'feasible');
+        parts.push(`${need.toFixed(1)} kWh · ${deadlineText} · ${feasible}`);
+      }
+      const reason = evReasonForWidget(ev.nextOutputReason, ev);
+      if (reason && (!isEmergencyCharge(ev) || reason !== evReasonForWidget(ev.reason, ev))) parts.push(`${tr(Homey, 'widget.status.reason', 'Reason')}: ${reason}`);
+      return parts.join(' · ');
+    }
+
+    function evSessionText(ev, Homey) {
+      const session = ev?.session || {};
+      const state = String(session.state || 'idle');
+      if (state === 'ended' && Number(session.endedAt) > 0) {
+        const reason = String(session.endedReason || '');
+        const source = reason === 'flow'
+          ? ` · ${tr(Homey, 'widget.status.viaFlow', 'by Flow')}`
+          : reason === 'soc_target'
+            ? ` · ${tr(Homey, 'widget.status.evSocCompleted', 'SoC target reached')}`
+            : reason === 'energy_target' ? ` · ${tr(Homey, 'widget.status.evEnergyCompleted', 'Requested energy delivered')}` : '';
+        return `${tr(Homey, 'widget.status.evSessionEnded', 'Session ended')} ${formatTime(session.endedAt)}${source}`;
+      }
+      if (state === 'charging' && Number(session.startedAt) > 0) {
+        const source = String(session.detectionSource || '') === 'house_load'
+          ? tr(Homey, 'widget.status.houseMeasurement', 'house measurement')
+          : tr(Homey, 'widget.status.currentFeedback', 'current feedback');
+        return `${tr(Homey, 'widget.status.evSessionStarted', 'Started')} ${formatTime(session.startedAt)} · ${source}`;
+      }
+      if (state === 'paused') {
+        return `${tr(Homey, 'widget.status.evChargingPaused', 'Charging paused')}${Number(session.startedAt) > 0 ? ` · ${tr(Homey, 'widget.status.evSessionStarted', 'started')} ${formatTime(session.startedAt)}` : ''}`;
+      }
+      if (state === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
+      return '';
+    }
+
+    function evState(ev, Homey) {
+      if (!ev || !ev.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
+      if(ev.lastKnownFeedback) return `${tr(Homey,'evWidget.states.'+ev.lastKnownFeedback.state,'Unknown')} · ${tr(Homey,'evWidget.staleFeedback','Last known status · waiting for current feedback.')}`;
+      if (ev.received && ev.received.connected === false) return tr(Homey, 'widget.status.waitingForStatus', 'Waiting for status');
+      const sessionState = String(ev.session?.state || '');
+      if (sessionState === 'ended') return tr(Homey, 'widget.status.evSessionEnded', 'Session ended');
+      if (!ev.connected) return tr(Homey, 'widget.status.evNotConnected', 'Not connected');
+      if (ev.emergencyTariffBlocked) return tr(Homey, 'widget.status.evEmergencyTariffWait', 'Emergency charge waiting for selected tariff');
+      if (sessionState === 'paused') return tr(Homey, 'widget.status.evChargingPaused', 'Charging paused');
+      if (sessionState === 'waiting') return tr(Homey, 'widget.status.evSessionWaiting', 'Connected · waiting for charging');
+      // Explicit published zero/false wins over a future planned setpoint.
+      // Mode-only actual power comes from P1, never optional ampere feedback.
+      const measured = ev.controlType === 'mode' ? Number(ev.measuredPowerW) > 0
+        : ev.actualCurrentFresh !== false && Number(ev.actualCurrentA) > 0;
+      const published = Boolean(ev.outputAllowed ?? ev.allowed)
+        && Number(ev.outputCurrentA ?? ev.desiredCurrentA ?? 0) > 0
+        && (ev.controlType !== 'hybrid' || (ev.outputChargeMode ?? 'standard') !== 'stop');
+      const active = measured || published;
+      if (ev.peakLimited) return active
+        ? tr(Homey, 'widget.status.evPeakGuardLimited', 'Charging limited by Peak Guard')
+        : tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
+      const source = String(ev.source || 'off');
+      if (active) {
+        if (isEmergencyCharge(ev)) return tr(Homey, 'widget.status.evEmergencyCharging', 'Emergency charge to 100%');
+        if (ev.override?.active || source === 'emergency' || source === 'soc_target') return tr(Homey, 'widget.status.evChargingOverride', 'Charging by override/target');
+        if (source.includes('pv') && source.includes('tariff')) return tr(Homey, 'widget.status.evChargingPvTariff', 'Charging from solar + tariff');
+        if (source === 'guarantee') return tr(Homey, 'widget.status.evChargingGuarantee', 'Charging for guaranteed minimum');
+        if (source.includes('tariff')) return tr(Homey, 'widget.status.evChargingTariff', 'Charging on tariff');
+        if (source.includes('pv')) return tr(Homey, 'widget.status.evChargingPv', 'Charging from solar');
+        return tr(Homey, 'widget.status.evCharging', 'Charging');
+      }
+      if (String(ev.reason || '').toLowerCase().includes('peak guard')) return tr(Homey, 'widget.status.evPeakGuard', 'Disabled by Peak Guard');
+      if (ev.mode === 'smart') {
+        if (Number(ev.pvAvailableW) > 0 || String(ev.reason || '').toLowerCase().includes('pv')) return tr(Homey, 'widget.status.evWaitingPvTariff', 'Waiting for solar or charging tariff');
+        return tr(Homey, 'widget.status.evWaitingPvTariff', 'Waiting for solar or charging tariff');
+      }
+      return tr(Homey, 'widget.status.evWaiting', 'Waiting');
+    }
+
+    function hvacState(hvac, Homey) {
+      if (!hvac || !hvac.enabled || hvac.automaticControlEnabled === false) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
+      const reason = String(hvac.reason || '').toLowerCase();
+      if (reason.includes('peak guard')) return tr(Homey, 'widget.status.hvacPeakGuard', 'Stopped by Peak Guard');
+      if(hvac.outputPowerOn===false)return tr(Homey,'widget.status.off','Off');
+      if (hvac.permanent) {
+        if (hvac.waiting) return reasonText(hvac.reason, Homey) || tr(Homey, 'widget.status.evWaiting', 'Waiting');
+        if (hvac.periodicHeating) return tr(Homey, 'widget.status.hvacPeriodicHeating', 'Periodic heating');
+        if (hvac.copTargetActive) return tr(Homey, 'widget.status.hvacCopTarget', 'COP temperature target');
+        return tr(Homey, 'widget.status.hvacPermanentControl', 'Permanent temperature control');
+      }
+      if (hvac.boostActive || hvac.managedPowerOn) {
+        if (hvac.energySource === 'battery') return tr(Homey, 'widget.status.hvacBatteryBoost', 'Extra energy to HVAC from battery');
+        return tr(Homey, 'widget.status.hvacPvBoost', 'Using solar surplus');
+      }
+      if (reason.includes('comfortdoel') || reason.includes('activatiemarge') || reason.includes('comfort target') || reason.includes('activation band')) return tr(Homey, 'widget.status.hvacComfortReached', 'Comfort target reached');
+      if (reason.includes('wacht') || reason.includes('geen pv') || reason.includes('overschot')) return tr(Homey, 'widget.status.hvacWaitingSurplus', 'Waiting for surplus');
+      const mode = String(hvac.mode || hvac.currentMode || '').toLowerCase();
+      if (mode === 'off') return tr(Homey, 'widget.status.off', 'Off');
+      return tr(Homey, 'widget.status.hvacWaitingSurplus', 'Waiting for surplus');
+    }
+
+    function boilerState(boiler, Homey) {
+      if (!boiler || !boiler.enabled) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
+      const reason = String(boiler.reason || '').toLowerCase();
+      // Running state wins over a textual Peak Guard mention: the reason can
+      // describe successful battery support rather than a shutdown.
+      if (boiler.outputOn ?? boiler.running) {
+        return String(boiler.activeSource || '') === 'tariff'
+          ? tr(Homey, 'widget.status.boilerTariff', 'Heating on tariff')
+          : tr(Homey, 'widget.status.boilerPv', 'Heating from solar');
+      }
+      if (reason.includes('peak guard')) return tr(Homey, 'widget.status.boilerPeakGuard', 'Disabled by Peak Guard');
+      if (boiler.warm) return tr(Homey, 'widget.status.boilerWarm', 'Heated');
+      const fallbackDays = Math.max(0, Math.round(Number(boiler.fallbackDays) || 0));
+      const missedSolarDays = Math.max(0, Math.round(Number(boiler.missedSolarDays ?? boiler.daysWithoutCycle) || 0));
+      if (fallbackDays > 0 && !boiler.fallbackDue && missedSolarDays > 0) {
+        const nextAt = Math.max(0, Number(boiler.nextFallbackAt) || 0);
+        const countdown = nextAt > Date.now() ? formatDurationMs(nextAt - Date.now()) : '';
+        return tr(Homey, 'widget.status.boilerSkipped', '{days}/{target} solar day(s) missed · tariff fallback in {time}')
+          .replace('{days}', missedSolarDays)
+          .replace('{target}', fallbackDays)
+          .replace('{time}', countdown || '—');
+      }
+      if (boiler.fallbackDue && boiler.tariffSelected && !boiler.tariffBatteryReady) return tr(Homey, 'widget.status.boilerFallbackBattery', 'Maximum solar wait reached; waiting for battery SoC');
+      if (boiler.fallbackDue && !boiler.tariffSelected) return tr(Homey, 'widget.status.boilerFallbackDue', 'Maximum solar wait reached; waiting for an allowed tariff');
+      return tr(Homey, 'widget.status.boilerWaitingSun', 'Waiting for solar');
+    }
+
+    function addMetric(grid, label, value, tone = '') {
+      const cell = document.createElement('div');
+      cell.className = 'metric';
+      const labelEl = document.createElement('div');
+      labelEl.className = 'metric-label';
+      labelEl.textContent = label;
+      const valueEl = document.createElement('div');
+      valueEl.className = 'metric-value' + (tone ? ` tone-${tone}` : '');
+      valueEl.textContent = value;
+      cell.append(labelEl, valueEl);
+      grid.appendChild(cell);
+    }
+
+    function section(title) {
+      const root = document.createElement('section');
+      root.className = 'section';
+      const heading = document.createElement('div');
+      heading.className = 'section-title';
+      heading.textContent = title;
+      root.appendChild(heading);
+      return root;
+    }
+
+    function addItem(root, name, state, sub = '', reason = '', tone = '') {
+      const item = document.createElement('div');
+      item.className = 'item';
+      const head = document.createElement('div');
+      head.className = 'item-head';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'item-name';
+      nameEl.textContent = name;
+      head.appendChild(nameEl);
+      const stateEl = document.createElement('div');
+      stateEl.className = 'item-state' + (tone ? ` tone-${tone}` : '');
+      stateEl.textContent = state;
+      item.append(head, stateEl);
+      if (reason) {
+        const reasonEl = document.createElement('div');
+        reasonEl.className = 'item-reason';
+        reasonEl.textContent = reason;
+        item.appendChild(reasonEl);
+      }
+      if (sub) {
+        const subEl = document.createElement('div');
+        subEl.className = 'item-sub';
+        subEl.textContent = sub;
+        item.appendChild(subEl);
+      }
+      root.appendChild(item);
+    }
+
+    function renderInputWarnings(warnings, Homey, expanded = false) {
+      if (!Array.isArray(warnings) || !warnings.length) return null;
+      const root = document.createElement('div');
+      root.className = 'input-warnings'; root.id = 'input-warnings';
+      root.setAttribute('role', 'status'); root.setAttribute('aria-live', 'polite');
+      let details = null;
+      warnings.forEach((warning, index) => {
+        const line = document.createElement('div'); line.className = 'input-warning';
+        const key = 'widget.status.inputWarnings.' + warning.key;
+        let message = tr(Homey, key, tr(Homey, 'widget.status.inputWarnings.generic', 'Input updates are missing — check the Flow.'));
+        for (const [name, value] of Object.entries(warning.params || {})) message = message.replaceAll('{' + name + '}', String(value));
+        line.textContent = '⚠ ' + message;
+        if (index < 3) root.appendChild(line);
+        else {
+          if (!details) {
+            details = document.createElement('details'); details.id = 'input-warning-details'; details.open = expanded;
+            const summary = document.createElement('summary');
+            summary.textContent = tr(Homey, 'widget.status.inputWarnings.more', '{count} more input warnings').replace('{count}', String(warnings.length - 3));
+            details.appendChild(summary); root.appendChild(details);
+          }
+          details.appendChild(line);
+        }
+      });
+      return root;
+    }
+
+    function renderStatus(status, settings, Homey) {
+      const content = document.getElementById('content');
+      const inputWarningsExpanded = Boolean(document.getElementById('input-warning-details')?.open);
+      content.innerHTML = '';
+
+      const tone = kind => enabled(settings, 'statusColors') ? metricTone(kind, status) : '';
+      if (enabled(settings, 'showDecision') || enabled(settings, 'showEnergyBudget')) {
+        const decision = document.createElement('div');
+        decision.className = 'decision';
+        const copy = document.createElement('div');
+        copy.className = 'decision-copy';
+        copy.hidden = !enabled(settings, 'showDecision');
+        const eyebrow = document.createElement('div');
+        eyebrow.className = 'eyebrow';
+        eyebrow.textContent = tr(Homey, 'widget.status.currentDecision', 'Current decision');
+        const value = document.createElement('div');
+        value.className = 'decision-value';
+        value.id = 'decision-value';
+        value.textContent = emsDecision(status, Homey);
+        const messages = document.createElement('div');
+        messages.className = 'decision-messages';
+        const normalReserve = document.createElement('div');
+        normalReserve.className = 'decision-value decision-reserve';
+        normalReserve.setAttribute('aria-hidden', 'true');
+        normalReserve.textContent = emsDecision(status, Homey);
+        const alertReserve = document.createElement('div');
+        alertReserve.className = 'decision-value decision-reserve';
+        alertReserve.setAttribute('aria-hidden', 'true');
+        alertReserve.textContent = enabled(settings, 'showCriticalAlerts') ? criticalAlertText(status.criticalAlert, Homey) : '';
+        messages.append(normalReserve, alertReserve, value);
+        copy.append(eyebrow, messages);
+        if (enabled(settings, 'showReasons')) {
+          const reason = emsDecisionReason(status, Homey);
+          if (reason) {
+            const reasonEl = document.createElement('div');
+            reasonEl.className = 'decision-reason';
+            reasonEl.id = 'decision-reason';
+            reasonEl.textContent = reasonText(reason, Homey);
+            copy.appendChild(reasonEl);
+          }
+        }
+        const diagnosticWarnings = (status.inputWarnings || []).filter(item => !(item.id === 'grid'
+          && status.criticalAlert?.id === 'input' && enabled(settings, 'showCriticalAlerts')));
+        const inputWarnings = renderInputWarnings(diagnosticWarnings, Homey, inputWarningsExpanded);
+        if (inputWarnings) copy.appendChild(inputWarnings);
+        decision.appendChild(copy);
+        if (enabled(settings, 'showEnergyBudget')) {
+          const circle = document.createElement('div');
+          circle.id = 'energy-budget';
+          circle.className = 'energy-budget';
+          const amount = document.createElement('span');
+          const unit = document.createElement('small');
+          unit.textContent = 'kWh';
+          circle.append(amount, unit);
+          decision.appendChild(circle);
+        }
+        content.appendChild(decision);
+      }
+
+      const generalGrid = document.createElement('div');
+      generalGrid.className = 'grid';
+      if (enabled(settings, 'showTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.currentTariff', 'Current tariff'), String(status.tariff?.label || '—'));
+      if (enabled(settings, 'showNextTariff')) addMetric(generalGrid, tr(Homey, 'widget.status.nextTariff', 'Next tariff'), nextTariffText(status, Homey));
+      if (enabled(settings, 'showPriceStatus')) addMetric(generalGrid, tr(Homey, 'widget.status.priceData', 'Price data'), priceDataText(status, Homey));
+      if (status.priceData?.required) {
+        renderSourcePrices(generalGrid, status, settings, Homey);
+        if(enabled(settings,'showPriceCurves')) renderPriceCurves(generalGrid,status,Homey);
+      }
+      if (enabled(settings, 'showEmsMode')) addMetric(generalGrid, tr(Homey, 'widget.status.emsMode', 'EMS mode'), emsMode(status, Homey));
+      if (enabled(settings, 'showControlOwner')) addMetric(generalGrid, tr(Homey, 'widget.status.controlOwner', 'Battery control'), hybridControlOwnerText(status, Homey));
+      if (enabled(settings, 'showOutput')) addMetric(generalGrid, tr(Homey, 'widget.status.emsOutput', 'EMS output'), formatW(status.outputTotalCommandW), tone('output'));
+      if (enabled(settings, 'showBatterySoc')) addMetric(generalGrid, tr(Homey, 'widget.status.batterySoc', 'Battery SoC'), formatSoc(status.avgSoc), tone('soc'));
+      if (enabled(settings, 'showBatteryTarget')) {
+        addMetric(generalGrid, tr(Homey, 'widget.status.planningTarget', 'Planning target'), batteryTargetText(status), tone('target'));
+      }
+      if (enabled(settings, 'showBatteryBounds')) {
+        const boundary = batteryBoundaryText(status, Homey);
+        if (boundary) addMetric(generalGrid, tr(Homey, 'widget.status.activeSocBounds', 'Active SoC bounds'), boundary);
+      }
+      const timing = batteryTimingText(status, Homey);
+      if (enabled(settings, 'showBatteryTiming') && timing) addMetric(generalGrid, timing.label, timing.value);
+      if (enabled(settings, 'showNextCharge')) addMetric(generalGrid, tr(Homey, 'widget.status.nextCharge', 'Next charging window'), nextChargeText(status, Homey));
+      if (enabled(settings, 'showPeakGuard')) {
+        const peakEnabled = Boolean(status.settings?.peakShaveEnabled);
+        const peakActive = String(status.override || '') === 'peak_shave';
+        const peakValue = !peakEnabled
+          ? tr(Homey, 'widget.status.off', 'Off')
+          : peakActive
+            ? `${tr(Homey, 'widget.status.active', 'Active')} · ${formatW(status.settings?.peakLimitW).replace('+', '')}`
+            : `${tr(Homey, 'widget.status.monitoring', 'Monitoring')} · ${formatW(status.settings?.peakLimitW).replace('+', '')}`;
+        addMetric(generalGrid, tr(Homey, 'widget.status.peakGuard', 'Peak Guard'), peakValue, tone('peak'));
+      }
+      if (enabled(settings, 'showPlanningPhase')) addMetric(generalGrid, tr(Homey, 'widget.status.activePlan', 'Active plan'), planningPhaseText(status, Homey));
+      if (enabled(settings, 'showPlanningForecast')) addMetric(generalGrid, tr(Homey, 'widget.status.pvInPlan', 'PV in plan'), planningForecastText(status, Homey), tone('forecast'));
+      if (enabled(settings, 'showPlanningNeed')) addMetric(generalGrid, tr(Homey, 'widget.status.energyStillNeeded', 'Still needed to target'), status.planningSummary?.ready ? formatKwh(status.planningSummary.energyNeedKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
+      if (enabled(settings, 'showPlanningGrid')) addMetric(generalGrid, tr(Homey, 'widget.status.gridPlanned', 'Planned from grid'), status.planningSummary?.ready ? formatKwh(status.planningSummary.gridPlannedKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'));
+      if (enabled(settings, 'showPlanningSolar')) addMetric(generalGrid, tr(Homey, 'widget.status.solarExpected', 'PV still expected'), status.planningSummary?.ready ? formatKwh(status.planningSummary.forecastKwh) : tr(Homey, 'widget.status.chargeWaitingPlanning', 'Waiting for planning'), tone('forecast'));
+      if (generalGrid.children.length) content.appendChild(generalGrid);
+
+      if (enabled(settings, 'showEvs')) {
+        const evs = Array.isArray(status.evs) ? status.evs.filter(Boolean) : [];
+        if (evs.length) {
+          const root = section(tr(Homey, 'widget.status.evs', 'EVs'));
+          evs.forEach(ev => {
+            const details = [];
+            if (enabled(settings, 'showEvDetails')) {
+              const shownConnection=ev.lastKnownFeedback ? ev.lastKnownFeedback.connected : ev.received?.connected===false ? null : ev.connected;
+              details.push(shownConnection===null ? tr(Homey,'evWidget.unknown','Unknown') : shownConnection ? tr(Homey, 'widget.status.connected', 'Connected') : tr(Homey, 'widget.status.notConnected', 'Not connected'));
+              if(ev.controlType==='mode') {
+                if(ev.measuredPowerW>0) details.push(`${tr(Homey,'evWidget.homefluxPower','House measurement')}: ${Math.round(ev.measuredPowerW)} W`);
+              } else if(ev.actualCurrentFresh) details.push(`${tr(Homey,'evWidget.reportedCurrent','Reported')}: ${Math.round(Math.max(0,Number(ev.actualCurrentA)||0)*10)/10} A`);
+              const amps = Math.max(0, Number(ev.outputCurrentA ?? ev.desiredCurrentA) || 0);
+              if (amps > 0) details.push(`${tr(Homey,'evWidget.commandCurrent','Command')}: ${Math.round(amps * 10) / 10} A`);
+              const session = evSessionText(ev, Homey);
+              if (session) details.push(session);
+            }
+            const reasons = [];
+            if (enabled(settings, 'showReasons')) {
+              const normalReason = reasonText(evReasonForWidget(ev.reason, ev), Homey);
+              if (normalReason) reasons.push(normalReason);
+            }
+            const coordinationReason = evBatteryCoordinationText(ev, Homey);
+            if (coordinationReason) reasons.push(coordinationReason);
+            if (enabled(settings, 'showEvPlanning')) {
+              const targetPlan = evPlanningTargetText(ev, Homey);
+              if (targetPlan) reasons.push(targetPlan);
+              const nextDecision = evNextDecisionText(ev, Homey);
+              if (nextDecision) reasons.push(nextDecision);
+            }
+            addItem(root, String(ev.name || `EV ${ev.instance || ''}`), evState(ev, Homey), details.join(' · '), reasons.join(' · '), enabled(settings, 'statusColors') && ev.connected && ev.outputAllowed && Number(ev.outputCurrentA) > 0 ? 'positive' : '');
+            if (enabled(settings, 'showEvPlanning') && isEmergencyCharge(ev) && ev.enabled) {
+              const hint = document.createElement('div');
+              hint.className = 'item-reason emergency-target-hint';
+              hint.style.animationDelay = `${-((Date.now() % 30000) / 1000)}s`;
+              hint.textContent = tr(Homey, 'widget.status.evEmergencyTargetHint', 'Hint: use a Flow with guaranteed charging if you do not want to charge to 100%.');
+              root.lastElementChild.appendChild(hint);
+            }
+          });
+          content.appendChild(root);
+        }
+      }
+
+      const hvacSummaryIcon = kind => {
+        const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('width','14');svg.setAttribute('height','14');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.8');svg.style.verticalAlign='middle';svg.setAttribute('aria-label',kind);
+        svg.setAttribute('class',`hvac-summary-icon-${kind}`);
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',{
+          heat:'M12 3 C13 8 19 9 18 15 C18 23 5 23 5 15 C5 11 9 8 9 7 C9 11 12 11 12 3 Z',
+          cool:'M12 2 V22 M3 7 L21 17 M3 17 L21 7 M9 4 L12 7 L15 4 M9 20 L12 17 L15 20',
+          sun:'M12 3 V1 M12 23 V21 M3 12 H1 M23 12 H21 M4 4 L6 6 M18 18 L20 20 M4 20 L6 18 M18 6 L20 4 M17 12 A5 5 0 1 1 7 12 A5 5 0 1 1 17 12',
+          wait:'M21 12 A9 9 0 1 1 3 12 A9 9 0 1 1 21 12 M12 6 V12 L16 15',
+          cheap:'M12 3 V21 M5 14 L12 21 L19 14',expensive:'M12 21 V3 M5 10 L12 3 L19 10',normal:'M4 12 H20'
+        }[kind]||'M4 12 H20');svg.appendChild(path);return svg;
+      };
+      if (settings.showHvacSummary === true || settings.showHvacSummary === 'true') {
+        const hvacs=(status.hvacs||[]).slice(0,10);
+        if(hvacs.length){
+          const tariff=status.tariff || status.battery?.tariff || {}, price=tariff.className;
+          const root=section(tr(Homey,'widget.status.hvacSummary','HVAC Overview'));
+          root.firstChild.className+=' hvac-summary-header';
+          const tariffView=document.createElement('span');tariffView.className='hvac-summary-tariff';
+          tariffView.style.color=price==='cheap'?'var(--hf-positive)':price==='expensive'?'var(--hf-critical)':price==='normal'?'var(--hf-attention)':'var(--hf-muted)';
+          tariffView.appendChild(hvacSummaryIcon(price||'normal'));
+          const tariffText=document.createElement('span');tariffText.textContent=tariff.label || tariff.name || (price?tr(Homey,'widget.status.hvacTariff'+price,price):'—');tariffView.appendChild(tariffText);root.firstChild.appendChild(tariffView);
+          const table=document.createElement('table');table.className='hvac-summary-table';table.style.cssText='width:100%;table-layout:fixed;border-collapse:collapse';
+          const head=document.createElement('tr');
+          [tr(Homey,'widget.status.device','Device'),tr(Homey,'widget.status.target','Target'),tr(Homey,'widget.status.room','Room')].forEach(t=>{const c=document.createElement('th');c.textContent=t;c.style.textAlign=head.children.length?'right':'left';head.appendChild(c);});table.appendChild(head);
+          hvacs.forEach(h=>{const row=document.createElement('tr'),name=document.createElement('td'),goal=document.createElement('td'),actual=document.createElement('td');
+            const mode=h.outputPowerOn===false?'off':h.outputMode || h.currentMode || h.mode;
+            const goalValue=h.learning?.publishedSetpointC ?? h.outputSetpointC;
+            const unpublished=h.permanent&&h.desiredSetpointC!=null&&(goalValue==null||Math.abs(h.desiredSetpointC-goalValue)>.1);
+            const waiting=Boolean(h.waiting)||unpublished,demand=h.roomTemperatureC!=null&&goalValue!=null&&(mode==='heat'?h.roomTemperatureC<goalValue-.25:mode==='cool'?h.roomTemperatureC>goalValue+.25:false);
+            const pv=h.energySource==='pv'&&!waiting&&demand&&h.enabled&&h.automaticControlEnabled!==false&&h.outputPowerOn!==false;
+            const nameLine=document.createElement('div');nameLine.className='hvac-summary-name';
+            const nameText=document.createElement('span');nameText.className='hvac-summary-name-text';nameText.textContent=String(h.name||'HVAC');nameLine.appendChild(nameText);
+            if(['heat','cool'].includes(mode))nameLine.appendChild(hvacSummaryIcon(mode));
+            if(pv)nameLine.appendChild(hvacSummaryIcon('sun'));if(waiting)nameLine.appendChild(hvacSummaryIcon('wait'));name.appendChild(nameLine);
+            name.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+            if(pv)name.style.color='var(--green,#34a853)';else if(!h.enabled||h.automaticControlEnabled===false||mode==='off'||mode==='standby')name.style.opacity='.5';
+            goal.textContent=goalValue==null?'—':formatC(goalValue);
+            const room=h.roomTemperatureC, reached=room!=null&&goalValue!=null&&(mode==='heat'?room>=goalValue-.25:mode==='cool'?room<=goalValue+.25:Math.abs(room-goalValue)<=.25);
+            actual.textContent=room==null?'—':formatC(room);if(reached){const tick=document.createElement('span');tick.textContent=' ✓';tick.style.color='var(--green,#34a853)';actual.appendChild(tick);}
+            [name,goal,actual].forEach(c=>{c.style.padding='5px 7px';row.appendChild(c);});table.appendChild(row);
+          });root.appendChild(table);content.appendChild(root);
+        }
+      }
+
+      if (enabled(settings, 'showHvacs')) {
+        const hvacs = Array.isArray(status.hvacs) ? status.hvacs.filter(Boolean) : [];
+        if (hvacs.length) {
+          const root = section(tr(Homey, 'widget.status.hvacs', 'HVAC'));
+          hvacs.forEach(hvac => {
+            let temperatures = '';
+            if (enabled(settings, 'showHvacTemperatures')) {
+              const target = hvac.permanent ? (hvac.learning?.publishedSetpointC ?? hvac.outputSetpointC) : hvac.setpointCommand !== null && hvac.setpointCommand !== undefined
+                ? hvac.setpointCommand
+                : hvac.outputSetpointC !== null && hvac.outputSetpointC !== undefined
+                  ? hvac.outputSetpointC
+                  : hvac.setpointC;
+              temperatures = `${tr(Homey, 'widget.status.room', 'Room')} ${formatC(hvac.roomTemperatureC)} → ${tr(Homey, 'widget.status.target', 'target')} ${formatC(target)}`;
+            }
+            addItem(root, String(hvac.name || `HVAC ${hvac.instance || ''}`), hvacState(hvac, Homey), temperatures, enabled(settings, 'showReasons') ? reasonText(hvac.reason, Homey) : '');
+          });
+          content.appendChild(root);
+        }
+      }
+
+      if (enabled(settings, 'showBoiler') && Number(status.settings?.boilerCount || 0) > 0 && status.boiler) {
+        const root = section(String(status.boiler.name || tr(Homey, 'widget.status.boiler', 'Boiler')));
+        let details = '';
+        if (enabled(settings, 'showBoilerWait')) {
+          const fallbackDays = Math.max(0, Math.round(Number(status.boiler.fallbackDays) || 0));
+          const missedSolarDays = Math.max(0, Math.round(Number(status.boiler.missedSolarDays ?? status.boiler.daysWithoutCycle) || 0));
+          if (fallbackDays > 0 && !status.boiler.fallbackDue) {
+            const nextAt = Math.max(0, Number(status.boiler.nextFallbackAt) || 0);
+            const countdown = nextAt > Date.now() ? formatDurationMs(nextAt - Date.now()) : '';
+            details = tr(Homey, 'widget.status.boilerDaysDetail', '{days}/{target} solar day(s) missed · tariff fallback in {time}')
+              .replace('{days}', missedSolarDays)
+              .replace('{target}', fallbackDays)
+              .replace('{time}', countdown || '—');
+          } else if (fallbackDays > 0 && status.boiler.fallbackDue) {
+            details = tr(Homey, 'widget.status.boilerFallbackReadyDetail', '{days}/{target} solar day(s) missed · tariff fallback active')
+              .replace('{days}', missedSolarDays)
+              .replace('{target}', fallbackDays);
+          }
+        }
+        addItem(root, String(status.boiler.name || tr(Homey, 'widget.status.boiler', 'Boiler')), boilerState(status.boiler, Homey), details, enabled(settings, 'showReasons') ? reasonText(status.boiler.reason, Homey) : '');
+        content.appendChild(root);
+      }
+    }
+
+    async function onHomeyReady(Homey) {
+      const settings = Homey.getSettings() || {};
+      let latestStatus = null;
+      let refreshTimer = null, displayTimer = null;
+      let hasRendered = false;
+      let refreshBusy = false, refreshAgain = false;
+      let lastHeight = 0;
+      // Hint visibility can change between status refreshes. Resize only when
+      // the rendered content changes size; this never reads EMS data.
+      const contentResizeObserver = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+          if (hasRendered && !document.hidden) resize().catch(console.error);
+        }) : null;
+
+      async function resize() {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const height = Math.max(90, Math.ceil(document.getElementById('widget').scrollHeight));
+        if (height !== lastHeight) {
+          lastHeight = height;
+          if (hasRendered && typeof Homey.setHeight === 'function') await Homey.setHeight(height);
+          return height;
+        }
+        return lastHeight;
+      }
+
+      async function refresh(first = false) {
+        if (refreshBusy) { refreshAgain = true; return; }
+        refreshBusy = true;
+        try {
+          const status = await Homey.api('GET', '/status', {});
+          latestStatus = status || {};
+          renderStatus(latestStatus, settings, Homey);
+          const previousAlert = alertIdentity;
+          updateDecisionDisplay(latestStatus, settings, Homey);
+          syncDisplayClock(previousAlert !== alertIdentity);
+          document.getElementById('error').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
+          const height = await resize();
+          if (first) await Homey.ready({ height });
+          hasRendered = true;
+        } catch (error) {
+          if (!hasRendered) {
+            document.getElementById('content').classList.add('hidden');
+            const target = document.getElementById('error');
+            target.classList.remove('hidden');
+            target.textContent = tr(Homey, 'widget.status.error', 'EMS status is temporarily unavailable.');
+            const height = await resize();
+            if (first) await Homey.ready({ height });
+          }
+          console.error('HomeFlux EMS status widget failed', error);
+        } finally {
+          refreshBusy = false;
+          if(refreshAgain && !document.hidden){refreshAgain=false;refresh(false);}
+        }
+      }
+
+      const evPlanChanged=()=>{if(!document.hidden)refresh(false);};
+      Homey.on?.('homeflux.ev.changed',evPlanChanged);
+      await refresh(true);
+      function syncDisplayClock(reset = false) {
+        if (reset || document.hidden || !alertIdentity) {
+          clearInterval(displayTimer); displayTimer = null;
+        }
+        // No presentation clock is needed without an enabled critical alert.
+        if (!document.hidden && alertIdentity && displayTimer === null) {
+          displayTimer = setInterval(() => {
+            if (!document.hidden && latestStatus) updateDecisionDisplay(latestStatus, settings, Homey);
+          }, 5000);
+        }
+      }
+      function stopTimers() {
+        clearInterval(refreshTimer); clearInterval(displayTimer);
+        refreshTimer = displayTimer = null;
+        contentResizeObserver?.disconnect();
+      }
+      function startTimers() {
+        stopTimers();
+        if (document.hidden) return;
+        contentResizeObserver?.observe(document.getElementById('widget'));
+        refreshTimer = setInterval(() => {
+          if (!document.hidden) refresh(false);
+        }, 10000);
+        syncDisplayClock(true);
+      }
+      function visibilityChanged() {
+        if (latestStatus) updateDecisionDisplay(latestStatus, settings, Homey);
+        startTimers();
+      }
+      document.addEventListener('visibilitychange', visibilityChanged);
+      window.addEventListener('pagehide', stopTimers);
+      window.addEventListener('pageshow', startTimers);
+      window.addEventListener('unload', () => {
+        stopTimers();
+        Homey.off?.('homeflux.ev.changed',evPlanChanged);
+        document.removeEventListener('visibilitychange', visibilityChanged);
+        window.removeEventListener('pagehide', stopTimers);
+        window.removeEventListener('pageshow', startTimers);
+      }, { once: true });
+      startTimers();
+    }
+  </script>
+</body>
+</html>

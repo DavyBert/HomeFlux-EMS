@@ -1,0 +1,820 @@
+{
+  "node": "v24.22.1",
+  "physicalHomeyMeasured": false,
+  "reports": [
+    {
+      "kind": "stable",
+      "unit": "1800 one-second P1 frames",
+      "warmup": 1200,
+      "rounds": [
+        {
+          "cpuMs": 177.086,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 14886056,
+          "rss": 83099648
+        },
+        {
+          "cpuMs": 150.339,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 14946240,
+          "rss": 83361792
+        },
+        {
+          "cpuMs": 166.223,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 14914208,
+          "rss": 83492864
+        },
+        {
+          "cpuMs": 148.887,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15024312,
+          "rss": 83492864
+        },
+        {
+          "cpuMs": 169.311,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15133144,
+          "rss": 84672512
+        },
+        {
+          "cpuMs": 214.885,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15168856,
+          "rss": 84582400
+        },
+        {
+          "cpuMs": 164.862,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15267624,
+          "rss": 84713472
+        }
+      ],
+      "heapStart": 14803352,
+      "heapEnd": 15299816,
+      "diagnosticCounters": {}
+    },
+    {
+      "kind": "zero",
+      "unit": "1800 one-second P1 frames",
+      "warmup": 1200,
+      "rounds": [
+        {
+          "cpuMs": 167.114,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15344680,
+          "rss": 85532672
+        },
+        {
+          "cpuMs": 149.075,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15370152,
+          "rss": 85532672
+        },
+        {
+          "cpuMs": 147.187,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15324928,
+          "rss": 102178816
+        },
+        {
+          "cpuMs": 153.713,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15302280,
+          "rss": 102178816
+        },
+        {
+          "cpuMs": 155.278,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15369456,
+          "rss": 102064128
+        },
+        {
+          "cpuMs": 190.822,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15475464,
+          "rss": 102457344
+        },
+        {
+          "cpuMs": 154.97,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15471792,
+          "rss": 102719488
+        }
+      ],
+      "heapStart": 15311896,
+      "heapEnd": 15472648,
+      "diagnosticCounters": {}
+    },
+    {
+      "kind": "save",
+      "unit": "1800 one-second P1 frames",
+      "warmup": 1200,
+      "rounds": [
+        {
+          "cpuMs": 139.238,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15509584,
+          "rss": 102830080
+        },
+        {
+          "cpuMs": 150.955,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15555904,
+          "rss": 102830080
+        },
+        {
+          "cpuMs": 145.178,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15541960,
+          "rss": 102830080
+        },
+        {
+          "cpuMs": 137.41,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15562344,
+          "rss": 102830080
+        },
+        {
+          "cpuMs": 150.143,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15518088,
+          "rss": 103092224
+        },
+        {
+          "cpuMs": 169.326,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15653848,
+          "rss": 103616512
+        },
+        {
+          "cpuMs": 127.395,
+          "calls": {
+            "shouldRunFastEvaluation": 1800,
+            "getEvaluationState": 36,
+            "refreshControlContext": 36,
+            "getRuntimeSettings": 36,
+            "prepareControlContext": 36,
+            "prepareChargeStrategy": 36,
+            "evaluate": 36,
+            "refreshPlanningInContext": 36
+          },
+          "heapUsed": 15688928,
+          "rss": 103616512
+        }
+      ],
+      "heapStart": 15549792,
+      "heapEnd": 15690888,
+      "diagnosticCounters": {}
+    },
+    {
+      "kind": "changing",
+      "unit": "1800 one-second P1 frames",
+      "warmup": 1200,
+      "rounds": [
+        {
+          "cpuMs": 342.743,
+          "calls": {
+            "shouldRunFastEvaluation": 514,
+            "getEvaluationState": 384,
+            "previewBatteryFeedback": 17,
+            "evaluateFastNow": 257,
+            "evaluate": 317,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60
+          },
+          "heapUsed": 16090464,
+          "rss": 107388928
+        },
+        {
+          "cpuMs": 323.826,
+          "calls": {
+            "shouldRunFastEvaluation": 515,
+            "evaluateFastNow": 258,
+            "getEvaluationState": 386,
+            "evaluate": 318,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60,
+            "previewBatteryFeedback": 16
+          },
+          "heapUsed": 16357088,
+          "rss": 107651072
+        },
+        {
+          "cpuMs": 363.019,
+          "calls": {
+            "shouldRunFastEvaluation": 515,
+            "evaluateFastNow": 258,
+            "getEvaluationState": 386,
+            "evaluate": 318,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60,
+            "previewBatteryFeedback": 16
+          },
+          "heapUsed": 15984640,
+          "rss": 107913216
+        },
+        {
+          "cpuMs": 341.423,
+          "calls": {
+            "shouldRunFastEvaluation": 515,
+            "evaluateFastNow": 258,
+            "getEvaluationState": 386,
+            "evaluate": 318,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60,
+            "previewBatteryFeedback": 16
+          },
+          "heapUsed": 15750728,
+          "rss": 103981056
+        },
+        {
+          "cpuMs": 350.901,
+          "calls": {
+            "shouldRunFastEvaluation": 515,
+            "evaluateFastNow": 258,
+            "getEvaluationState": 386,
+            "evaluate": 318,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60,
+            "previewBatteryFeedback": 16
+          },
+          "heapUsed": 15871336,
+          "rss": 103501824
+        },
+        {
+          "cpuMs": 358.457,
+          "calls": {
+            "shouldRunFastEvaluation": 515,
+            "evaluateFastNow": 258,
+            "getEvaluationState": 386,
+            "evaluate": 318,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60,
+            "previewBatteryFeedback": 16
+          },
+          "heapUsed": 15991680,
+          "rss": 104026112
+        },
+        {
+          "cpuMs": 339.634,
+          "calls": {
+            "shouldRunFastEvaluation": 515,
+            "evaluateFastNow": 258,
+            "getEvaluationState": 386,
+            "evaluate": 318,
+            "refreshControlContext": 60,
+            "getRuntimeSettings": 60,
+            "prepareControlContext": 60,
+            "prepareChargeStrategy": 60,
+            "refreshPlanningInContext": 60,
+            "previewBatteryFeedback": 16
+          },
+          "heapUsed": 16145760,
+          "rss": 104550400
+        }
+      ],
+      "heapStart": 15865160,
+      "heapEnd": 16146712,
+      "diagnosticCounters": {}
+    },
+    {
+      "kind": "dynamic_ev",
+      "unit": "180 contexts",
+      "warmup": 160,
+      "rounds": [
+        {
+          "cpuMs": 1119.709,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 18489544,
+          "rss": 144486400
+        },
+        {
+          "cpuMs": 1074.912,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 18659400,
+          "rss": 144748544
+        },
+        {
+          "cpuMs": 1092.599,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17897976,
+          "rss": 144617472
+        },
+        {
+          "cpuMs": 1107.802,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17942984,
+          "rss": 144617472
+        },
+        {
+          "cpuMs": 1037.051,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17969608,
+          "rss": 144617472
+        },
+        {
+          "cpuMs": 1065.66,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 18005608,
+          "rss": 144617472
+        },
+        {
+          "cpuMs": 1130.768,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 360,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 18734624,
+          "rss": 145272832
+        }
+      ],
+      "heapStart": 18094040,
+      "heapEnd": 18735672,
+      "diagnosticCounters": {
+        "evFeedbackInputs": 1,
+        "evInputEvaluationRequests": 1,
+        "contextEvaluations": 1,
+        "evContextFromInput": 1,
+        "evPhysicalAccountingChecks": 1,
+        "evPhysicalSettingsReads": 2,
+        "batteryNightPriceCurveBuilds": 1,
+        "batteryNightPlanBuilds": 1,
+        "batteryNightPriceWindowBuilds": 1,
+        "widgetEnergyBudgetCalculations": 1,
+        "planningCalculations": 1,
+        "evPortfolioCalculations": 1,
+        "evInstanceSettingsBuilds": 1,
+        "calculatedSetpointTriggers": 1,
+        "batteryCommandPublishes": 1
+      }
+    },
+    {
+      "kind": "dynamic_center",
+      "unit": "180 contexts",
+      "warmup": 160,
+      "rounds": [
+        {
+          "cpuMs": 256.066,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17840848,
+          "rss": 148140032
+        },
+        {
+          "cpuMs": 287.16,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17883704,
+          "rss": 148271104
+        },
+        {
+          "cpuMs": 251.911,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17720944,
+          "rss": 148271104
+        },
+        {
+          "cpuMs": 253.817,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17802008,
+          "rss": 147632128
+        },
+        {
+          "cpuMs": 253.799,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17811288,
+          "rss": 147632128
+        },
+        {
+          "cpuMs": 254.584,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17855328,
+          "rss": 147632128
+        },
+        {
+          "cpuMs": 259.671,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 18008744,
+          "rss": 148025344
+        }
+      ],
+      "heapStart": 18496896,
+      "heapEnd": 18009632,
+      "diagnosticCounters": {}
+    },
+    {
+      "kind": "disabled",
+      "unit": "180 contexts",
+      "warmup": 160,
+      "rounds": [
+        {
+          "cpuMs": 168.689,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17517544,
+          "rss": 148316160
+        },
+        {
+          "cpuMs": 164.11,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17538416,
+          "rss": 148316160
+        },
+        {
+          "cpuMs": 210.711,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17563912,
+          "rss": 148316160
+        },
+        {
+          "cpuMs": 181.819,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17568688,
+          "rss": 148316160
+        },
+        {
+          "cpuMs": 179.827,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17579128,
+          "rss": 148316160
+        },
+        {
+          "cpuMs": 209.056,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17631680,
+          "rss": 148316160
+        },
+        {
+          "cpuMs": 175.008,
+          "calls": {
+            "getEvaluationState": 180,
+            "refreshControlContext": 180,
+            "getRuntimeSettings": 180,
+            "prepareControlContext": 180,
+            "prepareChargeStrategy": 180,
+            "evaluate": 180,
+            "refreshPlanningInContext": 180
+          },
+          "heapUsed": 17633136,
+          "rss": 148316160
+        }
+      ],
+      "heapStart": 17599760,
+      "heapEnd": 17634024,
+      "diagnosticCounters": {}
+    }
+  ]
+}

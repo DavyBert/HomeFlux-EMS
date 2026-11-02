@@ -1,0 +1,14 @@
+{
+  "title": {
+    "en": "Request forecast is needed",
+    "nl": "PV-forecast is nodig"
+  },
+  "titleFormatted": {
+    "en": "Request forecast is needed",
+    "nl": "PV-forecast is nodig"
+  },
+  "hint": {
+    "en": "Fires every 30 minutes and once at app start. Use it to send the remaining PV forecast to HomeFlux EMS.",
+    "nl": "Start elke 30 minuten en één keer bij appstart. Gebruik deze kaart om de resterende PV-forecast naar HomeFlux EMS te sturen."
+  }
+}

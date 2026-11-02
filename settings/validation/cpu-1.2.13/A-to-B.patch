@@ -1,0 +1,18 @@
+--- a/app.js
++++ b/app.js
+@@ -14505,6 +14505,15 @@
+     const earliest = Math.max(this.nextCommandAllowedAt || 0,
+       this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
+     const wait = Math.max(0, earliest - now);
++    // A queued battery pass already owns this interval. Input bookkeeping and
++    // urgent flexible-load safety run before this scheduler; keep its deadline
++    // and force flag without repeating a preflight whose result cannot run yet.
++    // At the deadline requestEvaluate rechecks settings and actual publications.
++    if (wait > 0 && this.controlTimer) {
++      this.controlTimerForce = Boolean(this.controlTimerForce || immediate);
++      this.recordDiagnosticCounter('fastCoalesced');
++      return true;
++    }
+     // Keep the cheap signal/safety gates, but do not build a charging feedback
+     // state while the existing command interval prevents its use. This object
+     // lives only in this synchronous request, never in the timer or on the app.

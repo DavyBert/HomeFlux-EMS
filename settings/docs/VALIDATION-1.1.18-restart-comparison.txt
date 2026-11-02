@@ -1,0 +1,7 @@
+PASS Screenshot reproduction: inferred night targets tomorrow and correct PV after evening restart
+PASS Low SoC still gets future windows with available overnight prices
+PASS Morning restart and explicit dark-night continuation stay on today
+PASS Actual PV start returns to existing day forecast and sunset debounce
+PASS 20:00 fallback and midnight preserve the corrected target and median
+PASS Custom target times, fixed/TOU and cache avoid per-P1 calendar rebuilding
+1.1.18 evening restart: 6 production-path scenarios passed.

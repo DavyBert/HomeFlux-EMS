@@ -1,0 +1,28 @@
+{
+  "title": {
+    "en": "Request Battery SoC is needed",
+    "nl": "SoC Batterij is nodig"
+  },
+  "titleFormatted": {
+    "en": "Request [[battery]] SoC is needed",
+    "nl": "SoC [[battery]] is nodig"
+  },
+  "hint": {
+    "en": "Fires every 3 minutes and once at app start when this battery is configured. Send its current SoC to HomeFlux EMS. Only slots within the saved device count are offered. At count 0 the list is empty.",
+    "nl": "Start elke 3 minuten en één keer bij appstart wanneer deze batterij is ingesteld. Stuur de actuele SoC naar HomeFlux EMS. Alleen slots binnen het opgeslagen aantal worden aangeboden. Bij aantal 0 is de lijst leeg."
+  },
+  "args": [
+    {
+      "name": "battery",
+      "type": "autocomplete",
+      "title": {
+        "en": "Battery",
+        "nl": "Batterij"
+      },
+      "placeholder": {
+        "en": "Select configured battery",
+        "nl": "Kies geconfigureerde batterij"
+      }
+    }
+  ]
+}

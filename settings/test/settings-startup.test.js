@@ -1,0 +1,305 @@
+'use strict';
+
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'settings', 'index.html'), 'utf8');
+const apiJs = fs.readFileSync(path.join(root, 'api.js'), 'utf8');
+const appJs = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+const composeJson = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'app.json'), 'utf8'));
+const localeNl = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'nl.json'), 'utf8'));
+const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'locales', 'en.json'), 'utf8'));
+const settingsTranslationEn = fs.readFileSync(path.join(root, 'settings', 'translations', 'en.json'), 'utf8');
+const flowActionIds = new Set(appJson.flow.actions.map(card => card.id));
+
+for (const manifest of [appJson, composeJson]) {
+  assert.equal(manifest.version, '1.2.15');
+  assert.deepStrictEqual(manifest.api.getSettingsSnapshot, { method: 'GET', path: '/settings-snapshot' });
+  assert.deepStrictEqual(manifest.api.simulatePlanning, { method: 'POST', path: '/planning/simulate' });
+  assert.deepStrictEqual(manifest.api.getSavings, { method: 'GET', path: '/savings' });
+  assert.deepStrictEqual(manifest.api.getAutoTune, { method: 'GET', path: '/auto-tune' });
+  assert.deepStrictEqual(manifest.api.refreshAutoTune, { method: 'POST', path: '/auto-tune/refresh' });
+  assert.deepStrictEqual(manifest.api.setAutoTunePermission, { method: 'PUT', path: '/auto-tune/permission' });
+  assert.deepStrictEqual(manifest.api.setAutoTuneLimits, { method: 'PUT', path: '/auto-tune/limits' });
+  assert.deepStrictEqual(manifest.api.applyAutoTuneRecommendation, { method: 'POST', path: '/auto-tune/apply' });
+  assert.deepStrictEqual(manifest.api.setAutoTuneIgnored, { method: 'PUT', path: '/auto-tune/ignored' });
+}
+assert.equal(localeNl.settings.subtitle, 'Jouw energie, anders geregeld');
+assert.equal(localeEn.settings.subtitle, 'Your energy, managed differently');
+for (let instance = 1; instance <= 4; instance += 1) {
+  const cardId = `end_ev${instance}_charging_session`;
+  assert(flowActionIds.has(cardId), `${cardId} missing from generated manifest`);
+  assert(fs.existsSync(path.join(root, '.homeycompose', 'flow', 'actions', `${cardId}.json`)), `${cardId} Compose file missing`);
+}
+assert(html.includes('HomeFlux EMS-apparaat en widgets'), 'battery configuration must point users to the EMS device/widgets');
+assert(html.includes('id="hybridLiveOwner"'), 'Hybrid settings must show the current battery-control owner');
+assert(html.includes('wie de batterijregeling in handen heeft'), 'EMS device guidance must explain battery-control ownership');
+assert(apiJs.includes('async getSettingsSnapshot({ homey })'));
+assert(apiJs.includes('homey.app.getSettingsSnapshot()'));
+assert.deepStrictEqual(composeJson.api.getHybridStatus, { method: 'GET', path: '/hybrid-status' });
+assert.deepStrictEqual(appJson.api.getHybridStatus, composeJson.api.getHybridStatus);
+assert(apiJs.includes('async getHybridStatus({ homey })'));
+assert(apiJs.includes('homey.app.getHybridEmsStatus()'));
+assert(appJs.includes('getHybridEmsStatus(settings = this.getSettings())'));
+assert(html.includes("Homey.api('GET', '/hybrid-status'"), 'Hybrid live status must use the lightweight endpoint');
+assert(html.includes("if (name === 'hybrid-ems') refreshHybridStatus();"), 'opening Hybrid tab must refresh live state');
+assert(html.includes("if (hybridTabOpen) refreshHybridStatus();"), 'open Hybrid tab must live-refresh');
+assert(!html.includes("if(q('hybridEmsEnabled')) q('hybridEmsEnabled').checked=Boolean(hybridStatus.enabled);"), 'live status refresh must not overwrite unsaved Hybrid settings');
+assert(apiJs.includes('async getAutoTune({ homey })'));
+assert(apiJs.includes('async refreshAutoTune({ homey })'));
+assert(apiJs.includes('async setAutoTunePermission({ homey, body })'));
+assert(apiJs.includes('async setAutoTuneLimits({ homey, body })'));
+assert(apiJs.includes('async applyAutoTuneRecommendation({ homey, body })'));
+assert(apiJs.includes('async setAutoTuneIgnored({ homey, body })'));
+assert(appJs.includes('getAutoTuneRecommendations()'));
+assert(appJs.includes('scheduleAutoTuneContextIfDue(now'));
+assert(appJs.includes("this.requestContextEvaluate(false, 'autotune_due')"));
+assert(!appJs.includes('this.recordAutoTunePlanningSample(now, settings);\n    this.maybeRunAutoTune(now);'));
+assert(html.includes('data-tab="finetuning"'));
+assert(html.includes('id="panel-finetuning"'));
+assert(html.includes("if (name === 'finetuning') refreshAutoTune();"));
+assert(appJs.includes('if (schema < 56)'));
+assert(appJs.includes('if (schema < 57)'));
+assert(appJs.includes("this.setSetting('_autoTuneLearning', { days: [] })"));
+assert(appJs.includes("this.setSetting('_autoTunePermissions', {})"));
+assert(appJs.includes("this.setSetting('_autoTuneIgnored', {})"));
+assert(appJs.includes("this.setSetting('_autoTuneLimits', {})"));
+assert(html.includes('id="autoTuneMinConfidencePercent"'), 'Autotune confidence threshold setting missing');
+assert(html.includes('data-auto-tune-confidence='), 'per-parameter confidence control missing');
+assert(html.includes('data-auto-tune-min='), 'per-parameter Autotune minimum missing');
+assert(html.includes('data-auto-tune-max='), 'per-parameter Autotune maximum missing');
+assert(html.includes('data-auto-tune-apply='));
+assert(html.includes('data-auto-tune-ignore='));
+assert(html.includes('id="autoTuneIgnoredCard"'));
+assert(appJs.includes('getSettingsSnapshot()'));
+assert(appJs.includes('return this.getHvacCount(settings) ?'), 'snapshot adds configured HVAC learning without running the engine');
+const importedEnergyCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'flow', 'actions', 'set_imported_energy_today.json'), 'utf8'));
+const importedEnergyManifest = appJson.flow.actions.find(card => card.id === 'set_imported_energy_today');
+assert.deepStrictEqual(importedEnergyManifest, { id: 'set_imported_energy_today', ...importedEnergyCompose }, 'generated imported-energy Flow card must match Compose');
+assert(appJs.includes("getActionCard('set_imported_energy_today')"), 'imported energy today Flow listener missing');
+const exportedEnergyCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'flow', 'actions', 'set_exported_energy_today.json'), 'utf8'));
+const exportedEnergyManifest = appJson.flow.actions.find(card => card.id === 'set_exported_energy_today');
+assert.deepStrictEqual(exportedEnergyManifest, { id: 'set_exported_energy_today', ...exportedEnergyCompose }, 'generated exported-energy Flow card must match Compose');
+assert(appJs.includes("getActionCard('set_exported_energy_today')"), 'exported energy today Flow listener missing');
+const exportPriceCompose = JSON.parse(fs.readFileSync(path.join(root, '.homeycompose', 'flow', 'actions', 'set_external_export_price.json'), 'utf8'));
+const exportPriceManifest = appJson.flow.actions.find(card => card.id === 'set_external_export_price');
+assert.deepStrictEqual(exportPriceManifest, { id: 'set_external_export_price', ...exportPriceCompose }, 'generated export-price Flow card must match Compose');
+assert(appJs.includes("getActionCard('set_external_export_price')"), 'external export-price Flow listener missing');
+assert(html.includes('Positief = vergoeding die je ontvangt'), 'export-price sign convention must be explained in settings');
+assert(html.includes("await api('GET', '/settings-snapshot')"));
+assert(html.includes('const snapshot = await loadSettingsSnapshot();'));
+assert(html.includes('let savedSettingsBaseline = new Map();'), 'settings saved baseline missing');
+assert(html.includes('function captureSettingsBaseline()'), 'settings baseline capture missing');
+assert(html.includes('const value = currentSettingValue(id);'), 'changed-only settings reader missing');
+assert(html.includes('if (settingsBaselineReady && settingValuesEqual(value, previous)) continue;'), 'unchanged settings must be skipped');
+assert(html.includes("if (!settingsBaselineReady || !settingValuesEqual(rates, savedRatesBaseline))"), 'tariffs must be change-detected');
+assert(html.includes("'Geen wijzigingen'"), 'no-change save feedback missing');
+assert(html.includes('await loadUiTranslations();'), 'settings translation bundle must load before rendering');
+assert(html.includes("'planning.forecastDecisionTomorrow'"), 'planning forecast text must use translation key');
+assert(!html.includes('const UI_EXACT_EN = {'), 'large translation dictionary must not remain embedded in index.html');
+assert(html.includes("if (name === 'help') ensureHelpCatalogRendered();"));
+assert(!html.includes('\n  renderHelpCatalog();\n\n  function switchTab(name)'));
+
+for (let month = 1; month <= 12; month += 1) {
+  assert(html.includes(`id="peakReserveMonth${month}"`), `month ${month} checkbox missing`);
+  assert(html.includes(`'peakReserveMonth${month}'`), `month ${month} missing from settings wiring`);
+}
+assert(!html.includes('id="peakReserveSeasonWinter"'));
+assert(!html.includes('id="battery1MinChargeW"'), 'general individual battery minimum charge field must stay out of the UI');
+assert(!html.includes('id="battery1MinDischargeW"'), 'general individual battery minimum discharge field must stay out of the UI');
+assert(html.includes('id="battery1MaxChargeW"'), 'individual maximum charge field missing');
+assert(html.includes('id="battery1MaxDischargeW"'), 'individual maximum discharge field missing');
+assert(html.includes('id="splitCommandBattery1MinimumPowerW"'), 'Split Command minimum power field must remain available');
+assert(html.includes('Actief tijdens maanden') || settingsTranslationEn.includes('Actief tijdens maanden'));
+assert(appJs.includes('if (schema < 32)'));
+assert(appJs.includes("settingsSchemaVersion', 71"));
+assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
+for (const id of ['evPeakGuardBatteryAssistNormal','evPeakGuardBatteryAssistEmergency','ev2PeakGuardBatteryAssistNormal','ev2PeakGuardBatteryAssistEmergency','ev3PeakGuardBatteryAssistNormal','ev3PeakGuardBatteryAssistEmergency','ev4PeakGuardBatteryAssistNormal','ev4PeakGuardBatteryAssistEmergency']) {
+  assert(html.includes(`id="${id}"`), `${id} EV home-battery support setting missing`);
+  assert(html.includes(`'${id.replace(/^ev(?:[2-4])?/, '')}'`) || html.includes(`'PeakGuardBatteryAssistNormal'`) || html.includes(`'PeakGuardBatteryAssistEmergency'`), `${id} missing from EV settings wiring`);
+}
+assert(appJs.includes('if (schema < 49)'), 'v0.4.10 EV home-battery support migration missing');
+assert(appJs.includes('if (schema < 50)'), 'v0.4.18 EV/control migration missing');
+assert(appJs.includes('if (schema < 51)'), 'global EV PV distribution migration missing');
+assert(html.includes('id="evPvSharePercent"'), 'global EV PV distribution setting missing');
+for (const id of ['evSmartPvPriority','ev2SmartPvPriority','ev3SmartPvPriority','ev4SmartPvPriority']) assert(!html.includes(`id="${id}"`), `${id} legacy per-EV PV priority must not remain visible`);
+for (const id of ['gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW']) assert(html.includes(`id="${id}"`), `${id} v0.4.18 setting missing`);
+assert(html.includes('<option value="3">Gemiddelde laatste 3 netmetingen</option>'), '3-input grid smoothing option missing');
+assert(appJs.includes("allowedValues: [0, 3, 5, 7, 10]"), 'P1 Autotune dropdown values must be declared in the runtime descriptor');
+assert(html.includes('Elke input telt één keer, ongeacht de tijd ertussen.'), 'grid smoothing must be described as input-count based');
+for (const id of ['evWeight','ev2Weight','ev3Weight','ev4Weight']) assert(html.includes(`id="${id}"`), `${id} EV weight setting missing`);
+assert(html.includes('data-ev-grid-rate') && html.includes('evMaxGridImportW'), 'TOU total EV grid import limit missing from EV tab');
+assert(html.includes('id="planningMinIntervalMinutes"'), 'planning throttle setting missing');
+assert(apiJs.includes('async refreshPlanning({ homey })'), 'forced planning refresh API missing');
+assert(apiJs.includes('async simulatePlanning({ homey, body })'), 'planning simulation API handler missing');
+assert(apiJs.includes('homey.app.simulatePlanning(body || {})'), 'planning simulation must route to the app');
+assert(appJs.includes('simulatePlanning(body = {})'), 'pure planning simulator missing');
+assert(appJs.includes('targetSocOverride: targetSoc'), 'simulation target override missing');
+
+for (const id of ['sunnyMonthsMinSocEnabled','sunnyMonthsMinSoc']) {
+  assert(html.includes(`id="${id}"`), `${id} setting missing`);
+  assert(html.includes(`'${id}'`), `${id} missing from settings wiring`);
+}
+assert(appJs.includes("if (schema < 41)"), 'v0.3.80 settings migration missing');
+assert(appJs.includes("this.setSetting('sunnyMonthsMinSocEnabled', false)"), 'sunny-month option must default off on upgrade');
+
+for (const id of ['lowForecastAutoSunnyEnabled','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes']) {
+  assert(html.includes(`id="${id}"`), `${id} low-PV sunny-day setting missing`);
+  assert(html.includes(`'${id}'`), `${id} missing from settings wiring`);
+}
+assert(appJs.includes("if (schema < 46)"), 'v0.4.0 low-PV sunny-day migration missing');
+assert(appJs.includes("this.setSetting('lowForecastAutoSunnyEnabled', false)"), 'low-PV sunny-day promotion must default off on upgrade');
+assert.equal(composeJson.homepage, 'https://github.com/DavyBert/HomeFlux-EMS');
+assert.equal(composeJson.support, 'https://github.com/DavyBert/HomeFlux-EMS/issues');
+assert.equal(appJson.homepage, composeJson.homepage);
+assert.equal(appJson.support, composeJson.support);
+assert.equal(composeJson.description.en, 'Your energy, managed differently');
+assert.equal(composeJson.description.nl, 'Jouw energie, anders geregeld');
+assert.deepEqual(appJson.description, composeJson.description);
+
+assert(html.includes('id="peakReserveNightEnabled"'), 'night minimum setting missing');
+assert(html.includes("'peakReserveNightEnabled'"), 'night minimum setting missing from settings wiring');
+assert(appJs.includes("if (schema < 42)"), 'v0.3.84 settings migration missing');
+assert(appJs.includes("if (schema < 43)"), 'v0.3.85 tariff-policy migration missing');
+assert(appJs.includes("if (schema < 44)"), 'v0.3.86 weekday/weekend tariff-policy migration missing');
+assert(appJs.includes("if (schema < 45)"), 'v0.3.88 absolute minimum-SoC migration missing');
+assert(appJs.includes("this.setSetting('peakReserveNightEnabled', false)"), 'night minimum option must default off on upgrade');
+
+assert(html.includes('id="peakReserveTargetSoc"'), 'selected-month absolute minimum SoC setting missing');
+assert(!html.includes('id="peakReserveKwh"'), 'legacy selected-month kWh input must be removed from UI');
+assert(!html.includes('id="peakReservePercent"'), 'legacy coupled reserve percentage input must be removed from UI');
+assert(html.includes('Minimum-SoC voor dagplanning in geselecteerde maanden (%)'), 'day-planning wording missing');
+assert(html.includes("Het geldt 's nachts alleen wanneer ook de nachtoptie is ingeschakeld."), 'sunny-month night limitation must be explicit');
+assert(html.includes('function validateNumericSettings()'), 'numeric save validation missing');
+assert(html.includes('Number.isFinite(value)'), 'numeric save validation must reject NaN/Infinity');
+assert(/id=\"lowForecastSelfConsumptionMinKwh\"(?![^>]*\bmax=)/.test(html), 'self-consumption PV threshold must not have a hard maximum');
+assert(appJs.includes("this.setSetting('peakReserveTargetSoc'"), 'legacy reserve migration to absolute SoC missing');
+assert(!html.includes('id="manualChargeW"'), 'legacy manual charge watt limit must no longer be configurable');
+assert(html.includes('data-rate-k=\"weekdayChargeMode\"'), 'weekday tariff charging selector missing');
+assert(html.includes('data-rate-k=\"weekendChargeMode\"'), 'weekend tariff charging selector missing');
+assert(html.includes("['never',uiLanguage==='nl'?'Niet gebruiken':'Do not use']"), 'tariff charging selector must offer do-not-use');
+assert(html.includes("['always',uiLanguage==='nl'?'Altijd':'Always']"), 'tariff charging selector must offer always');
+assert(html.includes('data-rate-k=\"avoidGridImport\"'), 'avoid-grid-import tariff option missing');
+assert(html.includes('EV-laden op werkelijk PV-overschot blijft beschikbaar'), 'avoid-grid conflict explanation missing');
+
+for (const id of ['nightTargetTime','solarTargetTime']) {
+  assert(html.includes(`id=\"${id}\"`) || html.includes(`id="${id}"`), `missing planning target setting ${id}`);
+}
+
+for (const id of ['panel-planning-simulation','planningSimulationBatterySoc','planningSimulationTargetSoc','planningSimulationPvTodayKwh','planningSimulationPvLiveW','planningSimulationTime','runPlanningSimulation','planningSimulationResult']) {
+  assert(html.includes(`id="${id}"`), `${id} simulation UI element missing`);
+}
+assert(html.includes('data-tab="planning-simulation"'), 'planning simulation tab missing');
+assert(html.includes("await api('POST', '/planning/simulate'"), 'planning simulation endpoint call missing');
+assert(html.includes("activeMainTab === 'planning-simulation' && name !== 'planning-simulation'"), 'simulation results must be discarded when leaving the tab');
+const clearSimulationBlock = html.slice(html.indexOf('function clearPlanningSimulationResult()'), html.indexOf('function formatSimulationCommand'));
+assert(clearSimulationBlock.includes("planningSimulationResult"), 'simulation result clearing function missing');
+assert(!clearSimulationBlock.includes("planningSimulationBatterySoc"), 'simulation input values must survive tab switches');
+
+// v0.3.81: production Planning and Planning simulation must render the same
+// complete charge-to-peak cycle instead of maintaining a simulator-only view.
+assert(html.includes('function appendPlanningWindowCard(host, row, plan, options = {})'), 'shared planning-window renderer missing');
+assert(html.includes('function appendPlanningPeakCard(host, plan)'), 'target peak renderer missing');
+const productionPlanningRender = html.slice(html.indexOf('function renderPlanning(plan)'), html.indexOf('function refreshPlanning(force = false)'));
+const simulationPlanningRender = html.slice(html.indexOf('function renderPlanningSimulation(simulation)'), html.indexOf('async function runPlanningSimulation()'));
+for (const block of [productionPlanningRender, simulationPlanningRender]) {
+  assert(block.includes('appendPlanningPeakCard(host, plan)'), 'complete planning cycle must show the target peak');
+  assert(block.includes('appendPlanningWindowCard(host, row, plan'), 'complete planning cycle must use the shared window renderer');
+}
+assert(html.includes("windowState"), 'past/active/future planning-window state missing');
+assert(html.includes("availableMinutes"), 'remaining production planning time must be shown');
+
+
+assert(html.includes('id="slowControlIntervalSeconds"'), 'slow context interval setting missing');
+assert(html.includes('id="planningMinIntervalMinutes"'), 'planning block setting missing');
+assert.deepStrictEqual(appJson.api.refreshPlanning, { method: 'POST', path: '/planning/refresh' });
+assert(apiJs.includes('async refreshPlanning({ homey })'));
+assert(appJs.includes('evaluateFastNow(forceStatus = false, preflight = null)'));
+assert(appJs.includes('evaluateContextNow(forceStatus = false)'));
+
+for (const id of ['evCount','evIdleHouseLoadW','hvacCount','boilerCount','boilerEnabled','boilerColdResetTime','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes','flexibleLoadPriorityOrder']) {
+  assert(html.includes(`id="${id}"`), `${id} setting missing`);
+}
+for (let instance = 2; instance <= 4; instance += 1) {
+  assert(html.includes(`id="ev${instance}Enabled"`), `EV ${instance} settings missing`);
+  assert(html.includes(`id="hvac${instance}Enabled"`), `HVAC ${instance} settings missing`);
+}
+
+for (let instance = 1; instance <= 4; instance += 1) {
+  const stem = instance === 1 ? 'hvac' : `hvac${instance}`;
+  assert(html.includes(`id="${stem}EnergyDeviationC"`), `HVAC ${instance} energy deviation setting missing`);
+}
+assert(html.includes('Verwarmingstemperatuur (°C)'), 'heating target label missing');
+assert(html.includes('Koelingstemperatuur (°C)'), 'cooling target label missing');
+assert(html.includes('renderPriorityList()'));
+assert(html.includes('test-ev-output'));
+assert(html.includes('id="evOutputTestCard2"'));
+assert(html.includes("q(`evOutputTestCard${instance}`)?.classList.toggle('hidden', instance > evCount)"));
+assert(html.includes("q('evGlobalPvDistributionSettings')?.classList.toggle('hidden', evCount === 0);"), 'EV PV distribution must be hidden when no EV is configured');
+assert(html.includes("q('evGlobalGridImportSettings')?.classList.toggle('hidden', evCount === 0);"), 'EV grid-import settings must be hidden when no EV is configured');
+assert(html.includes('src="ev-headroom.js"'), 'EV Peak Guard preview helper must be loaded');
+assert(html.includes('id="evPeakGuardHeadroomSummary"'), 'EV Peak Guard summary host missing');
+assert(html.includes('function renderEvPeakGuardCapacity()'), 'EV Peak Guard preview renderer missing');
+assert(html.includes("['input','change'].forEach(eventName => q('panel-ev')?.addEventListener(eventName, renderEvPeakGuardCapacity));"), 'EV Peak Guard preview must be event-driven');
+assert(!html.includes('setInterval(renderEvPeakGuardCapacity'), 'EV Peak Guard preview must not add background polling');
+for (const stem of ['ev','ev2','ev3','ev4']) {
+  const priorityStart = html.indexOf(`id="${stem}SmartPrioritySettings"`);
+  assert(priorityStart >= 0, `${stem} smart-priority block missing`);
+  const priorityEnd = html.indexOf('</fieldset>', priorityStart);
+  const priorityBlock = html.slice(priorityStart, priorityEnd);
+  assert(!priorityBlock.includes(`Weight">`) || !priorityBlock.includes('</div>\n</div>\n<div class="homey-form-group"><label class="homey-form-label" for="' + stem + 'SmartGridPriority"'), `${stem} smart-priority grid must not close before the remaining EV controls`);
+}
+assert(html.includes("if (panel) panel.classList.toggle('hidden', instance > count)"));
+assert(html.includes("if (instance > configuredCount('ev'))"));
+assert(html.includes('test-hvac-output'));
+
+const expectedConditionCards = [
+  'homey_energy_cheapest_now', 'homey_energy_expensive_now', 'homey_energy_cheapest_block_now',
+  'ems_control_is_enabled', 'ems_mode_is', 'ems_action_is', 'ems_current_tariff_is',
+  'ems_peak_guard_is_active', 'ems_battery_state_is', 'ems_planning_phase_is',
+  'ems_price_data_is_fresh', 'ems_pv_power_above', 'ems_average_battery_soc_above',
+  'ev_is_connected', 'ev_is_charging', 'ev_charging_is_allowed', 'ev_mode_is',
+  'hvac_is_active', 'boiler_is_on', 'boiler_is_warm',
+];
+for (const cardId of expectedConditionCards) {
+  assert(appJson.flow.conditions.some(card => card.id === cardId), `${cardId} condition card missing from app manifest`);
+  assert(appJs.includes(`getConditionCard('${cardId}')`), `${cardId} condition listener missing`);
+}
+
+for (const cardId of ['ev1_charge_current_updated','ev1_charging_allowed_updated','ev1_charge_mode_updated','request_ev1_soc_needed','hvac1_power_updated','hvac1_mode_updated','hvac1_setpoint_updated','hvac1_fan_updated']) {
+  assert(appJson.flow.triggers.some(card => card.id === cardId), `${cardId} output card missing`);
+}
+for (const oldCardId of ['ev_charge_current_updated','ev_charging_allowed_updated','ev_charge_mode_updated','request_ev_soc_needed','hvac_power_updated','hvac_mode_updated','hvac_setpoint_updated','hvac_fan_updated']) {
+  assert(!appJson.flow.triggers.some(card => card.id === oldCardId), `${oldCardId} legacy output card should be removed`);
+}
+assert(html.includes('<option value="0">0</option><option value="1">1</option>'), 'zero-count module option missing');
+
+const evContractUiBlock = html.slice(html.indexOf('function renderEvContractUi()'), html.indexOf('function renderBoilerContractSummary()'));
+assert(evContractUiBlock.includes('const configured = instance <= count;'), 'EV contract UI must gate every instance by configured EV count');
+assert(evContractUiBlock.includes("panel?.classList.toggle('hidden', !configured);"), 'unconfigured EV panels must stay hidden');
+assert(evContractUiBlock.includes("classList.toggle('hidden', !configured || type !== 'tou')"), 'unconfigured EV time-of-use cards must stay hidden');
+assert(evContractUiBlock.includes("classList.toggle('hidden', !configured || type !== 'fixed')"), 'unconfigured EV fixed-tariff cards must stay hidden');
+assert(evContractUiBlock.includes("classList.toggle('hidden', !configured || !type.startsWith('dynamic'))"), 'unconfigured EV dynamic-tariff cards must stay hidden');
+
+for (const oldCardId of ['set_hvac_room_temperature','set_hvac_setpoint','set_hvac_fan_speed','set_hvac_mode','set_hvac_automatic_control']) {
+  assert(!appJson.flow.actions.some(item => item.id === oldCardId), `${oldCardId} legacy input card must be removed`);
+  assert(!fs.existsSync(path.join(root, '.homeycompose', 'flow', 'actions', `${oldCardId}.json`)), `${oldCardId} legacy Compose source must be removed`);
+}
+const outdoorCard = appJson.flow.actions.find(item => item.id === 'set_hvac_outdoor_temperature');
+assert(outdoorCard && outdoorCard.deprecated !== true, 'shared HVAC outdoor temperature must remain visible');
+assert(appJs.includes('currentRaw === null || currentRaw === undefined ? NaN : Number(currentRaw)'), 'HVAC device status must not coerce null setpoint to zero');
+assert(appJs.includes('this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined'), 'HVAC live status must preserve null unpublished setpoint');
+assert(html.includes("uiLanguage==='nl'?'Actuele modus':'Current mode'"), 'HVAC live status must label the received/current mode explicitly');
+assert(html.includes("uiLanguage==='nl'?'Actueel setpoint':'Current setpoint'"), 'HVAC live status must label the received/current setpoint explicitly');
+assert(html.includes("uiLanguage==='nl'?'Laatste HomeFlux-uitgang':'Last HomeFlux output'"), 'HVAC live status must separate the last HomeFlux output from received HVAC values');
+
+console.log('settings startup tests passed');
+
+assert(!html.includes('FeedbackTolerancePercent'), 'Obsolete EV feedback tolerance must not appear in Settings');
+for (const stem of ['ev','ev2','ev3','ev4']) {
+  assert(!html.includes(`id="${stem}SkipFeedbackValidation"`), `${stem} obsolete feedback bypass must be removed`);
+  assert(html.includes(`id="${stem}CommandIntervalSeconds" max="3600"`), `${stem} EV command interval must allow up to 3600 s`);
+}

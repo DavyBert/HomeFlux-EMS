@@ -1,0 +1,2409 @@
+{
+  "node": "v24.19.0",
+  "root": "/workspace/scratch/79c783f0bde6/HomeFlux-EMS",
+  "instrumentation": "Synchronous process.cpuUsage scopes; nested sections must not be summed. Includes startup of each replay.",
+  "results": [
+    {
+      "name": "three-phase-16A",
+      "seconds": 240,
+      "cpuMs": 318.222,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 98.617
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 67.27299999999995
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 79.328
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 65.26400000000001
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 3.895999999999998
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 11085,
+        "desiredA": 16,
+        "physicalGridW": 11077
+      }
+    },
+    {
+      "name": "three-phase-14A",
+      "seconds": 240,
+      "cpuMs": 200.01,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 61.04900000000001
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 37.45799999999998
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 57.848
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 50.181000000000004
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.8839999999999992
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 9699,
+        "desiredA": 16,
+        "physicalGridW": 9691
+      }
+    },
+    {
+      "name": "three-phase-8A",
+      "seconds": 240,
+      "cpuMs": 211.78,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 56.612
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 51.58199999999992
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 63.45500000000001
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 57.016
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.2280000000000002
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5535
+      }
+    },
+    {
+      "name": "three-phase-6A",
+      "seconds": 240,
+      "cpuMs": 226.918,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 94.90700000000001
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 33.917
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 67.108
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 56.296
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.9879999999999995
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 4157,
+        "desiredA": 16,
+        "physicalGridW": 4149
+      }
+    },
+    {
+      "name": "single-phase-8A",
+      "seconds": 240,
+      "cpuMs": 395.296,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 115.61600000000001
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 55.25800000000001
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 122.548
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 111.57600000000001
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.48
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 1840,
+        "desiredA": 16,
+        "physicalGridW": 1832
+      }
+    },
+    {
+      "name": "hybrid-8A",
+      "seconds": 240,
+      "cpuMs": 184.853,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 12,
+          "evPhysicalAccountingChecks": 502,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 5,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 248,
+          "fastScheduled": 5,
+          "gridInputs": 240,
+          "evContextRequests": 24,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 35,
+          "fastReasonZone": 20,
+          "fastCoalesced": 22,
+          "evFeedbackUnchanged": 47,
+          "fastImmediate": 6,
+          "fastEvaluations": 6,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 209,
+          "fastSkipStableSignal": 215,
+          "fastSkipped": 215,
+          "evContextRequestsSatisfied": 2,
+          "fastCommandChange": 4,
+          "contextRequestsCoalesced": 4,
+          "fastReasonEvTarget": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 72.13099999999999
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 504,
+          "cpuMs": 25.01200000000005
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 57.247
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 52.00200000000001
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.0000000000000007
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 9,
+      "batteryPublications": 5,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_mode_updated",
+          "mode": "stop"
+        },
+        {
+          "at": 1792010707000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010707000,
+          "id": "ev1_charge_mode_updated",
+          "mode": "standard"
+        },
+        {
+          "at": 1792010707000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 630,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5536
+      }
+    },
+    {
+      "name": "above-command-20A",
+      "seconds": 240,
+      "cpuMs": 161.285,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 53.773
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 31.498000000000044
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 52.779999999999994
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 46.013
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.1340000000000001
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 13856,
+        "desiredA": 16,
+        "physicalGridW": 13848
+      }
+    },
+    {
+      "name": "above-grid-budget",
+      "seconds": 240,
+      "cpuMs": 196.927,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 8,
+          "statusPublishes": 21,
+          "evPhysicalAccountingChecks": 511,
+          "evPortfolioCalculations": 19,
+          "batteryCommandPublishes": 9,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 255,
+          "fastScheduled": 9,
+          "gridInputs": 240,
+          "evContextRequests": 50,
+          "evContextTimersStarted": 3,
+          "fastIdleGuardBypassPendingCommand": 64,
+          "fastReasonZone": 37,
+          "fastCoalesced": 39,
+          "evFeedbackUnchanged": 46,
+          "fastImmediate": 11,
+          "fastEvaluations": 11,
+          "fastNoCommandChange": 3,
+          "fastIdleGuardBypassActiveSetpoint": 183,
+          "fastSkipStableSignal": 196,
+          "fastSkipped": 196,
+          "evContextRequestsSatisfied": 3,
+          "evContextDeferredEvaluations": 3,
+          "fastCommandChange": 8,
+          "contextRequestsCoalesced": 8,
+          "fastReasonEvTarget": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "evContextFromBattery": 2
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 62.979
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 513,
+          "cpuMs": 29.28100000000003
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 23,
+          "cpuMs": 71.26899999999999
+        },
+        "calculateEvDecision": {
+          "calls": 19,
+          "cpuMs": 64.90200000000002
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.4689999999999999
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 13,
+      "batteryPublications": 9,
+      "evOutputs": [
+        {
+          "at": 1792010716000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 6
+        },
+        {
+          "at": 1792010716000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 11085,
+        "desiredA": 6,
+        "physicalGridW": 11077
+      }
+    },
+    {
+      "name": "new-command-with-existing-feedback",
+      "seconds": 240,
+      "cpuMs": 193.464,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 11,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 5,
+          "evPhysicalAccountingChecks": 502,
+          "evPortfolioCalculations": 23,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 7,
+          "contextRequestsCoalesced": 1
+        },
+        "evaluateContextNow": {
+          "calls": 11,
+          "cpuMs": 78.188
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 504,
+          "cpuMs": 24.63900000000004
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 27,
+          "cpuMs": 75.128
+        },
+        "calculateEvDecision": {
+          "calls": 23,
+          "cpuMs": 65.955
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 2.687999999999999
+        }
+      },
+      "fullContexts": 9,
+      "fullRequests": 9,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 10
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 5543,
+        "desiredA": 10,
+        "physicalGridW": 5535
+      }
+    },
+    {
+      "name": "zero-current",
+      "seconds": 240,
+      "cpuMs": 179.49,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 8,
+          "evPhysicalAccountingChecks": 505,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 244,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 34,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 6,
+          "fastCoalesced": 17,
+          "fastReasonZone": 17,
+          "fastImmediate": 4,
+          "fastEvaluations": 4,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 223,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "fastCommandChange": 2,
+          "contextRequestsCoalesced": 2,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 55.37400000000001
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 507,
+          "cpuMs": 34.05100000000001
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 56.519999999999996
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 48.76000000000001
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 3.231999999999999
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 16,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "disconnect",
+      "seconds": 240,
+      "cpuMs": 197.236,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 9,
+          "evPhysicalAccountingChecks": 504,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 2,
+          "fastRequests": 244,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 18,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 6,
+          "fastCoalesced": 17,
+          "fastReasonZone": 17,
+          "fastImmediate": 4,
+          "fastEvaluations": 4,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 223,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 3,
+          "fastCommandChange": 2,
+          "contextRequestsCoalesced": 3,
+          "evContextFromBattery": 2
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 61.79899999999999
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 506,
+          "cpuMs": 31.248999999999896
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 68.09
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 62.18500000000001
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.5269999999999997
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "session-end",
+      "seconds": 240,
+      "cpuMs": 205.95,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 9,
+          "evPhysicalAccountingChecks": 506,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 245,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 18,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 6,
+          "fastCoalesced": 17,
+          "fastReasonZone": 17,
+          "fastImmediate": 5,
+          "fastEvaluations": 5,
+          "fastNoCommandChange": 3,
+          "fastIdleGuardBypassActiveSetpoint": 223,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 3,
+          "contextRequestsCoalesced": 3,
+          "fastCommandChange": 2,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 63.513
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 508,
+          "cpuMs": 41.17399999999995
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 65.746
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 58.629000000000005
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.9079999999999997
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "missing-feedback",
+      "seconds": 240,
+      "cpuMs": 301.425,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 5,
+          "evPhysicalAccountingChecks": 729,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 2,
+          "fastRequests": 243,
+          "fastScheduled": 2,
+          "gridInputs": 240,
+          "evContextRequests": 16,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 14,
+          "fastReasonFeedback": 13,
+          "fastCoalesced": 12,
+          "fastImmediate": 8,
+          "fastEvaluations": 8,
+          "fastEvaluationStateReused": 2,
+          "fastCommandChange": 1,
+          "contextRequestsCoalesced": 1,
+          "fastIdleGuardBypassActiveSetpoint": 228,
+          "fastNoCommandChange": 7,
+          "fastFeedbackUnchangedSkipped": 221,
+          "fastSkipped": 221,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 66.041
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 731,
+          "cpuMs": 57.33299999999976
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 81.59299999999999
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 70.029
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 6,
+      "batteryPublications": 2,
+      "evOutputs": [
+        {
+          "at": 1792010701000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010701000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 6000,
+        "evPowerW": 0,
+        "desiredA": 16,
+        "physicalGridW": 166
+      }
+    },
+    {
+      "name": "expired-and-restored-feedback",
+      "seconds": 240,
+      "cpuMs": 446.906,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 12,
+          "evPhysicalAccountingChecks": 594,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 5,
+          "evFeedbackInputs": 20,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 248,
+          "fastScheduled": 5,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 34,
+          "fastReasonFeedback": 14,
+          "fastCoalesced": 16,
+          "fastReasonZone": 10,
+          "fastImmediate": 8,
+          "fastEvaluations": 8,
+          "fastNoCommandChange": 5,
+          "fastIdleGuardBypassActiveSetpoint": 209,
+          "fastSkipStableSignal": 138,
+          "fastSkipped": 219,
+          "evFeedbackUnchanged": 17,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "fastCommandChange": 3,
+          "contextRequestsCoalesced": 3,
+          "fastEvaluationStateReused": 1,
+          "fastFeedbackUnchangedSkipped": 81,
+          "evContextFromBattery": 2
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 117.005
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 596,
+          "cpuMs": 108.87800000000001
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 125.60000000000001
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 114.211
+        },
+        "updateEvStatusInput": {
+          "calls": 20,
+          "cpuMs": 0.6070000000000002
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 8,
+      "batteryPublications": 5,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 630,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5536
+      }
+    },
+    {
+      "name": "tariff-disabled",
+      "seconds": 240,
+      "cpuMs": 139.896,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 5,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 490,
+          "evPortfolioCalculations": 11,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 1,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 16,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonZone": 7,
+          "fastCoalesced": 6,
+          "evFeedbackUnchanged": 48,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 1
+        },
+        "evaluateContextNow": {
+          "calls": 5,
+          "cpuMs": 27.093000000000004
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 492,
+          "cpuMs": 39.404999999999994
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 15,
+          "cpuMs": 37.826
+        },
+        "calculateEvDecision": {
+          "calls": 11,
+          "cpuMs": 33.781
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.198
+        }
+      },
+      "fullContexts": 3,
+      "fullRequests": 2,
+      "batteryPublications": 1,
+      "evOutputs": [],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "tariff-permission-change",
+      "seconds": 240,
+      "cpuMs": 178.52,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 8,
+          "evPhysicalAccountingChecks": 505,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 244,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 34,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 6,
+          "fastCoalesced": 17,
+          "fastReasonZone": 17,
+          "fastImmediate": 4,
+          "fastEvaluations": 4,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 223,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 3,
+          "contextRequestsCoalesced": 3,
+          "fastCommandChange": 2,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 56.929
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 507,
+          "cpuMs": 34.08899999999991
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 59.59100000000001
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 54.957
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 3.218999999999999
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "scheduled-tariff-boundary",
+      "seconds": 240,
+      "cpuMs": 164.555,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 6,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 10,
+          "evPhysicalAccountingChecks": 502,
+          "evPortfolioCalculations": 14,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 244,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 34,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 6,
+          "fastCoalesced": 17,
+          "fastReasonZone": 17,
+          "fastImmediate": 4,
+          "fastEvaluations": 4,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 223,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 2,
+          "contextRequestsCoalesced": 3,
+          "fastCommandChange": 2,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 6,
+          "cpuMs": 39.955000000000005
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 504,
+          "cpuMs": 41.69199999999995
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 18,
+          "cpuMs": 45.062000000000005
+        },
+        "calculateEvDecision": {
+          "calls": 14,
+          "cpuMs": 41.056999999999995
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.2180000000000004
+        }
+      },
+      "fullContexts": 4,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792011540000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792011540000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792011600000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792011600000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "grid-budget-change",
+      "seconds": 240,
+      "cpuMs": 183.234,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 8,
+          "evPhysicalAccountingChecks": 505,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 244,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 34,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 6,
+          "fastCoalesced": 17,
+          "fastReasonZone": 17,
+          "fastImmediate": 4,
+          "fastEvaluations": 4,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 223,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 3,
+          "contextRequestsCoalesced": 3,
+          "fastCommandChange": 2,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 54.96000000000001
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 507,
+          "cpuMs": 39.85899999999996
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 63.95000000000001
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 54.44
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.4679999999999993
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -8
+      }
+    },
+    {
+      "name": "pv-and-house-variation",
+      "seconds": 240,
+      "cpuMs": 212.597,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 9,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 11,
+          "statusPublishes": 22,
+          "evPhysicalAccountingChecks": 525,
+          "evPortfolioCalculations": 22,
+          "batteryCommandPublishes": 9,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 258,
+          "fastScheduled": 9,
+          "gridInputs": 240,
+          "evContextRequests": 66,
+          "evContextTimersStarted": 5,
+          "fastIdleGuardBypassPendingCommand": 62,
+          "fastReasonFeedback": 8,
+          "fastCoalesced": 43,
+          "fastReasonZone": 46,
+          "fastImmediate": 14,
+          "fastEvaluations": 14,
+          "fastNoCommandChange": 6,
+          "fastIdleGuardBypassActiveSetpoint": 187,
+          "fastSkipStableSignal": 192,
+          "fastSkipped": 192,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 5,
+          "evContextDeferredEvaluations": 4,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "fastCommandChange": 8,
+          "contextRequestsCoalesced": 10,
+          "pvInputs": 2,
+          "evContextFromBattery": 3,
+          "fastReasonEvTarget": 1,
+          "fastEvaluationStateReused": 1
+        },
+        "evaluateContextNow": {
+          "calls": 9,
+          "cpuMs": 63.00299999999999
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 527,
+          "cpuMs": 31.57300000000006
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 26,
+          "cpuMs": 79.524
+        },
+        "calculateEvDecision": {
+          "calls": 22,
+          "cpuMs": 69.342
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.316
+        }
+      },
+      "fullContexts": 7,
+      "fullRequests": 15,
+      "batteryPublications": 9,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 7,
+        "evPowerW": 3143,
+        "desiredA": 16,
+        "physicalGridW": 3136
+      }
+    },
+    {
+      "name": "planned-battery-charge",
+      "seconds": 240,
+      "cpuMs": 271.581,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 7,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 6,
+          "statusPublishes": 12,
+          "evPhysicalAccountingChecks": 715,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 5,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastRequests": 244,
+          "fastIdleGuardBypassActiveSetpoint": 220,
+          "fastChargePreflightDeferred": 23,
+          "fastReasonFeedback": 30,
+          "fastScheduled": 4,
+          "fastIdleGuardBypassPendingCommand": 24,
+          "fastCoalesced": 20,
+          "fastReasonEvTarget": 2,
+          "fastImmediate": 8,
+          "fastEvaluations": 8,
+          "fastNoCommandChange": 8,
+          "fastFeedbackUnchangedSkipped": 212,
+          "fastChargeUnchangedSkipped": 212,
+          "fastSkipped": 212,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "fastChargeOutputMemoRejected": 3
+        },
+        "evaluateContextNow": {
+          "calls": 7,
+          "cpuMs": 47.92700000000001
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 716,
+          "cpuMs": 42.24500000000009
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 19,
+          "cpuMs": 59.15600000000002
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 52.184
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.5199999999999998
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 5,
+      "evOutputs": [
+        {
+          "at": 1791974760000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1791974760000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": -1151,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 7317
+      }
+    },
+    {
+      "name": "peak-guard",
+      "seconds": 240,
+      "cpuMs": 214.267,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 5,
+          "statusPublishes": 7,
+          "evPhysicalAccountingChecks": 645,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 2,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 3,
+          "evContextFromInput": 1,
+          "fastRequests": 243,
+          "fastScheduled": 2,
+          "gridInputs": 240,
+          "evContextRequests": 34,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 15,
+          "fastReasonFeedback": 8,
+          "fastCoalesced": 12,
+          "fastReasonZone": 2,
+          "fastImmediate": 6,
+          "fastEvaluations": 6,
+          "fastNoCommandChange": 6,
+          "fastIdleGuardBypassActiveSetpoint": 227,
+          "fastSkipStableSignal": 83,
+          "fastSkipped": 223,
+          "evFeedbackUnchanged": 46,
+          "evContextRequestsSatisfied": 2,
+          "evContextDeferredEvaluations": 2,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 3,
+          "contextRequestsCoalesced": 1,
+          "fastReasonPeakActive": 1,
+          "fastReasonPeakTransition": 7,
+          "fastFeedbackUnchangedSkipped": 140
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 49.335
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 647,
+          "cpuMs": 34.846000000000004
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 51.336999999999996
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 46.44300000000001
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.203
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 2,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 11
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010716000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 12
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010790000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 6000,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": 1500
+      }
+    },
+    {
+      "name": "explicit-battery-support",
+      "seconds": 240,
+      "cpuMs": 176.158,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 7,
+          "statusPublishes": 21,
+          "evPhysicalAccountingChecks": 512,
+          "evPortfolioCalculations": 20,
+          "batteryCommandPublishes": 8,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 4,
+          "evContextFromInput": 1,
+          "fastRequests": 253,
+          "fastScheduled": 8,
+          "gridInputs": 240,
+          "evContextRequests": 67,
+          "evContextTimersStarted": 4,
+          "fastIdleGuardBypassPendingCommand": 54,
+          "fastReasonZone": 31,
+          "fastCoalesced": 26,
+          "evFeedbackUnchanged": 45,
+          "fastImmediate": 13,
+          "fastEvaluations": 13,
+          "fastNoCommandChange": 6,
+          "fastIdleGuardBypassActiveSetpoint": 191,
+          "fastSkipStableSignal": 206,
+          "fastSkipped": 206,
+          "evContextRequestsSatisfied": 4,
+          "evContextDeferredEvaluations": 4,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "fastCommandChange": 7,
+          "contextRequestsCoalesced": 7,
+          "evContextFromBattery": 3
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 46.084
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 514,
+          "cpuMs": 27.71100000000002
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 24,
+          "cpuMs": 63.695000000000014
+        },
+        "calculateEvDecision": {
+          "calls": 20,
+          "cpuMs": 52.145999999999994
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 1.9189999999999994
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 12,
+      "batteryPublications": 8,
+      "evOutputs": [
+        {
+          "at": 1792010760000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 6
+        },
+        {
+          "at": 1792010760000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010820000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010820000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        },
+        {
+          "at": 1792010880000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 6
+        },
+        {
+          "at": 1792010880000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010940000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 0
+        },
+        {
+          "at": 1792010940000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 0
+        }
+      ],
+      "final": {
+        "batteryW": 4787,
+        "evPowerW": 0,
+        "desiredA": 0,
+        "physicalGridW": -7
+      }
+    },
+    {
+      "name": "legacy-bypass-ignored",
+      "seconds": 240,
+      "cpuMs": 424.718,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 7,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastIdleGuardBypassActiveSetpoint": 234,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 78.492
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 109.833
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 73.85000000000001
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 48.995
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 11.239
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5535
+      }
+    },
+    {
+      "name": "mode-only-detection",
+      "seconds": 240,
+      "cpuMs": 449.604,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 5,
+          "statusPublishes": 7,
+          "evPhysicalAccountingChecks": 499,
+          "evPortfolioCalculations": 18,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 1,
+          "evContextFromInput": 1,
+          "fastRequests": 244,
+          "fastScheduled": 3,
+          "gridInputs": 240,
+          "evContextRequests": 23,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 21,
+          "fastReasonZone": 22,
+          "fastCoalesced": 18,
+          "evFeedbackUnchanged": 48,
+          "fastImmediate": 3,
+          "fastEvaluations": 3,
+          "fastCommandChange": 2,
+          "contextRequestsCoalesced": 2,
+          "fastIdleGuardBypassActiveSetpoint": 222,
+          "evContextRequestsSatisfied": 2,
+          "fastReasonFeedback": 1,
+          "fastNoCommandChange": 1,
+          "fastSkipStableSignal": 220,
+          "fastSkipped": 220,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 80.102
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 501,
+          "cpuMs": 104.99000000000011
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 22,
+          "cpuMs": 80.619
+        },
+        "calculateEvDecision": {
+          "calls": 18,
+          "cpuMs": 51.617000000000004
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 7.761000000000001
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 7,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_mode_updated",
+          "mode": "stop"
+        },
+        {
+          "at": 1792010707000,
+          "id": "ev1_charge_mode_updated",
+          "mode": "standard"
+        },
+        {
+          "at": 1792010707000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 11085,
+        "desiredA": 16,
+        "physicalGridW": 11077
+      }
+    },
+    {
+      "name": "split-battery-outputs",
+      "seconds": 240,
+      "cpuMs": 589.756,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 3,
+          "statusPublishes": 6,
+          "evPhysicalAccountingChecks": 733,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 2,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 243,
+          "fastScheduled": 2,
+          "gridInputs": 240,
+          "evContextRequests": 2,
+          "evContextTimersStarted": 2,
+          "fastIdleGuardBypassPendingCommand": 14,
+          "fastReasonFeedback": 17,
+          "fastCoalesced": 12,
+          "evContextRequestsSatisfied": 2,
+          "fastReasonZone": 2,
+          "fastImmediate": 6,
+          "fastEvaluations": 6,
+          "fastCommandChange": 1,
+          "contextRequestsCoalesced": 1,
+          "fastIdleGuardBypassActiveSetpoint": 228,
+          "evFeedbackUnchanged": 47,
+          "fastEvaluationStateReused": 1,
+          "batterySplitIdenticalOutputSkipped": 9,
+          "fastNoCommandChange": 5,
+          "fastFeedbackUnchangedSkipped": 223,
+          "fastSkipped": 223,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 79.01599999999999
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 735,
+          "cpuMs": 145.3420000000002
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 72.764
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 48.126999999999995
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 10.386000000000003
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 6,
+      "batteryPublications": 2,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 730,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5436
+      }
+    },
+    {
+      "name": "hybrid-battery-control",
+      "seconds": 240,
+      "cpuMs": 397.543,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 2,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 493,
+          "evPortfolioCalculations": 17,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "batteryCommandPublishes": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastRequests": 241,
+          "fastIdleGuardBypassActiveSetpoint": 235,
+          "fastReasonFeedback": 5,
+          "fastScheduled": 1,
+          "fastIdleGuardBypassPendingCommand": 6,
+          "fastCoalesced": 5,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 73.45
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 495,
+          "cpuMs": 114.62800000000007
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 72.161
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 46.989999999999995
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 7.263000000000002
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5535
+      }
+    },
+    {
+      "name": "two-EVs-partial-feedback",
+      "seconds": 240,
+      "cpuMs": 580.075,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 9,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 5,
+          "statusPublishes": 9,
+          "evPhysicalAccountingChecks": 503,
+          "evPortfolioCalculations": 19,
+          "batteryCommandPublishes": 3,
+          "evFeedbackInputs": 56,
+          "evInputEvaluationRequests": 4,
+          "evContextFromInput": 2,
+          "fastRequests": 246,
+          "fastScheduled": 3,
+          "fastCoalesced": 12,
+          "gridInputs": 240,
+          "evContextRequests": 9,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 20,
+          "fastReasonFeedback": 5,
+          "fastReasonZone": 10,
+          "fastImmediate": 4,
+          "fastEvaluations": 4,
+          "fastNoCommandChange": 2,
+          "fastIdleGuardBypassActiveSetpoint": 222,
+          "fastSkipStableSignal": 227,
+          "fastSkipped": 227,
+          "evContextRequestsSatisfied": 1,
+          "evFeedbackUnchanged": 52,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4,
+          "fastCommandChange": 2,
+          "contextRequestsCoalesced": 2,
+          "evContextFromBattery": 1
+        },
+        "evaluateContextNow": {
+          "calls": 9,
+          "cpuMs": 139.52100000000002
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 505,
+          "cpuMs": 175.44500000000005
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 23,
+          "cpuMs": 156.51200000000003
+        },
+        "calculateEvDecision": {
+          "calls": 38,
+          "cpuMs": 105.03299999999999
+        },
+        "updateEvStatusInput": {
+          "calls": 56,
+          "cpuMs": 8.335
+        }
+      },
+      "fullContexts": 7,
+      "fullRequests": 8,
+      "batteryPublications": 3,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010700000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        },
+        {
+          "at": 1792010707000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 15
+        },
+        {
+          "at": 1792010820000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        }
+      ],
+      "final": {
+        "batteryW": 2010,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5536
+      }
+    },
+    {
+      "name": "pending-ev-publication",
+      "seconds": 240,
+      "cpuMs": 385.684,
+      "functions": {
+        "counters": {
+          "contextEvaluations": 8,
+          "planningCalculations": 2,
+          "calculatedSetpointTriggers": 4,
+          "statusPublishes": 4,
+          "evPhysicalAccountingChecks": 498,
+          "evPortfolioCalculations": 17,
+          "batteryCommandPublishes": 1,
+          "evFeedbackInputs": 49,
+          "evInputEvaluationRequests": 2,
+          "evContextFromInput": 1,
+          "fastRequests": 242,
+          "fastScheduled": 1,
+          "gridInputs": 240,
+          "evContextRequests": 17,
+          "evContextTimersStarted": 1,
+          "fastIdleGuardBypassPendingCommand": 15,
+          "fastReasonFeedback": 5,
+          "fastCoalesced": 6,
+          "fastReasonZone": 2,
+          "fastImmediate": 1,
+          "fastEvaluations": 1,
+          "fastNoCommandChange": 1,
+          "fastSkipStableSignal": 234,
+          "fastSkipped": 234,
+          "evFeedbackUnchanged": 47,
+          "fastIdleGuardBypassActiveSetpoint": 226,
+          "evContextRequestsSatisfied": 1,
+          "evContextDeferredEvaluations": 1,
+          "evHeartbeatEvaluations": 4,
+          "evContextFromMeter": 4
+        },
+        "evaluateContextNow": {
+          "calls": 8,
+          "cpuMs": 72.399
+        },
+        "getEvGridImportControlStatus": {
+          "calls": 500,
+          "cpuMs": 93.99800000000002
+        },
+        "calculateEvPortfolioDecisions": {
+          "calls": 21,
+          "cpuMs": 79.51400000000001
+        },
+        "calculateEvDecision": {
+          "calls": 17,
+          "cpuMs": 56.303999999999995
+        },
+        "updateEvStatusInput": {
+          "calls": 49,
+          "cpuMs": 8.398000000000003
+        }
+      },
+      "fullContexts": 6,
+      "fullRequests": 5,
+      "batteryPublications": 1,
+      "evOutputs": [
+        {
+          "at": 1792010700000,
+          "id": "ev1_charge_current_updated",
+          "currentA": 16
+        },
+        {
+          "at": 1792010715000,
+          "id": "ev1_charging_allowed_updated",
+          "allowed": 1
+        }
+      ],
+      "final": {
+        "batteryW": 631,
+        "evPowerW": 5543,
+        "desiredA": 16,
+        "physicalGridW": 5535
+      }
+    }
+  ]
+}

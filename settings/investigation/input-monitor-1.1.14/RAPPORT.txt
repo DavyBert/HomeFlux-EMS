@@ -1,0 +1,76 @@
+HomeFlux EMS 1.1.14 – Input Monitor & Loop Detection
+
+Basis en afbakening
+Gebaseerd op de laatste beschikbare HomeFlux EMS 1.1.13-broncode. De bron is vergeleken met de bestaande 1.1.13-releasebundel. Alle eerdere EV- en CPU-optimalisaties en de bestaande .homeyignore zijn behouden. Versie 1.1.14 is expliciet gevraagd in de laatste regel van de opdracht. NL/EN-release notes bijgewerkt.
+
+Werking
+- Start uitsluitend met Start monitoring. Een tweede Start verlengt de opname niet.
+- Eén app-eigen eindtimer op start + 900.000 ms. Een lichte actieve seconde-timer sluit frequentiebuckets af en laat waarschuwingen verdwijnen, ook zonder geopende interface.
+- Ook als een eindtimer door een drukke eventloop nog niet is uitgevoerd, weigert de monitor nieuwe registratie vanaf de eindtijd. De oorspronkelijke Flow-handler wordt altijd uitgevoerd.
+- Stoppen bevriest het resultaat. Wissen of een nieuwe Start verwijdert de oude opname. App-afsluiting ruimt beide timers en alle opnamedata op. Er wordt niets in Homey-instellingen bewaard.
+- De interface haalt hoogstens eenmaal per seconde een overzicht op, uitsluitend tijdens een actieve opname op het zichtbare diagnostiektabblad. Navigeren/sluiten stopt de serveropname niet.
+- Alle 93 bestaande actiekaarten worden automatisch via hun bestaande registratie waargenomen. Dit omvat ook opdrachten zoals herberekenen, moduswijzigingen en overrides. Een nieuwe kaart krijgt via dezelfde registratie automatisch observatie.
+- Dropdown-/autocompletevarianten tellen ieder werkelijk binnengekomen verzoek eenmaal. Hun interne doorverwijzing naar de bestaande handler telt niet opnieuw. EV-, batterij-, HVAC- en prijsbronselecties krijgen eigen regels zodat afzonderlijke apparaten elkaar niet onterecht boven een drempel brengen.
+- Waarneming vindt vóór validatie en bestaande wijzigingsfiltering plaats. Afgewezen of identieke inputs blijven zichtbaar als ontvangen verzoeken.
+- Namen en IDs, veilige laatste waarde, ontvangen/identieke/gewijzigde updates, huidige/gemiddelde/piekfrequentie, laatste ontvangst, waarschuwingstijden, waarschuwingsseconden en aantallen mogelijke-loopepisodes worden geaggregeerd.
+
+Frequentie en waarschuwingen
+Gebruik van volledige seconde-buckets, verankerd aan de starttijd. Tot en met 1/s is normaal; meer dan 1/s krijgt oranje. Minstens 2/s in vijf opeenvolgende volledige seconden activeert rood en ‘Mogelijke loop – hoge inputfrequentie’. Eén korte burst kan geen vijf opeenvolgende seconden vormen. Een rustige volgende seconde beëindigt de actieve waarschuwing. Eerste/laatste waarschuwing, episoden en maximale frequentie blijven in de samenvatting staan.
+Een hoge P1-/meetfrequentie is geen bewezen fout. De interface legt dit expliciet uit; er wordt nergens een bewezen oorzaak-gevolgloop geclaimd of ingegrepen.
+
+Evaluatieverzoeken
+Context-, snelle en uitgestelde EV-aanvragen worden apart geteld van uitgevoerde context-, snelle en EV-portfolioberekeningen. Per inputkaart worden alleen aanvragen binnen het synchrone handlerdeel toegeschreven. Async-vervolgwerk, timers en latere periodieke berekeningen worden niet aan een kaart toegeschreven. Deze beperking staat zowel in de interface als in JSON. Gebundelde aanvragen worden niet als afzonderlijke uitgevoerde berekeningen voorgesteld.
+
+Privacy en grenzen
+Maximaal 256 invoerregels en een echte ringbuffer van 256 relevante overgangsgebeurtenissen. Geen event per input, geen logspam, geen hashing/JSON-parsing/serialisatie in inputhandlers. Vrije tekst en JSON worden afgeschermd; gekozen apparaatnamen, extra onbekende velden en sleutels worden niet opgenomen. Alleen getallen, booleans, bestaande enumwaarden, geldige tijden en veilige selectie-IDs worden weergegeven. Strings tot 16.384 tekens kunnen zonder parsing rechtstreeks op gelijkheid worden vergeleken; grotere/gestructureerde waarden krijgen ‘uncomparable’. Vergelijkingstekst wordt bij stoppen meteen vrijgegeven.
+CPU in de export betreft het gehele app-proces gedurende de opname, niet een causaal gemeten CPU-aandeel per inputkaart. Niet-beschikbare CPU-/geheugengegevens worden null. De live export bevat ook een tekstvak als alternatief voor mobiele clients die downloads beperken.
+
+Gewijzigde bestanden en functies
+- lib/input-monitor.js (nieuw): InputMonitor, observeFlow/invoke/receive, start/stop/clear/destroy, seconde-buckets, begrensde events, snapshot en CPU-/geheugensamenvatting.
+- app.js: getInputMonitor/getInputMonitorReport/startInputMonitor/stopInputMonitor/clearInputMonitor; registerFlowCards gebruikt een passieve adapter; onUninit ruimt op. Lichte observatiepunten in requestContextEvaluate, setEvContextRefreshRequest, runContextEvaluation, requestEvaluate, evaluateFastNow en calculateEvPortfolioDecisions.
+- api.js + app.json + .homeycompose/app.json: vier monitor-endpoints. Diagnostische JSON blijft vrij van presentatievertaling.
+- settings/index.html + settings/input-monitor.js (nieuw): diagnostieksectie, tellers, responsieve scrolltabel, knoppen, lifecycle en JSON-download.
+- settings/translations/en.json: Engelse presentatie van de nieuwe Nederlandse tekst.
+- package.json, package-lock.json en manifests: versie 1.1.14 en test-/syntaxcontrole voor de nieuwe code.
+- .homeychangelog.json: NL/EN-release notes voor 1.1.14.
+- test/input-monitor-1.1.14.test.js en test/input-monitor-ui-1.1.14.test.js (nieuw).
+- test/settings-startup.test.js en test/widget.test.js: verwachte releaseversie bijgewerkt.
+- test/split-resend-seconds-1.1.10.test.js: uitsluitend testopstelling wacht op bestaande asynchrone opstartpublicaties voordat hij split-resendtimers meet. De ongewijzigde 1.1.13-basis faalde dezelfde 18-tegen-16-timertelling doordat PV-/statustimers werden meegeteld. Alle oorspronkelijke asserts zijn behouden; geen batterijregeling gewijzigd.
+
+Functionele vergelijking
+Na het verwijderen van uitsluitend observatiehooks, de Flow-adapter en monitor-APIhelpers is de volledige app.js-controllertekst exact gelijk aan 1.1.13. Alle bestaande Flow-kaartschema's zijn byte-inhoudelijk gelijk als JSON, inclusief argumenten/tokens/trigger-/conditionkaarten. lib/ems-engine.js, lib/flexible-loads.js, overige regelbibliotheken en bestaande configuraties zijn niet gewijzigd. De monitor vraagt zelf geen evaluatie, wijzigt geen commando, schakelt niets uit en beïnvloedt geen bestaande filters.
+
+Tests
+- 19 gerichte monitor-scenario's: start/stop/wissen, niet-verlengen, exact 15 minuten zonder interface, input op/na verlopen deadline, 1/s P1, 1/s identieke EV, 2/s en 5/s EV, vijf-secondenvoorwaarde, waarschuwing verdwijnt/keert terug met historie, wisselende P1/PV, meerdere apparaten/kaartvarianten, alle 93 kaartregistraties, betrouwbare synchrone attributie, foutdoorvoer, observerfout-isolatie, payloadredactie, JSON-roundtrip, begrensde events/regels, verouderde timers, ontbrekende CPU-kanalen en echte onUninit/herstart.
+- UI-tests met uitgevoerde DOM-/APIcode: start/stop, waarschuwingstekst/kleur/sortering, maximaal 1 verversing/s, geen polling tijdens verborgen/inactieve pagina, resultaten na heropenen, automatische stop bij gesloten pagina, geldig JSON-downloadbestand en tekstalternatief, NL/EN, foutmelding en opruimen.
+- Alle 93 echte Flow-handlers in 186 scenario's (elke 50s en elke seconde): juiste oorspronkelijke kaart-ID, afzonderlijke selectors, exact eenmaal geteld per aanroep, 0 observerfouten. Bestaande herhaalde feedbackfilters blijven werken.
+- Brede regressie: npm run check, 67 testbestanden plus syntaxcontroles. Behoud van P1/Peak Guard, EV inclusief meerdere EV's en geen batterijregeling, batterijplanning, PV, HVAC, boiler en eerdere CPU-optimalisaties.
+- 24 vergelijkende volledige regelreplays: 8 per toestand (1.1.13, monitor uit, monitor aan). Iedere replay levert 4.500 inputs in 300 virtuele seconden (15 inputs/s over 7 invoerstromen, onder andere 2 EV's ieder 5/s). Met monitor aan ook elke seconde overzicht en JSON-serialisatie uitgevoerd. Alle commando's inclusief tijdstippen en alle berekeningenaantallen zijn exact gelijk: 5 contexten, 26 snelle evaluaties en 16 EV-portfolio's per replay.
+
+CPU- en geheugentest (v24.19.0; CPU op testmachine, Homey I/O en tijd gesimuleerd)
+Geïsoleerde microbenchmark, 500.000 eenvoudige tweevoudige EV-inputs per sample, mediaan van 7 metingen:
+- Rechtstreekse handler: 2.771 ms proces-CPU.
+- Observer uit: 9.975 ms; extra 0.014408 microseconde per input.
+- Observer aan: 64.583 ms; extra ten opzichte van uit 0.109216 microseconde per input.
+Dit meet de lichte tellers, niet het volledige regelwerk of netwerkverkeer.
+
+Volledige replay, mediaan van de laatste 5 metingen na 3 opwarmmetingen:
+- 1.1.13-basis: 632.626 ms.
+- 1.1.14 monitor uit: 684.900 ms.
+- 1.1.14 monitor aan inclusief overzicht/JSON op 1 Hz: 578.049 ms.
+De afzonderlijke CPU-metingen hebben aanzienlijke JIT/GC-spreiding en overlappen. Hieruit volgt GEEN CPU-winstclaim of betrouwbaar Homey-CPU-percentage. De actieve monitor moet nog op echte Homey-hardware worden gemeten; de microbenchmark kwantificeert de eigen tellerkosten.
+
+Geheugen, na GC in dezelfde geïsoleerde monitor:
+- Na 100.000 identieke updates: 7325504 bytes procesheap.
+- Na 1.100.000 identieke updates: 7325384 bytes procesheap.
+- Verschil: -120 bytes (geen meetbare groei); 1 geaggregeerde regel en 2 sessiegebeurtenissen.
+- Afzonderlijk 600 seconden met afwisselende hoge/lage frequentie: ringbuffer blijft op 256 gebeurtenissen, verloren oudere events worden geteld; samenvatting blijft compleet.
+- Voor de eerste Start of na Wissen: geen monitor-timers/opnamebuffers. Na Stop blijven alleen de resultaten bewaard. Actief: twee timers. Na handmatige/automatische stop of onUninit: beide vrijgegeven.
+
+Beperkingen
+Geen meting op echte Homey-hardware of fysieke laadpaal. De interface is via DOM-/APItests en bestaande settingscontroles geverifieerd; mobiele layout is als responsieve horizontaal scrollbare tabel geïmplementeerd en nog niet op een fysiek mobiel toestel beoordeeld. Gebruik het hulpmiddel als observatie: een mogelijke loop moet met de betreffende Flow worden gecontroleerd.
+
+Meegeleverde bewijzen
+summary.json, example-export.json, benchmark.json, benchmark.cjs, all-cards.json en het volledige final-check.log. De voorbeeldexport komt uit een echte handlerreplay en is valide JSON. Rapporten/tests blijven dankzij de bestaande .homeyignore buiten de Homey-upload; runtime monitorbestanden blijven inbegrepen.
+
+Reproductie benchmark: pak de 1.1.13-bron uit en zet HOMEFLUX_BASELINE op die absolute map; voer vervolgens node --expose-gc benchmark.cjs uit. all-cards.cjs gebruikt de bestaande app-testharness; AUDIT_SECONDS en AUDIT_OUTPUT kunnen als omgevingsvariabelen worden ingesteld.

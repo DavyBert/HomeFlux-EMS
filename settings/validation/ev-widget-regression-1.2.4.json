@@ -1,0 +1,25 @@
+{
+  "simulatedHomey": true,
+  "homeyCpuMeasured": false,
+  "baselineCompared": false,
+  "current": {
+    "iterations": 600,
+    "warmupInputs": 1000,
+    "positiveCurrentFeedbackA": [
+      10,
+      8
+    ],
+    "elapsedMs": 349.3677459999999,
+    "cpuMs": 386.61,
+    "retainedHeapDeltaBytes": 153368,
+    "extraContexts": 1,
+    "extraFlexibleWrites": 0,
+    "counts": {
+      "gridInputs": 1603,
+      "fastEvaluations": 1603,
+      "contextEvaluations": 20,
+      "planningCalculations": 1,
+      "widgetEnergyBudgetCalculations": 1
+    }
+  }
+}

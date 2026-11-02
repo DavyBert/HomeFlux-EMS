@@ -1,0 +1,142 @@
+{
+  "comparedToInputSha256": "3cf65de95d6d9378fa3d5eff0f088169077999f39a09bfa5da868995b1297599",
+  "deletedFiles": [],
+  "allWidgetFilesUnchanged": true,
+  "widgetFileCount": 18,
+  "productionCodeChanged": [
+    "app.js"
+  ],
+  "note": "This generated index excludes itself. Validation result files are regenerated test evidence.",
+  "files": [
+    {
+      "file": ".homeychangelog.json",
+      "change": "modified",
+      "sha256": "05d8c25a046f0d50de82b65a27bb633dec6caaeff5e3c5002ce1080f7eacfb57"
+    },
+    {
+      "file": "README.md",
+      "change": "modified",
+      "sha256": "1529a1a67fd8aa39d32ab9a10f9b41a869a71fc4e5dc84e73d39c0e0ff941349"
+    },
+    {
+      "file": "app.js",
+      "change": "modified",
+      "sha256": "048c0b31c74e1f4c07285b9d539f9b9b73e3d877ba169022b582a1be97d0d4f7"
+    },
+    {
+      "file": "docs/EV-HOUSE-PUBLICATION-1.2.5.md",
+      "change": "added",
+      "sha256": "d4864662bb74b74543a99ec2acc0d7c9f9bde9341d0094884d00b77dbcaf9680"
+    },
+    {
+      "file": "docs/EV-REGISTRATION-1.2.5.md",
+      "change": "modified",
+      "sha256": "1820bf4bd69d7c736a4f15933f0e1aa38d5f52f7985d9de748534aa8cb4514d0"
+    },
+    {
+      "file": "package.json",
+      "change": "modified",
+      "sha256": "49ff92b8d57f7cc97dfc00a037798530016a383ff297fcd1079437360e023878"
+    },
+    {
+      "file": "test/app-control.test.js",
+      "change": "modified",
+      "sha256": "67ae5ece243ac0570368ccdd27c4dfbf745e41eaff928120ff235ecb1e71b08e"
+    },
+    {
+      "file": "test/ev-battery-protection-1.1.6.test.js",
+      "change": "modified",
+      "sha256": "9f17e62c539cd1ccde5173d38e7b9ecaf6d23ebe44d3da8cbe46a56f4621052e"
+    },
+    {
+      "file": "test/ev-house-log-reconstruction-1.2.5.cjs",
+      "change": "added",
+      "sha256": "1e9635964a90464f98c8d701aebbdd8fffd4a81fee8cace1e3fdf50156587c5e"
+    },
+    {
+      "file": "test/ev-house-publication-1.2.5.test.js",
+      "change": "added",
+      "sha256": "b49a0bd59c1d0515c726ee61796ee7bca0f9aa30825f3c61f93e458c2365b732"
+    },
+    {
+      "file": "test/ev-house-reference-1.2.4.test.js",
+      "change": "modified",
+      "sha256": "b967b5d8ef967688bdcc1ad280eed801f92818f713df9506f1d44cf358b55567"
+    },
+    {
+      "file": "test/ev-physical-proof-1.2.4.test.js",
+      "change": "modified",
+      "sha256": "693235e719f24b4c3aa42ddefd793f1d8b84f0f1f6c7f703c9993cbaeabeb57a"
+    },
+    {
+      "file": "test/ev-recording-comparison-1.2.5.cjs",
+      "change": "modified",
+      "sha256": "23730096ccc38bfeceb6befe3a1a88361af672cc4ed8a877e9db692e773eb00c"
+    },
+    {
+      "file": "test/startup-harness.js",
+      "change": "modified",
+      "sha256": "c7dfeabb3f1217a6ec763edda1c36745f9c28c3af610c4b5e2c8c628db9b01c1"
+    },
+    {
+      "file": "validation/battery-night-1.1.18.json",
+      "change": "modified",
+      "sha256": "af82261e20e75e55ef2c4fd882def140950f3e75777a7d56c95c09f002d60373"
+    },
+    {
+      "file": "validation/ev-deadline-integration.json",
+      "change": "modified",
+      "sha256": "353af1c4e90a3b4560658d79d9dbf3ebde959443314068b6efdf61e7b212fc65"
+    },
+    {
+      "file": "validation/ev-house-financial-comparison-1.2.5.json",
+      "change": "added",
+      "sha256": "4b5fa8be65eab074f3d783c7eaa746a4196e5ad978034fc80bc0dfb6f6896a60"
+    },
+    {
+      "file": "validation/ev-house-log-reconstruction-1.2.5.json",
+      "change": "added",
+      "sha256": "e7408b198ee651660b79438978e510d43af19286c45fb76acd00a1abacfe1764"
+    },
+    {
+      "file": "validation/ev-house-performance-1.2.5.json",
+      "change": "added",
+      "sha256": "18e3d9b0810db17623b1bb8d310876017ae39cd8bb8a8204bdeaf367ba4c3e2e"
+    },
+    {
+      "file": "validation/ev-house-publication-1.2.5.json",
+      "change": "added",
+      "sha256": "509220a1ab23ccbc9d9c0f225292ef15cc79e65be9083c0b3b0782b6f7271cc3"
+    },
+    {
+      "file": "validation/ev-peak-1.1.20.json",
+      "change": "modified",
+      "sha256": "048a0c84548aef0ebdd55319b4c3cf9ca1169074577658bdce1d6d1ee18b8842"
+    },
+    {
+      "file": "validation/ev-recording-audit-1.2.4.json",
+      "change": "modified",
+      "sha256": "830c142eeaff415faea96527e48daaf949b2cf6704c700fa4d74eb6c786f32f4"
+    },
+    {
+      "file": "validation/ev-recording-comparison-1.2.5.json",
+      "change": "modified",
+      "sha256": "0cb4aa999eaf82a5f859a679715e370e10391333d9a9e201242771b5427318c7"
+    },
+    {
+      "file": "validation/ev-widget-regression-1.2.4.json",
+      "change": "modified",
+      "sha256": "c0fe5a0290ec647d2684a82035d9206a9e4fb5f30c1f6ace5b9c6c9e50345666"
+    },
+    {
+      "file": "validation/release-house-publication-1.2.5.json",
+      "change": "added",
+      "sha256": "630025e67c4055a1d614716ca1cd6914759908dac43754877f98f5777843c8da"
+    },
+    {
+      "file": "validation/widget-insights-1.2.1.json",
+      "change": "modified",
+      "sha256": "49245fd20ff598ea121b39e13cfd2cee3024cbd586c266911286fc9c35fac6de"
+    }
+  ]
+}

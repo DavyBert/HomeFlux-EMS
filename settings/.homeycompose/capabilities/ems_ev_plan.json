@@ -1,0 +1,11 @@
+{
+  "type": "string",
+  "uiComponent": "sensor",
+  "title": {
+    "en": "EV planning",
+    "nl": "EV-planning"
+  },
+  "getable": true,
+  "setable": false,
+  "icon": "/assets/capabilities/ev-plan.svg"
+}

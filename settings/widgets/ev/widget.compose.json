@@ -1,0 +1,55 @@
+{
+  "name": {
+    "en": "HomeFlux EV",
+    "nl": "HomeFlux EV"
+  },
+  "height": 530,
+  "settings": [
+    {
+      "id": "showStatus",
+      "type": "checkbox",
+      "value": true,
+      "title": {
+        "en": "Show compact EV Status",
+        "nl": "Compacte EV-status tonen"
+      }
+    },
+    {
+      "id": "showScheduler",
+      "type": "checkbox",
+      "value": true,
+      "title": {
+        "en": "Show EV Scheduler",
+        "nl": "EV Scheduler tonen"
+      }
+    },
+    {
+      "id": "showInsights",
+      "type": "checkbox",
+      "value": true,
+      "title": {
+        "en": "Show EV Insights",
+        "nl": "EV Insights tonen"
+      }
+    },
+    {
+      "id": "switchSections",
+      "type": "checkbox",
+      "value": false,
+      "title": {
+        "en": "Switch Status / Planning / Insights with buttons",
+        "nl": "Status / Planning / Inzichten wisselen met knoppen"
+      }
+    }
+  ],
+  "api": {
+    "getDashboard": {
+      "method": "GET",
+      "path": "/"
+    },
+    "setSchedule": {
+      "method": "POST",
+      "path": "/schedule"
+    }
+  }
+}
