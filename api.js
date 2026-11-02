@@ -85,7 +85,11 @@ module.exports = {
     return homey.app.refreshHomeyEnergyPrices(true);
   },
 
+  async startBatteryResponseTest({ homey }) { return homey.app.startBatteryResponseTest(); },
+  async stopBatteryResponseTest({ homey }) { return homey.app.stopBatteryResponseTest(); },
+
   async startChargeTest({ homey }) {
+    if (homey.app.batteryResponseTest?.running) throw new Error('Stop eerst de reactietest.');
     return homey.app.startChargeTest();
   },
 

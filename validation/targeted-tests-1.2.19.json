@@ -1,0 +1,133 @@
+{
+  "version": "1.2.19",
+  "baseline": "Latest uploaded HomeFlux-EMS-v1.2.18(1).zip",
+  "baselineSha256": "55b43906561cb1efe6ffc53c4837692eea1758c40d177033b32dc40a14bcce78",
+  "passedSuites": 20,
+  "suites": [
+    {
+      "suite": "app-control",
+      "passed": true,
+      "seconds": 0.873
+    },
+    {
+      "suite": "settings-startup",
+      "passed": true,
+      "seconds": 0.112
+    },
+    {
+      "suite": "settings-runtime-audit",
+      "passed": true,
+      "seconds": 0.12
+    },
+    {
+      "suite": "settings-translations",
+      "passed": true,
+      "seconds": 0.068
+    },
+    {
+      "suite": "widget",
+      "passed": true,
+      "seconds": 0.086
+    },
+    {
+      "suite": "configured-flow-cards",
+      "passed": true,
+      "seconds": 1.677
+    },
+    {
+      "suite": "flow-slot-cards",
+      "passed": true,
+      "seconds": 1.328
+    },
+    {
+      "suite": "output-tests",
+      "passed": true,
+      "seconds": 0.1
+    },
+    {
+      "suite": "regressions-0.7.16",
+      "passed": true,
+      "seconds": 0.237,
+      "note": "Existing Homey mock supplied log() and the 2000 ms migration timeout; all assertions retained."
+    },
+    {
+      "suite": "split-resend-seconds-1.1.10",
+      "passed": true,
+      "seconds": 0.314
+    },
+    {
+      "suite": "battery-power-1.2.2",
+      "passed": true,
+      "seconds": 1.353
+    },
+    {
+      "suite": "peak-guard-all-modes-1.2.11",
+      "passed": true,
+      "seconds": 0.913
+    },
+    {
+      "suite": "cpu-coalescing-1.2.13",
+      "passed": true,
+      "seconds": 5.98
+    },
+    {
+      "suite": "battery-settings-isolation-1.2.8",
+      "passed": true,
+      "seconds": 0.378
+    },
+    {
+      "suite": "ev-physical-config-cache-1.1.16",
+      "passed": true,
+      "seconds": 0.35
+    },
+    {
+      "suite": "savings",
+      "passed": true,
+      "seconds": 0.135
+    },
+    {
+      "suite": "ev-savings-flow-1.2.6",
+      "passed": true,
+      "seconds": 0.191
+    },
+    {
+      "suite": "localization-1.2.18",
+      "passed": true,
+      "seconds": 0.235
+    },
+    {
+      "suite": "autotune",
+      "passed": true,
+      "note": "Daily minima, morning-charge regression, missing minima and hard safety constraints."
+    },
+    {
+      "suite": "battery-response-1.2.19",
+      "passed": true,
+      "note": "One-click lifecycle; five pulses; 10% tolerance; no daily repeat; stop/timeout/error/shutdown/restart; in-flight Flow cancellation; limits/inversion/Split; daily minimum persistence; advice; original battery-test source preserved."
+    }
+  ],
+  "inactiveToolReplay": {
+    "scenarios": 9,
+    "samples": 2160,
+    "outputsAndPublicationTimesEqual": true
+  },
+  "browserChecks": 10,
+  "browserLanguages": [
+    "nl",
+    "en",
+    "fr",
+    "es",
+    "de"
+  ],
+  "fullRegressionSuiteRun": false,
+  "skipped": [
+    "Independent price import, planner algorithms, EV scheduling algorithms, HVAC/COP/boiler algorithm suites; these implementations were not changed.",
+    "No physical Homey installation or real battery/P1 hardware calibration."
+  ],
+  "remainingRisks": [
+    "P1-only timing needs stable household and solar power; coincident unrelated load changes cannot be identified conclusively.",
+    "Advice covers the measured charge/zero response and the observed P1 cadence, not separately measured discharge latency.",
+    "Actual hardware, downstream Flows and Homey WebView timing remain unverified."
+  ],
+  "homeyInstalledOrPublished": false
+}

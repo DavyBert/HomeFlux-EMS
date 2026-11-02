@@ -6,7 +6,7 @@ const { evPowerPerAmp, calculateEvDecision } = require('../lib/flexible-loads');
 const { calculateScenario } = require('../settings/ev-headroom');
 const load = Module._load;
 Module._load = function(request, parent, main) {
-  if (request === 'homey') return { App: class {} };
+  if (request === 'homey') return { App: class { log() {} } };
   if (request === 'homey-api') return { HomeyAPI: {} };
   return load.call(this, request, parent, main);
 };
@@ -71,7 +71,7 @@ assert.equal(result.effectiveCapacityKwh, 15);
 (async () => {
   const app = Object.create(App.prototype);
   const stored = { settingsSchemaVersion: 66, batteryCount: 2, totalCapacityKwh: 15, individualBatteryPowerLimitsEnabled: true };
-  app.homey = { settings: { get: key => stored[key] ?? null, set: (key, value) => { stored[key] = value; } }, clock: { getTimezone: () => 'UTC' } };
+  app.homey = { setTimeout: (fn, ms) => { assert.equal(ms, 2000); fn(); }, settings: { get: key => stored[key] ?? null, set: (key, value) => { stored[key] = value; } }, clock: { getTimezone: () => 'UTC' } };
   await app.migrateSettings();
   await app.ensureDefaults();
   assert.equal(stored.settingsSchemaVersion, 71);

@@ -70,7 +70,19 @@
     "planning.targetPeakDetail": "De laadberekening gebruikt alleen beschikbare laadtijd vóór de start van deze piek.",
     "planning.nightTargetDetail": "De nachtplanning gebruikt alleen toegestane laadvensters vóór dit ingestelde ochtenddoel.",
     "planning.dayTargetDetail": "De dagplanning gebruikt alleen toegestane laadvensters vóór dit ingestelde doelmoment overdag.",
-    "planning.targetTimeDetail": "De laadberekening loopt tot dit ingestelde doelmoment."
+    "planning.targetTimeDetail": "De laadberekening loopt tot dit ingestelde doelmoment.",
+    "batteryResponse.start": "Beste minimumtijd automatisch vinden",
+    "batteryResponse.stop": "Reactietest stoppen",
+    "batteryResponse.help": "Apart hulpmiddel naast de bestaande batterijtest: vijf keer 0 W, totaal 400 W laden en terug naar 0 W. Houd huisverbruik en zon stabiel en stop EV-laden. Tijdens de test neemt dit hulpmiddel tijdelijk de batterijsturing over. Uitsluitend na een klik; er worden geen periodieke reactietests uitgevoerd. Het advies is gebaseerd op de gemeten laad-/nulreactie.",
+    "batteryResponse.progress": "Meting {done}/{total} · {phase}",
+    "batteryResponse.noResult": "Nog geen geslaagde reactietest. Het interval wordt niet automatisch aangepast.",
+    "batteryResponse.result": "Laatste geslaagde test: {time}. Gemiddelde reactietijd (10 stuuracties): {response} s. P1-cadans: {cadence} s. P1-gemiddeldes: {samples} (0 = direct). Richtwaarde: {min}–{max} s.",
+    "batteryResponse.warning": "Dit interval kan P1-waarden meenemen waarin de batterij nog op het vorige commando reageert. Verkort het aantal P1-gemiddeldes of verleng de tijd tussen batterijsturingen tot minstens {min} s. Dit is een richtwaarde uit de laatste test.",
+    "batteryResponse.limit": "De berekende richtwaarde ligt boven het instelbare maximum. Kies minder P1-gemiddeldes.",
+    "batteryResponse.stage_baseline": "wachten op stabiel P1 bij 0 W",
+    "batteryResponse.stage_rising": "400 W laden: reactietijd meten",
+    "batteryResponse.stage_falling": "terug naar 0 W: terugvaltijd meten",
+    "batteryResponse.stage_stopping": "stoppen en 0 W uitsturen"
   },
   "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden."
 }

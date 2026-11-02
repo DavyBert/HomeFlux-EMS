@@ -1,0 +1,82 @@
+[
+  {
+    "language": "nl",
+    "width": 393,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "nl",
+    "width": 1280,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "en",
+    "width": 393,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "en",
+    "width": 1280,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "fr",
+    "width": 393,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "fr",
+    "width": 1280,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "es",
+    "width": 393,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "es",
+    "width": 1280,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "de",
+    "width": 393,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  },
+  {
+    "language": "de",
+    "width": 1280,
+    "passed": true,
+    "onDemandOnly": true,
+    "orangeGuidance": true,
+    "settingsUnchanged": true
+  }
+]

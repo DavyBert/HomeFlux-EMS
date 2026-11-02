@@ -1,5 +1,6 @@
 'use strict';
 
+const batteryResponseTest = require('./lib/battery-response-test');
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
@@ -468,6 +469,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.restoreAutoTuneLearning();
     await this.syncTokens();
     this.registerFlowCards();
+    await batteryResponseTest.restore(this);
     this.setupInputRequestSchedule();
     this.syncEvSocRequestSchedule();
     this.armOverrideResume();
@@ -487,6 +489,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.homey.settings.on('set', async key => {
       try {
+        if (key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc') return;
         // These keys persist EV state already changed by its handler or
         // energy accounting. Goal changes request their own context; energy
         // completion stops immediately. A later settings callback must not
@@ -505,6 +508,7 @@ class HomeFluxEmsApp extends Homey.App {
         // complete settings scan in every nested helper.
         const previousSettingValue = this.settingsCache?.[key];
         this.refreshCachedSetting(key);
+        if (batteryResponseTest.active(this) && Object.prototype.hasOwnProperty.call(DEFAULTS,key) && !evDashboard.isSetting(String(key))) await batteryResponseTest.stop(this,'Instellingen gewijzigd tijdens de reactietest.');
         if (evDashboard.isSetting(String(key))) { this.notifyEvDashboard(); return; }
         this.cachedRuntimeSettings = null;
         if (['optimizeMultiBatteryEfficiency', 'batteryCount', 'balanceDeadbandPct'].includes(String(key))) {
@@ -2029,7 +2033,9 @@ class HomeFluxEmsApp extends Homey.App {
 
   noteAutoTuneGridSample(value, at = Date.now()) {
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
-    this.updateAutoTuneSignal(this.autoTuneRuntime.grid, value, at, 800);
+    // Manual diagnostic pulses are not household control noise. Keep the
+    // existing meter-cadence bookkeeping, without learning their power steps.
+    this.updateAutoTuneSignal(this.autoTuneRuntime.grid, value, at, batteryResponseTest.active(this) ? -1 : 800);
   }
 
   noteAutoTunePvSample(value, at = Date.now()) {
@@ -2063,6 +2069,23 @@ class HomeFluxEmsApp extends Homey.App {
       .slice(-14)
       .map(day => ({ ...day }));
     this.autoTuneRuntime.planning.currentDay = null;
+    const minimum=this.homey.settings.get('_autoTuneDailyMinimumSoc');
+    this.autoTuneRuntime.dailyMinimumSoc=minimum&&typeof minimum.dateKey==='string'&&Number.isFinite(minimum.soc)&&minimum.soc>=0&&minimum.soc<=100?{dateKey:minimum.dateKey,soc:minimum.soc}:null;
+  }
+
+  recordAutoTuneDailyMinimumSoc(now=Date.now(),settings=this.getSettings()) {
+    const soc=this.getAverageBatterySoc(settings);
+    if(soc===null||!Number.isFinite(Number(soc)))return;
+    const dateKey=this.getLocalDateKey(new Date(now)),value=Math.floor(Math.max(0,Math.min(100,Number(soc)))*10)/10;
+    if(!this.autoTuneRuntime)this.autoTuneRuntime=this.createAutoTuneRuntime();
+    const old=this.autoTuneRuntime.dailyMinimumSoc;
+    const minimum=old?.dateKey===dateKey?Math.min(old.soc,value):value;
+    if(!old||old.dateKey!==dateKey||minimum<old.soc) {
+      this.autoTuneRuntime.dailyMinimumSoc={dateKey,soc:minimum};
+      this.setSetting('_autoTuneDailyMinimumSoc',this.autoTuneRuntime.dailyMinimumSoc);
+    }
+    const day=this.autoTuneRuntime.planning?.currentDay;
+    if(day?.dateKey===dateKey)day.minObservedSoc=day.minObservedSoc==null?minimum:Math.min(day.minObservedSoc,minimum);
   }
 
   persistAutoTuneLearning() {
@@ -2129,6 +2152,7 @@ class HomeFluxEmsApp extends Homey.App {
     const parts = localParts(new Date(now), timezone);
     const dateKey = String(parts.dateKey || '');
     if (!dateKey) return;
+    this.recordAutoTuneDailyMinimumSoc(now,settings);
 
     let day = this.autoTuneRuntime.planning.currentDay;
     if (!day || day.dateKey !== dateKey) {
@@ -2156,6 +2180,8 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (String(this.lowForecastSunnyOverrideDate || '') === dateKey) day.lowForecastPromoted = true;
 
+    const dailyMinimum=this.autoTuneRuntime.dailyMinimumSoc;
+    if(dailyMinimum?.dateKey===dateKey)day.minObservedSoc=day.minObservedSoc==null?dailyMinimum.soc:Math.min(day.minObservedSoc,dailyMinimum.soc);
     const avgSoc = this.getAverageBatterySoc(settings);
     if (avgSoc !== null && Number.isFinite(Number(avgSoc))) {
       day.peakSoc = day.peakSoc === null ? Number(avgSoc) : Math.max(Number(day.peakSoc), Number(avgSoc));
@@ -2840,24 +2866,24 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     // Battery Save discharge floor is not a hard SoC limit. If the battery
-    // repeatedly carries clearly unnecessary energy into the morning, suggest
+    // repeatedly retains excess energy even at the daily low point, suggest
     // a lower save floor. Min/Safety SoC and peak-reserve floors remain fully
     // authoritative, so this can never teach HomeFlux to cross a hard limit.
     if (batteryPresent && lowForecastPolicyEnabled && demandDays.length >= 3) {
-      const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
-      const morningSoc = median(morningSocValues);
+      const minimumSocValues = demandDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
+      const dailyMinimumSoc = median(minimumSocValues);
       const hardFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
       const currentSaveFloor = Math.max(hardFloor, Math.min(100, Number(settings.batterySaveDischargeAboveSoc) || 0));
-      if (morningSoc !== null && morningSoc > hardFloor + 8 && currentSaveFloor > hardFloor + 5) {
-        const learnedFloor = Math.max(hardFloor + 3, Math.min(100, roundTo(morningSoc - 5, 1)));
+      if (minimumSocValues.length >= 3 && dailyMinimumSoc !== null && dailyMinimumSoc > hardFloor + 8 && currentSaveFloor > hardFloor + 5) {
+        const learnedFloor = Math.max(hardFloor + 3, Math.min(100, roundTo(dailyMinimumSoc - 5, 1)));
         // One recommendation may move at most 20 percentage points. Planning
         // parameters are also rate-limited to one automatic change per day.
         const desiredSaveFloor = Math.max(learnedFloor, currentSaveFloor - 20);
         if (currentSaveFloor - desiredSaveFloor >= 3) {
           push('batterySaveDischargeAboveSoc', 'Batterij sparen: ontlaadgrens', 'Battery Save discharge floor', currentSaveFloor, desiredSaveFloor, '%',
-            `Rond het ochtenddoel blijft gemiddeld ${morningSoc.toFixed(1)}% SoC over, terwijl de harde veiligheidsvloer ${hardFloor.toFixed(0)}% is. Een iets lagere spaargrens kan meer opgeslagen energie 's nachts benutten; harde SoC- en piekreserves blijven beschermd.`,
-            `Average SoC around the morning target remains ${morningSoc.toFixed(1)}%, while the hard safety floor is ${hardFloor.toFixed(0)}%. A slightly lower save floor can use more stored energy overnight; hard SoC and peak reserves remain protected.`,
-            planningConfidence(morningSocValues.length), morningSocValues.length, 'Planning');
+            `De mediaan van de laagste dagelijkse SoC is ${dailyMinimumSoc.toFixed(1)}%, terwijl de harde veiligheidsvloer ${hardFloor.toFixed(0)}% is. Een lagere spaargrens kan meer opgeslagen energie benutten; harde SoC- en piekreserves blijven beschermd.`,
+            `The median daily minimum SoC is ${dailyMinimumSoc.toFixed(1)}%, while the hard safety floor is ${hardFloor.toFixed(0)}%. A lower save floor can use more stored energy; hard SoC and peak reserves remain protected.`,
+            planningConfidence(minimumSocValues.length), minimumSocValues.length, 'Planning');
         }
       }
     }
@@ -3235,6 +3261,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   isAutoTuneEvaluationDue(now = Date.now()) {
+    if (batteryResponseTest.active(this)) return false;
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     const permissions = this.getAutoTunePermissions();
     if (!Object.values(permissions).some(Boolean)) return false;
@@ -5756,6 +5783,10 @@ class HomeFluxEmsApp extends Homey.App {
     return effectiveInternalCommands;
   }
 
+  startBatteryResponseTest() { return batteryResponseTest.start(this); }
+
+  stopBatteryResponseTest() { return batteryResponseTest.stop(this); }
+
   async invalidateChargeTest() {
     this.chargeTestAwaitingConfirmation = false;
     if (Boolean(this.homey.settings.get('chargeTestPassed'))) this.setSetting('chargeTestPassed', false);
@@ -6609,6 +6640,7 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
       this.updateEvMeterContextRequest(inputSettings);
+      if (batteryResponseTest.active(this)) await batteryResponseTest.observe(this,now,inputSettings);
       if (!wasGridReady && Boolean(inputSettings.controlEnabled)) {
         this.requestContextEvaluate(true, 'grid_recovered');
       } else if (evLoadProtectionChanged) {
@@ -6683,6 +6715,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.state.batterySoc[index] = normalized;
       this.inputSeen.batterySoc[index] = true;
       this.inputUpdatedAt.batterySoc[index] = Date.now();
+      this.recordAutoTuneDailyMinimumSoc();
       if (!changed) return true;
       this.invalidatePlanningCache();
       this.requestEvaluate(true);
@@ -7218,6 +7251,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async onUninit() {
+    if (batteryResponseTest.active(this)) await batteryResponseTest.stop(this,'Reactietest afgebroken door een herstart.',false,false);
     // Retain the current kWh remainder on a graceful restart, rather than the
     // last five-minute checkpoint. Never overwrite saved goals after a failed
     // startup that did not finish restoring both sets of Flow plans.
@@ -15603,6 +15637,10 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   queueCommandEmit(result, precomputedChange = null) {
+    if (batteryResponseTest.active(this)) {
+      if (!result.canPublishCommands || result.override === 'peak_shave') batteryResponseTest.stop(this,result.override === 'peak_shave' ? 'Peak Guard onderbreekt de reactietest.' : 'De batterijsturing is niet veilig beschikbaar.').catch(err=>this.error('Battery response safety stop',err));
+      return false;
+    }
     // Hard Hybrid ownership gate. Evaluation may continue for status/planning,
     // but no normal or safety battery command is allowed to leave HomeFlux
     // while the external EMS owns the configured battery group. During handover_wait the
@@ -15665,6 +15703,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async emitPending() {
+    if (batteryResponseTest.active(this)) return;
     if (this.commandPublishing) return;
     const result = this.pendingResult;
     if (!result) return;
@@ -16648,6 +16687,7 @@ class HomeFluxEmsApp extends Homey.App {
         hvacAllowFanControl: Boolean(storedSettings.hvacAllowFanControl),
         hvacPriority: String(storedSettings.hvacPriority || 'comfort'),
       },
+      batteryResponseTest: batteryResponseTest.status(this,storedSettings),
       chargeTest: {
         passed: this.isChargeTestValid(storedSettings),
         running: Boolean(this.chargeTestRunning),
@@ -16797,6 +16837,7 @@ class HomeFluxEmsApp extends Homey.App {
         planningInputChanged = true;
       });
     }
+    if (Array.isArray(body.batterySoc)) this.recordAutoTuneDailyMinimumSoc();
     if (body.ev && typeof body.ev === 'object') {
       const now = Date.now();
       const connectionChanged = body.ev.connected !== undefined && this.hasBooleanInputChanged(
@@ -16869,6 +16910,7 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (planningInputChanged) this.invalidatePlanningCache();
     if (gridInputChanged) this.checkFlexibleSafetyFromGrid(Date.now(), this.getSettings());
+    if (gridInputChanged && batteryResponseTest.active(this)) batteryResponseTest.observe(this,Date.now(),this.getSettings()).catch(err=>this.error('Battery response input',err));
 
     const gridRecovered = !wasGridReady && this.getInputReadiness().ready;
     if (gridRecovered && Boolean(this.getSettings().controlEnabled)) {

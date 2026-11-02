@@ -15,6 +15,8 @@ HomeFlux EMS manages home batteries around your tariff, PV forecast, self-consum
 3. **Connect and enable battery output**  
    Connect **Battery commands are updated** to your battery integration. For batteries needing separate modes and power values, enable Split Command and use **Battery: switch to charge/discharge mode** and **Battery: charge/discharge power is updated**. Run the **100 W charge test** in Settings, verify the battery response and confirm success, then enable **EMS output active**.
 
+An optional, on-demand battery response test helps choose the command interval and P1 averaging. It does not replace the charge/discharge test.
+
 The core battery control and planning can now run. Optional day/night planning maxima limit planned grid charging; PV capture and Safety SoC recovery remain available. Optional night hysteresis and a fixed 00:00–02:00 PV forecast median can stabilize night planning; both are off by default.
 
 The optional Charging strategy tab offers spread charging with a power correction, or maximum safe charging from the start, as late as possible with a 15-minute reserve, or centred on the cheapest interval. For variable prices, centring is used only if the full block is cheaper than the standard spread plan. Day/night and annual/seasonal settings are independent.
@@ -27,6 +29,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.19
+
+Autotune gebruikt voor de ontlaadgrens van Batterij sparen de laagste dagelijkse SoC, ook bij later laden en na herstart. Nieuwe aparte batterijreactietest die alleen na een klik start met vijf 400 W-laadpulsen, blijvend resultaat en advies voor stuurinterval en P1-middeling. Een oranje waarschuwing helpt bij een te kort gekozen interval.
+
+Autotune uses the daily minimum SoC for the Battery Save discharge floor, including later charging and restarts. Added a separate on-demand battery response test with five 400 W charging pulses, a persistent result and advice on the command interval and P1 averaging. An orange warning helps identify an interval that is too short.
+
+Autotune utilise le SoC minimal quotidien pour le seuil de décharge en économie de batterie, y compris après une recharge ultérieure et un redémarrage. Ajout d’un test de réaction distinct déclenché uniquement par un clic avec cinq impulsions de recharge à 400 W, un résultat conservé et des conseils sur l’intervalle de commande et la moyenne P1. Un avertissement orange signale un intervalle trop court.
+
+Autotune usa el SoC mínimo diario para el umbral de descarga del ahorro de batería, incluso tras una carga posterior y un reinicio. Se añade una prueba de respuesta independiente que solo se inicia al pulsar el botón con cinco pulsos de carga de 400 W, resultado persistente y consejos sobre el intervalo de control y el promedio P1. Una advertencia naranja señala un intervalo demasiado corto.
+
+Autotune verwendet den täglichen Mindest-SoC für die Entladegrenze beim Batteriesparen, auch nach späterem Laden und Neustarts. Neuer separater Batterie-Reaktionstest, der nur nach einem Klick startet mit fünf 400-W-Ladeimpulsen, dauerhaftem Ergebnis und Hinweisen zu Steuerintervall und P1-Mittelung. Eine orange Warnung weist auf ein zu kurzes Intervall hin.
 
 ### 1.2.18
 
@@ -521,3 +535,9 @@ Rework of schedules, better and more control.
 ### 0.3.9
 
 Better feature explanation.
+
+Reactietest: gemiddeld tien afzonderlijke stuurreacties; terugkeer bevestigd bij minstens 300 W daling.
+
+De reactietestknop wordt na afronden of stoppen automatisch bijgewerkt.
+
+Reactietest: uitregeltijd na de 300 W-terugbevestiging telt niet mee in de reactiemeting.

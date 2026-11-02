@@ -274,17 +274,26 @@ function appWithSettings(overrides = {}) {
 {
   const { app } = appWithSettings({ expectedEnergyNeedKwh: 20, totalCapacityKwh: 20, minSoc: 10, safetySoc: 15 });
   app.autoTuneRuntime.planning.days = [
-    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:14, forecastKwh:7, peakSoc:98, solarTargetSoc:97, nightTargetSoc:35, maxSocLimit:100 },
-    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:14, forecastKwh:8, peakSoc:98, solarTargetSoc:96, nightTargetSoc:36, maxSocLimit:100 },
-    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:14, forecastKwh:9, peakSoc:99, solarTargetSoc:98, nightTargetSoc:34, maxSocLimit:100 },
+    { dateKey:'2026-09-01', sampleHours:24, estimatedDemandKwh:14, forecastKwh:7, peakSoc:98, solarTargetSoc:97, nightTargetSoc:35, minObservedSoc:29, maxSocLimit:100 },
+    { dateKey:'2026-09-02', sampleHours:24, estimatedDemandKwh:14, forecastKwh:8, peakSoc:98, solarTargetSoc:96, nightTargetSoc:36, minObservedSoc:30, maxSocLimit:100 },
+    { dateKey:'2026-09-03', sampleHours:24, estimatedDemandKwh:14, forecastKwh:9, peakSoc:99, solarTargetSoc:98, nightTargetSoc:34, minObservedSoc:28, maxSocLimit:100 },
   ];
   const recs = app.getAutoTuneRecommendations();
   const rec = recs.find(item => item.settingKey === 'expectedEnergyNeedKwh');
   assert.ok(rec);
   assert.ok(rec.recommended < 14, `high morning residual should trim need below raw 14 kWh, got ${rec.recommended}`);
   const saveFloor = recs.find(item => item.settingKey === 'batterySaveDischargeAboveSoc');
-  assert.ok(saveFloor, 'high morning residual should recommend a lower Battery Save discharge floor');
+  assert.ok(saveFloor, 'high daily minimum should recommend a lower Battery Save discharge floor');
   assert.ok(saveFloor.recommended < 100 && saveFloor.recommended >= 15);
+  const originalDays = app.autoTuneRuntime.planning.days.map(day => ({...day}));
+  for (const day of app.autoTuneRuntime.planning.days) { day.nightTargetSoc = 95; day.minObservedSoc = 16; }
+  assert.equal(app.getAutoTuneRecommendations().some(item=>item.settingKey==='batterySaveDischargeAboveSoc'),false,
+    'night charging must not hide a low daily SoC');
+  app.autoTuneRuntime.planning.days=originalDays.map(({minObservedSoc,...day})=>day);
+  assert.equal(app.getAutoTuneRecommendations().some(item=>item.settingKey==='batterySaveDischargeAboveSoc'),false,
+    'missing daily minima must not fall back to the charged morning SoC');
+  app.autoTuneRuntime.planning.days=originalDays;
+
   assert.equal(app.getAutoTuneSettingDescriptor('minSoc'), null, 'hard minimum SoC must not be auto-tunable');
   assert.equal(app.getAutoTuneSettingDescriptor('safetySoc'), null, 'hard safety SoC must not be auto-tunable');
   assert.equal(app.getAutoTuneSettingDescriptor('maxSoc'), null, 'hard maximum SoC must not be auto-tunable');
