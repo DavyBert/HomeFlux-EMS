@@ -1,0 +1,119 @@
+{
+  "version": "1.2.25",
+  "baseline": "Complete Library HomeFlux EMS 1.2.24, SHA-256 acf5a0d809815a0034c34d49f6723059a8fc8b7cd2866f3703706e9e0845528f",
+  "scope": [
+    "HVAC-only combined estimated electrical power budget; existing setting keys and values retained",
+    "Unknown independent source 300 W plus 20% margin; shared roots reserved once; only incremental power admitted",
+    "Comfort priority, targeted shedding and regular-pass retries; no household/PV/battery accounting in HVAC budget",
+    "Half-degree reductions only in normal permanent comfort control; tariff targets retained",
+    "No new polls, listeners, timers or evaluation cycles; separate Peak Guard and PV guards retained",
+    "Do not restore ON for a denied/waiting decision; retry confirmed new OFF feedback only through existing evaluations",
+    "Single-source learning preserved; no learning from parallel/direct output batches"
+  ],
+  "executed": {
+    "test/hvac-budget-1.2.25.test.js": {
+      "status": "passed",
+      "summary": "HVAC budget 1.2.25: 26 scenario groups passed."
+    },
+    "test/hvac-permanent-1.2.7.test.js": {
+      "status": "passed",
+      "summary": "HVAC 1.2.7: 34 targeted groups passed."
+    },
+    "test/hvac-coordination-1.2.15.test.js": {
+      "status": "passed",
+      "summary": "HVAC 1.2.15: 29 scenario groups passed."
+    },
+    "test/hvac-comfort-1.2.21.test.js": {
+      "status": "passed",
+      "summary": "Comfort: heat/cool, target shutdown, threshold hysteresis, priority/interval, stale inputs, Peak Guard, fixed direction, queued revalidation, permanent off and real portfolio without PV passed."
+    },
+    "test/hvac-flow-1.2.22.test.js": {
+      "status": "passed",
+      "summary": "1.2.22: ten independent slots, master permission preserved, immediate OFF/standby, ON, no retries/timers, PV restart, stale queue, periodic ownership and persistence passed."
+    },
+    "test/hvac-presentation-1.2.23.test.js": {
+      "status": "passed",
+      "summary": "HVAC presentation: combined reasons, unchanged permanent reasons, numeric device feedback, timestamp independence, missing/mismatched/new targets, tolerance, both publication paths and real feedback Flow passed."
+    },
+    "test/hvac-ui-1.2.7.test.js": {
+      "status": "passed",
+      "summary": "HVAC UI: 80 conditional-field combinations plus 1920 comfort/activation/source combinations, 10-channel form schema and three-column widget DOM checks passed."
+    },
+    "test/hvac-migration-1.2.7.test.js": {
+      "status": "passed",
+      "summary": "HVAC migration: five 2-second gaps, no restart delays, preserved settings, interrupted upgrade recovery and writes during pause passed; real 2-second timer verified."
+    },
+    "test/settings-startup.test.js": {
+      "status": "passed",
+      "summary": "settings startup tests passed"
+    },
+    "test/settings-translations.test.js": {
+      "status": "passed",
+      "summary": "settings translation bundle tests passed"
+    },
+    "test/localization-1.2.18.test.js": {
+      "status": "passed",
+      "summary": "Localization 1.2.18: 8496 strings, 2960 metadata objects, Flow errors and unchanged control sources passed."
+    },
+    "test/widget.test.js": {
+      "status": "passed",
+      "summary": "widget tests passed"
+    },
+    "test/flexible-loads.test.js": {
+      "status": "passed",
+      "summary": "HomeFlux EMS flexible-load tests: OK"
+    },
+    "test/multi-flexible-loads.test.js": {
+      "status": "passed",
+      "summary": "multi flexible-load tests passed"
+    }
+  },
+  "syntax": {
+    "changedJavaScriptFiles": [
+      "app.js",
+      "test/settings-startup.test.js",
+      "test/hvac-budget-1.2.25.test.js",
+      "test/widget.test.js",
+      "test/hvac-permanent-1.2.7.test.js",
+      "test/hvac-presentation-1.2.23.test.js",
+      "test/hvac-coordination-1.2.15.test.js",
+      "lib/hvac-presentation.js",
+      "lib/hvac-coordination.js",
+      "lib/hvac-permanent.js"
+    ],
+    "settingsInlineScripts": 8,
+    "allJsonFilesValid": true
+  },
+  "compatibility": {
+    "flowDefinitionsUnchanged": true,
+    "deprecatedFlowsUnchanged": true,
+    "storedSettingKeysUnchanged": true,
+    "websiteDescriptionsAndSloganUnchanged": true,
+    "widgetsUnchanged": true,
+    "batteryEvPvAndPlannerLibrariesUnchanged": true,
+    "translationKeysAndPlaceholdersRetained": true,
+    "languages": [
+      "nl",
+      "en",
+      "fr",
+      "es",
+      "de"
+    ]
+  },
+  "testExpectationsUpdated": [
+    "HVAC budget no longer includes household P1 or subtracts PV, comfort also respects the explicit cap, standalone unknown power includes 20% margin",
+    "An oversized source does not block independent sources that fit",
+    "Existing OFF/ON Flow test now awaits the existing serialized Flow contract; previously awaited the queued ON before releasing the in-flight OFF and never reached completion"
+  ],
+  "skipped": [
+    "Complete regression suite",
+    "Independent battery, EV, PV, tariff/planning and savings suites: algorithms unchanged; only existing mixed flexible-load integration tests run"
+  ],
+  "remainingLimitations": [
+    "Host tests use actual application/HVAC/Flow code with mocked Homey transport; no physical Homey/hardware measurements",
+    "The HVAC budget is an estimate, not a measured power guarantee. Unknown power remains 300 W plus margin; Peak Guard retains physical grid protection",
+    "Half-degree reductions do not release assumed watts before demand is reflected in existing command/temperature administration; further steps follow the existing control interval",
+    "If all affected outputs lack control permission, HomeFlux reports that reduction is not permitted and cannot enforce a physical stop"
+  ],
+  "homeyInstalledOrPublished": false
+}

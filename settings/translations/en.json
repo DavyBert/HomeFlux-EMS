@@ -2010,7 +2010,21 @@
     "PV-opvang wacht op volgende beoordeling": "PV capture awaiting the next evaluation",
     "PV-opvang actief": "PV capture active",
     "Extra planningsmarge voor laadverliezen (%)": "Extra planning margin for charging losses (%)",
-    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Maximum power only. 20% reserves 20% more charging time. The SoC target stays unchanged; the remaining plan shrinks as actual SoC rises. Default 0%."
+    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Maximum power only. 20% reserves 20% more charging time. The SoC target stays unchanged; the remaining plan shrinks as actual SoC rises. Default 0%.",
+    "Gezamenlijk HVAC-vermogensbudget inschakelen": "Enable combined HVAC power budget",
+    "Maximaal gezamenlijk HVAC-vermogen (W)": "Maximum combined HVAC power (W)",
+    "Begrenst het geschatte elektrische vermogen van alle HVAC-installaties samen, inclusief 20% veiligheidsmarge. Onbekend vermogen: 300 W per onafhankelijke installatie; gedeelde installaties tellen eenmaal. Huishoudverbruik, PV en batterijvermogen veranderen dit budget niet. Peak Guard blijft afzonderlijk gelden.": "Limits the combined estimated electrical power of all HVAC installations, including a 20% safety margin. Unknown power: 300 W per independent installation; shared installations count once. Household consumption, PV and battery power do not change this budget. Peak Guard remains separate.",
+    "HVAC wacht op gezamenlijk vermogensbudget": "HVAC waiting for combined power budget",
+    "HVAC wacht op Peak Guard": "HVAC start limited by Peak Guard",
+    "HVAC wacht op voldoende PV-overschot": "HVAC waiting for sufficient PV surplus",
+    "HVAC wacht op stabiel PV-overschot": "HVAC waiting for stable PV surplus",
+    "HVAC wacht op geldige gedeelde installatie": "HVAC waiting for a valid shared installation",
+    "HVAC wacht op lopende leermeting": "HVAC waiting for the current learning measurement",
+    "HVAC wacht op handmatige leermeting": "HVAC waiting for the manual learning measurement",
+    "HVAC-vermogensbudget overschreden · wachten op afbouw": "HVAC power budget exceeded · waiting for reduction",
+    "HVAC-vermogensbudget · comfortsturing 0,5 °C afbouwen": "HVAC power budget · reduce comfort control by 0.5 °C",
+    "HVAC-vermogensbudget overschreden · HVAC uitschakelen": "HVAC power budget exceeded · switch HVAC off",
+    "HVAC-vermogensbudget overschreden · afbouw niet toegestaan": "HVAC power budget exceeded · reduction not permitted"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

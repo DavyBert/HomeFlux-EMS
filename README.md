@@ -30,6 +30,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.25
+
+Het gezamenlijke HVAC-vermogensbudget telt uitsluitend HVAC-belasting, met één reservering per gedeelde installatie. Comfort- en tariefsturing kunnen zonder PV starten en hervatten zodra budget vrijkomt. Duidelijkere wachtredenen en gerichte afbouw; stappen van 0,5 °C gelden alleen voor normale permanente comfortsturing, met behoud van ingestelde tariefdoelen.
+
+The combined HVAC power budget counts HVAC load only, with one reservation per shared installation. Comfort and tariff control can start without PV and resume when budget becomes available. Clearer waiting reasons and targeted reductions; 0.5 °C steps apply only to normal permanent comfort control, preserving configured tariff targets.
+
+Le budget de puissance HVAC total ne compte que la charge HVAC, avec une réservation par installation partagée. Le confort et le pilotage tarifaire peuvent démarrer sans PV et reprendre quand le budget se libère. Motifs d’attente plus clairs et réduction ciblée ; les pas de 0,5 °C concernent uniquement le confort permanent normal, sans modifier les cibles tarifaires.
+
+El presupuesto de potencia HVAC conjunto solo cuenta la carga HVAC, con una reserva por instalación compartida. El control de confort y por tarifa puede arrancar sin FV y reanudarse cuando haya presupuesto. Motivos de espera más claros y reducción selectiva; los pasos de 0,5 °C solo se aplican al confort permanente normal, conservando los objetivos por tarifa.
+
+Das gemeinsame HVAC-Leistungsbudget zählt nur HVAC-Lasten, mit einer Reservierung je gemeinsamer Anlage. Komfort- und Tarifregelung können ohne PV starten und bei freiem Budget fortgesetzt werden. Klarere Wartegründe und gezielte Reduzierung; Schritte von 0,5 °C gelten nur für die normale permanente Komfortregelung, ohne eingestellte Tarifziele zu ändern.
+
 ### 1.2.24
 
 De HVAC-doeltemperatuur wordt wit zodra het ontvangen setpoint numeriek overeenkomt met Doel. Ontbrekende of afwijkende feedback blijft grijs; stuur- en terugmeldtijden blokkeren de bevestiging niet meer.

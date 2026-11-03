@@ -273,21 +273,21 @@ async function main(){
   a.setSetting('hvacPvEnabled',false);const comfort=calc(a);assert(comfort.permanent);assert.equal(comfort.setpointCommand,null);assert.equal(comfort.powerCommand,null); // 1.2.21: permanent comfort is available without optimization; room is comfortable.
   a.setSetting('hvacTariffEnabled',true);a.setSetting('hvacPermanentEnabled',false);assert(!calc(a).permanent);
  });
- await check('Budget respects learned power and review; necessary comfort survives optional grid cap',async()=>{
+ await check('Budget respects learned power and review; necessary comfort also respects the joint cap',async()=>{
   // Keep the same blocked/allowed/review assertions with the new 300 W
   // fallback: 250 W admits a measured 200 W but not unknown/reviewed demand.
   const h=await setup({hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:250}),a=h.app;
   assert.equal(calc(a).setpointCommand,null);
   H.unit(a,0).heat=200;near(calc(a).setpointCommand,23);
   H.recheck(a,0,'heat');assert.equal(calc(a).setpointCommand,null);near(H.unit(a,0).heat,200);
-  a.state.hvacRoomTemperatureC=18;near(calc(a).setpointCommand,23);
+  a.state.hvacRoomTemperatureC=18;assert.equal(calc(a).setpointCommand,null,'1.2.25: comfort cannot override the explicit joint HVAC cap');
   a.setSetting('peakShaveEnabled',true);a.setSetting('peakLimitW',700);assert.equal(calc(a).setpointCommand,null);
  });
- await check('Shared HVAC import budget reserves other units and excludes unrelated household import',async()=>{
+ await check('Joint HVAC power budget reserves other units and excludes unrelated household import',async()=>{
   const h=await setup({hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1500}),a=h.app;
   a.state.gridPowerW=7000;H.unit(a,0).heat=800;near(calc(a).setpointCommand,23);
   H.unit(a,1).heat=800;H.unit(a,1).setpoint=23;H.unit(a,1).mode='heat';
-  assert.equal(calc(a).setpointCommand,null,'combined 1600 W exceeds 1500 W');
+  assert.equal(calc(a).setpointCommand,null,'combined 1920 W including margin exceeds 1500 W');
  });
  await check('All ten HVAC channels accept warm-water tariff/PV targets and clamp only beyond 5–99 C',async()=>{
   const h=await setup(),a=h.app;

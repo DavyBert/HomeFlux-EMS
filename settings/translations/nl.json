@@ -72,7 +72,21 @@
     "PV-opvang wacht op volgende beoordeling": "PV-opvang wacht op volgende beoordeling",
     "PV-opvang actief": "PV-opvang actief",
     "Extra planningsmarge voor laadverliezen (%)": "Extra planningsmarge voor laadverliezen (%)",
-    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%."
+    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.",
+    "Gezamenlijk HVAC-vermogensbudget inschakelen": "Gezamenlijk HVAC-vermogensbudget inschakelen",
+    "Maximaal gezamenlijk HVAC-vermogen (W)": "Maximaal gezamenlijk HVAC-vermogen (W)",
+    "Begrenst het geschatte elektrische vermogen van alle HVAC-installaties samen, inclusief 20% veiligheidsmarge. Onbekend vermogen: 300 W per onafhankelijke installatie; gedeelde installaties tellen eenmaal. Huishoudverbruik, PV en batterijvermogen veranderen dit budget niet. Peak Guard blijft afzonderlijk gelden.": "Begrenst het geschatte elektrische vermogen van alle HVAC-installaties samen, inclusief 20% veiligheidsmarge. Onbekend vermogen: 300 W per onafhankelijke installatie; gedeelde installaties tellen eenmaal. Huishoudverbruik, PV en batterijvermogen veranderen dit budget niet. Peak Guard blijft afzonderlijk gelden.",
+    "HVAC wacht op gezamenlijk vermogensbudget": "HVAC wacht op gezamenlijk vermogensbudget",
+    "HVAC wacht op Peak Guard": "HVAC wacht op Peak Guard",
+    "HVAC wacht op voldoende PV-overschot": "HVAC wacht op voldoende PV-overschot",
+    "HVAC wacht op stabiel PV-overschot": "HVAC wacht op stabiel PV-overschot",
+    "HVAC wacht op geldige gedeelde installatie": "HVAC wacht op geldige gedeelde installatie",
+    "HVAC wacht op lopende leermeting": "HVAC wacht op lopende leermeting",
+    "HVAC wacht op handmatige leermeting": "HVAC wacht op handmatige leermeting",
+    "HVAC-vermogensbudget overschreden · wachten op afbouw": "HVAC-vermogensbudget overschreden · wachten op afbouw",
+    "HVAC-vermogensbudget · comfortsturing 0,5 °C afbouwen": "HVAC-vermogensbudget · comfortsturing 0,5 °C afbouwen",
+    "HVAC-vermogensbudget overschreden · HVAC uitschakelen": "HVAC-vermogensbudget overschreden · HVAC uitschakelen",
+    "HVAC-vermogensbudget overschreden · afbouw niet toegestaan": "HVAC-vermogensbudget overschreden · afbouw niet toegestaan"
   },
   "phrases": {},
   "strings": {

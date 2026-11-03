@@ -1,0 +1,12 @@
+{
+  "version": "1.2.25",
+  "homeyCliVersion": "4.6.2",
+  "validationLevel": "debug",
+  "validationPassed": true,
+  "method": "Unmodified Homey CLI source selection, preprocess and pack; local validation only, no Homey connection, installation or publication",
+  "sourceEntries": 105,
+  "sourceTestDirectoryPresent": true,
+  "testsIncludedInPackage": false,
+  "validationIncludedInPackage": false,
+  "productionDependenciesCopied": false
+}

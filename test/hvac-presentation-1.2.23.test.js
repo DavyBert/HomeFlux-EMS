@@ -11,6 +11,9 @@ const cases=[
  [{reason:'Peak Guard · HVAC direct terug naar normaal'},'Peak Guard · HVAC direct terug naar normaal']
 ];
 for(const [d,text] of cases){const before=JSON.stringify(d);assert.equal(P.reason(s,d),'Permanente sturing uit · '+text);assert.equal(JSON.stringify(d),before);assert.equal(P.reason({...s,hvacPermanentEnabled:true},d),d.reason);}
+for(const text of ['HVAC wacht op gezamenlijk vermogensbudget','HVAC wacht op Peak Guard','HVAC-vermogensbudget overschreden · HVAC uitschakelen']){
+ for(const hvacUsePvSurplus of [false,true])assert.equal(P.reason({...s,hvacUsePvSurplus},{reason:text,waiting:true,boostActive:true,energySource:'pv'}),'Permanente sturing uit · '+text);
+}
 const {translate}=require('../lib/display-language');
 for(const lang of ['nl','en','fr','es','de']){
  const bundle=JSON.parse(fs.readFileSync('settings/translations/'+lang+'.json','utf8'));

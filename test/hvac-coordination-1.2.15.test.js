@@ -62,7 +62,7 @@ async function main(){
  });
  await check('Shared zones never assume free additional load; unsafe source capacity, invalid parents and cycles are blocked',async()=>{
   const h=await setup(3,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1000,hvacDirectTariffEnabled:true,hvac2DirectTariffEnabled:true,hvac2SharedPowerEnabled:true,hvac2SharedPowerWith:1}),a=h.app;
-  Object.assign(H.unit(a,0),{heat:2000,heatReview:false});await cycle(h);assert.equal(h.events.length,0);
+  Object.assign(H.unit(a,0),{heat:2000,heatReview:false});await cycle(h);assert.deepEqual(h.events.filter(e=>e.kind==='setpoint').map(e=>e.instance),[3]); // 1.2.25: an oversized shared group must not block an independent source that fits.
   a.setSetting('hvacSharedPowerEnabled',true);a.setSetting('hvacSharedPowerWith',2);a.setSetting('hvacExtraGridBudgetEnabled',false);
   await cycle(h);assert.equal(h.events.filter(e=>e.instance<=2).length,0);
   a.setSetting('hvac2SharedPowerWith',10);const p=C.prepare(a,a.getSettings(),a.latestResult);assert.equal(p.roots[1],null);
@@ -72,12 +72,12 @@ async function main(){
   await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,2);
   assert.equal(a.getExtraHvac(1).latestDecision.hvacAdmission.siteReservedW,2400);
  });
- await check('Fresh grid budget exceedance requests an urgent context once and sheds running outputs without priority wait',async()=>{
+ await check('Household import changes leave the estimated HVAC budget and running outputs unchanged',async()=>{
   const h=await setup(2,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:2500}),a=h.app;known(a,2);await cycle(h);
   const requests=[];a.requestContextEvaluate=(...args)=>requests.push(args);
   a.state.gridPowerW=3200;a.checkFlexibleSafetyFromGrid(now);a.checkFlexibleSafetyFromGrid(now);
-  assert.equal(requests.filter(x=>x[1]==='hvac_budget').length,1);
-  await cycle(h);assert.equal(h.events.filter(e=>e.kind==='power'&&e.state_value===0).length,2);
+  assert.equal(requests.filter(x=>x[1]==='hvac_budget').length,0);
+  await cycle(h);assert.equal(h.events.filter(e=>e.kind==='power'&&e.state_value===0).length,0);assert.equal(H.runtime(a).budgetGuard.watts,2400);
  });
  await check('Peak Guard and stale P1 reduce permanent HVAC immediately, even inside the start interval',async()=>{
   for(const stale of [false,true]) {
@@ -157,8 +157,11 @@ async function main(){
  await check('Known legacy PV units start together with their original half-degree steps; ongoing demand remains reserved',async()=>{
   const h=await setup(3,{hvacPermanentEnabled:false,hvac2PermanentEnabled:false,hvac3PermanentEnabled:false,hvacComfortMinC:22,hvac2ComfortMinC:22,hvac3ComfortMinC:22,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1300}),a=h.app;
   known(a,3);a.state.gridPowerW=-2000;a.state.pvPowerW=3500;a.state.hvacRoomTemperatureC=19;for(let i=1;i<3;i++)a.getExtraHvac(i).state.roomTemperatureC=19;
+  // Initially stopped devices: existing active baseline demand now also counts.
+  a.state.hvacMode='off';a.lastPublishedHvacMode='';for(let i=1;i<3;i++){a.getExtraHvac(i).state.mode='off';a.getExtraHvac(i).lastPublishedMode='';}
   await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,1);assert.equal(h.events.find(e=>e.kind==='setpoint').setpoint,20.5);
-  a.state.gridPowerW=-5000;a.state.pvPowerW=6500;await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,3);
+  a.state.gridPowerW=-5000;a.state.pvPowerW=6500;await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,1,'PV never increases the HVAC budget');
+  a.setSetting('hvacExtraGridBudgetW',3600);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,3);
   assert.equal(H.runtime(a).observation,null);
  });
  await check('Direct legacy PV waits for stability and budget reductions reuse the existing restoration controller',async()=>{
@@ -200,13 +203,14 @@ async function main(){
   a.setSetting('hvacDirection','cool');a.setSetting('hvac2Direction','cool');a.setSetting('hvacCheapTargetC',18);a.setSetting('hvac2CheapTargetC',18);
   a.latestResult={tariff:{className:'cheap',id:'another'}};await cycle(h);assert.equal(h.events.filter(e=>e.kind==='mode'&&e.mode==='cool').length,2);
  });
- await check('Re-enabling while an OFF Flow is awaiting completion restores ON through the existing latest-wins publication slot',async()=>{
+ await check('Explicit re-enable waits for an in-flight OFF Flow and then restores ON through the existing publication slot',async()=>{
   const h=await setup(1),a=h.app;known(a,1);Object.assign(H.unit(a,0),{setpoint:20,mode:'heat'});
   let release,entered;const started=new Promise(resolve=>{entered=resolve;});
   h.cards.get('hvac_power_updated_for_configured').trigger=async(t,s)=>{h.events.push({kind:'power',instance:s.hvac,...t});if(t.state_value===0){entered();await new Promise(resolve=>{release=resolve;});}};
   const stopping=a.setHvacAutomaticControlFor(0,{enabled:'no',standby_temperature:16});await started;
-  await a.setHvacAutomaticControlFor(0,{enabled:'yes'});await cycle(h);assert(a.getHvacPublishSlot(0).pending);
-  release();await stopping;assert.equal(a.lastPublishedHvacPower,true);assert.equal(a.lastPublishedHvacSetpoint,23);assert.equal(a.getHvacPublishSlot(0).pending,null);
+  let enabled=false;const enabling=a.setHvacAutomaticControlFor(0,{enabled:'yes'}).then(()=>{enabled=true;});
+  for(let i=0;i<20;i++)await Promise.resolve();assert.equal(enabled,false);assert.equal(a.getHvacInstanceSettings(0).hvacPermanentEnabled,false);
+  release();await stopping;await enabling;await cycle(h);assert.equal(a.lastPublishedHvacPower,true);assert.equal(a.lastPublishedHvacSetpoint,23);assert.equal(a.getHvacPublishSlot(0).pending,null);
  });
  await check('New Virtual sharing an unknown source starts at 300 W plus margin under the reported 2650 W Peak Guard',async()=>{
   const h=await setup(5,{hvacPermanentEnabled:false,hvacUsePvSurplus:false,hvac2Enabled:false,hvac3Enabled:false,hvac4Enabled:false,
@@ -221,12 +225,12 @@ async function main(){
   let p=C.prepare(a,a.getSettings(),a.latestResult);assert.deepEqual(C.estimate(a,p,1,'heat'),{watts:360,known:false});
   Object.assign(H.unit(a,0),{heat:1800,heatReview:false});assert.deepEqual(C.estimate(a,p,1,'heat'),{watts:2160,known:true});
   H.unit(a,0).heatReview=true;assert.deepEqual(C.estimate(a,p,1,'heat'),{watts:360,known:false});
-  const single=await setup(1,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:300,hvacSurplusStartW:8000});
-  let d=single.app.calculateHvacControlFor(0,single.app.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.hvacEstimatedExtraImportW,300);assert.equal(d.setpointCommand,23);
-  single.app.setSetting('hvacExtraGridBudgetW',299);d=single.app.calculateHvacControlFor(0,single.app.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.setpointCommand,null);
+  const single=await setup(1,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:360,hvacSurplusStartW:8000});
+  let d=single.app.calculateHvacControlFor(0,single.app.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.hvacEstimatedExtraImportW,360);assert.equal(d.setpointCommand,23);
+  single.app.setSetting('hvacExtraGridBudgetW',359);d=single.app.calculateHvacControlFor(0,single.app.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.setpointCommand,null);
   const independent=await setup(2,{hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:500}),other=independent.app;
   Object.assign(H.unit(other,1),{setpoint:23,mode:'heat'});
-  d=other.calculateHvacControlFor(0,other.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.hvacEstimatedExtraImportW,600);assert.equal(d.setpointCommand,null,'two unknown independent demands each reserve 300 W in the standalone controller');
+  d=other.calculateHvacControlFor(0,other.latestResult,null,0,0,{now,allowStart:true});assert.equal(d.hvacEstimatedExtraImportW,720);assert.equal(d.setpointCommand,null,'two unknown independent demands each reserve 360 W including margin in the standalone controller');
  });
  await check('Unknown independent sources each reserve 360 W while linked unknown thermostats share one reservation',async()=>{
   const flags={};for(let i=0;i<5;i++)flags[`hvac${i?i+1:''}DirectTariffEnabled`]=true;
@@ -236,13 +240,13 @@ async function main(){
    hvac2SharedPowerEnabled:true,hvac2SharedPowerWith:1,hvac3SharedPowerEnabled:true,hvac3SharedPowerWith:1,hvac4SharedPowerEnabled:true,hvac4SharedPowerWith:1,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:400});
   await cycle(shared);assert.equal(shared.events.filter(e=>e.kind==='setpoint').length,4);assert.equal(shared.app.getExtraHvac(3).latestDecision.hvacAdmission.siteReservedW,360);
  });
- await check('A real load exceeding the unknown-power estimate still triggers immediate budget/Peak Guard shedding',async()=>{
+ await check('Physical P1 overload triggers independent Peak Guard; household import cannot trigger the HVAC budget',async()=>{
   for(const limit of ['budget','peak']){
    const h=await setup(1,{hvacDirectTariffEnabled:true,hvacExtraGridBudgetEnabled:true,hvacExtraGridBudgetW:1200,peakShaveEnabled:true,peakLimitW:2650,peakSoftMarginW:100}),a=h.app;
    await cycle(h);assert(h.events.some(e=>e.kind==='setpoint'));
    const requests=[];a.requestContextEvaluate=(...args)=>requests.push(args);a.state.gridPowerW=limit==='peak'?2800:2000;a.checkFlexibleSafetyFromGrid(now);
-   assert(requests.some(args=>args[0]===true&&args[1]===(limit==='peak'?'peak_guard':'hvac_budget')));await cycle(h);
-   assert(h.events.some(e=>e.kind==='power'&&e.state_value===0));assert.equal(a.lastPublishedHvacPower,false);
+   assert.equal(requests.some(args=>args[0]===true&&args[1]==='peak_guard'),limit==='peak');assert(!requests.some(args=>args[1]==='hvac_budget'));await cycle(h);
+   assert.equal(h.events.some(e=>e.kind==='power'&&e.state_value===0),limit==='peak');assert.equal(a.lastPublishedHvacPower===false,limit==='peak');
   }
  });
  await check('Ten-slot settings defaults are off; active Flow extension is optional and deprecated cards remain byte-identical',async()=>{

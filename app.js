@@ -12618,7 +12618,7 @@ class HomeFluxEmsApp extends Homey.App {
 
 
 
-    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, portfolio: options.hvacPortfolio });
+    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, portfolio: options.hvacPortfolio, budgetSnapshot: options.hvacBudgetSnapshot || (!options.hvacPortfolio ? hvacCoordination.prepare(this, settings, result, now, false) : null) });
 
     // A stale P1 value may never be interpreted as current PV surplus or spare
     // Peak Guard headroom. Existing HomeFlux-managed HVAC sessions fail safe by
@@ -12905,13 +12905,18 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   calculateHvacControlFor(index, result = this.latestResult, evDecision = this.latestEvDecision, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
-    const settings = options.hvacPortfolio?.settings[index] || this.getHvacInstanceSettings(index, options.storedSettings || this.getSettings());
+    const storedSettings = options.hvacPortfolio ? null : options.storedSettings || this.getSettings();
+    const settings = options.hvacPortfolio?.settings[index] || this.getHvacInstanceSettings(index, storedSettings);
+    // Capture all devices before withHvacRuntime temporarily scopes primary
+    // input/output fields to another instance. The regular portfolio is reused.
+    const hvacBudgetSnapshot = !options.hvacPortfolio && (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, index))
+      ? hvacCoordination.prepare(this, storedSettings, result, options.now || Date.now(), false) : null;
     return this.withHvacRuntime(index, () => this.calculateHvacControl(
       result,
       evDecision,
       nextBatteryCommandW,
       currentBatteryCommandW,
-      { ...options, settings, instanceIndex: index },
+      { ...options, settings, instanceIndex: index, hvacBudgetSnapshot },
     ));
   }
 
@@ -12970,9 +12975,12 @@ class HomeFluxEmsApp extends Homey.App {
             hvacPermanent.persist(this);
           } else if (next.legacyCoordinated) {
             const u=hvacPermanent.unit(this,safeIndex);u.legacyCoordinated=true;u.mode=next.direction;
+            if(next.outputChanged!==false)u.outputAt=Date.now();
+            if(next.hvacBudgetReduction&&next.outputChanged!==false)u.budgetNextAt=Date.now()+Math.max(1,Number(this.getHvacInstanceSettings(safeIndex).hvacControlIntervalMinutes)||5)*60000;
+            if(next.powerCommand!==null)u.powerOff=next.powerCommand===false;
             if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
             hvacPermanent.persist(this);
-            if(learningCandidate?.manualLearning&&next.outputChanged!==false)hvacPermanent.begin(this,safeIndex,learningCandidate,Date.now());
+            if(learningCandidate&&next.outputChanged!==false)hvacPermanent.begin(this,safeIndex,learningCandidate,Date.now());
           } else if (learningCandidate && next.outputChanged!==false) hvacPermanent.begin(this, safeIndex, learningCandidate, Date.now());
           if (!next.permanent && this.hvacPermanentRuntime?.units?.[safeIndex]?.legacyCoordinated && !next.boostActive) { this.hvacPermanentRuntime.units[safeIndex].powerOff=true; hvacPermanent.persist(this); }
         } catch (error) {
@@ -13006,7 +13014,7 @@ class HomeFluxEmsApp extends Homey.App {
     const triggers = this.extraHvacTriggers[index - 1] || {};
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
-      if (runtime.lastPublishedPower !== on || decision.forceAutomaticOff) {
+      if (runtime.lastPublishedPower !== on || decision.forceAutomaticOff || on && decision.hvacRestartFromFeedback) {
         if (triggers.power) await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         runtime.lastPublishedPower = on;
         runtime.managedPowerOn = on;
@@ -13057,7 +13065,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
-      if (this.lastPublishedHvacPower !== on || decision.forceAutomaticOff) {
+      if (this.lastPublishedHvacPower !== on || decision.forceAutomaticOff || on && decision.hvacRestartFromFeedback) {
         if (this.hvacPowerTrigger) await this.hvacPowerTrigger.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         this.lastPublishedHvacPower = on;
         if (on) this.hvacManagedPowerOn = true;
@@ -13854,7 +13862,11 @@ class HomeFluxEmsApp extends Homey.App {
       if (!evStartedThisCycle) {
         const eligible = new Map();
         if (Boolean(boilerDecision?.startEligible) && !Boolean(this.boilerState.outputOn)) eligible.set('boiler', true);
+        const comfortWaiting = hvacPreviews.some(d => d?.permanent && d.startEligible && !d.hvacExtraDemand);
         for (let index = 0; index < hvacCount; index += 1) {
+          const d = hvacPreviews[index];
+          if (comfortWaiting && (!d?.permanent || d.hvacExtraDemand)) continue;
+          if (d?.startEligible && !d.permanent && !hvacCoordination.admission(this, hvacPortfolio, index, { ...d, direction: d.boostMode || hvacPermanent.activationMode(hvacPortfolio.settings[index], d.roomTemperatureC, d.outdoorTemperatureC) }).allowed) continue;
           if (Boolean(hvacPreviews[index]?.startEligible) && (hvacPreviews[index]?.permanent || !this.isHvacManagedActiveFor(index))) eligible.set(`hvac${index + 1}`, true);
         }
         grantedId = hvacPriorityOrder.find(id => eligible.get(id)) || '';
@@ -13871,7 +13883,6 @@ class HomeFluxEmsApp extends Homey.App {
       const id = `hvac${index + 1}`;
       const active = this.isHvacManagedActiveFor(index);
       let decision = hvacPreviews[index];
-      if (!decision?.permanent && active && hvacPortfolio?.budgetSafety) decision=this.calculateHvacControlFor(index,result,evDecisions[0]||null,nextBatteryCommandW,currentBatteryCommandW,{storedSettings,allowStart:false,hvacBudgetSafety:true,totalActualEvPowerW,totalDesiredEvPowerW});
       if (!decision?.permanent && !active && (!decision?.legacyCoordinated && grantedId === id || decision?.coordinated)) {
         decision = this.calculateHvacControlFor(
           index,
@@ -13889,7 +13900,7 @@ class HomeFluxEmsApp extends Homey.App {
       }
       if (!decision?.permanent && hvacPreviews[index]?.coordinated) {
         const admitted=hvacPreviews[index];
-        Object.assign(decision,{coordinated:true,legacyCoordinated:true,hvacAdmission:admitted.hvacAdmission,increase:true,direction:admitted.direction,suppressAutoLearning:true,sampleGridW:hvacPortfolio.sampleGridW});
+        Object.assign(decision,{coordinated:true,legacyCoordinated:true,hvacAdmission:admitted.hvacAdmission,increase:true,direction:admitted.direction,suppressAutoLearning:Boolean(admitted.suppressAutoLearning),sampleGridW:hvacPortfolio.sampleGridW});
       }
       hvacDecisions[index] = decision;
       if (index === 0) this.latestHvacDecision = decision;

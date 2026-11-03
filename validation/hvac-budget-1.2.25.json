@@ -1,0 +1,32 @@
+{
+  "version": "1.2.25",
+  "environment": "Node host; real application/engine and Flow publication; mocked Homey transport, not hardware measurements",
+  "passed": [
+    "1 unknown independent HVACs reserve 360 W under 3600 W",
+    "4 unknown independent HVACs reserve 1440 W under 2000 W",
+    "4 unknown independent HVACs reserve 1440 W under 3600 W",
+    "4 unknown independent HVACs reserve 1440 W under 3800 W",
+    "1900 W existing plus 600 W waits under 2000 W; regular pass retries after demand disappears",
+    "Household import, PV and battery changes cannot change HVAC budget or create budget alarm",
+    "Permanent comfort starts without PV or tariff optimization at 2:00",
+    "Permanent comfort starts without PV or tariff optimization at 14:00",
+    "PV-dependent extra demand cannot use a joint budget as a replacement for PV",
+    "No double reservation when an active source changes target or heating/cooling mode",
+    "Budget disabled does not block; Peak Guard independently still limits new starts",
+    "Necessary comfort outranks higher-device-priority optional storage",
+    "An oversized first request does not collectively block a smaller unknown source",
+    "Unknown devices retain staggered starts and existing intervals without direct settings",
+    "One shared heat pump with four thermostats reserves 360 W, not four independent loads",
+    "True overload sheds only the lowest-priority necessary source and preserves the other",
+    "Normal permanent heat control reduces by 0.5 degrees, preserving the other source",
+    "Normal permanent cool control reduces by 0.5 degrees, preserving the other source",
+    "Pending comfort reclaims optional tariff storage without changing the configured tariff temperature",
+    "Normal permanent half-degree reductions respect the existing interval and never assume freed watts",
+    "A new real OFF feedback can restart the requested HVAC once, while stale OFF feedback cannot repeat ON",
+    "An ongoing legacy PV session cannot restart thermal demand outside the HVAC budget",
+    "Budget reduction remains possible for a physically active normal permanent device without a comfort session",
+    "Cooling tariff targets remain unchanged during a real joint-budget reduction",
+    "A single staggered unknown legacy PV source retains automatic learning under the same safety conditions",
+    "Actual overload does not pretend an uncontrollable shared zone was stopped"
+  ]
+}
