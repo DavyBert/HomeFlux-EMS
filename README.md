@@ -30,6 +30,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.21
+
+Permanent sturen kan zonder tarief-, PV- of periodieke optimalisatie zelfstandig verwarmen of koelen op basis van de bestaande ruimtetemperatuurgrenzen en comfortdoelen. De regeling stopt bij het comfortdoel en respecteert de bestaande prioriteiten, stuurintervallen en veiligheidsgrenzen.
+
+Permanent HVAC control can independently heat or cool using the existing room-temperature thresholds and comfort targets without tariff, PV or periodic optimization. Control stops at the comfort target and respects existing priorities, command intervals and safety limits.
+
+Le pilotage permanent HVAC peut chauffer ou refroidir de façon autonome selon les seuils de température ambiante et les objectifs de confort existants, sans optimisation tarifaire, solaire ou périodique. Il s’arrête à l’objectif de confort et respecte les priorités, intervalles et limites de sécurité existants.
+
+El control permanente HVAC puede calentar o enfriar de forma autónoma con los umbrales de temperatura ambiente y objetivos de confort existentes, sin optimización tarifaria, solar ni periódica. Se detiene al alcanzar el objetivo y respeta las prioridades, intervalos y límites de seguridad existentes.
+
+Die permanente HVAC-Steuerung kann anhand der bestehenden Raumtemperaturschwellen und Komfortziele selbstständig heizen oder kühlen, ohne Tarif-, PV- oder periodische Optimierung. Sie stoppt am Komfortziel und beachtet bestehende Prioritäten, Steuerintervalle und Sicherheitsgrenzen.
+
 ### 1.2.20
 
 De reactietest ondersteunt dual mode met 100 → 500 → 100 W laden (of het hogere ingestelde minimum plus 400 W). Bij meerdere batterijen blijft de totale meetstap 400 W.

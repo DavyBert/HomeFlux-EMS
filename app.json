@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "1.2.20",
+  "version": "1.2.21",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -7844,581 +7844,6 @@
       },
       {
         "title": {
-          "en": "Read savings by category",
-          "nl": "Lees savings per categorie",
-          "fr": "Lire les économies par catégorie",
-          "es": "Leer ahorros por categoría",
-          "de": "Lesen Sie Einsparungen nach Kategorie"
-        },
-        "titleFormatted": {
-          "en": "Get [[category]] for the last [[count]] [[unit]] as [[format]] · EV [[ev]]",
-          "nl": "Haal [[category]] op van de laatste [[count]] [[unit]] als [[format]] · EV [[ev]]",
-          "fr": "Obtenez [[category]] pour les derniers [[count]] [[unit]] comme [[format]] · EV [[ev]]",
-          "es": "Obtener [[category]] para el último [[count]] [[unit]] como [[format]] · EV [[ev]]",
-          "de": "Erhalten Sie [[category]] für die letzten [[count]] [[unit]] als [[format]] · EV [[ev]]"
-        },
-        "hint": {
-          "en": "Uses existing daily records, including today so far. Months/years are rolling calendar periods. Missing history is not backfilled; check available days and complete coverage. Value is realized savings or cost for cost categories. PV stored has no realized value yet (value available = no). Total energy counts direct PV use/export and battery delivery once. Applying this card does not change control. The Selected result token follows your output choice: kWh, kWh with price or price only. Monetary amounts use your configured currency. EV categories use existing Insights daydata. EV selection only affects EV categories; existing Flows default to all EVs. No EV data is distinct from recorded zero. Solar kilometres and solar share are separate tokens. Known costs may be incomplete; check EV data complete. Solar charging cost is forgone feed-in revenue; battery energy stays unknown without proof.",
-          "nl": "Gebruikt bestaande dagrecords, inclusief vandaag tot nu. Maanden/jaren zijn voortschrijdende kalenderperiodes. Ontbrekende historie wordt niet aangevuld; controleer beschikbare dagen en volledige dekking. Geldwaarde is gerealiseerde besparing of kosten bij kostencategorieën. Opgeslagen PV heeft nog geen gerealiseerde geldwaarde (geldwaarde beschikbaar = nee). Totale energie telt direct PV-verbruik/injectie en batterijafgifte eenmaal. De tag Gekozen resultaat gebruikt je uitvoerkeuze: kWh, kWh met prijs of alleen prijs. Geldbedragen gebruiken je ingestelde valuta. EV-categorieën gebruiken de bestaande Insight-daggegevens. De EV-keuze geldt alleen voor EV-categorieën; bestaande Flows gebruiken standaard alle EV’s. Geen EV-gegevens verschilt van gemeten nul. Zonne-kilometers en zonaandeel zijn aparte tags. Bekende kosten kunnen onvolledig zijn; controleer Volledige EV-gegevens. Laadkosten uit zon zijn misgelopen injectievergoeding; batterij-energie blijft onbekend zonder bewijs.",
-          "fr": "Utilise les registres quotidiens existants, y compris aujourd'hui. Les mois/années sont des périodes de calendrier glissantes. Les antécédents manquants ne sont pas remplis à nouveau; vérifiez les jours disponibles et la couverture complète. On réalise des économies ou des coûts pour les catégories de coûts. PV stocké n'a pas encore de valeur réelle (valeur disponible = non). Total énergie compte direct PV utilisation/exportation et livraison de batterie une fois. L'application de cette carte ne change pas de contrôle. Le jeton de résultat sélectionné suit votre choix de production : kWh, kWh avec prix ou prix seulement. Les montants monétaires utilisent votre devise configurée. EV catégories utilisent les données de jour Insights existantes. La sélection EV n'affecte que les catégories EV; les flux existants sont par défaut pour tous les EV. Les données EV sont distinctes de celles enregistrées à zéro. Les kilomètres solaires et la part solaire sont des jetons séparés. Les coûts connus peuvent être incomplets; vérifiez que les données EV sont complètes. Le coût de la recharge solaire est une perte de revenus d'alimentation; l'énergie de la batterie reste inconnue sans preuve.",
-          "es": "Utiliza los registros diarios existentes, incluso hoy hasta ahora. Los meses/años son períodos calendario de rodaje. La historia perdida no está llena de respaldo; comprobar los días disponibles y la cobertura completa. El valor se realiza ahorros o costos para las categorías de costos. PV almacenado todavía no tiene valor real (valor disponible = no). La energía total cuenta directamente PV uso/exportación y entrega de baterías una vez. Aplicar esta tarjeta no cambia el control. El símbolo de resultado seleccionado sigue su opción de salida: kWh, kWh con precio o precio solamente. Las cantidades monetarias usan su moneda configurada. EV categorías utilizan la datada de Insights existente. EV la selección sólo afecta a EV categorías; Flujos existentes por defecto a todos los VE. No EV datos es distinto de cero registrado. Los kilómetros solares y la participación solar son fichas separadas. Los costos conocidos pueden ser incompletos; verifique EV datos completos. El costo de carga solar es la pérdida de ingresos alimentarios; la energía de la batería permanece desconocida sin pruebas.",
-          "de": "Verwendet vorhandene Tagesaufzeichnungen, auch heute bisher. Monate/Jahre sind rollierende Kalenderperioden. Fehlende Geschichte ist nicht hinterfüllt; Überprüfen Sie verfügbare Tage und vollständige Abdeckung. Wert realisiert Einsparungen oder Kosten für Kostenkategorien. PV gespeichert hat noch keinen realisierten Wert (Wert verfügbar = nein). Gesamtenergie zählt direkt PV Nutzung / Export und Batterielieferung einmal. Das Anwenden dieser Karte ändert nicht die Kontrolle. Das ausgewählte Ergebnis-Token folgt Ihrer Ausgabewahl: kWh, kWh mit Preis oder nur Preis. Geldbeträge verwenden Ihre konfigurierte Währung. EV Kategorien verwenden vorhandene Insights-Tagesdaten. EV Auswahl betrifft nur EV Kategorien; bestehende Flows standardmäßig auf alle EVs. Die Daten Nr. EV unterscheiden sich von den aufgezeichneten Nullwerten. Solare Kilometer und Solaranteil sind getrennte Token. Bekannte Kosten können unvollständig sein; überprüfen Sie EV Daten vollständig. Solarladekosten entfallen Einspeiseeinnahmen; Batterieenergie bleibt ohne Beweise unbekannt."
-        },
-        "args": [
-          {
-            "name": "category",
-            "type": "dropdown",
-            "values": [
-              {
-                "id": "total",
-                "label": {
-                  "en": "Total savings",
-                  "nl": "Totale besparing",
-                  "fr": "Total des économies",
-                  "es": "Total de economías",
-                  "de": "Gesamteinsparungen"
-                }
-              },
-              {
-                "id": "direct_pv",
-                "label": {
-                  "en": "Direct PV consumption",
-                  "nl": "Direct PV-verbruik",
-                  "fr": "Consommation directe PV",
-                  "es": "Consumo directo PV",
-                  "de": "Direkt PV Verbrauch"
-                }
-              },
-              {
-                "id": "pv_to_battery",
-                "label": {
-                  "en": "PV charged into battery (kWh)",
-                  "nl": "PV in batterij geladen (kWh)",
-                  "fr": "PV chargé en batterie (kWh)",
-                  "es": "PV cargado en batería (kWh)",
-                  "de": "PV in die Batterie aufgeladen (kWh)"
-                }
-              },
-              {
-                "id": "pv_battery",
-                "label": {
-                  "en": "PV via battery (used/exported)",
-                  "nl": "PV via batterij (verbruikt/geïnjecteerd)",
-                  "fr": "PV par batterie (utilisée/exportée)",
-                  "es": "PV mediante batería (utilizada/exportada)",
-                  "de": "PV über Batterie (verbraucht/exportiert)"
-                }
-              },
-              {
-                "id": "pv_battery_home",
-                "label": {
-                  "en": "PV via battery to home",
-                  "nl": "PV via batterij naar woning",
-                  "fr": "PV via batterie à la maison",
-                  "es": "PV via batería a casa",
-                  "de": "PV über Batterie nach Hause"
-                }
-              },
-              {
-                "id": "pv_battery_export",
-                "label": {
-                  "en": "PV via battery exported",
-                  "nl": "PV via batterij geïnjecteerd",
-                  "fr": "PV par batterie exportée",
-                  "es": "PV a través de la batería exportada",
-                  "de": "PV über Batterie exportiert"
-                }
-              },
-              {
-                "id": "direct_pv_export",
-                "label": {
-                  "en": "Direct PV export",
-                  "nl": "Directe PV-injectie",
-                  "fr": "Exportation directe PV",
-                  "es": "Exportación directa PV",
-                  "de": "Direkte PV Ausfuhren"
-                }
-              },
-              {
-                "id": "pv_export",
-                "label": {
-                  "en": "Total PV export",
-                  "nl": "Totale PV-injectie",
-                  "fr": "Total des exportations PV",
-                  "es": "Total PV exportación",
-                  "de": "Insgesamt PV Ausfuhren"
-                }
-              },
-              {
-                "id": "load_shift",
-                "label": {
-                  "en": "Total load shifting",
-                  "nl": "Totale tariefverschuiving",
-                  "fr": "Déplacement de la charge totale",
-                  "es": "Cambio de carga total",
-                  "de": "Gesamtlastverschiebung"
-                }
-              },
-              {
-                "id": "load_shift_home",
-                "label": {
-                  "en": "Load shifting to home",
-                  "nl": "Tariefverschuiving naar woning",
-                  "fr": "Déplacement de la charge vers la maison",
-                  "es": "Carga de cambio a casa",
-                  "de": "Lastverlagerung nach Hause"
-                }
-              },
-              {
-                "id": "load_shift_export",
-                "label": {
-                  "en": "Load shifting exported",
-                  "nl": "Tariefverschuiving geïnjecteerd",
-                  "fr": "Déplacement de charge exporté",
-                  "es": "Cambio de carga exportado",
-                  "de": "Ausgeführte Lastverlagerung"
-                }
-              },
-              {
-                "id": "direct_grid",
-                "label": {
-                  "en": "Direct grid consumption / cost",
-                  "nl": "Direct netverbruik / kosten",
-                  "fr": "Consommation directe du réseau / coût",
-                  "es": "Consumo de la red directa / costo",
-                  "de": "Direktnetzverbrauch/-kosten"
-                }
-              },
-              {
-                "id": "grid_to_battery",
-                "label": {
-                  "en": "Grid charged into battery / cost",
-                  "nl": "Net in batterij geladen / kosten",
-                  "fr": "réseau chargée en batterie / coût",
-                  "es": "red cargada en batería / costo",
-                  "de": "In die Batterie aufgeladenes Netz / Kosten"
-                }
-              },
-              {
-                "id": "battery_charging",
-                "label": {
-                  "en": "Total battery charging / grid cost",
-                  "nl": "Totaal batterijladen / netkosten",
-                  "fr": "Charge totale de la batterie / coût du réseau",
-                  "es": "Carga total de batería / costo de cuadrícula",
-                  "de": "Gesamtbatterielade-/Netzkosten"
-                }
-              },
-              {
-                "id": "ev_total",
-                "label": {
-                  "en": "EV: total charging / known cost",
-                  "nl": "EV: totaal geladen / bekende kosten",
-                  "fr": "EV: charge totale / coût connu",
-                  "es": "EV: carga total / costo conocido",
-                  "de": "EV: Gesamtaufladung / bekannte Kosten"
-                }
-              },
-              {
-                "id": "ev_pv",
-                "label": {
-                  "en": "EV: solar energy / solar charging cost",
-                  "nl": "EV: zonne-energie / laadkosten uit zon",
-                  "fr": "EV: énergie solaire / coût de la recharge solaire",
-                  "es": "EV: energía solar / costo de carga solar",
-                  "de": "EV: Solarenergie / Solarladekosten"
-                }
-              },
-              {
-                "id": "ev_grid",
-                "label": {
-                  "en": "EV: grid energy / cost",
-                  "nl": "EV: netenergie / kosten",
-                  "fr": "EV: énergie du réseau / coût",
-                  "es": "EV: energía de la red / costo",
-                  "de": "EV: Netzenergie / Kosten"
-                }
-              },
-              {
-                "id": "ev_battery",
-                "label": {
-                  "en": "EV: proven battery energy",
-                  "nl": "EV: aangetoonde batterij-energie",
-                  "fr": "EV: l'énergie éprouvée de la batterie",
-                  "es": "EV: energía probada de la batería",
-                  "de": "EV: Bewährte Batterieenergie"
-                }
-              },
-              {
-                "id": "ev_unknown",
-                "label": {
-                  "en": "EV: unknown energy source",
-                  "nl": "EV: onbekende energiebron",
-                  "fr": "EV: source d'énergie inconnue",
-                  "es": "EV: fuente de energía desconocida",
-                  "de": "EV: unbekannte Energiequelle"
-                }
-              },
-              {
-                "id": "ev_savings",
-                "label": {
-                  "en": "EV: solar energy / estimated savings",
-                  "nl": "EV: zonne-energie / geschatte besparing",
-                  "fr": "EV: énergie solaire / économies estimées",
-                  "es": "EV: energía solar / ahorros estimados",
-                  "de": "EV: Solarenergie / geschätzte Einsparungen"
-                }
-              }
-            ],
-            "title": {
-              "en": "Category",
-              "nl": "Categorie",
-              "fr": "Catégorie",
-              "es": "Categoría",
-              "de": "Kategorie"
-            }
-          },
-          {
-            "name": "count",
-            "type": "number",
-            "min": 1,
-            "max": 1827,
-            "step": 1,
-            "placeholder": {
-              "en": "5",
-              "nl": "5",
-              "fr": "5",
-              "es": "5",
-              "de": "5"
-            },
-            "title": {
-              "en": "Number",
-              "nl": "Aantal",
-              "fr": "Numéro",
-              "es": "Número",
-              "de": "Nummer"
-            }
-          },
-          {
-            "name": "unit",
-            "type": "dropdown",
-            "values": [
-              {
-                "id": "days",
-                "label": {
-                  "en": "days",
-                  "nl": "dagen",
-                  "fr": "jours",
-                  "es": "días",
-                  "de": "Tage"
-                }
-              },
-              {
-                "id": "weeks",
-                "label": {
-                  "en": "weeks",
-                  "nl": "weken",
-                  "fr": "semaines",
-                  "es": "semanas",
-                  "de": "Wochen"
-                }
-              },
-              {
-                "id": "months",
-                "label": {
-                  "en": "months",
-                  "nl": "maanden",
-                  "fr": "mois",
-                  "es": "meses",
-                  "de": "Monate"
-                }
-              },
-              {
-                "id": "years",
-                "label": {
-                  "en": "years",
-                  "nl": "jaren",
-                  "fr": "années",
-                  "es": "años",
-                  "de": "Jahre"
-                }
-              }
-            ],
-            "title": {
-              "en": "Period",
-              "nl": "Periode",
-              "fr": "Période",
-              "es": "Período",
-              "de": "Zeitraum"
-            }
-          },
-          {
-            "name": "format",
-            "type": "dropdown",
-            "title": {
-              "en": "Output",
-              "nl": "Uitvoer",
-              "fr": "Produit",
-              "es": "Producto",
-              "de": "Output"
-            },
-            "values": [
-              {
-                "id": "kwh",
-                "label": {
-                  "en": "kWh",
-                  "nl": "kWh",
-                  "fr": "kWh",
-                  "es": "kWh",
-                  "de": "kWh"
-                }
-              },
-              {
-                "id": "kwh_price",
-                "label": {
-                  "en": "kWh with price",
-                  "nl": "kWh met prijs",
-                  "fr": "kWh avec prix",
-                  "es": "kWh con precio",
-                  "de": "kWh mit Preis"
-                }
-              },
-              {
-                "id": "price",
-                "label": {
-                  "en": "Price only",
-                  "nl": "Alleen prijs",
-                  "fr": "Prix uniquement",
-                  "es": "Precio sólo",
-                  "de": "Nur Preis"
-                }
-              }
-            ]
-          },
-          {
-            "name": "ev",
-            "type": "dropdown",
-            "title": {
-              "en": "EV (for EV categories)",
-              "nl": "EV (bij EV-categorieën)",
-              "fr": "EV (pour EV catégories)",
-              "es": "EV (para EV categorías)",
-              "de": "EV (für EV Kategorien)"
-            },
-            "values": [
-              {
-                "id": "all",
-                "label": {
-                  "en": "All EVs",
-                  "nl": "Alle EV’s",
-                  "fr": "Tous les VE",
-                  "es": "Todos los EV",
-                  "de": "Alle EVs"
-                }
-              },
-              {
-                "id": "1",
-                "label": {
-                  "en": "EV 1",
-                  "nl": "EV 1",
-                  "fr": "EV 1",
-                  "es": "EV 1",
-                  "de": "EV 1"
-                }
-              },
-              {
-                "id": "2",
-                "label": {
-                  "en": "EV 2",
-                  "nl": "EV 2",
-                  "fr": "EV 2",
-                  "es": "EV 2",
-                  "de": "EV 2"
-                }
-              },
-              {
-                "id": "3",
-                "label": {
-                  "en": "EV 3",
-                  "nl": "EV 3",
-                  "fr": "EV 3",
-                  "es": "EV 3",
-                  "de": "EV 3"
-                }
-              },
-              {
-                "id": "4",
-                "label": {
-                  "en": "EV 4",
-                  "nl": "EV 4",
-                  "fr": "EV 4",
-                  "es": "EV 4",
-                  "de": "EV 4"
-                }
-              }
-            ]
-          }
-        ],
-        "tokens": [
-          {
-            "name": "result",
-            "type": "string",
-            "title": {
-              "en": "Selected result",
-              "nl": "Gekozen resultaat",
-              "fr": "Résultat sélectionné",
-              "es": "Resultado seleccionado",
-              "de": "Ausgewähltes Ergebnis"
-            }
-          },
-          {
-            "name": "kwh",
-            "type": "number",
-            "title": {
-              "en": "Energy (kWh)",
-              "nl": "Energie (kWh)",
-              "fr": "Énergie (kWh)",
-              "es": "Energy (kWh)",
-              "de": "Energie (kWh)"
-            }
-          },
-          {
-            "name": "value",
-            "type": "number",
-            "title": {
-              "en": "Savings / cost (currency)",
-              "nl": "Besparing / kosten (valuta)",
-              "fr": "Économies/coûts (monnaie)",
-              "es": "Ahorros / costo (currencia)",
-              "de": "Einsparungen/Kosten (Währung)"
-            }
-          },
-          {
-            "name": "value_available",
-            "type": "boolean",
-            "title": {
-              "en": "Monetary value available",
-              "nl": "Geldwaarde beschikbaar",
-              "fr": "Valeur monétaire disponible",
-              "es": "Valor monetario disponible",
-              "de": "Verfügbarer Geldwert"
-            }
-          },
-          {
-            "name": "start_date",
-            "type": "string",
-            "title": {
-              "en": "First day",
-              "nl": "Eerste dag",
-              "fr": "Premier jour",
-              "es": "Primer día",
-              "de": "Erster Tag"
-            }
-          },
-          {
-            "name": "end_date",
-            "type": "string",
-            "title": {
-              "en": "Last day (including today)",
-              "nl": "Laatste dag (inclusief vandaag)",
-              "fr": "Dernier jour (y compris aujourd'hui)",
-              "es": "Último día (incluido hoy)",
-              "de": "Letzter Tag (einschließlich heute)"
-            }
-          },
-          {
-            "name": "available_days",
-            "type": "number",
-            "title": {
-              "en": "Available recorded days",
-              "nl": "Beschikbare geregistreerde dagen",
-              "fr": "Jours enregistrés disponibles",
-              "es": "Días registrados disponibles",
-              "de": "Verfügbare erfasste Tage"
-            }
-          },
-          {
-            "name": "requested_days",
-            "type": "number",
-            "title": {
-              "en": "Requested days",
-              "nl": "Gevraagde dagen",
-              "fr": "Jours demandés",
-              "es": "Días solicitados",
-              "de": "Geforderte Tage"
-            }
-          },
-          {
-            "name": "complete",
-            "type": "boolean",
-            "title": {
-              "en": "All requested day records available",
-              "nl": "Alle gevraagde dagrecords aanwezig",
-              "fr": "Tous les dossiers de jour demandés sont disponibles",
-              "es": "Todos los registros diarios solicitados disponibles",
-              "de": "Alle angeforderten Tagesaufzeichnungen verfügbar"
-            }
-          },
-          {
-            "name": "ev_data_available",
-            "type": "boolean",
-            "title": {
-              "en": "EV data available",
-              "nl": "EV-gegevens beschikbaar",
-              "fr": "EV données disponibles",
-              "es": "EV datos disponibles",
-              "de": "EV Daten verfügbar"
-            }
-          },
-          {
-            "name": "ev_data_complete",
-            "type": "boolean",
-            "title": {
-              "en": "Complete EV data",
-              "nl": "Volledige EV-gegevens",
-              "fr": "Données complètes EV",
-              "es": "Datos completos EV",
-              "de": "Vollständige EV Daten"
-            }
-          },
-          {
-            "name": "solar_km",
-            "type": "number",
-            "title": {
-              "en": "Solar kilometres (estimated)",
-              "nl": "Zonne-kilometers (geschat)",
-              "fr": "kilomètres solaires (estimation)",
-              "es": "Kilómetros solares (estimados)",
-              "de": "Solare Kilometer (geschätzt)"
-            }
-          },
-          {
-            "name": "solar_km_available",
-            "type": "boolean",
-            "title": {
-              "en": "Solar kilometres available",
-              "nl": "Zonne-kilometers beschikbaar",
-              "fr": "Kilomètres solaires disponibles",
-              "es": "Kilómetros solares disponibles",
-              "de": "Solarkilometer verfügbar"
-            }
-          },
-          {
-            "name": "solar_share_percent",
-            "type": "number",
-            "title": {
-              "en": "Solar share (%)",
-              "nl": "Zonaandeel (%)",
-              "fr": "Part de l'énergie solaire (%)",
-              "es": "Participación solar (porcentaje)",
-              "de": "Solaranteil (%)"
-            }
-          }
-        ],
-        "id": "get_savings_category"
-      },
-      {
-        "title": {
           "en": "Read external prices JSON",
           "nl": "Lees externe prijzen JSON",
           "fr": "Lire les prix extérieurs JSON",
@@ -11907,6 +11332,7 @@
         "id": "set_hvac_automatic_control_for"
       },
       {
+        "id": "set_hvac_automatic_control_for_configured",
         "title": {
           "en": "Set HVAC automatic control",
           "nl": "Stel HVAC automatische sturing in",
@@ -12002,8 +11428,7 @@
           "fr": "Active ou désactive le contrôle automatique HVAC. Désactiver répète immédiatement l'action choisie dans ces paramètres HVAC: envoyer le point de consigne en attente ou envoyer OFF. La température optionnelle Flow dépasse la température de veille enregistrée. Seules les sorties autorisées sont utilisées; la réactivation reprend le contrôle normal en toute sécurité.",
           "es": "Permite o deshabilita el control automático HVAC. Desactivar de inmediato repite la acción elegida en la configuración de este HVAC: envía el punto de reserva o envía OFF. La temperatura opcional Flow anula la temperatura de reserva guardada. Únicamente se utilizan los productos permitidos; volver a habilitar reanuda el control seguro normal.",
           "de": "Aktiviert oder deaktiviert die automatische HVAC Steuerung. Die Deaktivierung wiederholt sofort die in den Einstellungen dieses HVAC gewählte Aktion: Senden Sie den Standby-Sollpunkt oder senden Sie OFF. Die optionale Flow Temperatur überschreibt die gespeicherte Standby-Temperatur. Es werden nur erlaubte Ausgänge verwendet; die Wiederermöglichung der normalen sicheren Steuerung wird wieder aufgenommen."
-        },
-        "id": "set_hvac_automatic_control_for_configured"
+        }
       },
       {
         "title": {
@@ -13875,6 +13300,581 @@
           }
         ],
         "id": "set_sun_chance_forecast"
+      },
+      {
+        "id": "get_savings_category",
+        "title": {
+          "en": "Read savings by category",
+          "nl": "Lees savings per categorie",
+          "fr": "Lire les économies par catégorie",
+          "es": "Leer ahorros por categoría",
+          "de": "Lesen Sie Einsparungen nach Kategorie"
+        },
+        "titleFormatted": {
+          "en": "Get [[category]] for the last [[count]] [[unit]] as [[format]] · EV [[ev]]",
+          "nl": "Haal [[category]] op van de laatste [[count]] [[unit]] als [[format]] · EV [[ev]]",
+          "fr": "Obtenez [[category]] pour les derniers [[count]] [[unit]] comme [[format]] · EV [[ev]]",
+          "es": "Obtener [[category]] para el último [[count]] [[unit]] como [[format]] · EV [[ev]]",
+          "de": "Erhalten Sie [[category]] für die letzten [[count]] [[unit]] als [[format]] · EV [[ev]]"
+        },
+        "hint": {
+          "en": "Uses existing daily records, including today so far. Months/years are rolling calendar periods. Missing history is not backfilled; check available days and complete coverage. Value is realized savings or cost for cost categories. PV stored has no realized value yet (value available = no). Total energy counts direct PV use/export and battery delivery once. Applying this card does not change control. The Selected result token follows your output choice: kWh, kWh with price or price only. Monetary amounts use your configured currency. EV categories use existing Insights daydata. EV selection only affects EV categories; existing Flows default to all EVs. No EV data is distinct from recorded zero. Solar kilometres and solar share are separate tokens. Known costs may be incomplete; check EV data complete. Solar charging cost is forgone feed-in revenue; battery energy stays unknown without proof.",
+          "nl": "Gebruikt bestaande dagrecords, inclusief vandaag tot nu. Maanden/jaren zijn voortschrijdende kalenderperiodes. Ontbrekende historie wordt niet aangevuld; controleer beschikbare dagen en volledige dekking. Geldwaarde is gerealiseerde besparing of kosten bij kostencategorieën. Opgeslagen PV heeft nog geen gerealiseerde geldwaarde (geldwaarde beschikbaar = nee). Totale energie telt direct PV-verbruik/injectie en batterijafgifte eenmaal. De tag Gekozen resultaat gebruikt je uitvoerkeuze: kWh, kWh met prijs of alleen prijs. Geldbedragen gebruiken je ingestelde valuta. EV-categorieën gebruiken de bestaande Insight-daggegevens. De EV-keuze geldt alleen voor EV-categorieën; bestaande Flows gebruiken standaard alle EV’s. Geen EV-gegevens verschilt van gemeten nul. Zonne-kilometers en zonaandeel zijn aparte tags. Bekende kosten kunnen onvolledig zijn; controleer Volledige EV-gegevens. Laadkosten uit zon zijn misgelopen injectievergoeding; batterij-energie blijft onbekend zonder bewijs.",
+          "fr": "Utilise les registres quotidiens existants, y compris aujourd'hui. Les mois/années sont des périodes de calendrier glissantes. Les antécédents manquants ne sont pas remplis à nouveau; vérifiez les jours disponibles et la couverture complète. On réalise des économies ou des coûts pour les catégories de coûts. PV stocké n'a pas encore de valeur réelle (valeur disponible = non). Total énergie compte direct PV utilisation/exportation et livraison de batterie une fois. L'application de cette carte ne change pas de contrôle. Le jeton de résultat sélectionné suit votre choix de production : kWh, kWh avec prix ou prix seulement. Les montants monétaires utilisent votre devise configurée. EV catégories utilisent les données de jour Insights existantes. La sélection EV n'affecte que les catégories EV; les flux existants sont par défaut pour tous les EV. Les données EV sont distinctes de celles enregistrées à zéro. Les kilomètres solaires et la part solaire sont des jetons séparés. Les coûts connus peuvent être incomplets; vérifiez que les données EV sont complètes. Le coût de la recharge solaire est une perte de revenus d'alimentation; l'énergie de la batterie reste inconnue sans preuve.",
+          "es": "Utiliza los registros diarios existentes, incluso hoy hasta ahora. Los meses/años son períodos calendario de rodaje. La historia perdida no está llena de respaldo; comprobar los días disponibles y la cobertura completa. El valor se realiza ahorros o costos para las categorías de costos. PV almacenado todavía no tiene valor real (valor disponible = no). La energía total cuenta directamente PV uso/exportación y entrega de baterías una vez. Aplicar esta tarjeta no cambia el control. El símbolo de resultado seleccionado sigue su opción de salida: kWh, kWh con precio o precio solamente. Las cantidades monetarias usan su moneda configurada. EV categorías utilizan la datada de Insights existente. EV la selección sólo afecta a EV categorías; Flujos existentes por defecto a todos los VE. No EV datos es distinto de cero registrado. Los kilómetros solares y la participación solar son fichas separadas. Los costos conocidos pueden ser incompletos; verifique EV datos completos. El costo de carga solar es la pérdida de ingresos alimentarios; la energía de la batería permanece desconocida sin pruebas.",
+          "de": "Verwendet vorhandene Tagesaufzeichnungen, auch heute bisher. Monate/Jahre sind rollierende Kalenderperioden. Fehlende Geschichte ist nicht hinterfüllt; Überprüfen Sie verfügbare Tage und vollständige Abdeckung. Wert realisiert Einsparungen oder Kosten für Kostenkategorien. PV gespeichert hat noch keinen realisierten Wert (Wert verfügbar = nein). Gesamtenergie zählt direkt PV Nutzung / Export und Batterielieferung einmal. Das Anwenden dieser Karte ändert nicht die Kontrolle. Das ausgewählte Ergebnis-Token folgt Ihrer Ausgabewahl: kWh, kWh mit Preis oder nur Preis. Geldbeträge verwenden Ihre konfigurierte Währung. EV Kategorien verwenden vorhandene Insights-Tagesdaten. EV Auswahl betrifft nur EV Kategorien; bestehende Flows standardmäßig auf alle EVs. Die Daten Nr. EV unterscheiden sich von den aufgezeichneten Nullwerten. Solare Kilometer und Solaranteil sind getrennte Token. Bekannte Kosten können unvollständig sein; überprüfen Sie EV Daten vollständig. Solarladekosten entfallen Einspeiseeinnahmen; Batterieenergie bleibt ohne Beweise unbekannt."
+        },
+        "args": [
+          {
+            "name": "category",
+            "type": "dropdown",
+            "values": [
+              {
+                "id": "total",
+                "label": {
+                  "en": "Total savings",
+                  "nl": "Totale besparing",
+                  "fr": "Total des économies",
+                  "es": "Total de economías",
+                  "de": "Gesamteinsparungen"
+                }
+              },
+              {
+                "id": "direct_pv",
+                "label": {
+                  "en": "Direct PV consumption",
+                  "nl": "Direct PV-verbruik",
+                  "fr": "Consommation directe PV",
+                  "es": "Consumo directo PV",
+                  "de": "Direkt PV Verbrauch"
+                }
+              },
+              {
+                "id": "pv_to_battery",
+                "label": {
+                  "en": "PV charged into battery (kWh)",
+                  "nl": "PV in batterij geladen (kWh)",
+                  "fr": "PV chargé en batterie (kWh)",
+                  "es": "PV cargado en batería (kWh)",
+                  "de": "PV in die Batterie aufgeladen (kWh)"
+                }
+              },
+              {
+                "id": "pv_battery",
+                "label": {
+                  "en": "PV via battery (used/exported)",
+                  "nl": "PV via batterij (verbruikt/geïnjecteerd)",
+                  "fr": "PV par batterie (utilisée/exportée)",
+                  "es": "PV mediante batería (utilizada/exportada)",
+                  "de": "PV über Batterie (verbraucht/exportiert)"
+                }
+              },
+              {
+                "id": "pv_battery_home",
+                "label": {
+                  "en": "PV via battery to home",
+                  "nl": "PV via batterij naar woning",
+                  "fr": "PV via batterie à la maison",
+                  "es": "PV via batería a casa",
+                  "de": "PV über Batterie nach Hause"
+                }
+              },
+              {
+                "id": "pv_battery_export",
+                "label": {
+                  "en": "PV via battery exported",
+                  "nl": "PV via batterij geïnjecteerd",
+                  "fr": "PV par batterie exportée",
+                  "es": "PV a través de la batería exportada",
+                  "de": "PV über Batterie exportiert"
+                }
+              },
+              {
+                "id": "direct_pv_export",
+                "label": {
+                  "en": "Direct PV export",
+                  "nl": "Directe PV-injectie",
+                  "fr": "Exportation directe PV",
+                  "es": "Exportación directa PV",
+                  "de": "Direkte PV Ausfuhren"
+                }
+              },
+              {
+                "id": "pv_export",
+                "label": {
+                  "en": "Total PV export",
+                  "nl": "Totale PV-injectie",
+                  "fr": "Total des exportations PV",
+                  "es": "Total PV exportación",
+                  "de": "Insgesamt PV Ausfuhren"
+                }
+              },
+              {
+                "id": "load_shift",
+                "label": {
+                  "en": "Total load shifting",
+                  "nl": "Totale tariefverschuiving",
+                  "fr": "Déplacement de la charge totale",
+                  "es": "Cambio de carga total",
+                  "de": "Gesamtlastverschiebung"
+                }
+              },
+              {
+                "id": "load_shift_home",
+                "label": {
+                  "en": "Load shifting to home",
+                  "nl": "Tariefverschuiving naar woning",
+                  "fr": "Déplacement de la charge vers la maison",
+                  "es": "Carga de cambio a casa",
+                  "de": "Lastverlagerung nach Hause"
+                }
+              },
+              {
+                "id": "load_shift_export",
+                "label": {
+                  "en": "Load shifting exported",
+                  "nl": "Tariefverschuiving geïnjecteerd",
+                  "fr": "Déplacement de charge exporté",
+                  "es": "Cambio de carga exportado",
+                  "de": "Ausgeführte Lastverlagerung"
+                }
+              },
+              {
+                "id": "direct_grid",
+                "label": {
+                  "en": "Direct grid consumption / cost",
+                  "nl": "Direct netverbruik / kosten",
+                  "fr": "Consommation directe du réseau / coût",
+                  "es": "Consumo de la red directa / costo",
+                  "de": "Direktnetzverbrauch/-kosten"
+                }
+              },
+              {
+                "id": "grid_to_battery",
+                "label": {
+                  "en": "Grid charged into battery / cost",
+                  "nl": "Net in batterij geladen / kosten",
+                  "fr": "réseau chargée en batterie / coût",
+                  "es": "red cargada en batería / costo",
+                  "de": "In die Batterie aufgeladenes Netz / Kosten"
+                }
+              },
+              {
+                "id": "battery_charging",
+                "label": {
+                  "en": "Total battery charging / grid cost",
+                  "nl": "Totaal batterijladen / netkosten",
+                  "fr": "Charge totale de la batterie / coût du réseau",
+                  "es": "Carga total de batería / costo de cuadrícula",
+                  "de": "Gesamtbatterielade-/Netzkosten"
+                }
+              },
+              {
+                "id": "ev_total",
+                "label": {
+                  "en": "EV: total charging / known cost",
+                  "nl": "EV: totaal geladen / bekende kosten",
+                  "fr": "EV: charge totale / coût connu",
+                  "es": "EV: carga total / costo conocido",
+                  "de": "EV: Gesamtaufladung / bekannte Kosten"
+                }
+              },
+              {
+                "id": "ev_pv",
+                "label": {
+                  "en": "EV: solar energy / solar charging cost",
+                  "nl": "EV: zonne-energie / laadkosten uit zon",
+                  "fr": "EV: énergie solaire / coût de la recharge solaire",
+                  "es": "EV: energía solar / costo de carga solar",
+                  "de": "EV: Solarenergie / Solarladekosten"
+                }
+              },
+              {
+                "id": "ev_grid",
+                "label": {
+                  "en": "EV: grid energy / cost",
+                  "nl": "EV: netenergie / kosten",
+                  "fr": "EV: énergie du réseau / coût",
+                  "es": "EV: energía de la red / costo",
+                  "de": "EV: Netzenergie / Kosten"
+                }
+              },
+              {
+                "id": "ev_battery",
+                "label": {
+                  "en": "EV: proven battery energy",
+                  "nl": "EV: aangetoonde batterij-energie",
+                  "fr": "EV: l'énergie éprouvée de la batterie",
+                  "es": "EV: energía probada de la batería",
+                  "de": "EV: Bewährte Batterieenergie"
+                }
+              },
+              {
+                "id": "ev_unknown",
+                "label": {
+                  "en": "EV: unknown energy source",
+                  "nl": "EV: onbekende energiebron",
+                  "fr": "EV: source d'énergie inconnue",
+                  "es": "EV: fuente de energía desconocida",
+                  "de": "EV: unbekannte Energiequelle"
+                }
+              },
+              {
+                "id": "ev_savings",
+                "label": {
+                  "en": "EV: solar energy / estimated savings",
+                  "nl": "EV: zonne-energie / geschatte besparing",
+                  "fr": "EV: énergie solaire / économies estimées",
+                  "es": "EV: energía solar / ahorros estimados",
+                  "de": "EV: Solarenergie / geschätzte Einsparungen"
+                }
+              }
+            ],
+            "title": {
+              "en": "Category",
+              "nl": "Categorie",
+              "fr": "Catégorie",
+              "es": "Categoría",
+              "de": "Kategorie"
+            }
+          },
+          {
+            "name": "count",
+            "type": "number",
+            "min": 1,
+            "max": 1827,
+            "step": 1,
+            "placeholder": {
+              "en": "5",
+              "nl": "5",
+              "fr": "5",
+              "es": "5",
+              "de": "5"
+            },
+            "title": {
+              "en": "Number",
+              "nl": "Aantal",
+              "fr": "Numéro",
+              "es": "Número",
+              "de": "Nummer"
+            }
+          },
+          {
+            "name": "unit",
+            "type": "dropdown",
+            "values": [
+              {
+                "id": "days",
+                "label": {
+                  "en": "days",
+                  "nl": "dagen",
+                  "fr": "jours",
+                  "es": "días",
+                  "de": "Tage"
+                }
+              },
+              {
+                "id": "weeks",
+                "label": {
+                  "en": "weeks",
+                  "nl": "weken",
+                  "fr": "semaines",
+                  "es": "semanas",
+                  "de": "Wochen"
+                }
+              },
+              {
+                "id": "months",
+                "label": {
+                  "en": "months",
+                  "nl": "maanden",
+                  "fr": "mois",
+                  "es": "meses",
+                  "de": "Monate"
+                }
+              },
+              {
+                "id": "years",
+                "label": {
+                  "en": "years",
+                  "nl": "jaren",
+                  "fr": "années",
+                  "es": "años",
+                  "de": "Jahre"
+                }
+              }
+            ],
+            "title": {
+              "en": "Period",
+              "nl": "Periode",
+              "fr": "Période",
+              "es": "Período",
+              "de": "Zeitraum"
+            }
+          },
+          {
+            "name": "format",
+            "type": "dropdown",
+            "title": {
+              "en": "Output",
+              "nl": "Uitvoer",
+              "fr": "Produit",
+              "es": "Producto",
+              "de": "Output"
+            },
+            "values": [
+              {
+                "id": "kwh",
+                "label": {
+                  "en": "kWh",
+                  "nl": "kWh",
+                  "fr": "kWh",
+                  "es": "kWh",
+                  "de": "kWh"
+                }
+              },
+              {
+                "id": "kwh_price",
+                "label": {
+                  "en": "kWh with price",
+                  "nl": "kWh met prijs",
+                  "fr": "kWh avec prix",
+                  "es": "kWh con precio",
+                  "de": "kWh mit Preis"
+                }
+              },
+              {
+                "id": "price",
+                "label": {
+                  "en": "Price only",
+                  "nl": "Alleen prijs",
+                  "fr": "Prix uniquement",
+                  "es": "Precio sólo",
+                  "de": "Nur Preis"
+                }
+              }
+            ]
+          },
+          {
+            "name": "ev",
+            "type": "dropdown",
+            "title": {
+              "en": "EV (for EV categories)",
+              "nl": "EV (bij EV-categorieën)",
+              "fr": "EV (pour EV catégories)",
+              "es": "EV (para EV categorías)",
+              "de": "EV (für EV Kategorien)"
+            },
+            "values": [
+              {
+                "id": "all",
+                "label": {
+                  "en": "All EVs",
+                  "nl": "Alle EV’s",
+                  "fr": "Tous les VE",
+                  "es": "Todos los EV",
+                  "de": "Alle EVs"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "EV 1",
+                  "nl": "EV 1",
+                  "fr": "EV 1",
+                  "es": "EV 1",
+                  "de": "EV 1"
+                }
+              },
+              {
+                "id": "2",
+                "label": {
+                  "en": "EV 2",
+                  "nl": "EV 2",
+                  "fr": "EV 2",
+                  "es": "EV 2",
+                  "de": "EV 2"
+                }
+              },
+              {
+                "id": "3",
+                "label": {
+                  "en": "EV 3",
+                  "nl": "EV 3",
+                  "fr": "EV 3",
+                  "es": "EV 3",
+                  "de": "EV 3"
+                }
+              },
+              {
+                "id": "4",
+                "label": {
+                  "en": "EV 4",
+                  "nl": "EV 4",
+                  "fr": "EV 4",
+                  "es": "EV 4",
+                  "de": "EV 4"
+                }
+              }
+            ]
+          }
+        ],
+        "tokens": [
+          {
+            "name": "result",
+            "type": "string",
+            "title": {
+              "en": "Selected result",
+              "nl": "Gekozen resultaat",
+              "fr": "Résultat sélectionné",
+              "es": "Resultado seleccionado",
+              "de": "Ausgewähltes Ergebnis"
+            }
+          },
+          {
+            "name": "kwh",
+            "type": "number",
+            "title": {
+              "en": "Energy (kWh)",
+              "nl": "Energie (kWh)",
+              "fr": "Énergie (kWh)",
+              "es": "Energy (kWh)",
+              "de": "Energie (kWh)"
+            }
+          },
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "Savings / cost (currency)",
+              "nl": "Besparing / kosten (valuta)",
+              "fr": "Économies/coûts (monnaie)",
+              "es": "Ahorros / costo (currencia)",
+              "de": "Einsparungen/Kosten (Währung)"
+            }
+          },
+          {
+            "name": "value_available",
+            "type": "boolean",
+            "title": {
+              "en": "Monetary value available",
+              "nl": "Geldwaarde beschikbaar",
+              "fr": "Valeur monétaire disponible",
+              "es": "Valor monetario disponible",
+              "de": "Verfügbarer Geldwert"
+            }
+          },
+          {
+            "name": "start_date",
+            "type": "string",
+            "title": {
+              "en": "First day",
+              "nl": "Eerste dag",
+              "fr": "Premier jour",
+              "es": "Primer día",
+              "de": "Erster Tag"
+            }
+          },
+          {
+            "name": "end_date",
+            "type": "string",
+            "title": {
+              "en": "Last day (including today)",
+              "nl": "Laatste dag (inclusief vandaag)",
+              "fr": "Dernier jour (y compris aujourd'hui)",
+              "es": "Último día (incluido hoy)",
+              "de": "Letzter Tag (einschließlich heute)"
+            }
+          },
+          {
+            "name": "available_days",
+            "type": "number",
+            "title": {
+              "en": "Available recorded days",
+              "nl": "Beschikbare geregistreerde dagen",
+              "fr": "Jours enregistrés disponibles",
+              "es": "Días registrados disponibles",
+              "de": "Verfügbare erfasste Tage"
+            }
+          },
+          {
+            "name": "requested_days",
+            "type": "number",
+            "title": {
+              "en": "Requested days",
+              "nl": "Gevraagde dagen",
+              "fr": "Jours demandés",
+              "es": "Días solicitados",
+              "de": "Geforderte Tage"
+            }
+          },
+          {
+            "name": "complete",
+            "type": "boolean",
+            "title": {
+              "en": "All requested day records available",
+              "nl": "Alle gevraagde dagrecords aanwezig",
+              "fr": "Tous les dossiers de jour demandés sont disponibles",
+              "es": "Todos los registros diarios solicitados disponibles",
+              "de": "Alle angeforderten Tagesaufzeichnungen verfügbar"
+            }
+          },
+          {
+            "name": "ev_data_available",
+            "type": "boolean",
+            "title": {
+              "en": "EV data available",
+              "nl": "EV-gegevens beschikbaar",
+              "fr": "EV données disponibles",
+              "es": "EV datos disponibles",
+              "de": "EV Daten verfügbar"
+            }
+          },
+          {
+            "name": "ev_data_complete",
+            "type": "boolean",
+            "title": {
+              "en": "Complete EV data",
+              "nl": "Volledige EV-gegevens",
+              "fr": "Données complètes EV",
+              "es": "Datos completos EV",
+              "de": "Vollständige EV Daten"
+            }
+          },
+          {
+            "name": "solar_km",
+            "type": "number",
+            "title": {
+              "en": "Solar kilometres (estimated)",
+              "nl": "Zonne-kilometers (geschat)",
+              "fr": "kilomètres solaires (estimation)",
+              "es": "Kilómetros solares (estimados)",
+              "de": "Solare Kilometer (geschätzt)"
+            }
+          },
+          {
+            "name": "solar_km_available",
+            "type": "boolean",
+            "title": {
+              "en": "Solar kilometres available",
+              "nl": "Zonne-kilometers beschikbaar",
+              "fr": "Kilomètres solaires disponibles",
+              "es": "Kilómetros solares disponibles",
+              "de": "Solarkilometer verfügbar"
+            }
+          },
+          {
+            "name": "solar_share_percent",
+            "type": "number",
+            "title": {
+              "en": "Solar share (%)",
+              "nl": "Zonaandeel (%)",
+              "fr": "Part de l'énergie solaire (%)",
+              "es": "Participación solar (porcentaje)",
+              "de": "Solaranteil (%)"
+            }
+          }
+        ]
       }
     ]
   },
@@ -13934,77 +13934,6 @@
     }
   ],
   "widgets": {
-    "ev": {
-      "name": {
-        "en": "HomeFlux EV",
-        "nl": "HomeFlux EV",
-        "fr": "HomeFlux EV",
-        "es": "HomeFlux EV",
-        "de": "HomeFlux EV"
-      },
-      "height": 530,
-      "settings": [
-        {
-          "id": "showStatus",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "en": "Show compact EV Status",
-            "nl": "Compacte EV-status tonen",
-            "fr": "Afficher l'état compact EV",
-            "es": "Mostrar compacto EV Estado",
-            "de": "Kompakt anzeigen EV Status"
-          }
-        },
-        {
-          "id": "showScheduler",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "en": "Show EV Scheduler",
-            "nl": "EV Scheduler tonen",
-            "fr": "Afficher EV Planificateur",
-            "es": "Mostrar EV Programador",
-            "de": "Show EV Scheduler"
-          }
-        },
-        {
-          "id": "showInsights",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "en": "Show EV Insights",
-            "nl": "EV Insights tonen",
-            "fr": "Afficher EV Insights",
-            "es": "Mostrar EV entradas",
-            "de": "EV Einblicke anzeigen"
-          }
-        },
-        {
-          "id": "switchSections",
-          "type": "checkbox",
-          "value": false,
-          "title": {
-            "en": "Switch Status / Planning / Insights with buttons",
-            "nl": "Status / Planning / Inzichten wisselen met knoppen",
-            "fr": "Changer d'état / Planification / Insights avec boutons",
-            "es": "Estado de conmutación / Planeamiento / Insights con botones",
-            "de": "Switch Status / Planning / Insights mit Buttons"
-          }
-        }
-      ],
-      "api": {
-        "getDashboard": {
-          "method": "GET",
-          "path": "/"
-        },
-        "setSchedule": {
-          "method": "POST",
-          "path": "/schedule"
-        }
-      },
-      "id": "ev"
-    },
     "savings": {
       "name": {
         "en": "Savings",
@@ -14333,6 +14262,7 @@
       "id": "savings"
     },
     "status": {
+      "id": "status",
       "name": {
         "en": "EMS status",
         "nl": "EMS-status",
@@ -14756,8 +14686,78 @@
           "method": "GET",
           "path": "/status"
         }
+      }
+    },
+    "ev": {
+      "name": {
+        "en": "HomeFlux EV",
+        "nl": "HomeFlux EV",
+        "fr": "HomeFlux EV",
+        "es": "HomeFlux EV",
+        "de": "HomeFlux EV"
       },
-      "id": "status"
+      "height": 530,
+      "settings": [
+        {
+          "id": "showStatus",
+          "type": "checkbox",
+          "value": true,
+          "title": {
+            "en": "Show compact EV Status",
+            "nl": "Compacte EV-status tonen",
+            "fr": "Afficher l'état compact EV",
+            "es": "Mostrar compacto EV Estado",
+            "de": "Kompakt anzeigen EV Status"
+          }
+        },
+        {
+          "id": "showScheduler",
+          "type": "checkbox",
+          "value": true,
+          "title": {
+            "en": "Show EV Scheduler",
+            "nl": "EV Scheduler tonen",
+            "fr": "Afficher EV Planificateur",
+            "es": "Mostrar EV Programador",
+            "de": "Show EV Scheduler"
+          }
+        },
+        {
+          "id": "showInsights",
+          "type": "checkbox",
+          "value": true,
+          "title": {
+            "en": "Show EV Insights",
+            "nl": "EV Insights tonen",
+            "fr": "Afficher EV Insights",
+            "es": "Mostrar EV entradas",
+            "de": "EV Einblicke anzeigen"
+          }
+        },
+        {
+          "id": "switchSections",
+          "type": "checkbox",
+          "value": false,
+          "title": {
+            "en": "Switch Status / Planning / Insights with buttons",
+            "nl": "Status / Planning / Inzichten wisselen met knoppen",
+            "fr": "Changer d'état / Planification / Insights avec boutons",
+            "es": "Estado de conmutación / Planeamiento / Insights con botones",
+            "de": "Switch Status / Planning / Insights mit Buttons"
+          }
+        }
+      ],
+      "api": {
+        "getDashboard": {
+          "method": "GET",
+          "path": "/"
+        },
+        "setSchedule": {
+          "method": "POST",
+          "path": "/schedule"
+        }
+      },
+      "id": "ev"
     }
   },
   "capabilities": {

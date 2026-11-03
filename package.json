@@ -1,6 +1,6 @@
 {
   "name": "com.homeflux.ems",
-  "version": "1.2.20",
+  "version": "1.2.21",
   "description": "HomeFlux EMS coordinates batteries, solar and flexible loads around your energy contract and grid limits.",
   "main": "app.js",
   "private": true,
@@ -21,7 +21,8 @@
     "test:1.2.16": "node test/features-1.2.16.test.js",
     "test:1.2.17": "node test/import-avoidance-1.2.17.test.js",
     "test:1.2.18": "node test/localization-1.2.18.test.js",
-    "test:1.2.19": "node test/autotune.test.js && node test/battery-response-1.2.19.test.js"
+    "test:1.2.19": "node test/autotune.test.js && node test/battery-response-1.2.19.test.js",
+    "test:1.2.21": "node test/hvac-comfort-1.2.21.test.js && node test/hvac-permanent-1.2.7.test.js && node test/hvac-coordination-1.2.15.test.js"
   },
   "engines": {
     "node": ">=18"

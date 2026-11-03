@@ -270,7 +270,7 @@ async function main(){
   near(calc(a).desiredSetpointC,25);assert.equal(calc(a).energySource,'pv');
   a.state.gridPowerW=500;near(calc(a).desiredSetpointC,20);
   a.setSetting('hvacTariffEnabled',false);a.setSetting('hvacAfterPvTargetC',19);near(calc(a).desiredSetpointC,19);
-  a.setSetting('hvacPvEnabled',false);assert(!calc(a).permanent);
+  a.setSetting('hvacPvEnabled',false);const comfort=calc(a);assert(comfort.permanent);assert.equal(comfort.setpointCommand,null);assert.equal(comfort.powerCommand,null); // 1.2.21: permanent comfort is available without optimization; room is comfortable.
   a.setSetting('hvacTariffEnabled',true);a.setSetting('hvacPermanentEnabled',false);assert(!calc(a).permanent);
  });
  await check('Budget respects learned power and review; necessary comfort survives optional grid cap',async()=>{

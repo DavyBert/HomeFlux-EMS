@@ -1994,7 +1994,10 @@
     "Stop eerst de reactietest.": "Stop the response test first.",
     "Stop the response test first.": "Stop the response test first.",
     "Reactietest batterij": "Battery response test",
-    "Battery response test": "Battery response test"
+    "Battery response test": "Battery response test",
+    "HVAC gespreid · comfortdoel": "HVAC staggered · comfort target",
+    "HVAC parallel · comfortdoel": "HVAC parallel · comfort target",
+    "HVAC direct · comfortdoel": "HVAC direct · comfort target"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

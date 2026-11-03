@@ -1,0 +1,27 @@
+{
+  "version": "1.2.21",
+  "basis": "Full supplied 1.2.20",
+  "changedControlFunctions": [
+    "hvac-permanent.enabled/activationMode/calculate/beforePublish/published",
+    "hvac-coordination.authorize (comfort status wording only)"
+  ],
+  "existingEvaluation": "publishFlexibleLoads -> calculateHvacControlFor -> hvac-permanent.calculate; unchanged slow context",
+  "newPollingTimersListenersEvaluations": false,
+  "passed": [
+    "New heat/cool comfort scenarios including target shutdown, hysteresis, interval, priority, input freshness, Peak Guard, fixed direction, queued input changes and real portfolio with no PV",
+    "Permanent OFF: cold/hot room without PV cannot activate; legacy PV activation remains available",
+    "34 existing permanent HVAC regression groups including COP and periodic restoration",
+    "HVAC coordination 1.2.15",
+    "11 feature groups 1.2.16 including automatic-control Flow actions",
+    "HVAC migration 1.2.7",
+    "Settings startup and widgets after version expectation update",
+    "Syntax of app.js and both changed HVAC modules",
+    "All JSON and manifest consistency",
+    "Byte-identical unrelated control modules, app.js and Flow definitions"
+  ],
+  "skipped": [
+    "Independent battery, EV, boiler, price/planning and PV suites",
+    "Full regression suite"
+  ],
+  "remainingRisk": "No physical Homey/device test or CPU measurement performed."
+}
