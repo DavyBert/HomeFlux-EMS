@@ -92,7 +92,7 @@ async function main(){
  await check('The selected action respects its output permission and missing standby configuration fails before disabling automatic control',async()=>{
   const h=await setup(2),a=h.app;a.setSetting('hvacAllowPowerControl',false);await a.setHvacAutomaticControlFor(0,{enabled:'no'});assert.equal(h.events.length,0);
   a.setSetting('hvac2AutomaticOffAction','standby');await assert.rejects(()=>a.setHvacAutomaticControlFor(1,{enabled:'no'}),/stand-bytemperatuur/);assert.equal(a.getHvacInstanceSettings(1).hvacAutomaticControlEnabled,true);
-  a.setSetting('hvac2AllowSetpointControl',false);await a.setHvacAutomaticControlFor(1,{enabled:'no',standby_temperature:17});assert.equal(h.events.length,0);assert.equal(a.getHvacInstanceSettings(1).hvacAutomaticControlEnabled,false);
+  a.setSetting('hvac2AllowSetpointControl',false);await a.setHvacAutomaticControlFor(1,{enabled:'no',standby_temperature:17});assert.equal(h.events.length,0);assert.equal(a.getHvacInstanceSettings(1).hvacPermanentEnabled,false);assert.equal(a.getHvacInstanceSettings(1).hvacAutomaticControlEnabled,true);
  });
  await check('Explicit Flow calls survive a busy publication and ordinary contexts; concurrent standby overrides each publish once without timers',async()=>{
   const h=await setup(1),a=h.app,timers=h.timers.length;

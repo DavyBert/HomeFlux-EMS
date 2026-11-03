@@ -1,4 +1,11 @@
 {
+  "1.2.22": {
+    "nl": "De HVAC-Flow schakelt nu uitsluitend Permanent sturen. De algemene toestemming blijft behouden, zodat standaard PV-opvang na uitschakelen mogelijk blijft. De gekozen uit- of stand-byactie wordt direct één keer uitgevoerd.",
+    "en": "The HVAC Flow now toggles Permanent control only. General control permission is preserved, allowing standard PV capture after disabling permanent control. The selected OFF or standby action is sent immediately once.",
+    "fr": "La carte Flow HVAC active ou désactive uniquement le pilotage permanent. L’autorisation générale est conservée afin de permettre la régulation solaire standard après désactivation. L’action arrêt ou veille choisie est envoyée immédiatement une seule fois.",
+    "es": "La tarjeta Flow HVAC activa o desactiva únicamente el control permanente. Conserva el permiso general, permitiendo el aprovechamiento solar estándar tras desactivarlo. La acción de apagado o espera elegida se envía inmediatamente una sola vez.",
+    "de": "Die HVAC-Flow-Karte schaltet nur die permanente Steuerung. Die allgemeine Freigabe bleibt erhalten, sodass die normale PV-Nutzung nach dem Deaktivieren möglich bleibt. Die gewählte Aus- oder Standby-Aktion wird sofort einmal gesendet."
+  },
   "1.2.21": {
     "nl": "Permanent sturen kan zonder tarief-, PV- of periodieke optimalisatie zelfstandig verwarmen of koelen op basis van de bestaande ruimtetemperatuurgrenzen en comfortdoelen. De regeling stopt bij het comfortdoel en respecteert de bestaande prioriteiten, stuurintervallen en veiligheidsgrenzen.",
     "en": "Permanent HVAC control can independently heat or cool using the existing room-temperature thresholds and comfort targets without tariff, PV or periodic optimization. Control stops at the comfort target and respects existing priorities, command intervals and safety limits.",

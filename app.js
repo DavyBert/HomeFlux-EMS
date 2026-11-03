@@ -4074,17 +4074,17 @@ class HomeFluxEmsApp extends Homey.App {
       const standby=hasTemperature?temperature:offSettings.hvacCoordination?.StandbyTemperatureC;
       if(standby==null||standby===''||!Number.isFinite(Number(standby))||Number(standby)<5||Number(standby)>99)throw new Error('Stel een stand-bytemperatuur in bij de HVAC of geef deze mee via de Flow.');
     }
-    const key = this.getHvacSettingKey(index, 'AutomaticControlEnabled');
+    const key = this.getHvacSettingKey(index, 'PermanentEnabled');
     const standbyKey = 'hvacCoordination';
     // Missing optional arguments preserve saved settings and old Flows.
     if (hasTemperature) {
       const saved=this.getSettings()[standbyKey]||[];const config=saved[index]||{};const standby=Math.round(Number(temperature)*2)/2;
       if(config.StandbyTemperatureC!==standby)this.setSetting(standbyKey,Array.from({length:10},(_,i)=>i===index?{...config,StandbyTemperatureC:standby}:saved[i]||{...hvacPermanent.fields.Coordination}));
     }
-    if ((this.getSettings()[key] !== false) !== enabled) this.setSetting(key, enabled);
+    if (Boolean(this.getSettings()[key]) !== enabled) this.setSetting(key, enabled);
     if (!enabled) {
       hvacPermanent.cancel(this);
-      const d = this.calculateHvacControlFor(index, this.latestResult, this.latestEvDecision, this.state.lastTotalCommandW, this.state.lastTotalCommandW, { allowStart: false, automaticOffFromFlow: true });
+      const d = this.calculateHvacControlFor(index, this.latestResult, this.latestEvDecision, this.state.lastTotalCommandW, this.state.lastTotalCommandW, { allowStart: false, permanentOffFromFlow: true });
       d.forceAutomaticOff=true;
       if(index===0)this.latestHvacDecision=d;else this.getExtraHvac(index).latestDecision=d;
       await this.publishHvacDecisionFor(index, d);
@@ -12579,12 +12579,13 @@ class HomeFluxEmsApp extends Homey.App {
       return decision;
     };
 
-    if (!automaticControlEnabled) {
+    if (!automaticControlEnabled || options.permanentOffFromFlow) {
       const action=settings.hvacCoordination?.AutomaticOffAction==='standby'?'standby':'off';
       resetBoostState();this.hvacManagedPowerOn=false;
       decision.automaticOffAction=action;
-      decision.reason='Automatische HVAC-sturing uit';
-      if(!options.automaticOffFromFlow){
+      decision.permanentControlOff=Boolean(options.permanentOffFromFlow);
+      decision.reason=options.permanentOffFromFlow?'Permanente HVAC-sturing uit':'Automatische HVAC-sturing uit';
+      if(!options.automaticOffFromFlow&&!options.permanentOffFromFlow){
         decision.automaticControlOff=true;decision.automaticOffSignature=hvacPermanent.offSignature(settings);return decision;
       }
       if(action==='off') {
@@ -12955,10 +12956,16 @@ class HomeFluxEmsApp extends Homey.App {
         try {
           await this._publishHvacDecisionNowFor(safeIndex, next);
           if (next.permanent) hvacPermanent.published(this, safeIndex, next);
-          else if ((next.automaticControlOff || next.moduleControlOff) && next.outputChanged!==false) {
+          else if ((next.automaticControlOff || next.moduleControlOff) && (next.outputChanged!==false || next.permanentControlOff)) {
             const receipt=safeIndex===0?this.lastPublishedHvacPower:this.getExtraHvac(safeIndex).lastPublishedPower;
             const u=hvacPermanent.unit(this,safeIndex);u.powerOff=Boolean(next.moduleControlOff||next.powerCommand===false||receipt===false||receipt==null&&next.currentMode==='off');
             if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
+            if(next.permanentControlOff){
+              // Explicit OFF/standby completes permanent ownership. Legacy PV
+              // remains free to start a new session on its existing evaluations.
+              u.legacyCoordinated=true;u.comfortMode='';
+              if(u.periodic){u.periodic.applied=false;delete hvacPermanent.runtime(this).periodicLive?.[safeIndex];}
+            }
             hvacPermanent.persist(this);
           } else if (next.legacyCoordinated) {
             const u=hvacPermanent.unit(this,safeIndex);u.legacyCoordinated=true;u.mode=next.direction;

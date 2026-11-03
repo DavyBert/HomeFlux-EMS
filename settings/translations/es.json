@@ -5539,7 +5539,12 @@
     "Battery response test": "Prueba de respuesta de batería",
     "HVAC gespreid · comfortdoel": "HVAC escalonado · objetivo de confort",
     "HVAC parallel · comfortdoel": "HVAC paralelo · objetivo de confort",
-    "HVAC direct · comfortdoel": "HVAC directo · objetivo de confort"
+    "HVAC direct · comfortdoel": "HVAC directo · objetivo de confort",
+    "Actie bij permanente sturing uit": "Acción al desactivar el control permanente",
+    "Stand-bytemperatuur bij permanente sturing uit (°C)": "Temperatura de espera con control permanente desactivado (°C)",
+    "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.": "El apagado o la consigna de espera se envía inmediatamente cuando el Flow desactiva el control permanente. Se conservan el permiso general y el aprovechamiento solar estándar. Solo se usan las salidas permitidas.",
+    "Permanente HVAC-sturing uit · regeling terug naar normaal": "Control permanente HVAC desactivado · control de retorno a la normalidad",
+    "Permanente HVAC-sturing uit": "Control permanente HVAC desactivado"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Para cargadores como Smappee, HomeFlux envía parada, inteligente o estándar. Debido a que esta interfaz no puede ordenar una corriente parcial, HomeFlux detiene el cargador cuando Peak Guard necesita limitar la potencia solicitada.",

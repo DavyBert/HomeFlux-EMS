@@ -30,6 +30,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.22
+
+De HVAC-Flow schakelt nu uitsluitend Permanent sturen. De algemene toestemming blijft behouden, zodat standaard PV-opvang na uitschakelen mogelijk blijft. De gekozen uit- of stand-byactie wordt direct één keer uitgevoerd.
+
+The HVAC Flow now toggles Permanent control only. General control permission is preserved, allowing standard PV capture after disabling permanent control. The selected OFF or standby action is sent immediately once.
+
+La carte Flow HVAC active ou désactive uniquement le pilotage permanent. L’autorisation générale est conservée afin de permettre la régulation solaire standard après désactivation. L’action arrêt ou veille choisie est envoyée immédiatement une seule fois.
+
+La tarjeta Flow HVAC activa o desactiva únicamente el control permanente. Conserva el permiso general, permitiendo el aprovechamiento solar estándar tras desactivarlo. La acción de apagado o espera elegida se envía inmediatamente una sola vez.
+
+Die HVAC-Flow-Karte schaltet nur die permanente Steuerung. Die allgemeine Freigabe bleibt erhalten, sodass die normale PV-Nutzung nach dem Deaktivieren möglich bleibt. Die gewählte Aus- oder Standby-Aktion wird sofort einmal gesendet.
+
 ### 1.2.21
 
 Permanent sturen kan zonder tarief-, PV- of periodieke optimalisatie zelfstandig verwarmen of koelen op basis van de bestaande ruimtetemperatuurgrenzen en comfortdoelen. De regeling stopt bij het comfortdoel en respecteert de bestaande prioriteiten, stuurintervallen en veiligheidsgrenzen.

@@ -60,7 +60,11 @@
     "Peak Guard gebruikt bij modussturing uitsluitend de HomeFlux-schatting uit de woningmeting; bij Stroom en Hybrid uitsluitend actuele laadstroomfeedback via Flow. Een ingestelde of uitgestuurde laadstroom is geen gemeten verbruik. De Emergency-knop in de EV-widget vraagt twee bevestigingen, beëindigt een actief widgetplan en kiest de bestaande Emergency-modus tot 100%. Uitschakelen kiest Slim laden. Bestaande Flow-doelen blijven bewaard.": "Peak Guard gebruikt bij modussturing uitsluitend de HomeFlux-schatting uit de woningmeting; bij Stroom en Hybrid uitsluitend actuele laadstroomfeedback via Flow. Een ingestelde of uitgestuurde laadstroom is geen gemeten verbruik. De Emergency-knop in de EV-widget vraagt twee bevestigingen, beëindigt een actief widgetplan en kiest de bestaande Emergency-modus tot 100%. Uitschakelen kiest Slim laden. Bestaande Flow-doelen blijven bewaard.",
     "HVAC gespreid · comfortdoel": "HVAC gespreid · comfortdoel",
     "HVAC parallel · comfortdoel": "HVAC parallel · comfortdoel",
-    "HVAC direct · comfortdoel": "HVAC direct · comfortdoel"
+    "HVAC direct · comfortdoel": "HVAC direct · comfortdoel",
+    "Actie bij permanente sturing uit": "Actie bij permanente sturing uit",
+    "Stand-bytemperatuur bij permanente sturing uit (°C)": "Stand-bytemperatuur bij permanente sturing uit (°C)",
+    "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.": "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.",
+    "Permanente HVAC-sturing uit": "Permanente HVAC-sturing uit"
   },
   "phrases": {},
   "strings": {

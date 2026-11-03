@@ -1,10 +1,10 @@
 {
   "title": {
-    "en": "Set HVAC automatic control",
-    "nl": "Stel HVAC automatische sturing in",
-    "fr": "Set HVAC commande automatique",
-    "es": "Juego de control automático HVAC",
-    "de": "Set HVAC Automatische Steuerung"
+    "nl": "Stel HVAC permanente sturing in",
+    "en": "Set HVAC permanent control",
+    "fr": "Régler le pilotage permanent HVAC",
+    "es": "Establecer el control permanente HVAC",
+    "de": "Permanente HVAC-Steuerung einstellen"
   },
   "args": [
     {
@@ -29,11 +29,11 @@
       "name": "enabled",
       "type": "dropdown",
       "title": {
-        "en": "Automatic control",
-        "nl": "Automatische sturing",
-        "fr": "Contrôle automatique",
-        "es": "Control automático",
-        "de": "Automatische Steuerung"
+        "nl": "Permanente sturing",
+        "en": "Permanent control",
+        "fr": "Pilotage permanent",
+        "es": "Control permanente",
+        "de": "Permanente Steuerung"
       },
       "values": [
         {
@@ -82,17 +82,17 @@
     }
   ],
   "titleFormatted": {
-    "en": "Set [[hvac]] automatic control to [[enabled]] (standby [[standby_temperature]] °C)",
-    "nl": "Stel [[hvac]] automatische sturing in op [[enabled]] (stand-by [[standby_temperature]] °C)",
-    "fr": "Réglage automatique [[hvac]] à [[enabled]] (standby [[standby_temperature]] °C)",
-    "es": "Establecer el control automático [[hvac]] a [[enabled]] (standby [[standby_temperature]] °C)",
-    "de": "Automatische Steuerung [[hvac]] auf [[enabled]] einstellen (Standby [[standby_temperature]] °C)"
+    "nl": "Stel [[hvac]] permanente sturing in op [[enabled]] (stand-by [[standby_temperature]] °C)",
+    "en": "Set [[hvac]] permanent control to [[enabled]] (standby [[standby_temperature]] °C)",
+    "fr": "Régler le pilotage permanent de [[hvac]] sur [[enabled]] (veille [[standby_temperature]] °C)",
+    "es": "Establecer el control permanente de [[hvac]] en [[enabled]] (espera [[standby_temperature]] °C)",
+    "de": "Permanente Steuerung für [[hvac]] auf [[enabled]] setzen (Standby [[standby_temperature]] °C)"
   },
   "hint": {
-    "en": "Enables or disables automatic HVAC control. Disabling immediately repeats the action chosen in this HVAC’s settings: send the standby setpoint or send OFF. The optional Flow temperature overrides the saved standby temperature. Only permitted outputs are used; re-enabling resumes normal safe control.",
-    "nl": "Schakelt automatische HVAC-sturing aan of uit. Uitschakelen stuurt direct opnieuw de gekozen actie uit de HVAC-instellingen: het stand-bysetpoint of Uit. De optionele Flow-temperatuur vervangt de opgeslagen stand-bytemperatuur. Alleen toegestane uitgangen worden gebruikt; inschakelen hervat de normale veilige regeling.",
-    "fr": "Active ou désactive le contrôle automatique HVAC. Désactiver répète immédiatement l'action choisie dans ces paramètres HVAC: envoyer le point de consigne en attente ou envoyer OFF. La température optionnelle Flow dépasse la température de veille enregistrée. Seules les sorties autorisées sont utilisées; la réactivation reprend le contrôle normal en toute sécurité.",
-    "es": "Permite o deshabilita el control automático HVAC. Desactivar de inmediato repite la acción elegida en la configuración de este HVAC: envía el punto de reserva o envía OFF. La temperatura opcional Flow anula la temperatura de reserva guardada. Únicamente se utilizan los productos permitidos; volver a habilitar reanuda el control seguro normal.",
-    "de": "Aktiviert oder deaktiviert die automatische HVAC Steuerung. Die Deaktivierung wiederholt sofort die in den Einstellungen dieses HVAC gewählte Aktion: Senden Sie den Standby-Sollpunkt oder senden Sie OFF. Die optionale Flow Temperatur überschreibt die gespeicherte Standby-Temperatur. Es werden nur erlaubte Ausgänge verwendet; die Wiederermöglichung der normalen sicheren Steuerung wird wieder aufgenommen."
+    "nl": "De HVAC-Flow schakelt nu uitsluitend Permanent sturen. De algemene toestemming blijft behouden, zodat standaard PV-opvang na uitschakelen mogelijk blijft. De gekozen uit- of stand-byactie wordt direct één keer uitgevoerd.",
+    "en": "The HVAC Flow now toggles Permanent control only. General control permission is preserved, allowing standard PV capture after disabling permanent control. The selected OFF or standby action is sent immediately once.",
+    "fr": "La carte Flow HVAC active ou désactive uniquement le pilotage permanent. L’autorisation générale est conservée afin de permettre la régulation solaire standard après désactivation. L’action arrêt ou veille choisie est envoyée immédiatement une seule fois.",
+    "es": "La tarjeta Flow HVAC activa o desactiva únicamente el control permanente. Conserva el permiso general, permitiendo el aprovechamiento solar estándar tras desactivarlo. La acción de apagado o espera elegida se envía inmediatamente una sola vez.",
+    "de": "Die HVAC-Flow-Karte schaltet nur die permanente Steuerung. Die allgemeine Freigabe bleibt erhalten, sodass die normale PV-Nutzung nach dem Deaktivieren möglich bleibt. Die gewählte Aus- oder Standby-Aktion wird sofort einmal gesendet."
   }
 }

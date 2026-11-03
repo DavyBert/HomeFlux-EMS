@@ -1,0 +1,19 @@
+{
+  "version": "1.2.22",
+  "passed": [
+    "Ten-slot Flow toggles PermanentEnabled only; Enabled/AutomaticControlEnabled preserved",
+    "One-shot OFF and saved/optional standby commands, output permissions, no automatic retries or new timers",
+    "PV starts after permanent OFF; no comfort/tariff activation without permanent permission",
+    "Concurrent Flow queue, stale commands, periodic ownership cleanup and restart persistence",
+    "5 relevant existing Flow scenario groups from features-1.2.16 (planner/widget groups excluded)",
+    "34 permanent HVAC groups, coordination regression, comfort 1.2.21",
+    "Settings startup, widget metadata, help catalog",
+    "JavaScript syntax, inline settings syntax, all JSON and localized Flow placeholders",
+    "Deprecated cards byte-identical; other controller modules and website description preserved"
+  ],
+  "skipped": [
+    "Independent battery, EV, boiler, price/planning and PV-controller suites",
+    "Full regression suite"
+  ],
+  "remainingRisk": "Physical Homey/device behavior not tested."
+}
