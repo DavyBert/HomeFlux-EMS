@@ -121,7 +121,13 @@ assert.equal(pending.children[0].style.color,undefined,'unpublished PV target ca
 assert(pending.children[0].children[0].children.some(c=>c.attributes['aria-label']==='wait'));
 assert.equal(pending.children[1].textContent,'23.0 °C','new requested goal is visible before confirmation');
 assert.equal(pending.children[1].style.color,'var(--hf-muted)','unconfirmed target stays grey');
-hvacs[1].received={setpoint:true};hvacs[1].setpointC=23;hvacs[1].outputSetpointRequestedC=23;hvacs[1].outputSetpointRequestedAt=Date.now()-2000;hvacs[1].setpointFeedbackAt=Date.now()-1000;
+hvacs[1].received={setpoint:true};hvacs[1].setpointC='23'; // Color requires feedback only, no publication metadata.
+wctx.renderStatus({hvacs},{showHvacSummary:true},{});
+assert.equal(content.children[0].children.find(c=>c.tag==='table').children[2].children[1].style.color,'var(--homey-text-color, inherit)');
+hvacs[1].desiredSetpointC=24;
+wctx.renderStatus({hvacs},{showHvacSummary:true},{});
+assert.equal(content.children[0].children.find(c=>c.tag==='table').children[2].children[1].style.color,'var(--hf-muted)','new target differs from received feedback');
+hvacs[1].setpointC=24;
 wctx.renderStatus({hvacs},{showHvacSummary:true},{});
 assert.equal(content.children[0].children.find(c=>c.tag==='table').children[2].children[1].style.color,'var(--homey-text-color, inherit)');
 wctx.renderStatus({hvacs},{showHvacSummary:false},{});assert.equal(content.children.length,0,'summary visibility is local, not control');

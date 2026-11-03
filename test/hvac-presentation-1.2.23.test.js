@@ -23,10 +23,15 @@ const extract=name=>{const a=html.indexOf('    function '+name+'('),b=html.index
 const ctx=vm.createContext({Date,reasonText:x=>x,tr:(_,k,f)=>f});vm.runInContext(extract('hvacGoalValue')+extract('hvacGoalConfirmed')+extract('hvacState'),ctx);
 const now=1000000,h={received:{setpoint:true},setpointC:21.5,outputSetpointRequestedC:21.5,outputSetpointRequestedAt:now-2000,setpointFeedbackAt:now-1000,outputSetpointC:21.5};
 assert.equal(ctx.hvacGoalValue(h),21.5);assert(ctx.hvacGoalConfirmed(h,21.5,now));
-for(const bad of [{setpointC:null},{setpointC:20},{received:{setpoint:false}},{setpointFeedbackAt:null},{setpointFeedbackAt:now-300001},{setpointFeedbackAt:now+1},{setpointFeedbackAt:now-2000},{outputSetpointRequestedAt:null},{outputSetpointRequestedC:22}])assert.equal(ctx.hvacGoalConfirmed({...h,...bad},21.5,now),false,JSON.stringify(bad));
+for(const bad of [{setpointC:null},{setpointC:undefined},{setpointC:''},{setpointC:'invalid'},{setpointC:20},{received:{setpoint:false}},{received:{}}])assert.equal(ctx.hvacGoalConfirmed({...h,...bad},21.5),false,JSON.stringify(bad));
+// 1.2.24: only numeric received feedback matters; command and feedback timestamps do not gate color.
+for(const metadata of [{setpointFeedbackAt:null},{setpointFeedbackAt:now-300001},{setpointFeedbackAt:now+1},{setpointFeedbackAt:now-2000},{outputSetpointRequestedAt:null},{outputSetpointRequestedC:22}])assert(ctx.hvacGoalConfirmed({...h,...metadata},21.5),JSON.stringify(metadata));
+assert(ctx.hvacGoalConfirmed({received:{setpoint:true},setpointC:'21.5'},21.5),'no publication metadata required');
+for(const value of [null,undefined,'',NaN,Infinity])assert.equal(ctx.hvacGoalConfirmed(h,value),false);
+assert.equal(ctx.hvacGoalConfirmed({...h,setpointC:21.62},21.5),false);
 assert(ctx.hvacGoalConfirmed({...h,setpointC:21.6},21.5,now));
 const pending={...h,permanent:true,permanentControlEnabled:true,desiredSetpointC:22};assert.equal(ctx.hvacGoalValue(pending),22);assert.equal(ctx.hvacGoalConfirmed(pending,22,now),false);
-const fresh={...pending,outputSetpointRequestedC:22,outputSetpointRequestedAt:now,setpointC:22};assert.equal(ctx.hvacGoalConfirmed(fresh,22,now),false,'old feedback cannot confirm a newly issued request');assert(ctx.hvacGoalConfirmed({...fresh,setpointFeedbackAt:now+1000},22,now+1000));
+const fresh={...pending,outputSetpointRequestedC:22,outputSetpointRequestedAt:now,setpointC:22};assert(ctx.hvacGoalConfirmed(fresh,22),'matching feedback is sufficient regardless of timestamps');assert(ctx.hvacGoalConfirmed({...fresh,setpointFeedbackAt:now+1000},22,now+1000));
 assert.equal(ctx.hvacGoalValue({}),null);
 assert(html.includes("goal.style.color=hvacGoalConfirmed(h,goalValue)?'var(--homey-text-color, inherit)':'var(--hf-muted)'"));
 for(const [d,text] of cases)assert.equal(ctx.hvacState({enabled:true,automaticControlEnabled:true,permanentControlEnabled:false,reason:P.reason(s,d)},{}),'Permanente sturing uit · '+text);
@@ -45,6 +50,6 @@ async function main(){
   status=a.getPublicStatus().hvacs[i];assert(status.setpointFeedbackAt>requestAt);assert(ctx.hvacGoalConfirmed(status,21.5,clock.now()));
   await a.publishHvacDecisionFor(i,{...d,setpointCommand:22});status=a.getPublicStatus().hvacs[i];assert.equal(ctx.hvacGoalConfirmed(status,22,clock.now()),false);
  }
- console.log('HVAC presentation: combined reasons, unchanged permanent reasons, fresh device confirmation, stale/missing/old/new targets, tolerance, both publication paths and real feedback Flow passed.');
+ console.log('HVAC presentation: combined reasons, unchanged permanent reasons, numeric device feedback, timestamp independence, missing/mismatched/new targets, tolerance, both publication paths and real feedback Flow passed.');
 }
 main().catch(e=>{console.error(e.stack);process.exitCode=1;}).finally(()=>Date.now=nativeNow);

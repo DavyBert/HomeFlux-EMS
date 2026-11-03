@@ -805,13 +805,10 @@
         : [hvac.setpointCommand,hvac.outputSetpointC,hvac.learning?.publishedSetpointC];
       return values.find(value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)))??null;
     }
-    function hvacGoalConfirmed(hvac, goal, now=Date.now()) {
+    function hvacGoalConfirmed(hvac, goal) {
       const valid=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
-      const feedbackAt=Number(hvac.setpointFeedbackAt),requestAt=Number(hvac.outputSetpointRequestedAt);
-      return valid(goal)&&hvac.received?.setpoint===true&&valid(hvac.setpointC)&&valid(hvac.outputSetpointRequestedC)
-        &&feedbackAt>requestAt&&requestAt>0&&feedbackAt<=now&&now-feedbackAt<=300000
-        &&Math.abs(Number(goal)-Number(hvac.setpointC))<=.11+1e-9
-        &&Math.abs(Number(goal)-Number(hvac.outputSetpointRequestedC))<=.11+1e-9;
+      return valid(goal)&&hvac.received?.setpoint===true&&valid(hvac.setpointC)
+        &&Math.abs(Number(goal)-Number(hvac.setpointC))<=.11+1e-9;
     }
     function hvacState(hvac, Homey) {
       if (!hvac || !hvac.enabled || hvac.automaticControlEnabled === false) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');

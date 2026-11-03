@@ -30,6 +30,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.24
+
+De HVAC-doeltemperatuur wordt wit zodra het ontvangen setpoint numeriek overeenkomt met Doel. Ontbrekende of afwijkende feedback blijft grijs; stuur- en terugmeldtijden blokkeren de bevestiging niet meer.
+
+The HVAC target temperature turns white when the received setpoint numerically matches Target. Missing or differing feedback stays grey; command and feedback timestamps no longer block confirmation.
+
+La température cible HVAC devient blanche lorsque la consigne reçue correspond numériquement à la cible. Un retour absent ou différent reste gris ; les horodatages ne bloquent plus la confirmation.
+
+La temperatura objetivo HVAC se muestra en blanco cuando la consigna recibida coincide numéricamente con el objetivo. Si la respuesta falta o difiere, permanece gris; las marcas de tiempo ya no bloquean la confirmación.
+
+Die HVAC-Zieltemperatur wird weiß, sobald der empfangene Sollwert numerisch mit dem Ziel übereinstimmt. Fehlende oder abweichende Rückmeldungen bleiben grau; Zeitstempel blockieren die Bestätigung nicht mehr.
+
 ### 1.2.23
 
 Duidelijke gecombineerde HVAC-status bij uitgeschakelde permanente sturing. Het HVAC-overzicht toont het doel grijs tot recente toestelterugmelding het gevraagde setpoint bevestigt. Instelbare planningsmarge van 0–100% bij maximaal laden reserveert extra laadtijd zonder het SoC-doel te verhogen. Ontwikkeltests en validatierapporten worden uitgesloten van het Homey-app-package.

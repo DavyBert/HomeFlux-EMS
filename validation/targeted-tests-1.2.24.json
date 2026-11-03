@@ -1,0 +1,17 @@
+{
+  "version": "1.2.24",
+  "change": "Widget compares valid received setpoint numerically with displayed goal; no command timestamp, feedback timestamp, age or publication metadata required; tolerance 0.11 C retained.",
+  "passed": [
+    "HVAC presentation: numeric/string input, missing/invalid/differing feedback, matching feedback without metadata, changed goals and both real app input/output paths",
+    "HVAC widget DOM: pending grey, matching white, changed target grey then matching white; existing 10-channel form/widget checks",
+    "Widget metadata and settings startup basistests",
+    "Widget inline JavaScript syntax (presentation test)",
+    "All JSON and version consistency",
+    "app.js, lib control modules, settings, locales, deprecated Flow cards and Homey ignore byte-identical to 1.2.23"
+  ],
+  "skipped": [
+    "Independent HVAC, battery, EV, PV, boiler and planner regression suites",
+    "Full regression suite"
+  ],
+  "remainingRisk": "No physical Homey/device test; latest received setpoint remains authoritative until new feedback, as requested."
+}
