@@ -106,7 +106,7 @@ class Element {
 }
 const content=new Element('div'),dom={getElementById:()=>content,createElement:t=>new Element(t),createElementNS:(ns,t)=>new Element(t)};
 const wctx=vm.createContext({document:dom,Date,Number,Math,String,tr:(h,k,f)=>f,enabled:()=>false,batteryTimingText:()=>null,formatC:v=>`${Number(v).toFixed(1)} °C`});
-vm.runInContext(extract(widget,'section'),wctx);
+vm.runInContext(extract(widget,'section')+extract(widget,'hvacGoalValue')+extract(widget,'hvacGoalConfirmed'),wctx);
 const start=widget.indexOf('    function renderStatus('),end=widget.indexOf('    async function onHomeyReady(',start);vm.runInContext(widget.slice(start,end),wctx);
 const hvacs=Array.from({length:10},(_,i)=>({instance:i+1,name:'A very long name '+i,enabled:true,mode:'heat',outputMode:'heat',direction:'auto',learning:{publishedSetpointC:i===9?null:21},outputSetpointC:null,roomTemperatureC:i===9?null:20,waiting:i===2,energySource:i===1?'pv':'tariff'}));
 wctx.renderStatus({hvacs,tariff:{className:'cheap'}},{showHvacSummary:true},{});
@@ -119,6 +119,10 @@ wctx.renderStatus({hvacs},{showHvacSummary:true},{});
 const pending=content.children[0].children.find(c=>c.tag==='table').children[2];
 assert.equal(pending.children[0].style.color,undefined,'unpublished PV target cannot turn green');
 assert(pending.children[0].children[0].children.some(c=>c.attributes['aria-label']==='wait'));
-assert.equal(pending.children[1].textContent,'21.0 °C','last successful goal remains visible');
+assert.equal(pending.children[1].textContent,'23.0 °C','new requested goal is visible before confirmation');
+assert.equal(pending.children[1].style.color,'var(--hf-muted)','unconfirmed target stays grey');
+hvacs[1].received={setpoint:true};hvacs[1].setpointC=23;hvacs[1].outputSetpointRequestedC=23;hvacs[1].outputSetpointRequestedAt=Date.now()-2000;hvacs[1].setpointFeedbackAt=Date.now()-1000;
+wctx.renderStatus({hvacs},{showHvacSummary:true},{});
+assert.equal(content.children[0].children.find(c=>c.tag==='table').children[2].children[1].style.color,'var(--homey-text-color, inherit)');
 wctx.renderStatus({hvacs},{showHvacSummary:false},{});assert.equal(content.children.length,0,'summary visibility is local, not control');
 assert.equal(hvacs.length,10);console.log('HVAC UI: 80 conditional-field combinations plus 1920 comfort/activation/source combinations, 10-channel form schema and three-column widget DOM checks passed.');

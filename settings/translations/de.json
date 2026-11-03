@@ -5544,7 +5544,15 @@
     "Stand-bytemperatuur bij permanente sturing uit (°C)": "Standby-Temperatur bei deaktivierter permanenter Steuerung (°C)",
     "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.": "Aus oder der Standby-Sollwert wird sofort gesendet, wenn ein Flow die permanente Steuerung deaktiviert. Allgemeine Freigabe und normale PV-Nutzung bleiben erhalten. Nur erlaubte Ausgänge werden verwendet.",
     "Permanente HVAC-sturing uit · regeling terug naar normaal": "Automatische HVAC-Steuerung ausgeschaltet · Rückführung der Steuerung in den Normalzustand",
-    "Permanente HVAC-sturing uit": "Permanente HVAC-Steuerung deaktiviert"
+    "Permanente HVAC-sturing uit": "Permanente HVAC-Steuerung deaktiviert",
+    "Permanente sturing uit": "Permanente Steuerung aus",
+    "PV-opvang uitgeschakeld": "PV-Nutzung deaktiviert",
+    "PV-opvang niet nodig (ruimtetemperatuur bereikt)": "PV-Nutzung nicht erforderlich (Raumtemperatur erreicht)",
+    "PV-opvang wacht op voldoende PV-overschot": "PV-Nutzung wartet auf ausreichenden Überschuss",
+    "PV-opvang wacht op volgende beoordeling": "PV-Nutzung wartet auf die nächste Auswertung",
+    "PV-opvang actief": "PV-Nutzung aktiv",
+    "Extra planningsmarge voor laadverliezen (%)": "Zusätzliche Planungsreserve für Ladeverluste (%)",
+    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Nur bei maximaler Leistung. 20% reserviert 20% mehr Ladezeit. Das SoC-Ziel bleibt unverändert; die Restplanung verkürzt sich mit steigendem tatsächlichem SoC. Standard 0%."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Für Ladegeräte wie Smappee sendet HomeFlux Stop, Smart oder Standard. Da diese Schnittstelle keinen Teilstrom steuern kann, stoppt HomeFlux das Ladegerät, wenn Peak Guard die angeforderte Leistung begrenzen muss.",
@@ -6433,7 +6441,9 @@
     "{0}: maximum is {1}.": "{0}: Maximum ist {1}.",
     "{0}: minimum is {1}.": "{0}: Minimum ist {1}.",
     "De mediaan van de laagste dagelijkse SoC is {0}%, terwijl de harde veiligheidsvloer {1}% is. Een lagere spaargrens kan meer opgeslagen energie benutten; harde SoC- en piekreserves blijven beschermd.": "Der Median des täglichen Mindest-SoC beträgt {0}%, die feste Sicherheitsgrenze {1}%. Eine niedrigere Spargrenze kann mehr gespeicherte Energie nutzen; feste SoC- und Spitzenlastreserven bleiben geschützt.",
-    "The median daily minimum SoC is {0}%, while the hard safety floor is {1}%. A lower save floor can use more stored energy; hard SoC and peak reserves remain protected.": "Der Median des täglichen Mindest-SoC beträgt {0}%, die feste Sicherheitsgrenze {1}%. Eine niedrigere Spargrenze kann mehr gespeicherte Energie nutzen; feste SoC- und Spitzenlastreserven bleiben geschützt."
+    "The median daily minimum SoC is {0}%, while the hard safety floor is {1}%. A lower save floor can use more stored energy; hard SoC and peak reserves remain protected.": "Der Median des täglichen Mindest-SoC beträgt {0}%, die feste Sicherheitsgrenze {1}%. Eine niedrigere Spargrenze kann mehr gespeicherte Energie nutzen; feste SoC- und Spitzenlastreserven bleiben geschützt.",
+    "PV-opvang wacht op batterij-SoC {0}%": "PV-Nutzung wartet auf Batterie-SoC {0}%",
+    "Permanente sturing uit · {0}": "Permanente Steuerung aus · {0}"
   },
   "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "Nach einem App-Neustart startet der Messpuffer erneut; die ursprüngliche Endzeit von 48 Stunden bleibt unverändert.",
   "Aantal dagen": "Anzahl der Tage",

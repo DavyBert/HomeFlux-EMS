@@ -64,7 +64,15 @@
     "Actie bij permanente sturing uit": "Actie bij permanente sturing uit",
     "Stand-bytemperatuur bij permanente sturing uit (°C)": "Stand-bytemperatuur bij permanente sturing uit (°C)",
     "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.": "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.",
-    "Permanente HVAC-sturing uit": "Permanente HVAC-sturing uit"
+    "Permanente HVAC-sturing uit": "Permanente HVAC-sturing uit",
+    "Permanente sturing uit": "Permanente sturing uit",
+    "PV-opvang uitgeschakeld": "PV-opvang uitgeschakeld",
+    "PV-opvang niet nodig (ruimtetemperatuur bereikt)": "PV-opvang niet nodig (ruimtetemperatuur bereikt)",
+    "PV-opvang wacht op voldoende PV-overschot": "PV-opvang wacht op voldoende PV-overschot",
+    "PV-opvang wacht op volgende beoordeling": "PV-opvang wacht op volgende beoordeling",
+    "PV-opvang actief": "PV-opvang actief",
+    "Extra planningsmarge voor laadverliezen (%)": "Extra planningsmarge voor laadverliezen (%)",
+    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%."
   },
   "phrases": {},
   "strings": {
@@ -91,5 +99,9 @@
     "batteryResponse.stage_falling": "terug naar 0 W: terugvaltijd meten",
     "batteryResponse.stage_stopping": "stoppen en 0 W uitsturen"
   },
-  "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden."
+  "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.",
+  "templates": {
+    "PV-opvang wacht op batterij-SoC {0}%": "PV-opvang wacht op batterij-SoC {0}%",
+    "Permanente sturing uit · {0}": "Permanente sturing uit · {0}"
+  }
 }

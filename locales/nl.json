@@ -292,7 +292,8 @@
       "reasonPending": "Het nieuwe batterijcommando is nog niet uitgestuurd; de bestaande uitsturing blijft gelden",
       "reasonPeakLimited": "Peak Guard kan binnen de actieve grenzen geen extra batterijondersteuning vragen",
       "reasonChargeDeferred": "Batterij reserve behouden, laden later gepland.",
-      "evPeakGuardLimited": "Laden begrensd door Peak Guard"
+      "evPeakGuardLimited": "Laden begrensd door Peak Guard",
+      "hvacTarget": "Doel"
     }
   },
   "evWidget": {

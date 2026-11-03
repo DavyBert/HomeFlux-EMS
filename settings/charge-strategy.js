@@ -45,6 +45,12 @@ window.HomeFluxChargeStrategy = (() => {
         for (const [value, text] of [['early', 'Vanaf begin laadvenster'], ['latest', 'Zo laat mogelijk — 15 minuten tijdreserve'], ['center', 'Laadblok centreren rond goedkoopste kwartier / midden goedkoopste tariefperiode']]) {
           positions.append(radio(prefix + '-position', value, text, value === (phase === 'night' ? 'center' : 'latest')));
         }
+        const margin = document.createElement('input'); margin.type = 'number'; margin.className = 'homey-form-input';
+        margin.min = '0'; margin.max = '100'; margin.step = '1'; margin.value = '0'; margin.id = prefix + '-margin';
+        const marginLabel = document.createElement('label'); marginLabel.htmlFor = margin.id; marginLabel.textContent = 'Extra planningsmarge voor laadverliezen (%)';
+        const marginHelp = document.createElement('p'); marginHelp.className = 'muted';
+        marginHelp.textContent = 'Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.';
+        positions.append(marginLabel, margin, marginHelp);
         card.append(positions); group.append(card);
       }
       root.append(group);
@@ -73,6 +79,7 @@ window.HomeFluxChargeStrategy = (() => {
       root.querySelector(`[name="${prefix}-mode"][value="${mode}"]`).checked = true;
       root.querySelector(`[name="${prefix}-position"][value="${position}"]`).checked = true;
       root.querySelector('#' + prefix + '-extra').value = Number.isFinite(value?.extraPercent) ? value.extraPercent : 0;
+      root.querySelector('#' + prefix + '-margin').value = Number.isFinite(value?.planningMarginPercent) ? value.planningMarginPercent : 0;
     }
     update();
   }
@@ -84,6 +91,7 @@ window.HomeFluxChargeStrategy = (() => {
         const prefix = `strategy-${profile}-${phase}`;
         config[profile][phase] = { mode: root.querySelector(`[name="${prefix}-mode"]:checked`).value,
           extraPercent: Number(root.querySelector('#' + prefix + '-extra').value),
+          planningMarginPercent: Number(root.querySelector('#' + prefix + '-margin').value),
           position: root.querySelector(`[name="${prefix}-position"]:checked`).value };
       }
     }

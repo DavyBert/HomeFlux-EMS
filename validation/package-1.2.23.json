@@ -1,0 +1,9 @@
+{
+  "homeyCliVersion": "4.6.2",
+  "method": "Unmodified Homey CLI _getAppSourceFiles() with ignore-walk, staged sources archived using Homey CLI tar-fs options",
+  "sourceEntries": 105,
+  "testDirectoryPresent": true,
+  "testsIncludedInPackage": false,
+  "validationIncludedInPackage": false,
+  "archive": "/workspace/scratch/a74231326a67/hvac-1.2.23/homey-package-check.tgz"
+}

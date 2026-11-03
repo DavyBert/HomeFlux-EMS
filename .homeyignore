@@ -13,8 +13,11 @@
 # Development documentation, tests and investigation reports.
 /docs/
 /DOCS/
+# Regression tests stay in the source ZIP, never in the Homey package.
 /test/
+/test/**
 /tests/
+/validation/
 /investigation/
 /coverage/
 /.nyc_output/

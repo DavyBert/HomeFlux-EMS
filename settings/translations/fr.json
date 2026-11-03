@@ -5544,7 +5544,15 @@
     "Stand-bytemperatuur bij permanente sturing uit (°C)": "Température de veille lorsque le pilotage permanent est désactivé (°C)",
     "De uit-Flow of het stand-bysetpoint wordt direct gestuurd wanneer een Flow permanente sturing uitzet. De algemene toestemming en standaard PV-opvang blijven behouden. Alleen toegestane uitgangen worden gebruikt.": "L’arrêt ou la consigne de veille est envoyé immédiatement lorsque le Flow désactive le pilotage permanent. L’autorisation générale et la régulation solaire standard sont conservées. Seules les sorties autorisées sont utilisées.",
     "Permanente HVAC-sturing uit · regeling terug naar normaal": "Commande automatique HVAC hors fonction · retour à la normale",
-    "Permanente HVAC-sturing uit": "Pilotage permanent HVAC désactivé"
+    "Permanente HVAC-sturing uit": "Pilotage permanent HVAC désactivé",
+    "Permanente sturing uit": "Pilotage permanent désactivé",
+    "PV-opvang uitgeschakeld": "Récupération solaire désactivée",
+    "PV-opvang niet nodig (ruimtetemperatuur bereikt)": "Récupération solaire inutile (température ambiante atteinte)",
+    "PV-opvang wacht op voldoende PV-overschot": "Récupération solaire en attente d’un surplus suffisant",
+    "PV-opvang wacht op volgende beoordeling": "Récupération solaire en attente de la prochaine évaluation",
+    "PV-opvang actief": "Récupération solaire active",
+    "Extra planningsmarge voor laadverliezen (%)": "Marge de planification pour les pertes de charge (%)",
+    "Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.": "Puissance maximale uniquement. 20% réserve 20% de temps de charge supplémentaire. L’objectif SoC reste inchangé ; le planning restant diminue à mesure que le SoC réel augmente. Valeur par défaut 0%."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Pour les chargeurs tels que Smappee, HomeFlux envoie stop, smart ou standard. Comme cette interface ne peut pas commander un courant partiel, HomeFlux arrête le chargeur lorsque Peak Guard doit limiter la puissance demandée.",
@@ -6433,7 +6441,9 @@
     "{0}: maximum is {1}.": "{0}: maximum est {1}.",
     "{0}: minimum is {1}.": "{0}: minimum est {1}.",
     "De mediaan van de laagste dagelijkse SoC is {0}%, terwijl de harde veiligheidsvloer {1}% is. Een lagere spaargrens kan meer opgeslagen energie benutten; harde SoC- en piekreserves blijven beschermd.": "La médiane du SoC minimal quotidien est de {0}%, pour un seuil de sécurité strict de {1}%. Un seuil d’économie plus bas peut utiliser davantage d’énergie stockée ; les réserves de SoC et de pointe restent protégées.",
-    "The median daily minimum SoC is {0}%, while the hard safety floor is {1}%. A lower save floor can use more stored energy; hard SoC and peak reserves remain protected.": "La médiane du SoC minimal quotidien est de {0}%, pour un seuil de sécurité strict de {1}%. Un seuil d’économie plus bas peut utiliser davantage d’énergie stockée ; les réserves de SoC et de pointe restent protégées."
+    "The median daily minimum SoC is {0}%, while the hard safety floor is {1}%. A lower save floor can use more stored energy; hard SoC and peak reserves remain protected.": "La médiane du SoC minimal quotidien est de {0}%, pour un seuil de sécurité strict de {1}%. Un seuil d’économie plus bas peut utiliser davantage d’énergie stockée ; les réserves de SoC et de pointe restent protégées.",
+    "PV-opvang wacht op batterij-SoC {0}%": "Récupération solaire en attente du SoC batterie {0}%",
+    "Permanente sturing uit · {0}": "Pilotage permanent désactivé · {0}"
   },
   "Na een herstart van de app begint de meetbuffer opnieuw; de oorspronkelijke 48-uurs eindtijd blijft behouden.": "Après un redémarrage de l'application, le tampon de mesure recommence; l'heure de fin originale de 48 heures reste inchangée.",
   "Aantal dagen": "Nombre de jours",

@@ -35,6 +35,7 @@ const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelecte
 const { emptyDay, normalizeDay, totalSavings, avoidedEnergyValue, pvExportValue, pvExportKwh, rawImportedKwh, rawExportedKwh, calibrateEnergy, emptyInventory, normalizeInventory, inventoryKwh, integrateInterval, addDays } = require('./lib/savings');
 const savingsHistory = require('./lib/savings-history');
 const hvacPermanent = require('./lib/hvac-permanent');
+const hvacPresentation = require('./lib/hvac-presentation');
 const hvacCoordination = require('./lib/hvac-coordination');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
@@ -13018,8 +13019,10 @@ class HomeFluxEmsApp extends Homey.App {
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
       if (decision.forceAutomaticOff || runtime.lastPublishedSetpoint === null || !Number.isFinite(Number(runtime.lastPublishedSetpoint)) || Math.abs(setpoint - Number(runtime.lastPublishedSetpoint)) >= 0.1) {
+        const requestedAt = Date.now();
         if (triggers.setpoint) await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         runtime.lastPublishedSetpoint = setpoint;
+        (this.hvacSetpointRequests ||= [])[index] = {value:setpoint,at:requestedAt};
         if (runtime.baselineSetpoint !== null && Math.abs(setpoint - Number(runtime.baselineSetpoint)) < 0.1) runtime.lastControlAt = 0;
       }
     }
@@ -13070,8 +13073,10 @@ class HomeFluxEmsApp extends Homey.App {
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
       if (decision.forceAutomaticOff || this.lastPublishedHvacSetpoint === null || this.lastPublishedHvacSetpoint === undefined || !Number.isFinite(Number(this.lastPublishedHvacSetpoint)) || Math.abs(setpoint - Number(this.lastPublishedHvacSetpoint)) >= 0.1) {
+        const requestedAt = Date.now();
         if (this.hvacSetpointTrigger) await this.hvacSetpointTrigger.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         this.lastPublishedHvacSetpoint = setpoint;
+        (this.hvacSetpointRequests ||= [])[0] = {value:setpoint,at:requestedAt};
         const token = this.tokens.get('emshvacsetpoint');
         if (token) await token.setValue(setpoint);
         if (this.hvacBaselineSetpoint !== null && Math.abs(setpoint - Number(this.hvacBaselineSetpoint)) < 0.1) {
@@ -16587,6 +16592,11 @@ class HomeFluxEmsApp extends Homey.App {
         fanSpeed: input?.seen?.fanSpeed ? Number(input.fanSpeed) : null,
         received: { ...(input?.seen || {}) },
         ...(decision || {}),
+        reason: hvacPresentation.reason(instanceSettings, decision),
+        permanentControlEnabled: Boolean(instanceSettings.hvacPermanentEnabled),
+        setpointFeedbackAt: Number(input?.updatedAt?.setpoint)||null,
+        outputSetpointRequestedAt: this.hvacSetpointRequests?.[index]?.at||null,
+        outputSetpointRequestedC: this.hvacSetpointRequests?.[index]?.value??null,
         learning: hvacPermanent.status(this, index),
         baselineSetpointC: index === 0 ? this.hvacBaselineSetpoint : runtime?.baselineSetpoint,
         managedPowerOn: index === 0 ? Boolean(this.hvacManagedPowerOn) : Boolean(runtime?.managedPowerOn),
@@ -16754,6 +16764,7 @@ class HomeFluxEmsApp extends Homey.App {
       } : null,
       hvac: Boolean(storedSettings.hvacEnabled) ? {
         ...(this.latestHvacDecision || {}),
+        reason: hvacStatuses[0]?.reason || '',
         baselineSetpointC: this.hvacBaselineSetpoint,
         managedPowerOn: Boolean(this.hvacManagedPowerOn),
         outputSetpointC: this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined && Number.isFinite(Number(this.lastPublishedHvacSetpoint)) ? Number(this.lastPublishedHvacSetpoint) : null,

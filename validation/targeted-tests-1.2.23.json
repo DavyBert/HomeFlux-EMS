@@ -1,0 +1,31 @@
+{
+  "version": "1.2.23",
+  "basis": "Complete 1.2.22",
+  "changes": [
+    "Read-only combined HVAC reasons in public status",
+    "Presentation-only per-device setpoint request timestamps; feedback newer than request and at most 5 minutes old, numeric tolerance 0.11 C",
+    "0–100% margin per charge-strategy profile/phase; adds maximum-charge planning duration only, default 0",
+    "Homey ignore explicitly excludes tests and validation reports"
+  ],
+  "passed": [
+    "HVAC presentation and real input/output Flow feedback (two device paths), all 5 languages",
+    "HVAC UI DOM including grey/confirmed colors, 10 channels and conditional form combinations",
+    "HVAC flow 1.2.22",
+    "34 permanent HVAC regression groups",
+    "Charge margin: 12 contract/position combinations, 9 night/profile/percentage combinations, SoC target stop and replanning shrink",
+    "Settings editor DOM: default, round-trip and bounds",
+    "144 direct 1.2.22 comparisons at margin 0 (schedule/commands/mode/target/floor)",
+    "18 existing charge-strategy groups with 270 comparisons",
+    "Existing charge-strategy application/context/boundary/restart tests",
+    "Settings startup, widgets, translations and syntax checks",
+    "Homey CLI 4.6.2 actual source selection plus locally created tgz content: no test/validation files",
+    "All JSON, original translation keys/placeholders, deprecated Flow cards and website description preserved"
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent EV/HVAC coordination/battery allocator/boiler/PV-controller/savings suites",
+    "Physical Homey/device tests",
+    "Optional Chromium visual test: browser executable unavailable; widget DOM assertions passed"
+  ],
+  "risk": "Host and DOM tests only; no actual device feedback or Homey CPU measurement."
+}

@@ -292,7 +292,8 @@
       "reasonPending": "El nuevo comando de batería aún no se ha publicado; sigue vigente la salida actual",
       "reasonPeakLimited": "Peak Guard no puede solicitar más apoyo de batería dentro de los límites activos",
       "reasonChargeDeferred": "Reserva de batería conservada; carga programada para más tarde.",
-      "evPeakGuardLimited": "Carga limitada por Peak Guard"
+      "evPeakGuardLimited": "Carga limitada por Peak Guard",
+      "hvacTarget": "Objetivo"
     }
   },
   "evWidget": {

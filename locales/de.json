@@ -292,7 +292,8 @@
       "reasonPending": "Der neue Batteriebefehl wurde noch nicht veröffentlicht; die bisherige Ausgabe gilt weiterhin",
       "reasonPeakLimited": "Peak Guard kann innerhalb der aktiven Grenzen keine weitere Batterieunterstützung anfordern",
       "reasonChargeDeferred": "Batteriereserve erhalten, Laden für später geplant.",
-      "evPeakGuardLimited": "Gebühren begrenzt durch Peak Guard"
+      "evPeakGuardLimited": "Gebühren begrenzt durch Peak Guard",
+      "hvacTarget": "Ziel"
     }
   },
   "evWidget": {
