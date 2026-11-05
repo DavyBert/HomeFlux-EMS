@@ -5573,7 +5573,10 @@
     "HVAC uit · temperatuurgrens bij permanent sturen bereikt": "HVAC aus · Temperaturgrenze der permanenten Regelung erreicht",
     "HVAC temperatuurgrens bereikt · aan/uit-sturing niet toegestaan": "HVAC-Temperaturgrenze erreicht · Ein/Aus-Steuerung nicht erlaubt",
     "HVAC wacht op temperatuurvraag na uitschakelgrens": "HVAC wartet nach Abschaltgrenze auf Temperaturbedarf",
-    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Heizen: aus bei Ziel + Abstand, wieder ein bei Ziel − Abstand. Kühlen: aus bei Ziel − Abstand, wieder ein bei Ziel + Abstand. Bei 0 °C gilt kein zusätzlicher Abstand. Schutzmaßnahmen, Regelintervalle und der Aus-Flow bleiben wirksam."
+    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Heizen: aus bei Ziel + Abstand, wieder ein bei Ziel − Abstand. Kühlen: aus bei Ziel − Abstand, wieder ein bei Ziel + Abstand. Bei 0 °C gilt kein zusätzlicher Abstand. Schutzmaßnahmen, Regelintervalle und der Aus-Flow bleiben wirksam.",
+    "Toch uitschakelen bij temperatuurgrens": "Bei einer Temperaturgrenze ausschalten",
+    "Temperatuurmarge (°C)": "Temperaturabstand (°C)",
+    "Zonder de extra temperatuurgrens schakelt HomeFlux niet uit omdat het doel bereikt is. Veiligheidsingrepen en de uit-Flow blijven gelden.": "Ohne zusätzliche Temperaturgrenze schaltet HomeFlux das Gerät beim Erreichen des Ziels nicht aus. Schutzmaßnahmen und der Aus-Flow bleiben wirksam."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Für Ladegeräte wie Smappee sendet HomeFlux Stop, Smart oder Standard. Da diese Schnittstelle keinen Teilstrom steuern kann, stoppt HomeFlux das Ladegerät, wenn Peak Guard die angeforderte Leistung begrenzen muss.",

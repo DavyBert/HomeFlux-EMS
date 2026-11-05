@@ -5573,7 +5573,10 @@
     "HVAC uit · temperatuurgrens bij permanent sturen bereikt": "HVAC arrêté · limite de température du pilotage permanent atteinte",
     "HVAC temperatuurgrens bereikt · aan/uit-sturing niet toegestaan": "Limite de température HVAC atteinte · commande marche/arrêt non autorisée",
     "HVAC wacht op temperatuurvraag na uitschakelgrens": "HVAC en attente d’une demande après la limite d’arrêt",
-    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Chauffage : arrêt à cible + marge, reprise à cible − marge. Refroidissement : arrêt à cible − marge, reprise à cible + marge. À 0 °C, aucune marge supplémentaire. Les protections, intervalles et le Flow d’arrêt restent actifs."
+    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Chauffage : arrêt à cible + marge, reprise à cible − marge. Refroidissement : arrêt à cible − marge, reprise à cible + marge. À 0 °C, aucune marge supplémentaire. Les protections, intervalles et le Flow d’arrêt restent actifs.",
+    "Toch uitschakelen bij temperatuurgrens": "Arrêter à une limite de température",
+    "Temperatuurmarge (°C)": "Marge de température (°C)",
+    "Zonder de extra temperatuurgrens schakelt HomeFlux niet uit omdat het doel bereikt is. Veiligheidsingrepen en de uit-Flow blijven gelden.": "Sans limite de température supplémentaire, HomeFlux n’arrête pas l’appareil lorsque la cible est atteinte. Les protections et le Flow d’arrêt restent actifs."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Pour les chargeurs tels que Smappee, HomeFlux envoie stop, smart ou standard. Comme cette interface ne peut pas commander un courant partiel, HomeFlux arrête le chargeur lorsque Peak Guard doit limiter la puissance demandée.",

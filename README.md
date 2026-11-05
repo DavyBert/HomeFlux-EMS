@@ -30,6 +30,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.27
+
+HVAC aanhouden en uitschakelen op temperatuur zijn afzonderlijke opties. De temperatuurgrens staat standaard uit; bij inschakelen verschijnt de marge met standaard 1 °C en symmetrische hysterese.
+
+Keeping HVAC on and switching off at a temperature limit are separate options. The limit is off by default; enabling it reveals a margin of 1 °C by default with symmetric hysteresis.
+
+Maintenir le HVAC allumé et l’arrêter à une limite de température sont deux options distinctes. La limite est désactivée par défaut ; son activation affiche une marge par défaut de 1 °C avec hystérésis symétrique.
+
+Mantener el HVAC encendido y apagarlo por temperatura son opciones separadas. El límite está desactivado por defecto; al activarlo aparece un margen predeterminado de 1 °C con histéresis simétrica.
+
+HVAC eingeschaltet lassen und temperaturabhängig ausschalten sind getrennte Optionen. Die Grenze ist standardmäßig aus; bei Aktivierung erscheint ein Abstand mit Standardwert 1 °C und symmetrischer Hysterese.
+
 ### 1.2.26
 
 Per HVAC kan permanent sturen het toestel ingeschakeld houden tot een instelbare temperatuurmarge voorbij het doel. Het HVAC-overzicht toont een icoon wanneer permanente sturing actief is.

@@ -39,6 +39,15 @@ ctx.loadCoordination([{AutomaticOffAction:'standby',StandbyTemperatureC:17}]);
 assert.equal(q('hvacAutomaticOffAction').value,'standby');assert.equal(q('hvacStandbyTemperatureC').value,17);
 assert.equal(q('hvac2AutomaticOffAction').value,'off','old/missing settings retain OFF');
 assert.equal(ctx.currentSettingValue('hvacCoordination')[0].AutomaticOffAction,'standby');
+// 1.2.27: the cutoff is opt-in, with 1 C for new/old-zero configurations.
+ctx.loadCoordination([]);
+for(let i=1;i<=10;i++){const stem='hvac'+(i===1?'':i);assert.equal(q(stem+'KeepOnLimitEnabled').checked,false);assert.equal(Number(q(stem+'KeepOnMarginC').value),1);}
+ctx.loadCoordination([{KeepOnEnabled:true,KeepOnMarginC:0}]);
+assert.equal(q('hvacKeepOnLimitEnabled').checked,false);assert.equal(Number(q('hvacKeepOnMarginC').value),1);
+ctx.loadCoordination([{KeepOnEnabled:true,KeepOnLimitEnabled:true,KeepOnMarginC:0}]);
+assert.equal(q('hvacKeepOnLimitEnabled').checked,true);assert.equal(Number(q('hvacKeepOnMarginC').value),0);
+assert.equal(ctx.currentSettingValue('hvacCoordination')[0].KeepOnLimitEnabled,true);
+assert.equal(ctx.currentSettingValue('hvacCoordination')[0].KeepOnMarginC,0);
 ctx.loadCoordination(options);
 q('hvac10StandbyTemperatureC').value='100';assert.throws(()=>ctx.currentSettingValue('hvacCoordination'),/5 en 99/);q('hvac10StandbyTemperatureC').value='';
 q('hvacDirectTariffEnabled').checked=false;q('hvac2DirectPvEnabled').checked=false;q('hvac5SharedPowerEnabled').checked=false;

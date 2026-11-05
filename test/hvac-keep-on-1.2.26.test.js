@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const native=Date.now;
 const {setup,cycle,clock}=require('./hvac-coordination-1.2.15.test');
 const H=require('../lib/hvac-permanent');
-async function config(a,index,enabled,margin){const s=a.getSettings().hvacCoordination;a.setSetting('hvacCoordination',s.map((v,i)=>i===index?{...v,KeepOnEnabled:enabled,KeepOnMarginC:margin}:v));}
+async function config(a,index,enabled,margin){const s=a.getSettings().hvacCoordination;a.setSetting('hvacCoordination',s.map((v,i)=>i===index?{...v,KeepOnEnabled:enabled,KeepOnLimitEnabled:true,KeepOnMarginC:margin}:v));}
 function room(a,index,value){if(!index)a.state.hvacRoomTemperatureC=value;else a.getExtraHvac(index).state.roomTemperatureC=value;}
 function prime(a,index,mode,target){const u=H.unit(a,index);Object.assign(u,{mode,setpoint:target,comfortMode:mode,powerOff:false,heat:300,cool:300});if(!index){a.lastPublishedHvacSetpoint=target;a.lastPublishedHvacMode=mode;a.lastPublishedHvacPower=true;a.state.hvacMode=mode;}else{const r=a.getExtraHvac(index);Object.assign(r,{lastPublishedSetpoint:target,lastPublishedMode:mode,lastPublishedPower:true});r.state.mode=mode;}}
 function tick(a){clock.set(clock.now()+360000);a.inputUpdatedAt.grid=clock.now();a.inputUpdatedAt.pv=clock.now();a.flexiblePriorityState.nextEvaluationAt=0;}

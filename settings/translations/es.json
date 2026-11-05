@@ -5573,7 +5573,10 @@
     "HVAC uit · temperatuurgrens bij permanent sturen bereikt": "HVAC apagado · límite de temperatura del control permanente alcanzado",
     "HVAC temperatuurgrens bereikt · aan/uit-sturing niet toegestaan": "Límite de temperatura HVAC alcanzado · control de encendido no permitido",
     "HVAC wacht op temperatuurvraag na uitschakelgrens": "HVAC en espera de demanda tras el límite de apagado",
-    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Calefacción: apagar a objetivo + margen y reactivar a objetivo − margen. Refrigeración: apagar a objetivo − margen y reactivar a objetivo + margen. Con 0 °C no hay margen adicional. Las protecciones, los intervalos y el Flow de apagado siguen activos."
+    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Calefacción: apagar a objetivo + margen y reactivar a objetivo − margen. Refrigeración: apagar a objetivo − margen y reactivar a objetivo + margen. Con 0 °C no hay margen adicional. Las protecciones, los intervalos y el Flow de apagado siguen activos.",
+    "Toch uitschakelen bij temperatuurgrens": "Apagar al alcanzar un límite de temperatura",
+    "Temperatuurmarge (°C)": "Margen de temperatura (°C)",
+    "Zonder de extra temperatuurgrens schakelt HomeFlux niet uit omdat het doel bereikt is. Veiligheidsingrepen en de uit-Flow blijven gelden.": "Sin el límite de temperatura adicional, HomeFlux no apaga el equipo al alcanzar el objetivo. Las protecciones y el Flow de apagado siguen activos."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Para cargadores como Smappee, HomeFlux envía parada, inteligente o estándar. Debido a que esta interfaz no puede ordenar una corriente parcial, HomeFlux detiene el cargador cuando Peak Guard necesita limitar la potencia solicitada.",

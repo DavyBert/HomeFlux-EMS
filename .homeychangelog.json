@@ -1,4 +1,11 @@
 {
+  "1.2.27": {
+    "nl": "HVAC aanhouden en uitschakelen op temperatuur zijn afzonderlijke opties. De temperatuurgrens staat standaard uit; bij inschakelen verschijnt de marge met standaard 1 °C en symmetrische hysterese.",
+    "en": "Keeping HVAC on and switching off at a temperature limit are separate options. The limit is off by default; enabling it reveals a margin of 1 °C by default with symmetric hysteresis.",
+    "fr": "Maintenir le HVAC allumé et l’arrêter à une limite de température sont deux options distinctes. La limite est désactivée par défaut ; son activation affiche une marge par défaut de 1 °C avec hystérésis symétrique.",
+    "es": "Mantener el HVAC encendido y apagarlo por temperatura son opciones separadas. El límite está desactivado por defecto; al activarlo aparece un margen predeterminado de 1 °C con histéresis simétrica.",
+    "de": "HVAC eingeschaltet lassen und temperaturabhängig ausschalten sind getrennte Optionen. Die Grenze ist standardmäßig aus; bei Aktivierung erscheint ein Abstand mit Standardwert 1 °C und symmetrischer Hysterese."
+  },
   "1.2.26": {
     "nl": "Per HVAC kan permanent sturen het toestel ingeschakeld houden tot een instelbare temperatuurmarge voorbij het doel. Het HVAC-overzicht toont een icoon wanneer permanente sturing actief is.",
     "en": "Permanent control can keep each HVAC on until a configurable temperature margin beyond its target. The HVAC summary shows an icon when permanent control is active.",
