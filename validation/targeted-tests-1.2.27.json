@@ -1,0 +1,28 @@
+{
+  "version": "1.2.27",
+  "baseline": "Latest full Library version 12, HomeFlux EMS 1.2.26",
+  "changes": [
+    "Separate KeepOnLimitEnabled checkbox, default false; keeping ON alone does not stop on target",
+    "New cutoff margin defaults to 1 C; old zero becomes 1 on UI load only when the new cutoff checkbox has never been saved; explicit new zero remains zero",
+    "Enabled cutoff retains symmetric heating/cooling hysteresis; safety and explicit OFF remain in force"
+  ],
+  "newScenarioGroupsPassed": 10,
+  "existingKeepOnScenarioGroupsPassed": 13,
+  "existingSuitesPassed": [
+    "hvac-comfort-1.2.21",
+    "hvac-permanent-1.2.7",
+    "hvac-coordination-1.2.15",
+    "hvac-budget-1.2.25",
+    "hvac-flow-1.2.22",
+    "hvac-ui-1.2.7",
+    "hvac-presentation-1.2.23",
+    "settings-startup",
+    "widget",
+    "settings-translations",
+    "localization-1.2.18"
+  ],
+  "additionalValidation": "Actual settings load/save and field visibility tested; syntax and all JSON valid; existing translation keys/placeholders retained",
+  "sourceCompatibility": "Flow cards, deprecated cards, app.js, widgets, other algorithm libraries and store descriptions unchanged",
+  "skipped": "Full suite and independent battery/EV/PV/planning suites; no changes in those algorithms",
+  "limitations": "No physical Homey test. Keeping ON remains subject to existing safety, permissions, budget and command intervals. No new polling or runtime timers."
+}

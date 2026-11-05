@@ -1083,6 +1083,7 @@
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('width','14');svg.setAttribute('height','14');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.8');svg.style.verticalAlign='middle';svg.setAttribute('aria-label',kind);
         svg.setAttribute('class',`hvac-summary-icon-${kind}`);
         const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',{
+          permanent:'M20 7 A9 9 0 1 0 21 15 M20 2 V7 H15',
           heat:'M12 3 C13 8 19 9 18 15 C18 23 5 23 5 15 C5 11 9 8 9 7 C9 11 12 11 12 3 Z',
           cool:'M12 2 V22 M3 7 L21 17 M3 17 L21 7 M9 4 L12 7 L15 4 M9 20 L12 17 L15 20',
           sun:'M12 3 V1 M12 23 V21 M3 12 H1 M23 12 H21 M4 4 L6 6 M18 18 L20 20 M4 20 L6 18 M18 6 L20 4 M17 12 A5 5 0 1 1 7 12 A5 5 0 1 1 17 12',
@@ -1112,6 +1113,7 @@
             const pv=h.energySource==='pv'&&!waiting&&demand&&h.enabled&&h.automaticControlEnabled!==false&&h.outputPowerOn!==false;
             const nameLine=document.createElement('div');nameLine.className='hvac-summary-name';
             const nameText=document.createElement('span');nameText.className='hvac-summary-name-text';nameText.textContent=String(h.name||'HVAC');nameLine.appendChild(nameText);
+            if(h.permanentControlEnabled&&h.enabled&&h.automaticControlEnabled!==false){const icon=hvacSummaryIcon('permanent');icon.setAttribute('aria-label',tr(Homey,'widget.status.hvacPermanentActive','Permanent control active'));nameLine.appendChild(icon);}
             if(['heat','cool'].includes(mode))nameLine.appendChild(hvacSummaryIcon(mode));
             if(pv)nameLine.appendChild(hvacSummaryIcon('sun'));if(waiting)nameLine.appendChild(hvacSummaryIcon('wait'));name.appendChild(nameLine);
             name.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap';

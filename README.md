@@ -30,6 +30,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.26
+
+Per HVAC kan permanent sturen het toestel ingeschakeld houden tot een instelbare temperatuurmarge voorbij het doel. Het HVAC-overzicht toont een icoon wanneer permanente sturing actief is.
+
+Permanent control can keep each HVAC on until a configurable temperature margin beyond its target. The HVAC summary shows an icon when permanent control is active.
+
+Le pilotage permanent peut maintenir chaque HVAC allumé jusqu’à une marge réglable au-delà de sa cible. L’aperçu indique le pilotage permanent actif par une icône.
+
+El control permanente puede mantener cada HVAC encendido hasta un margen ajustable más allá del objetivo. El resumen muestra un icono cuando está activo.
+
+Die permanente Regelung kann jedes HVAC-Gerät bis zu einem einstellbaren Abstand über das Temperaturziel hinaus eingeschaltet lassen. Ein Symbol zeigt die aktive permanente Regelung.
+
 ### 1.2.25
 
 Het gezamenlijke HVAC-vermogensbudget telt uitsluitend HVAC-belasting, met één reservering per gedeelde installatie. Comfort- en tariefsturing kunnen zonder PV starten en hervatten zodra budget vrijkomt. Duidelijkere wachtredenen en gerichte afbouw; stappen van 0,5 °C gelden alleen voor normale permanente comfortsturing, met behoud van ingestelde tariefdoelen.

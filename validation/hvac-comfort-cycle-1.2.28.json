@@ -1,0 +1,53 @@
+{
+  "version": "1.2.28",
+  "scope": [
+    "app.js: existing HVAC evaluation/publication integration",
+    "lib/hvac-permanent.js: transient per-device first-target state and cleanup",
+    "lib/hvac-coordination.js: narrow Peak Guard OFF exception for active comfort cycles during charging"
+  ],
+  "passed_existing_suites": [
+    "hvac-comfort-1.2.21",
+    "hvac-permanent-1.2.7",
+    "hvac-coordination-1.2.15",
+    "hvac-budget-1.2.25",
+    "hvac-flow-1.2.22",
+    "hvac-keep-on-1.2.26",
+    "hvac-keep-on-1.2.27",
+    "flexible-loads",
+    "multi-flexible-loads"
+  ],
+  "passed_new_suite": "hvac-comfort-cycle-1.2.28",
+  "new_scenario_groups": 14,
+  "syntax": [
+    "app.js",
+    "lib/hvac-permanent.js",
+    "lib/hvac-coordination.js",
+    "test/hvac-comfort-cycle-1.2.28.test.js"
+  ],
+  "behavior": [
+    "Heating and cooling retain first-target ownership only after successful output",
+    "Target reached remains latched if OFF is superseded before publication",
+    "Fresh cycle on next eligible start; per-device state and rounded target",
+    "PV, tariff, periodic, learning, Flow and external setpoint/mode takeovers clear ownership",
+    "No protection from partial or failed starts",
+    "Peak Guard does not stop an acknowledged standard comfort session before its first target while charging",
+    "No new-start exemption; adequate headroom still permits ordinary starts",
+    "Discharging, idle and pending/effective discharge do not get the exception",
+    "Stale grid, outdoor OFF, explicit Flow stop and HVAC budget retain priority",
+    "Other HVACs and tariff/15-minute PV control retain ordinary behavior",
+    "No added timers or evaluations",
+    "Missing room input never grants a Peak Guard exception"
+  ],
+  "limitations": [
+    "Battery charge direction is inferred from existing successfully published internal battery commands and the current/effective next command, not a new physical battery-power measurement.",
+    "No real Homey installation or physical battery/HVAC measurement.",
+    "The protection is transient and not restored from storage after restart."
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent battery/phase/EV/boiler/AutoTune/planning suites; their algorithms were not changed",
+    "UI/localization regression suites; no UI strings/settings/Flows changed"
+  ],
+  "existing_tests_modified": false,
+  "new_polling_timers_listeners": false
+}

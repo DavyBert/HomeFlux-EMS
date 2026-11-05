@@ -1,0 +1,17 @@
+{
+  "version": "1.2.28",
+  "scope": "Direction-test validity and settings-page missing POST response handling",
+  "validated": [
+    "Phase1->3 preserves completed direction test",
+    "Identical count/inversion/Split writes preserve validation",
+    "Real inversion/count changes invalidate validation",
+    "Actual API charge/discharge/negative confirmation lifecycle",
+    "Missing POST body verified using one GET, never repeat a physical command",
+    "Inline JS syntax,JSON,settings startup,phase UI,battery response and phase detection"
+  ],
+  "skipped": [
+    "Full suite",
+    "Independent engine/planning/EV/HVAC/boiler suites"
+  ],
+  "limitation": "The reported browser transport returned no body; its underlying platform cause was not reproduced locally. Server API returned correct results in the harness. UI now verifies actual server state for absent bodies."
+}

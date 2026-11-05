@@ -1,0 +1,84 @@
+{
+  "title": {
+    "nl": "Stel netvermogen en fasevermogens in",
+    "en": "Set grid and phase powers",
+    "fr": "Définir les puissances réseau et phases",
+    "es": "Establecer potencias de red y fases",
+    "de": "Netz- und Phasenleistungen setzen"
+  },
+  "hint": {
+    "nl": "Positief = import, negatief = export. Fasen zijn optioneel.",
+    "en": "Positive = import, negative = export. Phases are optional.",
+    "fr": "Positif = import, négatif = export. Phases facultatives.",
+    "es": "Positivo = importación, negativo = exportación. Fases opcionales.",
+    "de": "Positiv = Bezug, negativ = Einspeisung. Phasen optional."
+  },
+  "titleFormatted": {
+    "nl": "Stel netvermogen en fasevermogens in [[power]] W · L1 [[l1]] W · L2 [[l2]] W · L3 [[l3]] W",
+    "en": "Set grid and phase powers [[power]] W · L1 [[l1]] W · L2 [[l2]] W · L3 [[l3]] W",
+    "fr": "Définir les puissances réseau et phases [[power]] W · L1 [[l1]] W · L2 [[l2]] W · L3 [[l3]] W",
+    "es": "Establecer potencias de red y fases [[power]] W · L1 [[l1]] W · L2 [[l2]] W · L3 [[l3]] W",
+    "de": "Netz- und Phasenleistungen setzen [[power]] W · L1 [[l1]] W · L2 [[l2]] W · L3 [[l3]] W"
+  },
+  "args": [
+    {
+      "name": "power",
+      "type": "number",
+      "title": {
+        "en": "Grid power (W)",
+        "nl": "Netvermogen (W)",
+        "fr": "Puissance du réseau (W)",
+        "es": "Potencia de red (W)",
+        "de": "Netzleistung (W)"
+      },
+      "min": -200000,
+      "max": 200000,
+      "step": 1
+    },
+    {
+      "name": "l1",
+      "type": "number",
+      "required": false,
+      "title": {
+        "nl": "L1 (W)",
+        "en": "L1 (W)",
+        "fr": "L1 (W)",
+        "es": "L1 (W)",
+        "de": "L1 (W)"
+      },
+      "min": -200000,
+      "max": 200000,
+      "step": 1
+    },
+    {
+      "name": "l2",
+      "type": "number",
+      "required": false,
+      "title": {
+        "nl": "L2 (W)",
+        "en": "L2 (W)",
+        "fr": "L2 (W)",
+        "es": "L2 (W)",
+        "de": "L2 (W)"
+      },
+      "min": -200000,
+      "max": 200000,
+      "step": 1
+    },
+    {
+      "name": "l3",
+      "type": "number",
+      "required": false,
+      "title": {
+        "nl": "L3 (W)",
+        "en": "L3 (W)",
+        "fr": "L3 (W)",
+        "es": "L3 (W)",
+        "de": "L3 (W)"
+      },
+      "min": -200000,
+      "max": 200000,
+      "step": 1
+    }
+  ]
+}

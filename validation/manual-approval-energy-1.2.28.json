@@ -1,0 +1,52 @@
+{
+  "version": "1.2.28",
+  "changes": [
+    ".homeychangelog.json",
+    ".homeycompose/app.json",
+    "README.md",
+    "api.js",
+    "app.js",
+    "app.json",
+    "lib/widget-energy-budget.js",
+    "package.json",
+    "settings/index.html",
+    "settings/translations/de.json",
+    "settings/translations/en.json",
+    "settings/translations/es.json",
+    "settings/translations/fr.json",
+    "settings/translations/nl.json",
+    "test/direction-busy-1.2.28.test.js"
+  ],
+  "manualApproval": "Authenticated POST requires explicit confirmed:true. UI offers declaration and confirmation; cancel makes no changes. Idle approval sends no test pulse; a running direction test receives its normal zero cleanup first. Validates current signature, stores distinct manual approval metadata, enables output and resumes existing scheduler after releasing operation lock. Busy publisher/response test remains protected. Restart preserves manual approval; meaningful config changes invalidate it.",
+  "energyRange": "0..5000 kWh daily planning demand. Planner already accepts180 and keeps actual capacity,SoC and power limits. AutoTune hard ceiling increased; obsolete non-user-defined default range adapts to a raised current demand, custom user ranges remain. WAF retains high-demand measured days rather than dropping them above100 kWh.",
+  "passed": [
+    "app-control",
+    "direction-phase-1.2.28",
+    "direction-busy-1.2.28",
+    "direction-notice-1.2.28",
+    "phase-ui-1.2.28",
+    "phase-live-1.2.28",
+    "settings-startup",
+    "settings-runtime-audit",
+    "localization-1.2.18",
+    "autotune",
+    "autotune-planning-1.2.28",
+    "widget-insights-1.2.1",
+    "waf-continuity-1.2.3",
+    "charge-strategy-control-1.2.12",
+    "engine",
+    "manual-approval-1.2.28",
+    "energy-range-1.2.28",
+    "changed JS/inline settings syntax and all JSON"
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent EV/HVAC/boiler/price-source suites",
+    "Physical Homey/Flow measurements"
+  ],
+  "risks": [
+    "Manual approval is a user declaration, not measured physical direction validation.",
+    "Existing output ownership, pauses, availability and safety limits still govern actual commands."
+  ],
+  "reference": "https://apps.developer.homey.app/advanced/custom-views/app-settings"
+}

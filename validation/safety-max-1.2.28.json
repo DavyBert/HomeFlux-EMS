@@ -1,0 +1,42 @@
+{
+  "version": "1.2.28",
+  "scope": "Safety-SoC recovery at full admissible power",
+  "changedFiles": [
+    ".homeychangelog.json",
+    "README.md",
+    "lib/ems-engine.js",
+    "lib/phase-guard.js",
+    "package.json"
+  ],
+  "behaviour": "Existing auto-mode Safety-SoC activation is unchanged. While active, plannedChargeFeedback requests totalMaxCharge instead of proportional shortfall power. Existing allocation/Peak Guard remain authoritative. Phase guard skips its optional100 W recovery ramp only during Safety-SoC recovery, retaining fresh/stale phase envelope and individual/total limits. No timers, polling or new evaluation cycle.",
+  "passed": [
+    "engine",
+    "app-control",
+    "regressions-0.9.2",
+    "regressions-0.9.5",
+    "planning-limits-1.0.7",
+    "charge-strategy-control-1.2.12",
+    "import-avoidance-1.2.17",
+    "peak-guard-all-modes-1.2.11",
+    "context-refresh-1.0.10",
+    "phase-guard-1.2.28",
+    "phase-output-1.2.28",
+    "phase-recovery-1.2.28",
+    "cpu-coalescing-1.2.13",
+    "blocked-feedback-1.2.10",
+    "multi-flexible-loads",
+    "night-forecast-1.1.4",
+    "features-1.2.6",
+    "charge-margin-1.2.23",
+    "settings-startup",
+    "safety-max-1.2.28"
+  ],
+  "newCoverage": "16 engine/phase cases plus real app context/phase/publication showing6000 W recovery; reached target, all contract types, missing prices/SoC, individual limits, Peak Guard cap/overload, fresh/stale phase data, Standby preservation.",
+  "syntaxJson": true,
+  "skipped": [
+    "Full regression suite",
+    "Independent EV/HVAC/boiler/AutoTune/savings suites",
+    "Physical battery and Homey measurements"
+  ],
+  "remainingLimits": "Actual battery power is determined by BMS and Flow response; real hardware latency/overshoot has not been measured. Existing deliberate pauses, manual overrides and output ownership remain in force."
+}

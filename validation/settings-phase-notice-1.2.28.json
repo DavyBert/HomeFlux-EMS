@@ -1,0 +1,23 @@
+{
+  "version": "1.2.28",
+  "changes": [
+    "A genuine battery configuration invalidation exposes an explicit code to settings UI; popup once until a new test is passed, no popup for phase selection or identical config.",
+    "Live settings shows fresh L1/L2/L3 power and configured phase limit; numeric over-limit readings are red. Missing/stale readings show dash and never stale alarms."
+  ],
+  "passed": [
+    "direction-notice-1.2.28",
+    "direction-busy-1.2.28",
+    "direction-phase-1.2.28",
+    "phase-ui-1.2.28",
+    "phase-live-1.2.28",
+    "settings-startup",
+    "localization-1.2.18",
+    "changed JavaScript and inline script syntax; JSON parsing"
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent engine/EV/HVAC/planning/boiler suites",
+    "Physical Homey tests"
+  ],
+  "limits": "Uses existing UI status refresh cadence; no polling, listener or timer added. UI colour is an indication, not physical electrical protection."
+}

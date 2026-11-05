@@ -2024,7 +2024,14 @@
     "HVAC-vermogensbudget overschreden · wachten op afbouw": "HVAC power budget exceeded · waiting for reduction",
     "HVAC-vermogensbudget · comfortsturing 0,5 °C afbouwen": "HVAC power budget · reduce comfort control by 0.5 °C",
     "HVAC-vermogensbudget overschreden · HVAC uitschakelen": "HVAC power budget exceeded · switch HVAC off",
-    "HVAC-vermogensbudget overschreden · afbouw niet toegestaan": "HVAC power budget exceeded · reduction not permitted"
+    "HVAC-vermogensbudget overschreden · afbouw niet toegestaan": "HVAC power budget exceeded · reduction not permitted",
+    "Tijdens permanent sturen toestel ingeschakeld houden": "Keep device on during permanent control",
+    "Toch uitschakelen bij overschrijding doeltemperatuur (°C)": "Switch off beyond target temperature margin (°C)",
+    "Verwarmen: uit vanaf doel + marge. Koelen: uit vanaf doel − marge. Bij 0 °C mag het toestel op het doel uitschakelen. Veiligheidsingrepen en de uit-Flow blijven gelden.": "Heating: off at target + margin. Cooling: off at target − margin. At 0 °C, the device may switch off at target. Safety interventions and the off Flow remain effective.",
+    "HVAC uit · temperatuurgrens bij permanent sturen bereikt": "HVAC off · permanent-control temperature limit reached",
+    "HVAC temperatuurgrens bereikt · aan/uit-sturing niet toegestaan": "HVAC temperature limit reached · power control not permitted",
+    "HVAC wacht op temperatuurvraag na uitschakelgrens": "HVAC waiting for temperature demand after cutoff",
+    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Heating: off at target + margin, back on at target − margin. Cooling: off at target − margin, back on at target + margin. At 0 °C there is no extra margin. Safety interventions, control intervals and the off Flow remain effective."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

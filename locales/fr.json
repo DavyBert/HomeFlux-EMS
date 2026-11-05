@@ -293,7 +293,8 @@
       "reasonPeakLimited": "Peak Guard ne peut pas demander davantage d’aide de la batterie dans les limites actives",
       "reasonChargeDeferred": "Réserve de batterie préservée, recharge prévue plus tard.",
       "evPeakGuardLimited": "Charge limitée par Peak Guard",
-      "hvacTarget": "Cible"
+      "hvacTarget": "Cible",
+      "hvacPermanentActive": "Pilotage permanent actif"
     }
   },
   "evWidget": {

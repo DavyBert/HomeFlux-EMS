@@ -1,0 +1,131 @@
+{
+  "version": "1.2.28",
+  "baselineSha256": "e301656c71da84d717a5555343612fa92a44d46189362b2cc34b67566abb1e36",
+  "changes": [
+    ".homeychangelog.json",
+    "README.md",
+    "app.js",
+    "lib/ems-engine.js",
+    "lib/phase-guard.js",
+    "package.json",
+    "settings/translations/de.json",
+    "settings/translations/en.json",
+    "settings/translations/es.json",
+    "settings/translations/fr.json",
+    "settings/translations/nl.json",
+    "test/phase-guard-1.2.28.test.js"
+  ],
+  "targetedSuitesPassed": [
+    "phase-recovery-1.2.28",
+    "phase-guard-1.2.28",
+    "phase-output-1.2.28",
+    "phase-detection-1.2.28",
+    "phase-ui-1.2.28",
+    "engine",
+    "app-control",
+    "performance-split-loop",
+    "cpu-coalescing-1.2.13",
+    "battery-response-1.2.19",
+    "battery-settings-isolation-1.2.8",
+    "battery-power-1.2.2",
+    "peak-guard-all-modes-1.2.11",
+    "charge-strategy-1.2.12",
+    "charge-strategy-control-1.2.12",
+    "charge-margin-1.2.23",
+    "output-tests",
+    "multi-flexible-loads",
+    "ev-grid-budget-1.2.13",
+    "ev-battery-transition-1.1.9",
+    "split-resend-seconds-1.1.10",
+    "settings-startup",
+    "settings-runtime-audit",
+    "settings-translations",
+    "settings-cache-1.0.12",
+    "localization-1.2.18",
+    "flow-slot-cards",
+    "hvac-ui-1.2.7",
+    "input-warnings-1.2.12",
+    "pv-source-1.1.1",
+    "input-monitor-1.1.14",
+    "fast-control-audit-1.0.6",
+    "import-avoidance-1.2.17"
+  ],
+  "focusedNewScenarios": 11,
+  "comparison": [
+    {
+      "variant": "original",
+      "p1Updates": 30,
+      "fastEvaluations": 30,
+      "publications": 0,
+      "contextCalculations": 0,
+      "phaseFullAllocatorCalls": 30,
+      "finalCommands": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "variant": "corrected",
+      "p1Updates": 30,
+      "fastEvaluations": 5,
+      "publications": 5,
+      "contextCalculations": 0,
+      "phaseFullAllocatorCalls": 0,
+      "finalCommands": [
+        -500,
+        -500,
+        -500,
+        -500
+      ]
+    }
+  ],
+  "hostBenchmark": {
+    "measurement": "host process CPU ms, phase envelope only;15000 calls per round,3000 warm-up, alternating order",
+    "rounds": [
+      [
+        315.234,
+        181.205,
+        175.774,
+        195.617,
+        115.231,
+        86.483,
+        99.893
+      ],
+      [
+        192.29,
+        120.737,
+        73.242,
+        72.446,
+        73.004,
+        66.923,
+        62.303
+      ]
+    ],
+    "fullAllocatorCalls": [
+      105000,
+      0
+    ],
+    "homeyMeasurements": false
+  },
+  "hostMedianCpuMs": [
+    175.774,
+    73.004
+  ],
+  "measurementLimits": "Function-level host CPU only, with substantial JIT variation. Not whole-app CPU or Homey measurements.",
+  "behaviour": "Only successfully completed battery publications advance growth timing. Attempt timing throttles recovery requests independently. Small bounded recovery steps bypass ordinary command deadband but retain publication interval. Final safety checks retain outstanding recovery demand. Shared engine maxima replace synthetic full allocation. Split rechecks current limits/SoC/phase data after I/O; failed batches wait for all pending writes and do not commit a full command. Failed publication marks phase charge accounting uncertain until successful output.",
+  "syntaxAndJson": true,
+  "homeyDebugValidation": true,
+  "testsExcludedFromActualHomeyPackage": true,
+  "skipped": [
+    "Full regression suite",
+    "Independent AutoTune/EV-deadline/HVAC/COP/boiler/savings suites",
+    "Physical Homey and hardware measurements"
+  ],
+  "risks": [
+    "No separate physical battery power confirmation; zero-power support and physical phase wiring remain prerequisites.",
+    "A partial hardware publication cannot be rolled back; accounting is marked uncertain and charging falls back conservatively during existing evaluations.",
+    "Existing ownership locks and deliberate battery command pauses remain in force."
+  ]
+}

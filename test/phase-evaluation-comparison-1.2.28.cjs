@@ -1,0 +1,9 @@
+'use strict';
+const path=require('node:path'),{setup,installVirtualClearTimeout}=require('./pv-source-harness');const orig=Date.now,restore=installVirtualClearTimeout();
+(async()=>{const rows=[];for(const root of [path.resolve(process.argv[2]),path.resolve(__dirname,'..')]){
+ const P=require(path.join(root,'lib/phase-guard'));const h=await setup(root,{forcedMode:'manual_charge',manualChargeW:1000,commandDeadbandW:1000,exportLimitEnabled:false,phaseGuard:{...P.defaults,enabled:true,phases:3,voltage:230,amps:25,limitW:4500,batteries:Array(8).fill('L1')}},Date.UTC(2026,10,4,12),0),a=h.app;
+ await h.start();await h.flush();a.requestContextEvaluate=()=>{};a.lastEmittedCommands=[0,0,0,0];a.state.lastTotalCommandW=0;a.lastEmittedMode=a.latestResult.baseMode;a.lastEmittedOverride=a.latestResult.override||'';a.phaseGuardStatus={limited:true};a.lastEmitAt=0;a.nextCommandAllowedAt=0;
+ let fast=0,pub=0,allocator=0;const engine=require(path.join(root,'lib/ems-engine')),allocate=engine.distributeCommand;engine.distributeCommand=(...args)=>{allocator++;return allocate(...args);};const initialContexts=h.contexts.length;const fn=a.evaluateFastNow.bind(a);a.evaluateFastNow=(...x)=>{fast++;return fn(...x);};a.commandTrigger.trigger=async()=>{pub++;};
+ for(let i=0;i<30;i++){h.setNow(h.now()+1000);a.inputUpdatedAt.pv=h.now();await h.cards.get('set_grid_power_phases').listener({power:0,l1:0,l2:0,l3:0});await h.drain();await h.flush();}
+ rows.push({variant:root===path.resolve(process.argv[2])?'original':'corrected',p1Updates:30,fastEvaluations:fast,publications:pub,contextCalculations:h.contexts.length-initialContexts,phaseFullAllocatorCalls:allocator,finalCommands:a.lastEmittedCommands});
+ }console.log(JSON.stringify(rows,null,2));})().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{Date.now=orig;restore();});

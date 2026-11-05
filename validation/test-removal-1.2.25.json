@@ -1,0 +1,16 @@
+{
+  "version": "1.2.25",
+  "removedAtUserRequest": [
+    "test/configured-flow-cards.test.js",
+    "test/independent-ev-1.1.5.test.js",
+    "test/ev-work-1.1.15.test.js",
+    "test/planning-monitor-1.1.16.test.js",
+    "test/ev-emergency-presentation-1.2.4.test.js",
+    "test/regressions-0.9.6.test.js"
+  ],
+  "applicationCodeChanged": false,
+  "remainingSuitesPreviouslyPassed": 121,
+  "rerun": false,
+  "reason": "Only test files and script references removed; successful independent tests not repeated",
+  "coverageRisk": "Removed scenarios no longer provide regression coverage; underlying failures have not been repaired"
+}

@@ -1,0 +1,35 @@
+{
+  "version": "1.2.28",
+  "cause": "Concurrent confirmation during an unfinished publication could enter cleanup for an operation it did not own and erase awaiting-confirmation state. Settings-page refresh could re-enable buttons during the pending POST. Missing POST bodies could expose the initial pre-start busy state.",
+  "correction": "Serialize manual direction-test operations; mark publication busy in existing status; gate buttons during POST/server publication; wait for actual completion. Expose existing fixed Split1s ready timestamp, no new timer. Treat an initially busy server as pending, not as no test started.",
+  "minimumSwitchHold": "Manual direction test already bypasses configured minimum mode holds; fixed mode-to-power delay remains1s.",
+  "passed": [
+    "direction-busy-1.2.28",
+    "direction-phase-1.2.28",
+    "app-control",
+    "phase-ui-1.2.28",
+    "settings-startup",
+    "localization-1.2.18",
+    "battery-response-1.2.19",
+    "phase-detection-1.2.28",
+    "Changed JavaScript and inline settings-script syntax; all JSON parsed"
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent battery planning/EV/HVAC/boiler/AutoTune suites",
+    "Physical Homey/Flow integration tests"
+  ],
+  "limits": "A long or failing external Flow publication may still take time or return an error; UI now preserves ownership/state. Existing status refresh cadence determines countdown visibility.",
+  "changedFiles": [
+    ".homeychangelog.json",
+    "README.md",
+    "app.js",
+    "package.json",
+    "settings/index.html",
+    "settings/translations/de.json",
+    "settings/translations/en.json",
+    "settings/translations/es.json",
+    "settings/translations/fr.json",
+    "settings/translations/nl.json"
+  ]
+}

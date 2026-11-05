@@ -1,0 +1,26 @@
+{
+  "version": "1.2.26",
+  "baseline": "Library version 11: full 1.2.25 with six tests already removed by request",
+  "newScenariosPassed": 13,
+  "existingSuitesPassed": [
+    "hvac-comfort-1.2.21",
+    "hvac-permanent-1.2.7",
+    "hvac-coordination-1.2.15",
+    "hvac-budget-1.2.25",
+    "hvac-flow-1.2.22",
+    "hvac-presentation-1.2.23",
+    "hvac-ui-1.2.7",
+    "settings-startup",
+    "widget",
+    "settings-translations",
+    "localization-1.2.18"
+  ],
+  "syntaxInlineScripts": 9,
+  "allJsonValid": true,
+  "scope": "Per-HVAC optional KeepOnEnabled / KeepOnMarginC in existing coordination settings; symmetric heating/cooling hysteresis and widget permanent icon",
+  "runtimeCyclesAdded": false,
+  "untouched": "Battery/EV/PV/planning algorithms, Flow cards and website descriptions",
+  "otherModes": "Non-permanent PV still restores baseline after reaching target or losing energy; quarter-hour is an interval or tariff cadence, not a separate HVAC controller. No changes to non-permanent mode pending user choice.",
+  "skipped": "Independent EV/battery/boiler/planner suites and full regression suite; no physical Homey test",
+  "limitations": "Reactivation uses existing regular evaluations, priority, minimum intervals, budget and safety gates; safety/explicit OFF may override keeping ON; periodical/manual learning paths excluded"
+}

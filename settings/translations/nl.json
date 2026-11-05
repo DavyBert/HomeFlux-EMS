@@ -86,7 +86,14 @@
     "HVAC-vermogensbudget overschreden · wachten op afbouw": "HVAC-vermogensbudget overschreden · wachten op afbouw",
     "HVAC-vermogensbudget · comfortsturing 0,5 °C afbouwen": "HVAC-vermogensbudget · comfortsturing 0,5 °C afbouwen",
     "HVAC-vermogensbudget overschreden · HVAC uitschakelen": "HVAC-vermogensbudget overschreden · HVAC uitschakelen",
-    "HVAC-vermogensbudget overschreden · afbouw niet toegestaan": "HVAC-vermogensbudget overschreden · afbouw niet toegestaan"
+    "HVAC-vermogensbudget overschreden · afbouw niet toegestaan": "HVAC-vermogensbudget overschreden · afbouw niet toegestaan",
+    "Tijdens permanent sturen toestel ingeschakeld houden": "Tijdens permanent sturen toestel ingeschakeld houden",
+    "Toch uitschakelen bij overschrijding doeltemperatuur (°C)": "Toch uitschakelen bij overschrijding doeltemperatuur (°C)",
+    "Verwarmen: uit vanaf doel + marge. Koelen: uit vanaf doel − marge. Bij 0 °C mag het toestel op het doel uitschakelen. Veiligheidsingrepen en de uit-Flow blijven gelden.": "Verwarmen: uit vanaf doel + marge. Koelen: uit vanaf doel − marge. Bij 0 °C mag het toestel op het doel uitschakelen. Veiligheidsingrepen en de uit-Flow blijven gelden.",
+    "HVAC uit · temperatuurgrens bij permanent sturen bereikt": "HVAC uit · temperatuurgrens bij permanent sturen bereikt",
+    "HVAC temperatuurgrens bereikt · aan/uit-sturing niet toegestaan": "HVAC temperatuurgrens bereikt · aan/uit-sturing niet toegestaan",
+    "HVAC wacht op temperatuurvraag na uitschakelgrens": "HVAC wacht op temperatuurvraag na uitschakelgrens",
+    "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden.": "Verwarmen: uit vanaf doel + marge, terug aan vanaf doel − marge. Koelen: uit vanaf doel − marge, terug aan vanaf doel + marge. Bij 0 °C geldt geen extra marge. Veiligheidsingrepen, regelintervallen en de uit-Flow blijven gelden."
   },
   "phrases": {},
   "strings": {

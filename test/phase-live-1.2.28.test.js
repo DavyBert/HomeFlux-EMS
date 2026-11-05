@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const html=fs.readFileSync('settings/index.html','utf8'),a=html.indexOf('  function renderLivePhases('),b=html.indexOf('  function notifyChargeTestRequirement(',a),nodes=new Map();
+const q=id=>{if(!nodes.has(id))nodes.set(id,{value:'3',classList:{toggle(k,v){this[k]=v;}}});return nodes.get(id);};const ctx=vm.createContext({q,translateUiText:x=>x});vm.runInContext(html.slice(a,b),ctx);
+const now=100000;ctx.renderLivePhases({limitW:4500,values:[{watts:4400,at:now},{watts:5600,at:now},{watts:-200,at:now}]},now);
+assert.equal(q('livePhase1Power').textContent,'4400 W');assert.equal(q('livePhase2Power').classList['phase-over-limit'],true);assert.equal(q('livePhase3Power').classList['phase-over-limit'],false);assert.equal(q('livePhase3Power').textContent,'-200 W');
+ctx.renderLivePhases({limitW:4500,values:[{watts:4500,at:now},{watts:null,at:now},{watts:5600,at:now-15001}]},now);assert.equal(q('livePhase1Power').classList['phase-over-limit'],false);assert.equal(q('livePhase2Power').textContent,'—');assert.equal(q('livePhase3Power').classList['phase-over-limit'],false);assert.equal(q('livePhase3Power').textContent,'—');
+ctx.renderLivePhases({values:[{watts:5600,at:now}]},now);assert.equal(q('livePhase1Power').classList['phase-over-limit'],false,'no fabricated limit');q('gridConnectionPhases').value='1';ctx.renderLivePhases({values:[]},now);assert(q('livePhase1Card').classList.hidden);
+for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g))if(!/src=/.test(m[1]))new vm.Script(m[2]);
+console.log('Live phases: separate values, numeric threshold, negative export, stale/missing data, no-limit and single-phase display passed.');

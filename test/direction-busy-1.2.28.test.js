@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');const {boot,DEFAULTS}=require('./startup-harness');
+const drain=async()=>{for(let i=0;i<120;i++)await Promise.resolve();};
+(async()=>{
+ const h=await boot(new Map(Object.entries({...DEFAULTS,batteryCount:1,controlEnabled:false,settingsSchemaVersion:70,splitCommandBattery1Enabled:true,splitCommandBattery1MinBetweenSwitchSeconds:3600,splitCommandBattery1ChargeMinSwitchSeconds:3600,splitCommandBattery1ZeroMode:'discharge'}))),a=h.app;a.homey.app=a;
+ let release;a.waitSplitPowerDelay=()=>new Promise(r=>{release=r;});const api=require('../api');const args={homey:a.homey};
+ const start=api.startChargeTest(args);await drain();assert.equal(a.chargeTestOperationRunning,true);assert.equal(a.getPublicStatus().chargeTest.busy,true);assert(a.chargeTestSplitReadyAt>0);
+ await assert.rejects(()=>api.startChargeTest(args),/published|gepubliceerd/);await assert.rejects(()=>api.confirmChargeTest({...args,body:{ok:true}}),/published|gepubliceerd/);assert.equal(a.chargeTestAwaitingConfirmation,true);assert.equal(a.chargeTestStage,'charge');release();assert.equal((await start).stage,'charge');assert.equal(a.chargeTestOperationRunning,false);
+ release=null;const confirm=api.confirmChargeTest({...args,body:{ok:true}});await drain();assert.equal(a.splitCommandState[0].currentMode,'discharge','manual direction test bypasses3600-second minimum mode hold');assert.equal(typeof release,'function','only fixed Split delay remains');assert(a.chargeTestSplitReadyAt-Date.now()<=1000);
+ await assert.rejects(()=>api.confirmChargeTest({...args,body:{ok:false}}),/published|gepubliceerd/);assert.equal(a.chargeTestAwaitingConfirmation,true);release();assert.equal((await confirm).stage,'discharge');
+ a.waitSplitPowerDelay=async()=>{};await api.confirmChargeTest({...args,body:{ok:false}});assert.equal(a.chargeTestRunning,false);assert.equal(a.chargeTestOperationRunning,false);
+ await api.startChargeTest(args);await api.confirmChargeTest({...args,body:{ok:true}});await api.confirmChargeTest({...args,body:{ok:true}});assert(a.isChargeTestValid());
+ // Rejected public output must release the request lock and retain retryability.
+ a.setSetting('controlEnabled',false);a.commandTrigger.trigger=async()=>{throw Error('output failure');};await assert.rejects(()=>api.startChargeTest(args),/output failure/);assert.equal(a.chargeTestOperationRunning,false);assert.equal(a.chargeTestRunning,false);
+ const html=fs.readFileSync('settings/index.html','utf8');for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g))if(!/src=/.test(m[1]))new vm.Script(m[2]);
+ const begin=html.indexOf('      const chargeTest = status.chargeTest'),end=html.indexOf("      q('chargeTestCard')",begin);const block=html.slice(begin,end);const nodes=new Map();const q=id=>{if(!nodes.has(id))nodes.set(id,{});return nodes.get(id);};
+ for(const busy of [false,true]){const ctx=vm.createContext({q,approveChargeTestFromUi:{pending:false},notifyChargeTestRequirement:()=>{},status:{controlEnabled:false,chargeTest:{batteryCount:1,running:true,awaitingConfirmation:true,stage:'charge',busy}},directionTestRequest:{pending:false}});vm.runInContext(block,ctx);assert.equal(q('confirmChargeTest').disabled,busy);assert.equal(q('failChargeTest').disabled,busy);assert.equal(q('startChargeTest').disabled,true);}
+ const beginRequest=html.indexOf('  async function directionTestRequest('),endRequest=html.indexOf("  q('startChargeTest').addEventListener",beginRequest),pendingContext=vm.createContext({translateUiText:x=>x,api:async method=>method==='GET'?{chargeTest:{busy:true,running:false,stage:''}}:undefined});vm.runInContext(html.slice(beginRequest,endRequest),pendingContext);assert.equal((await pendingContext.directionTestRequest('/charge-test/start',{})).busy,true,'initial publication must not be mistaken for no active test');
+ console.log('Direction publication: concurrent start/confirm/cancel blocked without losing state; Split hold bypass/fixed delay, restart, failed output cleanup and UI button gating passed.');
+})().catch(e=>{console.error(e.stack);process.exitCode=1});

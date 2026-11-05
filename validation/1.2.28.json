@@ -1,0 +1,121 @@
+{
+  "version": "1.2.28",
+  "baseline": "Full supplied HomeFlux EMS 1.2.27 (933 files)",
+  "existingTargetedSuitesPassed": [
+    "engine",
+    "app-control",
+    "performance-split-loop",
+    "cpu-coalescing-1.2.13",
+    "battery-response-1.2.19",
+    "battery-settings-isolation-1.2.8",
+    "battery-power-1.2.2",
+    "peak-guard-all-modes-1.2.11",
+    "charge-strategy-1.2.12",
+    "charge-strategy-control-1.2.12",
+    "charge-margin-1.2.23",
+    "output-tests",
+    "multi-flexible-loads",
+    "ev-grid-budget-1.2.13",
+    "ev-battery-transition-1.1.9",
+    "split-resend-seconds-1.1.10",
+    "settings-startup",
+    "settings-runtime-audit",
+    "settings-translations",
+    "settings-cache-1.0.12",
+    "localization-1.2.18",
+    "flow-slot-cards",
+    "hvac-ui-1.2.7",
+    "input-warnings-1.2.12",
+    "pv-source-1.1.1",
+    "input-monitor-1.1.14",
+    "fast-control-audit-1.0.6",
+    "import-avoidance-1.2.17",
+    "autotune"
+  ],
+  "newTargetedSuitesPassed": [
+    "phase-guard-1.2.28",
+    "phase-detection-1.2.28",
+    "phase-output-1.2.28",
+    "phase-ui-1.2.28",
+    "autotune-planning-1.2.28"
+  ],
+  "totalSuitesPassed": 34,
+  "newChecks": {
+    "phaseGuardScenarios": 18,
+    "phaseDetectionScenarios": 14,
+    "autoTuneEvidenceScenarios": 25,
+    "phaseOutput": "Real app final publication, urgent P1 inside minimum interval, no extra slow context, both Split signs, safe Split minimum and stale-data stop",
+    "settingsUi": "Actual load/save/calculator functions, optional phases, per-battery persistence and five-language metadata"
+  },
+  "syntax": {
+    "changedJavaScriptFilesChecked": 16,
+    "inlineSettingsScriptsCompiled": true,
+    "allJsonParsed": true
+  },
+  "homeyValidation": {
+    "tool": "Homey CLI 4.6.2",
+    "level": "debug",
+    "passed": true,
+    "actualAppArchiveFiles": 778,
+    "testsExcludedFromAppArchive": true,
+    "productionDependenciesPresent": true,
+    "installedOnHomey": false,
+    "published": false
+  },
+  "phaseCalculation": {
+    "batteryShares": "L1/L2/L3: 100% on selected phase; balanced3: 1/3 per phase; unknown: worst-case full contribution on every phase with no optimistic baseline subtraction",
+    "baseline": "Measured phase net import minus incumbent charging only where distribution is known; include any lost discharge in a command transition.",
+    "allocation": "Preserve safe incumbent allocation, then redistribute only the remaining requested total across eligible batteries within existing SoC/per-battery/total limits.",
+    "example": "5400 W balanced three-phase charge; L2 5600 W, limit4500 W: total charge limited to2100 W (3300 W reduction).",
+    "stalenessMs": 15000,
+    "hysteresisHeadroomW": 100,
+    "recovery": "At most100 W per battery per existing command interval; urgent reduction bypasses ordinary interval; existing pauses/ownership/publication mutex retained.",
+    "detection": "On-demand only, one selected +400 W pulse; two matching fresh responses and two confirmed returns; Split baseline can be100->500->100 W; cancellation/timeout/restart releases existing test ownership and resumes existing EMS scheduling."
+  },
+  "autoTune": {
+    "minimumRepresentativeDays": 7,
+    "maximumStoredDays": 14,
+    "maximumAgeDays": 42,
+    "sameSeasonOnly": true,
+    "minimumCoverageHours": 18,
+    "usesDailyMinimumAndReliableExpensivePeriodSoc": true,
+    "batterySocReliability": "Existing10-minute input-warning freshness threshold; stale SoC excluded from reliable evidence.",
+    "excludedPvFailureCauses": [
+      "configured goal reached (including80%)",
+      "full storage",
+      "export indicates unused PV",
+      "charging power cap",
+      "curtailment",
+      "large direct PV consumption",
+      "incomplete data",
+      "configuration changed"
+    ],
+    "maximumStep": "Low-PV/daily-energy proposals at most1 kWh, normally at most10%; save floor at most2 percentage points.",
+    "dailyEnergySemantics": "Gross non-EV daily household demand; existing planner credits PV once. Desired AutoTune SoC helps assess PV days within actual configured goal, not falsify measured household consumption.",
+    "energyBalance": "Observed uncovered expensive-period demand already deducts concurrent PV once. Nominal battery availability uses maximum applicable technical/seasonal floor, not additive reserves. Future grid charging not counted as already stored energy.",
+    "reviewOnly": true,
+    "confidence": "Conservative evidence-count heuristic, not calibrated statistical probability."
+  },
+  "unchanged": [
+    "All original source files and tests retained",
+    "Existing Flow schemas retained; old P1 additionally marked deprecated",
+    "Store descriptions and slogan",
+    "Battery/planner/EV/HVAC/boiler/PV algorithms outside optional charging envelope and AutoTune recommendations"
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent EV deadline/dashboard/savings, HVAC control/COP/boiler and tariff-source suites whose implementations are unchanged",
+    "Homey hardware tests and on-device CPU/memory benchmarks"
+  ],
+  "remainingLimitations": [
+    "Phase assignment inferred at400 W is an indication; verify physical wiring and balanced three-phase behaviour at operating power.",
+    "Battery powers are issued-command estimates, not separate physical power feedback. Hardware must honor charging reductions to0 W; software cannot remove a hardware minimum or verify an ignored command without feedback.",
+    "Existing deliberate battery command pause and external Hybrid ownership remain in force; this feature cannot issue through those ownership restrictions.",
+    "No measured battery discharge efficiency or time-resolved PV profile: dynamic reserve shown as indicative nominal evidence only; no speculative new live reserve algorithm.",
+    "No Homey CPU savings or certified overcurrent protection claim."
+  ],
+  "referenceDocumentation": [
+    "https://apps.developer.homey.app/the-basics/flow/arguments",
+    "https://apps.developer.homey.app/guides/how-to-breaking-changes"
+  ]
+}

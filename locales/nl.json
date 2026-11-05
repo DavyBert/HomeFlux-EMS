@@ -293,7 +293,8 @@
       "reasonPeakLimited": "Peak Guard kan binnen de actieve grenzen geen extra batterijondersteuning vragen",
       "reasonChargeDeferred": "Batterij reserve behouden, laden later gepland.",
       "evPeakGuardLimited": "Laden begrensd door Peak Guard",
-      "hvacTarget": "Doel"
+      "hvacTarget": "Doel",
+      "hvacPermanentActive": "Permanente sturing actief"
     }
   },
   "evWidget": {
