@@ -2,10 +2,24 @@
 const assert=require('node:assert/strict'),P=require('../lib/phase-guard'),E=require('../lib/ems-engine');
 const {setup,installVirtualClearTimeout}=require('./pv-source-harness');
 const original=Date.now,restore=installVirtualClearTimeout();
-function fixture(step=1){const now=Date.UTC(2026,10,4,12);return {now,state:{batterySoc:[50]},lastEmittedCommands:[0],nextCommandAllowedAt:0,phaseGuardStatus:{limited:true},gridPhases:[100,100,100].map(watts=>({watts,at:now})),settings:{...E.DEFAULTS,batteryCount:1,batteryCommandStepW:step,commandDeadbandW:1000,phaseGuard:{...P.defaults,enabled:true,phases:3,voltage:230,amps:25,limitW:4500,batteries:['L1']}}};}
+function fixture(step=1){const now=Date.UTC(2026,10,4,12);return {now,state:{batterySoc:[50]},lastEmittedCommands:[0],nextCommandAllowedAt:0,phaseGuardStatus:{limited:true},gridPhases:[100,100,100].map(watts=>({watts,at:now})),settings:{...E.DEFAULTS,batteryCount:1,maxChargePerBatteryW:10000,batteryCommandStepW:step,commandDeadbandW:1000,phaseGuard:{...P.defaults,enabled:true,phases:3,voltage:230,amps:25,limitW:4500,batteries:['L1']}}};}
 (async()=>{
  let checks=0;
- for(const step of [1,10,100]){const a=fixture(step),s=a.settings,r={candidateCommands:[-1000]};P.apply(a,r,s,a.now);assert.deepEqual(r.candidateCommands,[-100]);assert.equal(r.phaseRecovery,true);P.limit(a,r.candidateCommands,s,a.now,false);assert.equal(a.phaseGuardStatus.limited,true,'final output check must retain remaining recovery demand');assert.equal(a.phaseGuardRuntime.lastIncreaseAt,0);for(let i=1;i<7;i++)assert.equal(P.recovery(a,s,a.now+i*1000),false);assert(P.recovery(a,s,a.now+10000));assert.deepEqual(P.limit(a,[-1000],s,a.now+10000),[-100]);P.committed(a,[0],[-100],s,a.now+10000);a.lastEmittedCommands=[-100];assert.deepEqual(P.limit(a,[-1000],s,a.now+11000),[-100]);checks++;}
+ for(const step of [1,10,100]){
+  const a=fixture(step),s=a.settings,r={candidateCommands:[-1000]};P.apply(a,r,s,a.now);
+  assert.deepEqual(r.candidateCommands,[-1000]);assert.equal(r.phaseRecovery,true);
+  assert.equal(a.phaseGuardStatus.limited,false,'full safe command has no remaining phase restriction');
+  assert.equal(a.phaseGuardRuntime.lastIncreaseAt,0,'calculation is not a publication');
+  P.committed(a,[0],[-1000],s,a.now);a.lastEmittedCommands=[-1000];
+  assert.deepEqual(P.limit(a,[-2000],s,a.now),[-2000],'no phase ramp between calculations');
+  P.ingest(a,{l1:5000,l2:100,l3:100},a.now+1000);P.apply(a,{candidateCommands:[-2000]},s,a.now+1000);
+  assert.equal(a.phaseGuardStatus.limited,true);
+  for(let i=2;i<7;i++)assert.equal(P.recovery(a,s,a.now+i*1000),false,'identical phase values do not force repeated full evaluations');
+  P.ingest(a,{l1:100,l2:100,l3:100},a.now+7000);a.nextCommandAllowedAt=a.now+10000;
+  assert.equal(P.recovery(a,s,a.now+7000),false,'ordinary battery interval still applies');
+  assert(P.recovery(a,s,a.now+10000),'changed phase values release capacity at the normal command boundary');
+  assert.deepEqual(P.limit(a,[-4000],s,a.now+10000),[-4000]);checks++;
+ }
  const h=await setup(undefined,{forcedMode:'manual_charge',manualChargeW:1000,exportLimitEnabled:false,peakLimitW:20000,commandDeadbandW:1000,phaseGuard:{...P.defaults,enabled:true,phases:3,voltage:230,amps:25,limitW:4500,batteries:Array(8).fill('L1')}},Date.UTC(2026,10,4,12),0),a=h.app;
  await h.start();await h.flush();a.requestEvaluate=()=>{};a.requestContextEvaluate=()=>{};P.ingest(a,{l1:100,l2:100,l3:100},h.now());a.lastEmittedCommands=[0,0,0,0];a.phaseGuardStatus={limited:true};
  let result={...a.latestResult,candidateCommands:[-1000,0,0,0],candidateTotalCommandW:-1000,canPublishCommands:true,_runFlexibleLoadPass:false};P.apply(a,result,a.getSettings(),h.now());assert(a.commandChangedEnough(result),'phase recovery cannot be blocked by1000 W deadband');checks++;

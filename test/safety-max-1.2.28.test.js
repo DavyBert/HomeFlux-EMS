@@ -17,7 +17,7 @@ assert.equal(E.evaluate(state,{...base,forcedMode:'standby'},now).safetySocRecov
 const s={...base,phaseGuard:{...P.defaults,enabled:true,phases:3,voltage:230,amps:25,limitW:4500,batteries:['L1','L2']}};
 function phaseApp(watts){return {state,lastEmittedCommands:[0,0],phaseGuardRuntime:{lastIncreaseAt:now.getTime()},gridPhases:watts.map(watts=>({watts,at:now.getTime()}))};}
 const a=phaseApp([500,500,500]);let r={safetySocRecoveryActive:true,candidateCommands:[-2000,-2000]};P.apply(a,r,s,now.getTime());assert.deepEqual(r.candidateCommands,[-2000,-2000],'safety recovery must not be reduced to100 W recovery steps');cases++;
-const b=phaseApp([4300,500,500]);r={safetySocRecoveryActive:true,candidateCommands:[-2000,-2000]};P.apply(b,r,s,now.getTime());assert.equal(r.candidateCommands[0],-100);assert(P.charge(r.candidateCommands)<=4000);cases++;
+const b=phaseApp([4300,500,500]);r={safetySocRecoveryActive:true,candidateCommands:[-2000,-2000]};P.apply(b,r,s,now.getTime());assert.equal(r.candidateCommands[0],-200);assert(P.charge(r.candidateCommands)<=4000);cases++;
 const c=phaseApp([500,500,500]);c.gridPhases[0].at-=16000;r={safetySocRecoveryActive:true,candidateCommands:[-2000,-2000]};P.apply(c,r,s,now.getTime());assert.deepEqual(r.candidateCommands,[0,0]);cases++;
 console.log(`Safety recovery: ${cases} full-power/target/tariff/individual/Peak Guard/phase/stale/Standby checks passed.`);
 

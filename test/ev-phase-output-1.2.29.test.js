@@ -41,7 +41,7 @@ async function setup(type,evs=1){
   h.setNow(h.now()+1000);await h.cards.get('set_ev1_status').listener({connected:'yes',charge_current:13});
   P.ingest(a,{l1:3810,l2:3810,l3:3810},h.now());E.reference(a,a.getSettings(),h.now());assert.equal(a.evPhaseFeedback[0],undefined);
   const out=P.limit(a,[-6000],a.getSettings(),h.now(),false);assert(out[0]<-2460);
-  assert.equal(h.timers.length,timers,'no phase timer is created');assert.deepEqual(h.errors,[]);checks++;
+  for(const timer of h.timers.slice(timers))assert.equal(timer,a.evTimer,'only the existing EV command-interval timer may defer restored EV output');assert.deepEqual(h.errors,[]);checks++;
  }
  for(const type of ['current','hybrid']){
   const h=await setup(type),a=h.app;

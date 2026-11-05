@@ -23,8 +23,18 @@ assert.equal(P.proposal({...P.defaults,voltage:null,amps:25}),null);cases++;
  a.settings.phaseGuard.enabled=false;const input=[-400];assert.equal(P.limit(a,input,a.settings,now),input);cases++;
 }
 {
- const a=fixture(['L1'],[0],[1000,1000,1000]);a.phaseGuardRuntime.lastIncreaseAt=0;let out=P.limit(a,[-1000],a.settings,now);assert.deepEqual(out,[-100]);P.committed(a,a.lastEmittedCommands,out,a.settings,now);a.lastEmittedCommands=out;
- assert.deepEqual(P.limit(a,[-1000],a.settings,now),[-100]);out=P.limit(a,[-1000],a.settings,now+10000);assert.deepEqual(out,[-200]);cases++;
+ const a=fixture(['L1'],[0],[1000,1000,1000]);
+ assert.deepEqual(P.limit(a,[-1000],a.settings,now),[-1000],'sufficient phase capacity passes the full request');
+ assert.deepEqual(P.limit(a,[-1000],a.settings,now+1),[-1000],'no additional phase interval or fixed recovery step');cases++;
+ const b=fixture(['L1'],[-4000],[7000,1000,1000]);
+ assert.deepEqual(P.limit(b,[-4000],b.settings,now),[-1500],'only the actual unavailable phase capacity is removed');
+ P.committed(b,b.lastEmittedCommands,[-1500],b.settings,now);b.lastEmittedCommands=[-1500];
+ P.ingest(b,{l1:2000,l2:1000,l3:1000},now+10000);
+ assert.deepEqual(P.limit(b,[-4000],b.settings,now+10000),[-4000],'released phase capacity is available immediately');cases++;
+ const c=fixture(['L1','L1'],[0,0],[3000,100,100]);
+ const out=P.limit(c,[-1000,-1000],c.settings,now);assert.equal(P.charge(out),1500);
+ P.committed(c,c.lastEmittedCommands,out,c.settings,now);c.lastEmittedCommands=out;
+ assert.equal(P.charge(P.limit(c,[-2000,-2000],c.settings,now)),1500,'a second calculation on the same phase sample cannot claim pending battery capacity twice');cases++;
 }
 {
  const a=fixture(['L1','L2','L3'],[0,0,0],[100,100,100]);Object.assign(a.settings,{individualBatteryPowerLimitsEnabled:true,battery1MaxChargeW:1200,battery2MaxChargeW:600,battery3MaxChargeW:300});a.state.batterySoc=[100,50,60];

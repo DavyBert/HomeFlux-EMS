@@ -1,4 +1,11 @@
 {
+  "1.2.30": {
+    "nl": "Fasebewaking laat het beschikbare batterijlaadvermogen direct toe, zonder extra opschaling in stappen van 100 W. Batterij en EV benutten herstelde faseruimte met behoud van de gekozen prioriteit en zonder onbevestigde laadruimte dubbel te gebruiken.",
+    "en": "Phase monitoring allows the available battery charging power immediately, without an extra 100 W ramp. Battery and EV charging use restored phase capacity while respecting the selected priority and avoiding double use of unconfirmed capacity.",
+    "fr": "La surveillance des phases autorise immédiatement la puissance de charge disponible, sans progression supplémentaire par pas de 100 W. Batterie et VE utilisent la capacité rétablie selon la priorité choisie, sans compter deux fois une capacité non confirmée.",
+    "es": "La supervisión de fases permite de inmediato la potencia de carga disponible, sin una subida adicional en pasos de 100 W. La batería y el VE aprovechan la capacidad recuperada según la prioridad elegida, sin contabilizar dos veces capacidad sin confirmar.",
+    "de": "Die Phasenüberwachung gibt die verfügbare Batterieladeleistung sofort frei, ohne zusätzliche 100-W-Schritte. Batterie und EV nutzen wieder verfügbare Phasenkapazität gemäß der gewählten Priorität, ohne unbestätigte Kapazität doppelt anzurechnen."
+  },
   "1.2.29": {
     "nl": "Optionele fasebewaking begrenst nu ook EV-laden op ampère en Hybrid. Kies Batterij eerst laden (standaard), Verdelen of EV eerst laden. EV-terugkoppeling krijgt tijd; tijdens het wachten kan de batterij tijdelijk meer afbouwen. Live fasewaarden worden stabieler weergegeven met behoud van hun echte meettijd.",
     "en": "Optional phase monitoring now also limits current and Hybrid EV charging. Choose Battery first (default), Share or EV first. EV feedback is given time; the battery can temporarily reduce charging further while waiting. Live phase readings display more consistently while retaining their actual measurement time.",

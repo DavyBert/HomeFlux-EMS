@@ -25,7 +25,7 @@ const original=Date.now,restore=installVirtualClearTimeout();
   z.app.waitSplitPowerDelay=async()=>{};z.app.splitCommandState[0].currentMode='charge';P.ingest(z.app,{l1:200,l2:200,l3:200},z.now());
   const values=[];z.app.splitCommandTriggers[0].chargePower.trigger=async t=>values.push(t.power);
   await z.app.publishSplitBatteryCommands([-25,0,0,0],z.app.getSettings());assert.equal(Math.abs(values.at(-1)),100,'preserve safe configured Split minimum');
-  z.app.lastEmittedCommands=[-100,0,0,0];P.ingest(z.app,{l1:4475,l2:200,l3:200},z.now());
+  z.app.lastEmittedCommands=[-100,0,0,0];P.ingest(z.app,{l1:4575,l2:200,l3:200},z.now());
   await z.app.publishSplitBatteryCommands([-25,0,0,0],z.app.getSettings());assert.equal(Math.abs(values.at(-1)),25,'phase headroom overrides hardware minimum');
   z.app.gridPhases[0].at-=16000;await z.app.publishSplitBatteryCommands([0,0,0,0],z.app.getSettings());assert.equal(Math.abs(values.at(-1)),0);
  }

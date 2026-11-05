@@ -1,0 +1,127 @@
+{
+  "version": "1.2.30",
+  "base": {
+    "filename": "HomeFlux-EMS-v1.2.29.zip",
+    "sha256": "9b789dc4134e045c2094ae209e9210de061cab10c9a2efb1304257a1b1b75bb5",
+    "library_version": 24
+  },
+  "changes": [
+    "Removed phase-only 100 W per-interval charge ramp and fixed 100 W phase headroom deduction.",
+    "Phase recovery uses existing command timing; repeated identical phase values do not force additional full evaluations.",
+    "Battery commands are anchored to the phase input sample to avoid counting an unmeasured increase twice.",
+    "EV reduction feedback is required before releasing its phase capacity; commanded increases remain reserved.",
+    "Actual phase limits, per-battery SoC/power limits, total requested charging power and Split publication checks remain authoritative."
+  ],
+  "normal_battery_regulation": {
+    "modified": false,
+    "user_choice": "Preserve existing minimum interval, P1 averaging and control profiles.",
+    "minimum_interval": "Time gate only: a real app publication was held until 7 s and then changed directly from 1500 W to 4000 W charging.",
+    "existing_feedback_gains": {
+      "quiet": 0.65,
+      "normal": 0.85,
+      "exact": 1
+    },
+    "efficiency_handover": "Existing per-battery redistribution may be spread over multiple publications; total-power changes are not deliberately ramped by this handover."
+  },
+  "validation": {
+    "changed_javascript_syntax_files": 10,
+    "json": "All changed JSON files parsed. Metadata versions and lockfile root package version are 1.2.30.",
+    "homey": "Homey CLI 4.6.2 debug validation passed; exact final source manifest passed homey-lib validation.",
+    "build_exclusions": "Actual .homeybuild excludes test/ and validation/; runtime files match final source.",
+    "disabled_equivalence": "Nine genuine previous/current EV portfolio/output comparisons across Current/Hybrid/Mode and Smart/SoC-target/Emergency passed.",
+    "rapid_load_cases": 600,
+    "new_evaluation_timers_or_listeners": 0
+  },
+  "tests": [
+    {
+      "suite": "ev-phase-1.2.29",
+      "exit": 0,
+      "output": "EV phase arithmetic and live phases: 16 scenario groups passed.\n"
+    },
+    {
+      "suite": "ev-phase-output-1.2.29",
+      "exit": 0,
+      "output": "EV phase real app/output: 25 scenario groups passed.\n"
+    },
+    {
+      "suite": "phase-limiter-1.2.30",
+      "exit": 0,
+      "output": "Phase limiter 1.2.30: 15 focused groups, including 600 rapid-load/quantization cases, passed.\n"
+    },
+    {
+      "suite": "phase-live-1.2.28",
+      "exit": 0,
+      "output": "Live phases: separate values, numeric threshold, negative export, stale/missing data, no-limit and single-phase display passed.\n"
+    },
+    {
+      "suite": "phase-detection-1.2.28",
+      "exit": 0,
+      "output": "Phase detection: 14 scenarios passed, one pulse only, independent battery selection, cancellation and EMS resume.\n"
+    },
+    {
+      "suite": "battery-response-1.2.19",
+      "exit": 0,
+      "output": "1.2.19: five on-demand pulses, raw P1 timing, 0 W cleanup, persistence, restart, cancellation/timeouts/safety, physical limits/inversion, unchanged direction test, daily minimum and interval advice passed.\n"
+    },
+    {
+      "suite": "peak-guard-all-modes-1.2.11",
+      "exit": 0,
+      "output": "1.2.11 Peak Guard: 18 groups passed, including all 7 modes, hard SoC/power limits, real P1 takeover/release and 448 baseline engine combinations.\n"
+    },
+    {
+      "suite": "efficiency",
+      "exit": 0,
+      "output": "Multi-battery efficiency tests passed, including sticky charging and real output handovers.\n"
+    },
+    {
+      "suite": "charge-feedback-1.0.8",
+      "exit": 0,
+      "output": "1.0.8 charge feedback regression passed: stable/noisy P1, minute expiry, PV source/capture, import/Peak Guard, target/SoC/limits/balancing, unavailable battery, safety/manual, Hybrid, stale input, split timers, flexible-load targets and concurrent publication.\n"
+    },
+    {
+      "suite": "pv-plan-feedback",
+      "exit": 0,
+      "output": "PV-plan feedback passed: fixed/TOU/dynamic, stable zero, fast/full paths, stale PV, cloud, grid charging, SoC and power limits\n"
+    },
+    {
+      "suite": "charge-strategy-control-1.2.12",
+      "exit": 0,
+      "output": "PASS charge strategy control: slow-only planning, fast/heartbeat reuse, changing load, restart, migration and single month selector\n"
+    },
+    {
+      "suite": "phase-guard-1.2.28",
+      "exit": 0,
+      "output": "Phase guard 1.2.28: 20 scenarios passed.\n"
+    },
+    {
+      "suite": "phase-recovery-1.2.28",
+      "exit": 0,
+      "output": "Phase recovery/publication: 11 focused scenarios passed.\n"
+    },
+    {
+      "suite": "phase-output-1.2.28",
+      "exit": 0,
+      "output": "Phase output: final publication boundary blocks planner overwrite; issued Split commands and total setpoint agree, urgent P1 relief and both Split signs passed.\n"
+    },
+    {
+      "suite": "safety-max-1.2.28",
+      "exit": 0,
+      "output": "Safety recovery: 16 full-power/target/tariff/individual/Peak Guard/phase/stale/Standby checks passed.\nSafety recovery: real app context/phase/publication emits full6000 W within grid limits.\n"
+    },
+    {
+      "suite": "cpu-coalescing-1.2.13",
+      "exit": 0,
+      "output": "Passed before later changes confined to the enabled EV phase path; no unrelated retest."
+    }
+  ],
+  "skipped": [
+    "Full regression suite.",
+    "Independent HVAC, boiler, AutoTune, pricing-source, savings and unrelated widget/localization suites.",
+    "Existing phase-ui-1.2.28 and settings-startup suites contain pre-existing literal 1.2.28 version assertions; retained without changing them."
+  ],
+  "limitations": [
+    "Tests use real application/engine functions with mocked Homey I/O and virtual time. No live Homey installation, publication, physical EV/battery validation or Homey CPU measurement.",
+    "Phase reaction still depends on fresh input, hardware/Flow execution and existing command timing. A Flow receipt is not physical power confirmation.",
+    "No CPU, memory or Homey saving percentage is claimed."
+  ]
+}

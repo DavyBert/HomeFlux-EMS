@@ -6570,7 +6570,7 @@ class HomeFluxEmsApp extends Homey.App {
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.gridPowerW = value;
-      if(phases){phaseGuard.ingest(this,args,now);if(evPhaseGuard.enabled(inputSettings))evPhaseGuard.reference(this,inputSettings,now);}
+      if(phases){phaseGuard.ingest(this,args,now);if(evPhaseGuard.enabled(inputSettings)){phaseGuard.capture(this,inputSettings);evPhaseGuard.reference(this,inputSettings,now);}}
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
       this.recordGridSample(value, now);
@@ -15484,7 +15484,6 @@ class HomeFluxEmsApp extends Homey.App {
     const deadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
     const commands = result.candidateCommands || [];
     if(phaseGuard.reduction(this,commands,settings))return true;
-    if(result.phaseRecovery&&commands.some((w,i)=>w<Math.min(0,Number(this.lastEmittedCommands[i])||0)))return true;
 
     // Always inspect split-mode intent before any ordinary early return. Besides
     // telling us whether a switch is due NOW, this schedules a fresh evaluation

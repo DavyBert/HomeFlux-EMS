@@ -37,7 +37,7 @@ for(const type of ['current','hybrid'])check(type+': equal relief and delayed fe
  const {a,s,input}=fixture(type),r=E.reference(a,s,now),d=E.cap(a,0,decision(),s,now);
  assert.equal(d.desiredCurrentA,13);assert(d.phaseLimited);assert.equal(r.ev[0].cap,13);
  const candidate={candidateCommands:[-6000],candidateTotalCommandW:-6000};P.apply(a,candidate,s,now);
- assert.equal(candidate.candidateTotalCommandW,-4530,'EV 690 W and battery 490 W phase relief meet 1180 W overload');
+ assert.equal(candidate.candidateTotalCommandW,-2460,'unconfirmed EV relief remains reserved; the battery temporarily covers the phase overload');
  // A successful command alone still gives no physical credit at publication.
  E.begin(a,0,s,13,now);E.complete(a,0,s,13,true,now);
  a.lastPublishedEvCurrentA=13;
