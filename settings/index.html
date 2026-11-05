@@ -1166,7 +1166,8 @@ h3 { margin-bottom:6px; font-size:17px; }
 <div class="homey-form-group"><label class="homey-form-label" for="gridConnectionPhases">Aantal fasen van de netaansluiting</label><select id="gridConnectionPhases"><option value="1">1 fase</option><option value="3">3 fasen</option></select></div>
 <div id="phaseGuardOptions" class="hidden setting-cluster"><h4>Fasebewaking batterij en EV laden</h4><input id="phaseGuard" type="hidden"/>
 <label class="homey-form-checkbox"><input id="phaseGuardEnabled" type="checkbox"/> <span>Fasebewaking inschakelen</span></label>
-<div class="homey-form-group"><label for="phaseChargePriority">Bij fasebegrenzing voorrang geven aan</label><select id="phaseChargePriority"><option value="battery_first">Batterij eerst laden</option><option value="shared">Verdelen</option><option value="ev_first">EV eerst laden</option></select><p class="muted">Geldt voor batterij laden en EV-sturing op ampère of Hybrid. Een onbekende EV-fase wordt conservatief begrensd. Tijdens het wachten op EV-terugkoppeling kan de batterij tijdelijk extra afbouwen.</p></div>
+<div class="homey-form-group"><label for="phaseChargePriority">Bij fasebegrenzing voorrang geven aan</label><select id="phaseChargePriority"><option value="battery_first">Batterij eerst laden</option><option value="shared">Verdelen</option><option value="ev_first">EV eerst laden</option></select><p class="muted">Geldt voor batterij laden en EV-sturing op ampère of Hybrid. Een onbekende EV-fase wordt conservatief begrensd. Tijdens het wachten op EV-terugkoppeling kan de batterij tijdelijk extra afbouwen.</p><p class="muted">Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.</p></div>
+<div id="phaseEmergencyPriorityRow" class="homey-form-group hidden"><label for="phaseEmergencyPriority">Bij Emergency Charge voorrang geven aan</label><select id="phaseEmergencyPriority"><option value="ev_settings">EV-instellingen volgen (standaard)</option><option value="battery_first">Batterij eerst laden</option><option value="shared">Verdelen (50/50)</option><option value="ev_first">EV eerst laden</option></select><p class="muted">Bepaalt hoe HomeFlux bij Emergency Charge de beschikbare fasecapaciteit tussen thuisbatterijen en EV verdeelt. Indien mogelijk wordt eerst voldoende ruimte vrijgemaakt om de EV minimaal te laten laden. Peak Guard en de fasegrenzen blijven altijd gelden.</p></div>
 <div class="homey-form-group"><label for="phaseVoltage">Netspanning per fase (V)</label><input id="phaseVoltage" type="number" min="80" max="500" step="1"/></div>
 <div class="homey-form-group"><label for="phaseAmps">Maximale zekeringstroom per fase (A)</label><input id="phaseAmps" type="number" min="1" max="1000" step="1"/></div>
 <div class="homey-form-group"><label for="phaseSafety">Veiligheidsfactor (%)</label><input id="phaseSafety" type="number" min="1" max="100" step="1" value="80"/></div>
@@ -2922,7 +2923,7 @@ async function onHomeyReady(Homey) {
     if(id==='phaseGuard'){
       const previous=JSON.parse(q('phaseGuard').value||'{}');
       const num=id=>q(id).value===''?null:Number(q(id).value);
-      return {phases:Number(q('gridConnectionPhases').value)||1,enabled:q('phaseGuardEnabled').checked,priority:q('phaseChargePriority')?.value||previous.priority||'battery_first',voltage:num('phaseVoltage'),amps:num('phaseAmps'),safetyPercent:num('phaseSafety')??80,limitW:num('phaseLimit'),batteries:Array.from({length:8},(_,i)=>q('phaseBattery'+i)?.value||previous.batteries?.[i]||'unknown')};
+      return {phases:Number(q('gridConnectionPhases').value)||1,enabled:q('phaseGuardEnabled').checked,priority:q('phaseChargePriority')?.value||previous.priority||'battery_first',emergencyPriority:q('phaseEmergencyPriority')?.value||'ev_settings',voltage:num('phaseVoltage'),amps:num('phaseAmps'),safetyPercent:num('phaseSafety')??80,limitW:num('phaseLimit'),batteries:Array.from({length:8},(_,i)=>q('phaseBattery'+i)?.value||previous.batteries?.[i]||'unknown')};
     }
     if(id==='hvacCoordination')return Array.from({length:10},(_,index)=>{
       const stem=instanceStem('hvac',index+1),standby=q(stem+'StandbyTemperatureC')?.value;
@@ -4547,7 +4548,7 @@ async function onHomeyReady(Homey) {
           q(id).value=JSON.stringify(currentSettingValue(id));return;
         }
         if(id==='phaseGuard'){
-          const c=value||{};q('phaseGuard').value=JSON.stringify(c);q('gridConnectionPhases').value=String(c.phases||1);q('phaseGuardEnabled').checked=Boolean(c.enabled);if(q('phaseChargePriority'))q('phaseChargePriority').value=['shared','ev_first'].includes(c.priority)?c.priority:'battery_first';
+          const c=value||{};q('phaseGuard').value=JSON.stringify(c);q('gridConnectionPhases').value=String(c.phases||1);q('phaseGuardEnabled').checked=Boolean(c.enabled);if(q('phaseChargePriority'))q('phaseChargePriority').value=['shared','ev_first'].includes(c.priority)?c.priority:'battery_first';if(q('phaseEmergencyPriority'))q('phaseEmergencyPriority').value=['battery_first','shared','ev_first'].includes(c.emergencyPriority)?c.emergencyPriority:'ev_settings';
           q('phaseVoltage').value=c.voltage??'';q('phaseAmps').value=c.amps??'';q('phaseSafety').value=c.safetyPercent??80;q('phaseLimit').value=c.limitW??'';
           q('phaseBatteryRows').dataset.count='';updatePhaseUi(true);return;
         }
@@ -4825,7 +4826,7 @@ async function onHomeyReady(Homey) {
     for(const suffix of ['KeepOnEnabled','KeepOnLimitEnabled','DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','AutomaticControlEnabled','PermanentEnabled','TariffEnabled','PvEnabled','Direction','DirectionTemperatureSource','AllowOnBattery','PeriodicHeatEnabled','OutdoorNoIncreaseEnabled','OutdoorOffEnabled','OutdoorOffAboveEnabled']) q(stem+suffix)?.addEventListener('change',()=>updateHvacInstanceUi(instance));
     if(instance>4)q(stem+'Enabled')?.addEventListener('change',()=>persistModuleEnabled(stem+'Enabled',configuredName('hvac',instance)));
   }
-  for(const id of ['gridConnectionPhases','phaseVoltage','phaseAmps','phaseSafety','batteryCount'])q(id)?.addEventListener('change',updatePhaseUi);
+  for(const id of ['gridConnectionPhases','phaseGuardEnabled','phaseVoltage','phaseAmps','phaseSafety','batteryCount'])q(id)?.addEventListener('change',updatePhaseUi);
   q('phaseBatteryRows').addEventListener('click',async event=>{const instance=event.target?.dataset?.phaseDetect;if(!instance)return;try{await api('POST','/battery-phase-detection/start',{instance:Number(instance)});refreshStatus();}catch(e){Homey.alert(translateUiText(e.message||String(e)));}});
   q('stopPhaseDetection').addEventListener('click',async()=>{try{await api('POST','/battery-phase-detection/stop',{});refreshStatus();}catch(e){Homey.alert(translateUiText(e.message||String(e)));}});
   q('hvacExtraGridBudgetEnabled')?.addEventListener('change',()=>{for(let instance=1;instance<=10;instance++)updateHvacInstanceUi(instance);});
@@ -5717,6 +5718,7 @@ async function onHomeyReady(Homey) {
   function updatePhaseUi(reset=false){
     if(!q('gridConnectionPhases'))return;
     const three=q('gridConnectionPhases').value==='3';q('phaseGuardOptions').classList.toggle('hidden',!three);
+    q('phaseEmergencyPriorityRow').classList.toggle('hidden',!three||!q('phaseGuardEnabled').checked);
     const value=HomeFluxPhaseCalculator.proposal(q('phaseVoltage').value,q('phaseAmps').value,q('phaseSafety').value);
     q('phaseProposed').textContent=value===null?'—':String(value);q('phaseLimit').disabled=value===null;
     q('phaseLimit').placeholder=value===null?'':String(value);

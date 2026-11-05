@@ -5708,7 +5708,16 @@
     "Fasebewaking begrenst EV-laadstroom": "Die Phasenüberwachung begrenzt den EV-Ladestrom",
     "EV wacht op geldige fasegegevens": "EV wartet auf gültige Phasendaten",
     "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling": "EV-Ladestrom durch Phasenüberwachung begrenzt · Warten auf EV-Rückmeldung",
-    "Fasebewaking: EV-laden bewaken": "Phasenüberwachung: EV-Laden überwachen"
+    "Fasebewaking: EV-laden bewaken": "Phasenüberwachung: EV-Laden überwachen",
+    "Bij Emergency Charge voorrang geven aan": "Priorität beim Notfallladen",
+    "EV-instellingen volgen (standaard)": "EV-Einstellungen folgen (Standard)",
+    "Verdelen (50/50)": "Verteilen (50/50)",
+    "Bepaalt hoe HomeFlux bij Emergency Charge de beschikbare fasecapaciteit tussen thuisbatterijen en EV verdeelt. Indien mogelijk wordt eerst voldoende ruimte vrijgemaakt om de EV minimaal te laten laden. Peak Guard en de fasegrenzen blijven altijd gelden.": "Bestimmt, wie HomeFlux beim Notfallladen die verfügbare Phasenkapazität zwischen Hausbatterien und EV verteilt. Wenn möglich, wird zuerst Platz für den Start des EV mit Mindeststrom geschaffen. Peak Guard und Phasengrenzen gelten immer.",
+    "Emergency Charge wacht op bevestigde batterijreductie": "Notfallladen wartet auf bestätigte Reduzierung der Batterieladung",
+    "Emergency Charge wacht op veilige fasecapaciteit": "Notfallladen wartet auf sichere Phasenkapazität",
+    "Emergency Charge wacht op totale Peak Guard": "Notfallladen wartet auf Spielraum beim gesamten Peak Guard",
+    "Emergency Charge wacht op EV-terugkoppeling": "Notfallladen wartet auf EV-Rückmeldung",
+    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Bei Verteilen folgt die normale Phasenüberwachung der Netzladepriorität jedes EV."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Für Ladegeräte wie Smappee sendet HomeFlux Stop, Smart oder Standard. Da diese Schnittstelle keinen Teilstrom steuern kann, stoppt HomeFlux das Ladegerät, wenn Peak Guard die angeforderte Leistung begrenzen muss.",

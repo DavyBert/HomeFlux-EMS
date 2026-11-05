@@ -10888,6 +10888,10 @@ class HomeFluxEmsApp extends Homey.App {
         batterySupportEnabled: this.shouldUseEvBatterySupport(settings, settings.evMode) || Boolean(decision.nightSurplusActive),
       };
       decisions.push(decision);
+      if(evPhaseGuard.enabled(storedSettings)&&this.getEvControlType(settings)!=='mode')decision.phaseRequest={
+        allowed:Boolean(decision.allowed),currentA:Math.max(0,Number(decision.requestedCurrentA||decision.desiredCurrentA)||0),
+        mode:settings.evMode,weight:decision.weight,
+      };
       const commandedPowerW = this.getEvCommandedPowerW(index, storedSettings);
       if (String(settings.evMode || 'smart') !== 'smart') {
         const requestedPowerW = Math.max(0, Number(decision.requestedPowerW || decision.desiredPowerW) || 0);
@@ -11120,6 +11124,7 @@ class HomeFluxEmsApp extends Homey.App {
     batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedNonSmartSupportW);
 
     if(evPhaseGuard.enabled(storedSettings)){
+      evPhaseGuard.prepare(this,decisions,storedSettings,result);
       const phaseReserved=[0,0,0];
       for(const entry of nonSmartEntries)evPhaseGuard.cap(this,entry.index,decisions[entry.index],storedSettings,Date.now(),phaseReserved);
       nonSmartIntentionalGridTargetW=nonSmartEntries.reduce((sum,entry)=>{
@@ -11377,6 +11382,7 @@ class HomeFluxEmsApp extends Homey.App {
     // An already-drawing EV physically consumes that remainder too. Attribute it
     // once across the portfolio; treating it as grid energy exempts the house.
     if(evPhaseGuard.enabled(storedSettings)){
+      evPhaseGuard.prepare(this,decisions,storedSettings,result,Date.now(),true);
       const phaseReserved=[0,0,0];
       for(let index=0;index<decisions.length;index++)evPhaseGuard.cap(this,index,decisions[index],storedSettings,Date.now(),phaseReserved);
     }
@@ -12099,6 +12105,7 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevcurrent');
         if (token) await token.setValue(desiredA);
         if (this.evCurrentTrigger) {
+          if(evPhaseGuard.enabled(settings)&&!evPhaseGuard.permitted(this,0,decision,this.getSettings()))return;
           await this.evCurrentTrigger.trigger(this.localizeDisplayTokens({
             charge_current: desiredA,
             charge_power: Math.round(Number(decision.desiredPowerW) || 0),
@@ -12116,6 +12123,7 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevmode');
         if (token) await token.setValue(chargeMode);
         if (this.evModeTrigger) {
+          if(allowed&&evPhaseGuard.enabled(settings)&&!evPhaseGuard.permitted(this,0,decision,this.getSettings()))return;
           const publish = () => this.evModeTrigger.trigger(this.localizeDisplayTokens({
             charge_mode: chargeMode,
             reason: String(decision.reason || ''),
@@ -12135,6 +12143,7 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevallowed');
         if (token) await token.setValue(allowed ? 'Ja' : 'Nee');
         if (this.evAllowedTrigger) {
+          if(allowed&&evPhaseGuard.enabled(settings)&&!evPhaseGuard.permitted(this,0,decision,this.getSettings()))return;
           await this.evAllowedTrigger.trigger(this.localizeDisplayTokens({
             allowed: allowed ? 'Ja' : 'Nee',
             allowed_value: allowed ? 1 : 0,
@@ -12258,6 +12267,7 @@ class HomeFluxEmsApp extends Homey.App {
     diagnosticOutput?.('publishing');
     try {
       if (currentChanged && triggers.current) {
+        if(evPhaseGuard.enabled(phaseSettings)&&!evPhaseGuard.permitted(this,index,decision,this.getSettings()))return;
         await triggers.current.trigger(this.localizeDisplayTokens({
           charge_current: desiredA,
           charge_power: Math.round(Number(decision.desiredPowerW) || 0),
@@ -12270,6 +12280,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
       }
       if (modeChanged && triggers.mode) {
+        if(allowed&&evPhaseGuard.enabled(phaseSettings)&&!evPhaseGuard.permitted(this,index,decision,this.getSettings()))return;
         const publish = () => triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
         let houseReference = null;
         if (controlType === 'mode') houseReference = await this.trackEvModeHousePublication(index, chargeMode, houseReferenceAtStart, publish);
@@ -12283,6 +12294,7 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
       if (allowedChanged && triggers.allowed) {
+        if(allowed&&evPhaseGuard.enabled(phaseSettings)&&!evPhaseGuard.permitted(this,index,decision,this.getSettings()))return;
         await triggers.allowed.trigger(this.localizeDisplayTokens({
           allowed: allowed ? 'Ja' : 'Nee',
           allowed_value: allowed ? 1 : 0,
@@ -15484,6 +15496,7 @@ class HomeFluxEmsApp extends Homey.App {
     const deadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
     const commands = result.candidateCommands || [];
     if(phaseGuard.reduction(this,commands,settings))return true;
+    if(evPhaseGuard.enabled(settings)&&result.phaseChargeGuard?.evPreparation&&phaseGuard.charge(commands)<phaseGuard.charge(this.lastEmittedCommands))return true;
 
     // Always inspect split-mode intent before any ordinary early return. Besides
     // telling us whether a switch is due NOW, this schedules a fresh evaluation

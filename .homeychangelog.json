@@ -1,4 +1,11 @@
 {
+  "1.2.31": {
+    "nl": "Emergency Charge kan veilig starten nadat voldoende batterijlaadruimte is vrijgemaakt en gemeten, zonder vooraf netimport in export te veranderen. Een aparte Emergency-prioriteit volgt standaard de EV-instellingen. De normale optie Verdelen gebruikt nu de netlaadprioriteit en gewichten per EV.",
+    "en": "Emergency Charge can safely start after enough battery charging capacity has been released and measured, without turning grid import into export beforehand. A separate Emergency priority follows EV settings by default. Normal Share now uses each EV’s grid-charging priority and weight.",
+    "fr": "La charge d’urgence peut démarrer en sécurité après libération et mesure d’une capacité suffisante, sans transformer au préalable le soutirage en injection. Une priorité d’urgence distincte suit par défaut les réglages du VE. La répartition normale utilise la priorité réseau et le poids de chaque VE.",
+    "es": "La carga de emergencia puede arrancar con seguridad tras liberar y medir suficiente capacidad de carga, sin convertir previamente la importación en exportación. Una prioridad de emergencia independiente sigue los ajustes del VE por defecto. El reparto normal utiliza la prioridad de red y el peso de cada VE.",
+    "de": "Notfallladen kann nach Freigabe und Messung ausreichender Batterieladekapazität sicher starten, ohne vorher Netzbezug in Einspeisung umzuwandeln. Eine separate Notfallpriorität folgt standardmäßig den EV-Einstellungen. Normales Verteilen nutzt die Netzladepriorität und das Gewicht jedes EV."
+  },
   "1.2.30": {
     "nl": "Fasebewaking laat het beschikbare batterijlaadvermogen direct toe, zonder extra opschaling in stappen van 100 W. Batterij en EV benutten herstelde faseruimte met behoud van de gekozen prioriteit en zonder onbevestigde laadruimte dubbel te gebruiken.",
     "en": "Phase monitoring allows the available battery charging power immediately, without an extra 100 W ramp. Battery and EV charging use restored phase capacity while respecting the selected priority and avoiding double use of unconfirmed capacity.",

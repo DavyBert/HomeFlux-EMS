@@ -1,0 +1,264 @@
+{
+  "version": "1.2.31",
+  "base": {
+    "name": "HomeFlux-EMS-v1.2.30.zip",
+    "sha256": "20aeae6dbe9b03f7dbd720544ccf844c835ab5d7094fb9dbf7513d4e23ef39f8",
+    "library_version": 25
+  },
+  "changes": [
+    "Separate Emergency Charge phase priority, default EV settings; normal Share follows individual EV grid priorities, not PV share.",
+    "One bounded phase/Peak Guard reservation uses permitted EV requests from the existing EV portfolio; existing weighted allocation is reused.",
+    "Emergency receives minimum-current start capacity before extra charging; only battery charging limits are reduced, with no new battery ramp.",
+    "EV preparation preserves at least the battery charging needed to keep measured grid import non-negative, including command quantization.",
+    "A start needs measured phase and total Peak Guard room; a battery Flow receipt is not confirmation.",
+    "Unconfirmed/failed EV output and battery/Split output cannot create fictitious capacity on a new P1 packet.",
+    "Reservations cancel/expire on existing evaluation moments; partial failed EV starts retain conservative safety accounting for at most the existing 60-second feedback horizon.",
+    "Immediate full permissible battery restoration remains subject to existing command intervals and safety limits."
+  ],
+  "user_clarifications": {
+    "order": "Reduce battery first only where this does not create export, wait for measured capacity, then EV minimum start.",
+    "zero_total_grid": "Zero total import alone is not a guarantee of per-phase room or sufficient total Peak Guard capacity. PV absorption is retained until actual EV consumption creates room.",
+    "obsolete_tests": "User authorized removing obsolete fixed-50/50 expectations from three test files. Other feedback/publication/safety assertions are retained; fixtures explicitly select EV grid sharing where that sharing is part of the scenario."
+  },
+  "validation": {
+    "javascript_syntax": "8 changed/new JS files plus the inline settings script passed syntax checks; the final app/phase modules were rechecked.",
+    "json": "All changed JSON parsed; old translation keys and values preserved; nine new UI/status texts covered in NL/EN/FR/ES/DE.",
+    "homey": "Homey CLI 4.6.2 debug validation passed. The exact final source manifest passed homey-lib debug validation.",
+    "source_manifest": "Same as 1.2.30 except version; Flow definitions/identifiers/arguments/tokens, homepage/support/community ID preserved.",
+    "packaging": "Actual Homey build excludes test/ and validation/; final runtime and settings match build bytes.",
+    "disabled_parity": "Nine previous/current real EV-portfolio/output comparisons passed across Current/Hybrid/Mode and Smart/SoC-target/Emergency.",
+    "emergency_scenario_groups": 36,
+    "fast_load_cases": 600,
+    "new_background_timers_listeners_or_cycles": 0
+  },
+  "test_results": [
+    {
+      "suite": "phase-emergency-1.2.31",
+      "exit": 0,
+      "output": "Emergency phase coordination 1.2.31: 36 focused scenario groups passed."
+    },
+    {
+      "suite": "phase-emergency-ui-1.2.31",
+      "exit": 0,
+      "output": "Emergency settings: four choices, default/migration, conditional visibility and five-language UI/status translations passed.\n"
+    },
+    {
+      "suite": "phase-guard-1.2.28",
+      "exit": 0,
+      "output": "Phase guard 1.2.28: 20 scenarios passed.\n"
+    },
+    {
+      "suite": "phase-recovery-1.2.28",
+      "exit": 0,
+      "output": "Phase recovery/publication: 11 focused scenarios passed.\n"
+    },
+    {
+      "suite": "phase-output-1.2.28",
+      "exit": 0,
+      "output": "Phase output: final publication boundary blocks planner overwrite; issued Split commands and total setpoint agree, urgent P1 relief and both Split signs passed.\n"
+    },
+    {
+      "suite": "ev-phase-1.2.29",
+      "exit": 0,
+      "output": "EV phase arithmetic and live phases: 16 scenario groups passed.\n"
+    },
+    {
+      "suite": "ev-phase-output-1.2.29",
+      "exit": 0,
+      "output": "EV phase real app/output: 22 scenario groups passed.\n"
+    },
+    {
+      "suite": "phase-limiter-1.2.30",
+      "exit": 0,
+      "output": "Phase limiter 1.2.30: 13 focused groups, including 600 rapid-load/quantization cases, passed.\n"
+    },
+    {
+      "suite": "safety-max-1.2.28",
+      "exit": 0,
+      "output": "Safety recovery: 16 full-power/target/tariff/individual/Peak Guard/phase/stale/Standby checks passed.\nSafety recovery: real app context/phase/publication emits full6000 W within grid limits.\n"
+    },
+    {
+      "suite": "phase-detection-1.2.28",
+      "exit": 0,
+      "output": "Phase detection: 14 scenarios passed, one pulse only, independent battery selection, cancellation and EMS resume.\n"
+    },
+    {
+      "suite": "battery-response-1.2.19",
+      "exit": 0,
+      "output": "1.2.19: five on-demand pulses, raw P1 timing, 0 W cleanup, persistence, restart, cancellation/timeouts/safety, physical limits/inversion, unchanged direction test, daily minimum and interval advice passed.\n"
+    },
+    {
+      "suite": "phase-live-1.2.28",
+      "exit": 0,
+      "output": "Live phases: separate values, numeric threshold, negative export, stale/missing data, no-limit and single-phase display passed.\n"
+    },
+    {
+      "suite": "peak-guard-all-modes-1.2.11",
+      "exit": 0,
+      "output": "1.2.11 Peak Guard: 18 groups passed, including all 7 modes, hard SoC/power limits, real P1 takeover/release and 448 baseline engine combinations.\n"
+    },
+    {
+      "suite": "pv-plan-feedback",
+      "exit": 0,
+      "output": "PV-plan feedback passed: fixed/TOU/dynamic, stable zero, fast/full paths, stale PV, cloud, grid charging, SoC and power limits\n"
+    },
+    {
+      "suite": "charge-strategy-control-1.2.12",
+      "exit": 0,
+      "output": "PASS charge strategy control: slow-only planning, fast/heartbeat reuse, changing load, restart, migration and single month selector\n"
+    },
+    {
+      "suite": "ev-grid-budget-1.2.13",
+      "exit": 0,
+      "output": "1.2.13 EV grid budget and battery protection: 14 scheduler scenarios passed.\n"
+    },
+    {
+      "suite": "ev-widget-emergency-1.2.4",
+      "exit": 0,
+      "output": "EV widget Emergency: 7 groups passed\n"
+    },
+    {
+      "suite": "efficiency",
+      "exit": 0,
+      "output": "Multi-battery efficiency tests passed, including sticky charging and real output handovers.\n"
+    },
+    {
+      "suite": "charge-feedback-1.0.8",
+      "exit": 0,
+      "output": "1.0.8 charge feedback regression passed: stable/noisy P1, minute expiry, PV source/capture, import/Peak Guard, target/SoC/limits/balancing, unavailable battery, safety/manual, Hybrid, stale input, split timers, flexible-load targets and concurrent publication.\n"
+    },
+    {
+      "suite": "cpu-coalescing-1.2.13",
+      "exit": 0,
+      "output": "PASS 1.2.13: queued preflights, force, latest inputs, interval/publication changes, pause; 5790 solar-day/DST/cache comparisons and daily cold reset.\n"
+    }
+  ],
+  "host_replay": {
+    "samples": [
+      {
+        "source": "1.2.30",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 99.565
+      },
+      {
+        "source": "1.2.31",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 103.681
+      },
+      {
+        "source": "1.2.31",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 149.134
+      },
+      {
+        "source": "1.2.30",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 80.472
+      },
+      {
+        "source": "1.2.30",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 101.425
+      },
+      {
+        "source": "1.2.31",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 115.148
+      },
+      {
+        "source": "1.2.31",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 77.905
+      },
+      {
+        "source": "1.2.30",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 78.082
+      },
+      {
+        "source": "1.2.30",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 106.162
+      },
+      {
+        "source": "1.2.31",
+        "counts": {
+          "evaluateFastNow": 0,
+          "runContextEvaluation": 1,
+          "calculateEvPortfolioDecisions": 2
+        },
+        "timers": 1,
+        "publications": 0,
+        "hostCpuMs": 71.843
+      }
+    ],
+    "method": "Five warmed pairs with alternating order, 40 warmup P1 samples and 200 measured samples per replay, virtual 1-second P1, real app/planner/output functions, mocked Homey I/O, GC before CPU measurement. Same phase-enabled non-Emergency inputs and output behavior.",
+    "comparison": "Both versions: 0 fast evaluations, 1 context execution, 2 EV portfolio calculations, 1 existing timer, 0 battery publications in each measured stable replay.",
+    "interpretation": "Host CPU ranges overlap; no Homey performance percentage or saving is claimed. This replay checks extra work in the unchanged stable path, not physical hardware response."
+  },
+  "skipped": [
+    "Full regression suite.",
+    "Independent HVAC, boiler, AutoTune, savings, unrelated pricing-source and widget suites.",
+    "Pre-existing literal 1.2.28 version assertions in settings-startup and phase-ui legacy suites; retained."
+  ],
+  "remaining_limits": [
+    "All I/O tests are simulated; no Homey installation/publication or physical EV/battery test was performed.",
+    "Fresh complete phase readings and reliable EV current feedback are required. Single-phase EV location and unknown battery phase mappings remain conservative.",
+    "A transient caused by hardware response, external load changes or delayed input is handled by existing safety paths; software/Flow commands are not certified instantaneous electrical protection.",
+    "A start that would require preparation-induced export, exceed a phase limit/Peak Guard, or interfere with necessary Safety SoC restoration must wait."
+  ]
+}

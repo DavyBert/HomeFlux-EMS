@@ -4,7 +4,7 @@ const {DEFAULTS}=require('../lib/ems-engine');
 let now=100000,checks=0;
 function fixture(type='current',values=[5680,5680,5680],batteries=[-6000],evs=1){
  const s={...DEFAULTS,batteryCount:batteries.length,maxTotalChargeW:10000,maxChargePerBatteryW:10000,maxSoc:100,
-  evCount:evs,phaseGuard:{...P.defaults,phases:3,enabled:true,voltage:230,amps:25,limitW:4500,priority:'shared',batteries:Array(8).fill('balanced3')}};
+  evCount:evs,evSmartGridPriority:'share',phaseGuard:{...P.defaults,phases:3,enabled:true,voltage:230,amps:25,limitW:4500,priority:'shared',batteries:Array(8).fill('balanced3')}};
  for(let i=0;i<evs;i++){const stem=i?'ev'+(i+1):'ev';Object.assign(s,{[stem+'Enabled']:true,[stem+'ControlType']:type,[stem+'Phases']:3,[stem+'Voltage']:230,[stem+'VoltageReference']:'phase',[stem+'MinCurrentA']:6});}
  const input=Array.from({length:evs},()=>({chargeCurrentA:16,updatedAt:{chargeCurrent:now},seen:{chargeCurrent:true,connected:true},connected:true}));
  const extra=Array.from({length:evs-1},()=>({lastPublishedCurrentA:16,lastPublishedAllowed:true,lastPublishedChargeMode:'standard'}));
@@ -18,9 +18,9 @@ function fixture(type='current',values=[5680,5680,5680],batteries=[-6000],evs=1)
 }
 const decision=(amps=16)=>({allowed:true,connected:true,mode:'emergency',source:'tariff',desiredCurrentA:amps,desiredPowerW:amps*690,pvAllocatedW:0,gridAllocatedW:amps*690});
 function check(name,fn){fn();checks++;}
-check('Priority defaults to battery first and all three preferences preserve the phase boundary',()=>{
+check('Explicit phase priority overrides preserve the phase boundary',()=>{
  assert.equal(P.defaults.priority,'battery_first');
- for(const [priority,expected] of [['battery_first',10],['shared',13],['ev_first',16]]){
+ for(const [priority,expected] of [['battery_first',10],['ev_first',16]]){
   const {a,s}=fixture();s.phaseGuard.priority=priority;const d=E.cap(a,0,decision(),s,now);assert.equal(d.desiredCurrentA,expected);
   const input={candidateCommands:[-6000],candidateTotalCommandW:-6000};P.apply(a,input,s,now);
   const phaseBattery=Math.abs(input.candidateTotalCommandW)/3,phaseEv=expected*230;

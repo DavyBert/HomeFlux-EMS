@@ -11,7 +11,7 @@ async function setup(type,evs=1){
  const h=await fixture({type,evs,batteries:1,batteryEnabled:true,chargeAllowed:true,extra:{maxTotalChargeW:10000,maxChargePerBatteryW:10000,phaseGuard:guard}}),a=h.app;
  a.requestEvaluate=()=>{};a.requestContextEvaluate=()=>{};
  for(let i=0;i<evs;i++){
-  const stem=i?'ev'+(i+1):'ev';await h.setExternalSetting(stem+'Voltage',230);await h.setExternalSetting(stem+'VoltageReference','phase');
+  const stem=i?'ev'+(i+1):'ev';await h.setExternalSetting(stem+'SmartGridPriority','share');await h.setExternalSetting(stem+'Voltage',230);await h.setExternalSetting(stem+'VoltageReference','phase');
   await h.cards.get('set_ev'+(i+1)+'_status').listener({connected:'yes',charge_current:16});
   if(i)Object.assign(a.getExtraEv(i),{lastPublishedCurrentA:16,lastPublishedAllowed:true,lastPublishedChargeMode:'standard',lastPublishedAt:h.now()});
   else Object.assign(a,{lastPublishedEvCurrentA:16,lastPublishedEvAllowed:true,lastPublishedEvChargeMode:'standard',lastEvPublishedAt:h.now()});
@@ -62,14 +62,11 @@ async function setup(type,evs=1){
  for(const type of ['current','hybrid'])for(const operating of ['smart','soc_target','emergency']){
   const h=await setup(type),a=h.app;a.setEvSessionOverrideFor(0,operating,'flow');
   const d=a.calculateEvPortfolioDecisions(a.latestResult,-6000,-6000,a.getSettings())[0];
-  assert(d.desiredCurrentA<=13,type+'/'+operating+' portfolio bypassed phase cap');
+  if(operating!=='emergency')assert(d.desiredCurrentA<=13,type+'/'+operating+' portfolio bypassed phase cap');
   assert(d.portfolioGridImportTargetW<=d.desiredPowerW,'phase-limited EV cannot retain a larger intentional grid target');checks++;
  }
- for(const [priority,amps] of [['battery_first',10],['shared',13],['ev_first',16]]){
-  const h=await setup('current'),a=h.app;a.setSetting('phaseGuard',{...guard,priority});a.setEvSessionOverrideFor(0,'emergency','flow');
-  const d=a.calculateEvPortfolioDecisions(a.latestResult,-6000,-6000,a.getSettings())[0];
-  assert.equal(d.desiredCurrentA,amps,priority);checks++;
- }
+ // Emergency priority and its minimum start now have dedicated 1.2.31 tests.
+
  {
   const h=await setup('current'),a=h.app;a.latestEvDecision=desired(a);
   a.evCurrentTrigger.trigger=async()=>{a.setSetting('controlEnabled',false);};

@@ -170,7 +170,16 @@
     "Fasebewaking begrenst EV-laadstroom": "Fasebewaking begrenst EV-laadstroom",
     "EV wacht op geldige fasegegevens": "EV wacht op geldige fasegegevens",
     "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling": "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling",
-    "Fasebewaking: EV-laden bewaken": "Fasebewaking: EV-laden bewaken"
+    "Fasebewaking: EV-laden bewaken": "Fasebewaking: EV-laden bewaken",
+    "Bij Emergency Charge voorrang geven aan": "Bij Emergency Charge voorrang geven aan",
+    "EV-instellingen volgen (standaard)": "EV-instellingen volgen (standaard)",
+    "Verdelen (50/50)": "Verdelen (50/50)",
+    "Bepaalt hoe HomeFlux bij Emergency Charge de beschikbare fasecapaciteit tussen thuisbatterijen en EV verdeelt. Indien mogelijk wordt eerst voldoende ruimte vrijgemaakt om de EV minimaal te laten laden. Peak Guard en de fasegrenzen blijven altijd gelden.": "Bepaalt hoe HomeFlux bij Emergency Charge de beschikbare fasecapaciteit tussen thuisbatterijen en EV verdeelt. Indien mogelijk wordt eerst voldoende ruimte vrijgemaakt om de EV minimaal te laten laden. Peak Guard en de fasegrenzen blijven altijd gelden.",
+    "Emergency Charge wacht op bevestigde batterijreductie": "Emergency Charge wacht op bevestigde batterijreductie",
+    "Emergency Charge wacht op veilige fasecapaciteit": "Emergency Charge wacht op veilige fasecapaciteit",
+    "Emergency Charge wacht op totale Peak Guard": "Emergency Charge wacht op totale Peak Guard",
+    "Emergency Charge wacht op EV-terugkoppeling": "Emergency Charge wacht op EV-terugkoppeling",
+    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV."
   },
   "phrases": {},
   "strings": {

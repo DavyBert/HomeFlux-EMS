@@ -21,7 +21,7 @@ The core battery control and planning can now run. Optional day/night planning m
 
 The optional Charging strategy tab offers spread charging with a power correction, or maximum safe charging from the start, as late as possible with a 15-minute reserve, or centred on the cheapest interval. For variable prices, centring is used only if the full block is cheaper than the standard spread plan. Day/night and annual/seasonal settings are independent.
 
-Optional phase monitoring can also limit current/Hybrid EV charging, with selectable battery/EV priority.
+Optional phase monitoring can also limit current/Hybrid EV charging, with selectable battery/EV priority and a separate Emergency Charge priority.
 
 Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels, optional direct/parallel tariff and PV control and shared heat sources, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
@@ -31,6 +31,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.31
+
+Emergency Charge kan veilig starten nadat voldoende batterijlaadruimte is vrijgemaakt en gemeten, zonder vooraf netimport in export te veranderen. Een aparte Emergency-prioriteit volgt standaard de EV-instellingen. De normale optie Verdelen gebruikt nu de netlaadprioriteit en gewichten per EV.
+
+Emergency Charge can safely start after enough battery charging capacity has been released and measured, without turning grid import into export beforehand. A separate Emergency priority follows EV settings by default. Normal Share now uses each EV’s grid-charging priority and weight.
+
+La charge d’urgence peut démarrer en sécurité après libération et mesure d’une capacité suffisante, sans transformer au préalable le soutirage en injection. Une priorité d’urgence distincte suit par défaut les réglages du VE. La répartition normale utilise la priorité réseau et le poids de chaque VE.
+
+La carga de emergencia puede arrancar con seguridad tras liberar y medir suficiente capacidad de carga, sin convertir previamente la importación en exportación. Una prioridad de emergencia independiente sigue los ajustes del VE por defecto. El reparto normal utiliza la prioridad de red y el peso de cada VE.
+
+Notfallladen kann nach Freigabe und Messung ausreichender Batterieladekapazität sicher starten, ohne vorher Netzbezug in Einspeisung umzuwandeln. Eine separate Notfallpriorität folgt standardmäßig den EV-Einstellungen. Normales Verteilen nutzt die Netzladepriorität und das Gewicht jedes EV.
 
 ### 1.2.30
 

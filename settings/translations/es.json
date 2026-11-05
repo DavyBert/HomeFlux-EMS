@@ -5708,7 +5708,16 @@
     "Fasebewaking begrenst EV-laadstroom": "La supervisión de fases limita la corriente de carga del VE",
     "EV wacht op geldige fasegegevens": "El VE espera datos de fase válidos",
     "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling": "Corriente del VE limitada por fase · esperando respuesta del VE",
-    "Fasebewaking: EV-laden bewaken": "Supervisión de fases: supervisando la carga del VE"
+    "Fasebewaking: EV-laden bewaken": "Supervisión de fases: supervisando la carga del VE",
+    "Bij Emergency Charge voorrang geven aan": "Prioridad en carga de emergencia",
+    "EV-instellingen volgen (standaard)": "Seguir ajustes del VE (predeterminado)",
+    "Verdelen (50/50)": "Repartir (50/50)",
+    "Bepaalt hoe HomeFlux bij Emergency Charge de beschikbare fasecapaciteit tussen thuisbatterijen en EV verdeelt. Indien mogelijk wordt eerst voldoende ruimte vrijgemaakt om de EV minimaal te laten laden. Peak Guard en de fasegrenzen blijven altijd gelden.": "Determina cómo HomeFlux reparte la capacidad de fase disponible entre las baterías y el VE durante la carga de emergencia. Cuando es posible, primero se libera espacio para que el VE arranque con su corriente mínima. Peak Guard y los límites de fase siempre se respetan.",
+    "Emergency Charge wacht op bevestigde batterijreductie": "La carga de emergencia espera la reducción confirmada de la carga de las baterías",
+    "Emergency Charge wacht op veilige fasecapaciteit": "La carga de emergencia espera capacidad de fase segura",
+    "Emergency Charge wacht op totale Peak Guard": "La carga de emergencia espera margen en el Peak Guard total",
+    "Emergency Charge wacht op EV-terugkoppeling": "La carga de emergencia espera la respuesta del VE",
+    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Con Repartir, la supervisión normal de fases sigue la prioridad de carga desde la red de cada VE."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Para cargadores como Smappee, HomeFlux envía parada, inteligente o estándar. Debido a que esta interfaz no puede ordenar una corriente parcial, HomeFlux detiene el cargador cuando Peak Guard necesita limitar la potencia solicitada.",

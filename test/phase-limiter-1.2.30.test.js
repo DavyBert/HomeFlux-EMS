@@ -71,7 +71,7 @@ function fixture(types=['L1'],old=[0],values=[100,100,100]){
 
  // EV restoration uses genuinely released capacity even before an earlier
  // reduction was acknowledged. No artificial EV or battery recovery ramp.
- for(const priority of ['battery_first','shared','ev_first']){
+ for(const priority of ['battery_first','ev_first']){
   const f=fixture(['balanced3'],[-6000],[5680,5680,5680]),s=f.settings;
   s.phaseGuard.priority=priority;s.evCount=1;s.evEnabled=true;s.evControlType='current';
   const meter={fresh:true,currentA:16,updatedAt:now};
@@ -79,7 +79,7 @@ function fixture(types=['L1'],old=[0],values=[100,100,100]){
    getEvInputSnapshot:()=>({}),getEvMeasuredCurrent:()=>meter,getEvControlTypeFor:()=> 'current',lastPublishedEvCurrentA:16,lastPublishedEvAllowed:true});
   E.reference(f,s,now);const desired=()=>({desiredCurrentA:16,desiredPowerW:11040,allowed:true});
   const limited=E.cap(f,0,desired(),s,now);
-  assert.equal(limited.desiredCurrentA,priority==='battery_first'?10:priority==='shared'?13:16);
+  assert.equal(limited.desiredCurrentA,priority==='battery_first'?10:16);
   E.begin(f,0,s,limited.desiredCurrentA,now);E.complete(f,0,s,limited.desiredCurrentA,true,now);
   assert.deepEqual(P.limit(f,[-6000],s,now),[-2460],'unconfirmed EV reductions never finance battery charging');
   P.ingest(f,{l1:3500,l2:3500,l3:3500},now+1000);
