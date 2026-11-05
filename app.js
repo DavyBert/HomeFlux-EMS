@@ -37,6 +37,8 @@ const savingsHistory = require('./lib/savings-history');
 const hvacPermanent = require('./lib/hvac-permanent');
 const hvacPresentation = require('./lib/hvac-presentation');
 const hvacCoordination = require('./lib/hvac-coordination');
+const phaseGuard = require('./lib/phase-guard');
+const autoTunePlanning = require('./lib/autotune-planning');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
 const EV_PHYSICAL_CONFIG_SUFFIXES = new Set([
@@ -139,6 +141,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.nextCommandAllowedAt = 0;
     this.commandPublishing = false;
     this.pendingCommandBypassInterval = false;
+    this.chargeTestManualApproval=this.homey.settings.get('_chargeTestManualApproval')||null;
     this.chargeTestRunning = false;
     this.chargeTestAwaitingConfirmation = false;
     this.chargeTestStage = '';
@@ -530,7 +533,7 @@ class HomeFluxEmsApp extends Homey.App {
         // Internal persistence is already accompanied by the explicit state
         // change that caused it. Never turn those bookkeeping writes into a
         // second context pass or charge-plan invalidation.
-        if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_dynamicPriceCalibrations' || key === '_externalPriceCurves' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || key === '_hvacPermanent' || key === '_nightForecastHold' || String(key).startsWith('_autoTune')) return;
+        if (key === '_sunChanceForecasts' || key === '_batteryChargeRestartState' || key === '_dynamicPriceCalibration' || key === '_dynamicPriceCalibrations' || key === '_externalPriceCurves' || key === '_forecastDailyMaxDate' || key === '_forecastDailyMaxKwh' || key === '_forecastTomorrowDate' || key === '_forecastTomorrowKwh' || key === '_chargeTestSignature' || key === '_chargeTestManualApproval' || key === '_lowForecastSunnyOverrideDate' || String(key).startsWith('_boiler') || String(key).startsWith('_savings') || key === '_hvacPermanent' || key === '_nightForecastHold' || String(key).startsWith('_autoTune')) return;
         if (/^hvac/.test(String(key))) { this.hvacConfigRevision=(this.hvacConfigRevision||0)+1; hvacPermanent.cancel(this); }
         this.markContextDirty(`setting:${key}`);
         this.invalidatePlanningCache(true);
@@ -628,7 +631,7 @@ class HomeFluxEmsApp extends Homey.App {
           if (Boolean(hybridSettings.hybridEmsEnabled) && this.getBatteryCount(hybridSettings) === 0) this.setSetting('hybridEmsEnabled', false);
           this.resetHybridEmsRuntime('hybrid_setting_changed');
         }
-        if (key === 'batteryCount' || key === 'invertBatteryCommand') {
+        if ((key === 'batteryCount' || key === 'invertBatteryCommand') && ((key==='batteryCount'&&Number(previousSettingValue)!==this.getBatteryCount())||this.chargeTestConfigurationInvalid())) {
           await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
         }
         const splitMatch = /^splitCommandBattery([1-8])(Enabled|ChargePowerPositive|KeepMinimumPower|MinimumPowerW|ZeroMode|ChargeMinSwitchSeconds|DischargeMinSwitchSeconds|MinBetweenSwitchSeconds|DirectionConfirmSeconds|SafetyModeResendEnabled|SafetyModeResendSeconds)$/.exec(String(key));
@@ -641,7 +644,7 @@ class HomeFluxEmsApp extends Homey.App {
             this.splitCommandState[splitIndex] = { currentMode: null, chargeHoldUntil: 0, dischargeHoldUntil: 0, lastModeSwitchAt: 0, pendingMode: null, pendingModeSince: 0, recheckTimer: null, recheckAt: 0, safetyTimer: null, lastPower: null, lastSafetyModeResendAt: 0 };
             if (!Boolean(this.homey.settings.get(key))) await this.setSplitOutputTokens(splitIndex, null, 0);
           }
-          if (['Enabled', 'ChargePowerPositive', 'KeepMinimumPower', 'MinimumPowerW', 'ZeroMode'].includes(splitMatch[2])) {
+          if (['Enabled', 'ChargePowerPositive', 'KeepMinimumPower', 'MinimumPowerW', 'ZeroMode'].includes(splitMatch[2]) && this.chargeTestConfigurationInvalid()) {
             await this.invalidateChargeTest('Batterijconfiguratie gewijzigd');
           }
           if (['SafetyModeResendEnabled', 'SafetyModeResendSeconds'].includes(splitMatch[2])) {
@@ -1804,6 +1807,7 @@ class HomeFluxEmsApp extends Homey.App {
         return { active: selection.source, activeName: selection.sources.find(item => item.source === selection.source)?.name || 'None', order: selection.sourceOrder, skipped: selection.skippedSources, sources: selection.sources };
       })() : null,
       inputs: {
+        phaseGuard: phaseGuard.inspect(this,settings,now),
         gridPowerW: parseFiniteInputNumber(state?.gridPowerW),
         pvPowerW: parseFiniteInputNumber(state?.pvPowerW),
         forecastRemainingKwh: parseFiniteInputNumber(state?.forecastRemainingKwh),
@@ -1910,6 +1914,8 @@ class HomeFluxEmsApp extends Homey.App {
     }
     const report = {
       schema: 'homeflux-diagnostics-v2',
+      phaseGuard: phaseGuard.inspect(this,this.getSettings(),generatedAt),
+      phaseGuardOutput: this.phaseGuardStatus || null,
       version: this.homey?.manifest?.version || require('./app.json').version,
       generatedAt,
       session: {
@@ -2123,6 +2129,7 @@ class HomeFluxEmsApp extends Homey.App {
       minObservedSoc: minObservedSoc !== null ? Math.round(minObservedSoc * 10) / 10 : null,
       maxSocLimit: maxSocLimit !== null ? Math.round(maxSocLimit * 10) / 10 : null,
       lowForecastPromoted: Boolean(day.lowForecastPromoted),
+      ...autoTunePlanning.summary(day),
     };
     if (summary.forecastKwh === null && summary.peakSoc === null && sampleHours < 6) return;
     const days = Array.isArray(this.autoTuneRuntime.planning?.days) ? this.autoTuneRuntime.planning.days : [];
@@ -2249,6 +2256,7 @@ class HomeFluxEmsApp extends Homey.App {
     // This is especially important when the EV charges from grid while the
     // house itself remains supported by the home battery.
     const siteWithoutEvW = Math.max(0, Math.min(100000, gridW + Math.max(0, pvW) + batteryW - evW));
+    autoTunePlanning.observe(this,day,settings,{gapMs,pvW,gridW,batteryW,siteWithoutEvW,avgSoc,now});
     day.estimatedDemandKwh += siteWithoutEvW * (gapMs / 3600000) / 1000;
     day.sampleMillis += gapMs;
   }
@@ -2372,6 +2380,9 @@ class HomeFluxEmsApp extends Homey.App {
     const hardMax = Number.isFinite(Number(profile?.hardMax)) ? Number(profile.hardMax) : Infinity;
     let min = Number(stored?.min);
     let max = Number(stored?.max);
+    // A former default ceiling must not pull an explicitly raised daily need
+    // back below its current value. Preserve every user-defined range.
+    if(settingKey==='expectedEnergyNeedKwh'&&stored?.userDefined===false&&max<Number(settings.expectedEnergyNeedKwh))max=Math.max(max,Math.min(hardMax,Number(profile.defaultMax)));
     if (Number.isFinite(min) && Number.isFinite(max)) {
       if (min > max) [min, max] = [max, min];
       min = Math.max(hardMin, Math.min(hardMax, min));
@@ -2500,7 +2511,7 @@ class HomeFluxEmsApp extends Homey.App {
     const batteryCapacityKwh = configuredBatteryCapacityKwh(settings);
     const expectedNeedKwh = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
     const planningUpperKwh = Math.max(10, Math.min(100, Math.max(expectedNeedKwh * 2, batteryCapacityKwh * 2, 20)));
-    const currentNeedUpperKwh = Math.max(20, Math.min(100, Math.max(expectedNeedKwh * 1.25, batteryCapacityKwh * 3, 30)));
+    const currentNeedUpperKwh = Math.max(20, Math.min(5000, Math.max(expectedNeedKwh * 1.25, batteryCapacityKwh * 3, 30)));
 
     const fixed = {
       commandDeadbandW: { defaultMin: 25, defaultMax: 250, hardMin: 0, hardMax: 1000 },
@@ -2511,7 +2522,7 @@ class HomeFluxEmsApp extends Homey.App {
       pvDeltaThresholdW: { defaultMin: 50, defaultMax: 500, hardMin: 0, hardMax: 10000 },
       pvCommandIntervalSeconds: { defaultMin: 10, defaultMax: 120, hardMin: 1, hardMax: 300 },
       lowForecastSelfConsumptionMinKwh: { defaultMin: 0, defaultMax: planningUpperKwh, hardMin: 0, hardMax: 100 },
-      expectedEnergyNeedKwh: { defaultMin: 0, defaultMax: currentNeedUpperKwh, hardMin: 0, hardMax: 100 },
+      expectedEnergyNeedKwh: { defaultMin: 0, defaultMax: currentNeedUpperKwh, hardMin: 0, hardMax: 5000 },
       batterySaveDischargeAboveSoc: { defaultMin: hardSocFloor, defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
       lowForecastAutoSunnySoc: { defaultMin: Math.min(maxSoc, Math.max(hardSocFloor, 70)), defaultMax: maxSoc, hardMin: hardSocFloor, hardMax: maxSoc },
       lowForecastAutoSunnyMinutes: { defaultMin: 5, defaultMax: 15, hardMin: 1, hardMax: 1440 },
@@ -2793,6 +2804,7 @@ class HomeFluxEmsApp extends Homey.App {
     const liveHours = Math.max(0, Number(currentDay?.sampleMillis || 0) / 3600000);
     if (currentDay && (currentDay.solarTargetSoc !== null || liveHours >= 18)) {
       planningDays.push({
+        ...autoTunePlanning.summary(currentDay),
         dateKey: currentDay.dateKey,
         sampleHours: liveHours,
         estimatedDemandKwh: Math.max(0, Number(currentDay.estimatedDemandKwh) || 0),
@@ -2805,143 +2817,21 @@ class HomeFluxEmsApp extends Homey.App {
       });
     }
 
-    // Expected energy need: estimate non-EV site consumption. EV is removed
-    // from the integration because it has its own planner and may deliberately
-    // charge from grid while the home battery keeps supporting the house.
-    const demandDays = planningDays.filter(day => Number(day?.sampleHours) >= 18 && Number(day?.estimatedDemandKwh) > 0);
-    const normalizedDemand = demandDays.map(day => {
-      const coverage = Math.max(18, Math.min(24, Number(day.sampleHours) || 24));
-      return Number(day.estimatedDemandKwh) * (24 / coverage);
-    }).filter(value => Number.isFinite(value) && value > 0 && value <= 100);
-    if (batteryPresent && normalizedDemand.length >= 2) {
-      const learnedNeed = median(normalizedDemand);
-      const currentNeed = Math.max(0, Number(settings.expectedEnergyNeedKwh) || 0);
-      const energyNeedLimits = this.getAutoTuneLimitFor('expectedEnergyNeedKwh', currentNeed, limits) || {};
-      const storedEnergyNeedTarget = Number(limits?.expectedEnergyNeedKwh?.targetSoc);
-      const targetSocConfigured = Number.isFinite(storedEnergyNeedTarget);
-      const targetSoc = Math.max(0, Math.min(100, Number(energyNeedLimits.targetSoc) || 95));
-      let desiredNeed = Math.max(0, Math.min(100, roundTo(learnedNeed, 0.5)));
-      const capacity = configuredBatteryCapacityKwh(settings);
-
-      // The desired battery target only becomes active after the user grants
-      // Autotune management for this parameter (which stores the default 95%)
-      // or explicitly saves a target. Until then, recommendation behaviour stays
-      // compatible with the previous demand-only learner.
-      const daytimeSocValues = demandDays
-        .map(day => optionalNumber(day.solarTargetSoc) ?? optionalNumber(day.peakSoc))
-        .filter(value => value !== null);
-      const daytimeSoc = median(daytimeSocValues);
-      if (targetSocConfigured && daytimeSoc !== null && capacity > 0) {
-        const targetCorrectionKwh = capacity * ((targetSoc - daytimeSoc) / 100);
-        const maxCorrectionKwh = Math.max(0.5, desiredNeed * 0.2);
-        desiredNeed = Math.max(0, Math.min(100, roundTo(desiredNeed + Math.max(-maxCorrectionKwh, Math.min(maxCorrectionKwh, targetCorrectionKwh)), 0.5)));
-      }
-
-      const morningSocValues = demandDays.map(day => optionalNumber(day.nightTargetSoc)).filter(value => value !== null);
-      const morningSoc = median(morningSocValues);
-      const morningFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
-      if (morningSoc !== null && capacity > 0 && morningSoc > morningFloor + 5) {
-        const excessKwh = capacity * ((morningSoc - (morningFloor + 2)) / 100);
-        desiredNeed = Math.max(0, roundTo(desiredNeed - Math.min(excessKwh * 0.35, desiredNeed * 0.2), 0.5));
-      }
-
-      // Raising expected energy need is only justified after a usable learning
-      // day has shown a real shortage: average battery SoC below 20%. Legacy
-      // summaries without a measured minimum never authorize an increase.
-      const minSocValues = demandDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
-      const lowestObservedSoc = minSocValues.length ? Math.min(...minSocValues) : null;
-      const shortageObserved = minSocValues.some(value => value < 20);
-      const isIncrease = desiredNeed > currentNeed + 1e-9;
-      if ((!isIncrease || shortageObserved) && Math.abs(desiredNeed - currentNeed) >= Math.max(1, currentNeed * 0.08)) {
-        const residualNl = morningSoc !== null ? ` Gemiddelde SoC rond het ochtenddoel is ${morningSoc.toFixed(1)}%.` : '';
-        const residualEn = morningSoc !== null ? ` Average SoC around the morning target is ${morningSoc.toFixed(1)}%.` : '';
-        const targetNl = daytimeSoc !== null ? ` Gewenste batterij-SoC is ${targetSoc.toFixed(0)}%; rond het dagdoel werd gemiddeld ${daytimeSoc.toFixed(1)}% bereikt.` : ` Gewenste batterij-SoC is ${targetSoc.toFixed(0)}%.`;
-        const targetEn = daytimeSoc !== null ? ` Desired battery SoC is ${targetSoc.toFixed(0)}%; around the daytime target the average reached SoC is ${daytimeSoc.toFixed(1)}%.` : ` Desired battery SoC is ${targetSoc.toFixed(0)}%.`;
-        const shortageNl = lowestObservedSoc !== null ? ` Laagste gemeten SoC in deze leerdagen is ${lowestObservedSoc.toFixed(1)}%.` : '';
-        const shortageEn = lowestObservedSoc !== null ? ` Lowest measured SoC across these learning days is ${lowestObservedSoc.toFixed(1)}%.` : '';
-        push('expectedEnergyNeedKwh', 'Verwachte energiebehoefte', 'Expected energy need', currentNeed, desiredNeed, 'kWh',
-          `Het geschatte dagelijkse niet-EV-verbruik is ongeveer ${learnedNeed.toFixed(1)} kWh uit ${normalizedDemand.length} bruikbare dagen.${targetNl}${residualNl}${shortageNl} Een verhoging wordt alleen voorgesteld wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam.`,
-          `Estimated daily non-EV demand is about ${learnedNeed.toFixed(1)} kWh from ${normalizedDemand.length} usable days.${targetEn}${residualEn}${shortageEn} An increase is only suggested after the battery actually dropped below 20% SoC on a usable learning day.`,
-          planningConfidence(normalizedDemand.length), normalizedDemand.length, 'Planning');
+    // Planning recommendations require recent, same-season measured evidence.
+    // Never rebuild historical PV allocations from old forecast/SoC records.
+    if(batteryPresent){
+      const learned=autoTunePlanning.recommendations(planningDays,settings,this.getLocalDateKey(new Date()),this.getAutoTuneLimitFor('expectedEnergyNeedKwh',settings.expectedEnergyNeedKwh,limits)?.targetSoc);
+      for(const item of learned){
+        if(item.key!=='expectedEnergyNeedKwh'&&!lowForecastPolicyEnabled)continue;
+        const descriptor=this.getAutoTuneSettingDescriptor(item.key);
+        push(item.key,descriptor.titleNl,descriptor.titleEn,item.current,item.recommended,descriptor.unit,item.reason,translateDisplay(item.reason,'en'),item.confidence/100,item.measurementPeriod.days,'Planning');
+        const row=recommendations.find(r=>r.settingKey===item.key);
+        if(row)Object.assign(row,{measurementPeriod:item.measurementPeriod,evidence:item.evidence,reviewOnly:true,canAutoManage:false,autoManaged:false,autoEligible:false});
       }
     }
-
-    // Battery Save discharge floor is not a hard SoC limit. If the battery
-    // repeatedly retains excess energy even at the daily low point, suggest
-    // a lower save floor. Min/Safety SoC and peak-reserve floors remain fully
-    // authoritative, so this can never teach HomeFlux to cross a hard limit.
-    if (batteryPresent && lowForecastPolicyEnabled && demandDays.length >= 3) {
-      const minimumSocValues = demandDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
-      const dailyMinimumSoc = median(minimumSocValues);
-      const hardFloor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0);
-      const currentSaveFloor = Math.max(hardFloor, Math.min(100, Number(settings.batterySaveDischargeAboveSoc) || 0));
-      if (minimumSocValues.length >= 3 && dailyMinimumSoc !== null && dailyMinimumSoc > hardFloor + 8 && currentSaveFloor > hardFloor + 5) {
-        const learnedFloor = Math.max(hardFloor + 3, Math.min(100, roundTo(dailyMinimumSoc - 5, 1)));
-        // One recommendation may move at most 20 percentage points. Planning
-        // parameters are also rate-limited to one automatic change per day.
-        const desiredSaveFloor = Math.max(learnedFloor, currentSaveFloor - 20);
-        if (currentSaveFloor - desiredSaveFloor >= 3) {
-          push('batterySaveDischargeAboveSoc', 'Batterij sparen: ontlaadgrens', 'Battery Save discharge floor', currentSaveFloor, desiredSaveFloor, '%',
-            `De mediaan van de laagste dagelijkse SoC is ${dailyMinimumSoc.toFixed(1)}%, terwijl de harde veiligheidsvloer ${hardFloor.toFixed(0)}% is. Een lagere spaargrens kan meer opgeslagen energie benutten; harde SoC- en piekreserves blijven beschermd.`,
-            `The median daily minimum SoC is ${dailyMinimumSoc.toFixed(1)}%, while the hard safety floor is ${hardFloor.toFixed(0)}%. A lower save floor can use more stored energy; hard SoC and peak reserves remain protected.`,
-            planningConfidence(minimumSocValues.length), minimumSocValues.length, 'Planning');
-        }
-      }
-    }
-
-    // Low-PV threshold: correlate the full-day forecast with whether the
-    // battery actually reached the desired 90%+ zone around the daytime target.
-    const outcomeDays = planningDays.filter(day => {
-      const forecast = optionalNumber(day?.forecastKwh);
-      const soc = optionalNumber(day?.solarTargetSoc) ?? optionalNumber(day?.peakSoc);
-      return forecast !== null && forecast >= 0 && soc !== null;
-    });
-    if (batteryPresent && lowForecastPolicyEnabled && outcomeDays.length >= 2) {
-      const successes = [];
-      const failures = [];
-      for (const day of outcomeDays) {
-        const maxLimit = optionalNumber(day.maxSocLimit) ?? Math.max(0, Number(settings.maxSoc) || 100);
-        const desiredFullZone = Math.min(maxLimit, 90);
-        const outcomeSoc = optionalNumber(day.solarTargetSoc) ?? optionalNumber(day.peakSoc);
-        const forecast = optionalNumber(day.forecastKwh);
-        if (outcomeSoc === null || forecast === null) continue;
-        (outcomeSoc >= desiredFullZone - 0.5 ? successes : failures).push(forecast);
-      }
-      const currentLowPv = Math.max(0, Number(settings.lowForecastSelfConsumptionMinKwh) || 0);
-      let desiredLowPv = null;
-      if (successes.length >= 1 && failures.length >= 1) {
-        const successMid = median(successes);
-        const failureMid = median(failures);
-        if (successMid !== null && failureMid !== null && successMid > failureMid + 0.25) desiredLowPv = (successMid + failureMid) / 2;
-      } else if (successes.length >= 3) {
-        const lowSuccess = percentile(successes, 0.25);
-        if (lowSuccess !== null && currentLowPv > lowSuccess * 1.12) desiredLowPv = lowSuccess * 0.95;
-      } else if (failures.length >= 3) {
-        const highFailure = percentile(failures, 0.75);
-        if (highFailure !== null && currentLowPv < highFailure * 0.9) desiredLowPv = highFailure * 1.05;
-      }
-      if (desiredLowPv !== null) {
-        desiredLowPv = Math.max(0, Math.min(100, roundTo(desiredLowPv, 0.5)));
-        // Raising the low-PV threshold makes Battery Save apply to more days.
-        // Only do that after a usable learning day has shown a real shortage:
-        // average battery SoC below 20%. Legacy summaries without a measured
-        // minimum never authorize an increase. Lowering the threshold remains
-        // allowed when the learned PV/outcome relation shows it is too high.
-        const lowPvMinSocValues = outcomeDays.map(day => optionalNumber(day.minObservedSoc)).filter(value => value !== null);
-        const lowPvLowestObservedSoc = lowPvMinSocValues.length ? Math.min(...lowPvMinSocValues) : null;
-        const lowPvShortageObserved = lowPvMinSocValues.some(value => value < 20);
-        const lowPvIncrease = desiredLowPv > currentLowPv + 1e-9;
-        if ((!lowPvIncrease || lowPvShortageObserved)
-          && Math.abs(desiredLowPv - currentLowPv) >= Math.max(0.5, currentLowPv * 0.08)) {
-          const shortageNl = lowPvLowestObservedSoc !== null ? ` Laagste gemeten SoC in deze leerdagen is ${lowPvLowestObservedSoc.toFixed(1)}%.` : '';
-          const shortageEn = lowPvLowestObservedSoc !== null ? ` Lowest measured SoC across these learning days is ${lowPvLowestObservedSoc.toFixed(1)}%.` : '';
-          push('lowForecastSelfConsumptionMinKwh', 'Lage-PV-drempel', 'Low-PV threshold', currentLowPv, desiredLowPv, 'kWh',
-            `Van ${outcomeDays.length} dagen met forecast/SoC-data bereikten ${successes.length} dagen de 90%-zone rond het dagdoel en ${failures.length} dagen niet.${shortageNl} Deze grens onderscheidt beter wanneer PV waarschijnlijk voldoende is en wanneer Batterij sparen zinvol blijft. Een verhoging wordt alleen voorgesteld wanneer de batterij tijdens een bruikbare leerdag werkelijk onder 20% SoC kwam.`,
-            `Across ${outcomeDays.length} days with forecast/SoC data, ${successes.length} days reached the 90% zone around the daytime target and ${failures.length} did not.${shortageEn} This threshold better distinguishes when PV is likely sufficient and when Battery Save remains useful. An increase is only suggested after the battery actually dropped below 20% SoC on a usable learning day.`,
-            planningConfidence(outcomeDays.length), outcomeDays.length, 'Planning');
-        }
-      }
-
+    // Keep the separate sunny-day release setting's established behaviour.
+    const outcomeDays=planningDays.filter(day=>optionalNumber(day.forecastKwh)!==null&&(optionalNumber(day.solarTargetSoc)??optionalNumber(day.peakSoc))!==null);
+    if(batteryPresent&&lowForecastPolicyEnabled&&outcomeDays.length>=2){
       if (Boolean(settings.lowForecastAutoSunnyEnabled)) {
         const maxSoc = Math.max(0, Math.min(100, Number(settings.maxSoc) || 100));
         const currentSunnySoc = Math.max(0, Math.min(100, Number(settings.lowForecastAutoSunnySoc) || 0));
@@ -3030,7 +2920,8 @@ class HomeFluxEmsApp extends Homey.App {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
         if (!descriptor) return null;
         const allowedRange = this.getAutoTuneLimitFor(key, settings[key], limits);
-        return { ...descriptor, current: settings[key], autoManaged: true, allowedRange, minConfidencePercent: Number(allowedRange?.minConfidencePercent ?? minConfidencePercent) };
+        const reviewOnly=['expectedEnergyNeedKwh','lowForecastSelfConsumptionMinKwh','batterySaveDischargeAboveSoc'].includes(key);
+        return { ...descriptor, current: settings[key], autoManaged: !reviewOnly, reviewOnly, canAutoManage:!reviewOnly, allowedRange, minConfidencePercent: Number(allowedRange?.minConfidencePercent ?? minConfidencePercent) };
       }).filter(Boolean),
       ignored: Object.keys(ignored).filter(key => ignored[key]).map(key => {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
@@ -3048,6 +2939,8 @@ class HomeFluxEmsApp extends Homey.App {
         balanceSamples: Math.max(0, Number(runtime.balance?.samples) || 0),
         balanceSpreadPct: Math.round(Math.max(0, Number(runtime.balance?.ewmaSpreadPct) || 0) * 10) / 10,
         planningDays: planningDays.length,
+        planningEvidence: planningDays.map(day=>({date:day.dateKey,classification:autoTunePlanning.classification(day),...autoTunePlanning.summary(day)})),
+        energyEvidence: autoTunePlanning.energyEvidence(this,settings,planningDays,this.getLocalDateKey(new Date())),
         demandDays: demandDays.length,
         currentPlanningHours: Math.round(Math.max(0, Number(currentDay?.sampleMillis || 0) / 3600000) * 10) / 10,
         currentPlanningDemandKwh: Math.round(Math.max(0, Number(currentDay?.estimatedDemandKwh) || 0) * 10) / 10,
@@ -5436,6 +5329,13 @@ class HomeFluxEmsApp extends Homey.App {
     return `${count}:${Boolean(settings.invertBatteryCommand) ? 'inverted' : 'normal'}:${split}`;
   }
 
+  chargeTestConfigurationInvalid() {
+    const settings=this.getSettings();
+    return this.chargeTestRunning
+      ? this.chargeTestSignatureAtRun!==this.getChargeTestSignature(settings)
+      : !this.isChargeTestValid(settings);
+  }
+
   isChargeTestValid(settings = this.getSettings()) {
     // With no home battery there is no battery direction to validate. Flexible
     // loads and optional PV limiting must remain usable without a dummy test.
@@ -5705,6 +5605,13 @@ class HomeFluxEmsApp extends Homey.App {
     const now = Date.now();
     const effectiveInternalCommands = internalCommands.slice(0, count);
     const publishJobs = [];
+    // Split may retain a hardware minimum even for an internal 0 W request.
+    // Preserve that behaviour where phase headroom permits, and cap the actual
+    // Split exposure once for the whole batch before publishing any channel.
+    const phaseSplitExposure=settings.phaseGuard?.enabled&&Number(settings.phaseGuard.phases)===3?this.getEffectiveSplitCommands(internalCommands,settings):null;
+    const phaseSplitCeilings=settings.phaseGuard?.enabled&&Number(settings.phaseGuard.phases)===3
+      &&internalCommands.some((_,i)=>settings[`splitCommandBattery${i+1}Enabled`])
+      ?phaseGuard.limit(this,phaseSplitExposure,settings,now,false):null;
 
     for (let index = 0; index < count; index += 1) {
       const config = this.getSplitBatteryConfig(index, settings);
@@ -5727,7 +5634,8 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
 
-      const power = this.getSplitPowerValue(outputMode, outputInternal, config);
+      let power = this.getSplitPowerValue(outputMode, outputInternal, config);
+      if(outputMode==='charge'&&phaseSplitCeilings){const magnitude=Math.min(Math.abs(power),Math.max(0,-phaseSplitCeilings[index]));power=magnitude?(config.chargePowerPositive?magnitude:-magnitude):0;}
       // Split Command can deliberately turn an internal 0 W or a value below
       // its configured minimum into a real non-zero hardware command. Feed the
       // actual output back into HomeFlux in the controller's internal sign
@@ -5742,8 +5650,15 @@ class HomeFluxEmsApp extends Homey.App {
         // Recheck after the existing one-second mode delay as well: an EV can
         // start while this publication is awaiting I/O. Never restore a split
         // discharge minimum through a stale configuration snapshot.
-        const safePower = outputMode === 'discharge'
-          && this.getEvBatteryDischargePolicy(this.getSettings()).blocked ? 0 : power;
+        const latestSettings=this.getSettings();
+        let safePower = outputMode === 'discharge'
+          && this.getEvBatteryDischargePolicy(latestSettings).blocked ? 0 : power;
+        if(outputMode==='charge'&&phaseSplitCeilings){
+          const cap=phaseGuard.limit(this,phaseSplitExposure,latestSettings,Date.now(),false,false);
+          const magnitude=Math.min(Math.abs(safePower),Math.max(0,-cap[index]));
+          const latestConfig=this.getSplitBatteryConfig(index,latestSettings);
+          safePower=latestConfig.enabled&&latestConfig.chargePowerPositive===config.chargePowerPositive? (magnitude?(config.chargePowerPositive?magnitude:-magnitude):0):0;
+        }
         effectiveInternalCommands[index] = outputMode === 'charge' ? -Math.abs(safePower) : Math.abs(safePower);
         await this.setSplitOutputTokens(index, outputMode, safePower);
         if (powerTrigger) await powerTrigger.trigger(this.localizeDisplayTokens({ power: safePower }), { battery: config.battery, mode: outputMode });
@@ -5770,6 +5685,7 @@ class HomeFluxEmsApp extends Homey.App {
           if (outputMode === 'charge') state.chargeHoldUntil = switchedAt + (config.chargeMinSwitchSeconds * 1000);
           else state.dischargeHoldUntil = switchedAt + (config.dischargeMinSwitchSeconds * 1000);
 
+          if(options.directionTest)this.chargeTestSplitReadyAt=Math.max(this.chargeTestSplitReadyAt||0,switchedAt+this.getSplitPowerDelayMs());
           await this.waitSplitPowerDelay();
           await publishPower();
         })());
@@ -5780,7 +5696,10 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    await Promise.all(publishJobs);
+    if(phaseSplitCeilings){
+      const outcomes=await Promise.allSettled(publishJobs);
+      const failed=outcomes.find(x=>x.status==='rejected');if(failed)throw failed.reason;
+    }else await Promise.all(publishJobs);
     return effectiveInternalCommands;
   }
 
@@ -5788,7 +5707,9 @@ class HomeFluxEmsApp extends Homey.App {
 
   stopBatteryResponseTest() { return batteryResponseTest.stop(this); }
 
-  async invalidateChargeTest() {
+  async invalidateChargeTest(reason = '') {
+    if(this.chargeTestManualApproval){this.chargeTestManualApproval=null;this.setSetting('_chargeTestManualApproval',null);}
+    this.chargeTestInvalidationCode=reason==='Batterijconfiguratie gewijzigd'?'configuration_changed':'';
     this.chargeTestAwaitingConfirmation = false;
     if (Boolean(this.homey.settings.get('chargeTestPassed'))) this.setSetting('chargeTestPassed', false);
     if (String(this.homey.settings.get('_chargeTestSignature') || '')) this.setSetting('_chargeTestSignature', '');
@@ -5846,7 +5767,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.error('Laadtest Flow-trigger kon niet worden gepubliceerd', err);
       }
       try {
-        await this.publishSplitBatteryCommands(internal, settings, { bypassSwitchLock: true });
+        await this.publishSplitBatteryCommands(internal, settings, { bypassSwitchLock: true, directionTest:true });
       } catch (err) {
         firstError = firstError || err;
         this.error('Laadtest split-command Flow-trigger kon niet worden gepubliceerd', err);
@@ -5859,7 +5780,38 @@ class HomeFluxEmsApp extends Homey.App {
     return { commands, total };
   }
 
-  async startChargeTest() {
+  async runChargeTestOperation(operation) {
+    if(this.chargeTestOperationRunning||this.commandPublishing)throw new Error('Er wordt momenteel al een batterijcommando gepubliceerd.');
+    this.chargeTestOperationRunning=true;
+    try{return await operation();}finally{this.chargeTestOperationRunning=false;this.chargeTestSplitReadyAt=0;}
+  }
+
+  startChargeTest() {return this.runChargeTestOperation(()=>this.startChargeTestNow());}
+  confirmChargeTest(body={}) {return this.runChargeTestOperation(()=>this.confirmChargeTestNow(body));}
+
+  async approveChargeTestWithoutTest(body={}) {
+    const result=await this.runChargeTestOperation(async()=>{
+      if(body.confirmed!==true)throw new Error('Bevestig eerst de verklaring.');
+      if(batteryResponseTest.active(this))throw new Error('Stop eerst de reactietest.');
+      const settings=this.getSettings(),count=this.getBatteryCount(settings);
+      if(!count)throw new Error('Geen thuisbatterij geconfigureerd. Een batterijtest is niet nodig.');
+      // End an existing manual test at its normal zero output before releasing
+      // ownership. An idle approval emits no test command or pulse.
+      if(this.chargeTestRunning)await this.publishChargeTestCommands(Array(count).fill(0),'Batterijtest gestopt · 0 W');
+      if(this.chargeTestTimer){clearTimeout(this.chargeTestTimer);this.chargeTestTimer=null;}
+      const signature=this.getChargeTestSignature(this.getSettings());
+      this.chargeTestRunning=false;this.chargeTestAwaitingConfirmation=false;this.chargeTestStage='approved';
+      this.chargeTestInvalidationCode='';this.pendingResult=null;this.pendingCommandBypassInterval=false;
+      this.chargeTestManualApproval={signature,approvedAt:Date.now()};
+      this.setSetting('_chargeTestManualApproval',this.chargeTestManualApproval);
+      this.setSetting('_chargeTestSignature',signature);this.setSetting('chargeTestPassed',true);this.setSetting('controlEnabled',true);
+      return {ok:true,passed:true,stage:'approved',approvalMethod:'declaration'};
+    });
+    this.requestContextEvaluate(true,'battery_manual_approval');
+    return result;
+  }
+
+  async startChargeTestNow() {
     const settings = this.getSettings();
     if (this.getBatteryCount(settings) === 0) throw new Error('Geen thuisbatterij geconfigureerd. Een batterijtest is niet nodig.');
     if (Boolean(settings.controlEnabled)) {
@@ -5907,7 +5859,7 @@ class HomeFluxEmsApp extends Homey.App {
     return { ok: true, running: true, stage: 'charge', batteryCount: count, commandPerBatteryW: published.commands[0] || 0, inverted: Boolean(current.invertBatteryCommand) };
   }
 
-  async confirmChargeTest(body = {}) {
+  async confirmChargeTestNow(body = {}) {
     const accepted = body.ok !== false;
     if (!this.chargeTestRunning || !this.chargeTestAwaitingConfirmation || !['charge','discharge'].includes(this.chargeTestStage)) {
       throw new Error('Start eerst de batterijtest.');
@@ -6608,7 +6560,7 @@ class HomeFluxEmsApp extends Homey.App {
     flow.getActionCard('set_external_ems_setpoint').registerRunListener(async args =>
       this.handleExternalEmsSetpoint(args.power));
 
-    flow.getActionCard('set_grid_power').registerRunListener(async args => {
+    const receiveGridPower = async (args, phases = false) => {
       const value = parseFiniteInputNumber(args.power);
       if (value === null) return false;
       this.recordDiagnosticCounter('gridInputs');
@@ -6617,6 +6569,7 @@ class HomeFluxEmsApp extends Homey.App {
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.gridPowerW = value;
+      if(phases)phaseGuard.ingest(this,args,now);
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
       this.recordGridSample(value, now);
@@ -6653,7 +6606,9 @@ class HomeFluxEmsApp extends Homey.App {
         this.requestEvaluate();
       }
       return true;
-    });
+    };
+    flow.getActionCard('set_grid_power').registerRunListener(args=>receiveGridPower(args));
+    flow.getActionCard('set_grid_power_phases').registerRunListener(args=>receiveGridPower(args,true));
 
     flow.getActionCard('set_imported_energy_today').registerRunListener(async args => {
       const value = Number(args.energy);
@@ -12555,6 +12510,8 @@ class HomeFluxEmsApp extends Homey.App {
       gridAgeSeconds: gridFreshness.ageSeconds,
     };
 
+    hvacPermanent.syncComfortCycle(this, instanceIndex, settings, Boolean(options.permanentOffFromFlow || options.automaticOffFromFlow));
+
     const resetBoostState = () => {
       this.hvacBaselineSetpoint = null;
       this.hvacBaselineMode = null;
@@ -12618,7 +12575,7 @@ class HomeFluxEmsApp extends Homey.App {
 
 
 
-    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, portfolio: options.hvacPortfolio, budgetSnapshot: options.hvacBudgetSnapshot || (!options.hvacPortfolio ? hvacCoordination.prepare(this, settings, result, now, false) : null) });
+    if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, batteryCharging: Number(currentBatteryCommandW)<0&&Number(nextBatteryCommandW)<0&&Number(options.hvacBatteryCommandW??nextBatteryCommandW)<0, portfolio: options.hvacPortfolio, budgetSnapshot: options.hvacBudgetSnapshot || (!options.hvacPortfolio ? hvacCoordination.prepare(this, settings, result, now, false) : null) });
 
     // A stale P1 value may never be interpreted as current PV surplus or spare
     // Peak Guard headroom. Existing HomeFlux-managed HVAC sessions fail safe by
@@ -12961,8 +12918,8 @@ class HomeFluxEmsApp extends Homey.App {
         }
         try {
           await this._publishHvacDecisionNowFor(safeIndex, next);
-          if (next.permanent) hvacPermanent.published(this, safeIndex, next);
-          else if ((next.automaticControlOff || next.moduleControlOff) && (next.outputChanged!==false || next.permanentControlOff)) {
+          hvacPermanent.published(this, safeIndex, next);
+          if (!next.permanent && (next.automaticControlOff || next.moduleControlOff) && (next.outputChanged!==false || next.permanentControlOff)) {
             const receipt=safeIndex===0?this.lastPublishedHvacPower:this.getExtraHvac(safeIndex).lastPublishedPower;
             const u=hvacPermanent.unit(this,safeIndex);u.powerOff=Boolean(next.moduleControlOff||next.powerCommand===false||receipt===false||receipt==null&&next.currentMode==='off');
             if(next.setpointCommand!==null)u.setpoint=Number(next.setpointCommand);
@@ -13839,6 +13796,7 @@ class HomeFluxEmsApp extends Homey.App {
         currentBatteryCommandW,
         {
           storedSettings,
+          hvacBatteryCommandW: options.effectiveNextBatteryCommandW ?? nextBatteryCommandW,
           allowStart: active && !hvacPermanent.enabled(hvacPortfolio.settings[index]),
           hvacPortfolio,
           totalActualEvPowerW,
@@ -13892,6 +13850,7 @@ class HomeFluxEmsApp extends Homey.App {
           currentBatteryCommandW,
           {
             storedSettings,
+            hvacBatteryCommandW: options.effectiveNextBatteryCommandW ?? nextBatteryCommandW,
             allowStart: true,
             totalActualEvPowerW,
             totalDesiredEvPowerW,
@@ -14700,7 +14659,9 @@ class HomeFluxEmsApp extends Homey.App {
     // calculation that sends nothing must leave the next P1 correction free.
     const earliest = Math.max(this.nextCommandAllowedAt || 0,
       this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
-    const wait = Math.max(0, earliest - now);
+    const phaseUrgent=phaseGuard.urgent(this,controlSettings,now);
+    if(phaseUrgent||phaseGuard.recovery(this,controlSettings,now))immediate=true;
+    const wait = phaseUrgent?0:Math.max(0, earliest - now);
     // A queued battery pass already owns this interval. Input bookkeeping and
     // urgent flexible-load safety run before this scheduler; keep its deadline
     // and force flag without repeating a preflight whose result cannot run yet.
@@ -15103,6 +15064,7 @@ class HomeFluxEmsApp extends Homey.App {
       const readiness = this.getInputReadiness(storedSettings);
       const result = this.createSafetyResult(calculated, settings, readiness);
       this.applyCachedEvBatteryCoordination(result, storedSettings, now);
+      phaseGuard.apply(this,result,storedSettings,now);
 
       const previous = this.latestResult || {};
       result.warningText = String(previous.warningText || this.balanceMonitor?.warningText || '');
@@ -15184,6 +15146,7 @@ class HomeFluxEmsApp extends Homey.App {
       const rawCandidateTotalW = Number(result.candidateTotalCommandW) || 0;
       this.coordinateEvBatteryPriority(result, storedSettings);
       this.cacheEvBatteryCoordination(rawCandidateTotalW, result, now);
+      phaseGuard.apply(this,result,storedSettings,now);
 
       result.warningText = this.updateBalanceHealth(result, settings);
       if (result.warningText) result.statusText = `${result.statusText} · WAARSCHUWING Battery Balance`;
@@ -15488,6 +15451,8 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getSettings();
     const deadband = Math.max(0, Number(settings.commandDeadbandW) || 0);
     const commands = result.candidateCommands || [];
+    if(phaseGuard.reduction(this,commands,settings))return true;
+    if(result.phaseRecovery&&commands.some((w,i)=>w<Math.min(0,Number(this.lastEmittedCommands[i])||0)))return true;
 
     // Always inspect split-mode intent before any ordinary early return. Besides
     // telling us whether a switch is due NOW, this schedules a fresh evaluation
@@ -15709,7 +15674,8 @@ class HomeFluxEmsApp extends Homey.App {
     const now = Date.now();
     const allowedAt = Math.max(this.nextCommandAllowedAt || 0, this.lastEmitAt > 0 ? this.lastEmitAt + intervalMs : 0);
     const wait = Math.max(0, allowedAt - now);
-    if (wait > 0) {
+    const phaseReduction=phaseGuard.reduction(this,result.candidateCommands,settings,now);
+    if (wait > 0 && !phaseReduction) {
       // Never hold a stale command. Recalculate from the newest inputs at the
       // first moment a new battery setpoint is allowed.
       this.requestEvaluate(true);
@@ -15720,13 +15686,13 @@ class HomeFluxEmsApp extends Homey.App {
     // earlier command is still publishing. Safety always wins first.
     if (this.commandPublishing && this.pendingCommandBypassInterval) return false;
     this.pendingResult = result;
-    this.pendingCommandBypassInterval = false;
+    this.pendingCommandBypassInterval = phaseReduction;
     this.emitPending().catch(err => this.error('Battery command emit failed', err));
     return true;
   }
 
   async emitPending() {
-    if (batteryResponseTest.active(this)) return;
+    if (this.chargeTestOperationRunning||batteryResponseTest.active(this)) return;
     if (this.commandPublishing) return;
     const result = this.pendingResult;
     if (!result) return;
@@ -15782,8 +15748,9 @@ class HomeFluxEmsApp extends Homey.App {
       const requestedInternalCommands = (result.candidateCommands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
       const efficiencyOutputTransition = this.limitEfficiencyHandoverAtOutput(result, requestedInternalCommands, settings);
       const dischargeBlocked = this.getEvBatteryDischargePolicy(settings, now).blocked;
-      const internalCommands = dischargeBlocked
+      const coordinatedCommands = dischargeBlocked
         ? efficiencyOutputTransition.commands.map(value => Math.min(0, value)) : efficiencyOutputTransition.commands;
+      const internalCommands=phaseGuard.limit(this,coordinatedCommands,settings,Date.now(),false);
       this.inFlightBatteryCommands = internalCommands;
       this.recordDiagnosticBatteryOutput(result, 'requested', internalCommands);
       const internalTotal = internalCommands.reduce((sum, value) => sum + value, 0);
@@ -15840,6 +15807,7 @@ class HomeFluxEmsApp extends Homey.App {
       // Keep controller feedback in HomeFlux' internal sign convention
       // (positive discharge, negative charge). Only published values are inverted.
       const previousBatteryCommands = this.lastEmittedCommands.slice();
+      phaseGuard.committed(this,previousBatteryCommands,effectiveInternalCommands,settings,Date.now());
       this.lastEmittedCommands = effectiveInternalCommands;
       this.batteryIdleKnownOutput = this.lastEmittedCommands;
       // Preserve each direction's incumbent across gradual efficiency handovers.
@@ -15913,6 +15881,7 @@ class HomeFluxEmsApp extends Homey.App {
         this.requestContextEvaluate(false, 'battery_output_changed', 0, false, false);
       }
     } catch (err) {
+      if(settings.phaseGuard?.enabled&&Number(settings.phaseGuard.phases)===3){const runtime=this.phaseGuardRuntime ||= {};runtime.publicationUncertain=true;}
       this.recordDiagnosticBatteryOutput(result, 'failed', this.inFlightBatteryCommands, err);
       throw err;
     } finally {
@@ -16643,6 +16612,9 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
+      phaseGuard: phaseGuard.status(this,storedSettings,statusNow),
+      phaseGuardOutput: this.phaseGuardStatus || null,
+      batteryPhaseDetection: require('./lib/phase-detection').status(this),
       version: this.homey?.manifest?.version || require('./app.json').version,
       settings: {
         batteryCount: storedSettings.batteryCount,
@@ -16715,8 +16687,12 @@ class HomeFluxEmsApp extends Homey.App {
         hvacAllowFanControl: Boolean(storedSettings.hvacAllowFanControl),
         hvacPriority: String(storedSettings.hvacPriority || 'comfort'),
       },
-      batteryResponseTest: batteryResponseTest.status(this,storedSettings),
+      batteryResponseTest: {...batteryResponseTest.status(this,storedSettings),phaseDetection:this.batteryResponseTest?.kind==='phase'&&this.batteryResponseTest.running},
       chargeTest: {
+        approvalMethod:this.chargeTestManualApproval?'declaration':'test',
+        invalidationCode:this.chargeTestInvalidationCode||'',
+        busy:Boolean(this.chargeTestOperationRunning||this.commandPublishing),
+        switchReadyAt:Number(this.chargeTestSplitReadyAt)||0,
         passed: this.isChargeTestValid(storedSettings),
         running: Boolean(this.chargeTestRunning),
         awaitingConfirmation: Boolean(this.chargeTestAwaitingConfirmation),

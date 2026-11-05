@@ -35,5 +35,6 @@
     "fr": "Réglez la puissance du réseau à [[power]] W",
     "es": "Configurar la potencia de la red a [[power]] W",
     "de": "Netzleistung auf [[power]] W einstellen"
-  }
+  },
+  "deprecated": true
 }

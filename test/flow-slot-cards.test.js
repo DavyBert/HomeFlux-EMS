@@ -47,9 +47,11 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
       assert.match(card.hint.en, /once per EV connection session/);
       assert.match(card.hint.nl, /één keer per EV-aansluitsessie/);
     } else if (kind === 'actions' && previous.id === 'set_grid_power') {
-      // 1.2.2 permits larger P1 readings; all other legacy schema stays exact.
+      // 1.2.28 replaces this card without breaking existing Flows.
+      // Retain the exact legacy schema and the 1.2.2 expanded P1 range.
       assert.deepEqual(card, {
         ...expected,
+        deprecated: true,
         args: expected.args.map((arg, index) => index === 0
           ? { ...arg, min: -200000, max: 200000 } : arg),
       }, 'P1 range may expand without changing the remaining Flow schema');

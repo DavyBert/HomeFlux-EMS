@@ -1,6 +1,9 @@
 'use strict';
 
 module.exports = {
+  async approveChargeTestWithoutTest({homey,body}) {return homey.app.approveChargeTestWithoutTest(body||{});},
+  async startBatteryPhaseDetection({homey,body}) { return require('./lib/phase-detection').start(homey.app,Number(body.instance)-1); },
+  async stopBatteryPhaseDetection({homey}) { return require('./lib/phase-detection').stop(homey.app); },
   async recheckHvac({ homey, body }) { return homey.app.recheckHvac(body); },
   async getStatus({ homey }) {
     return homey.app.getPublicStatus();
