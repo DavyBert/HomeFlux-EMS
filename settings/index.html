@@ -1164,8 +1164,9 @@ h3 { margin-bottom:6px; font-size:17px; }
 <fieldset class="homey-form-fieldset">
 <legend class="homey-form-legend">Peak Guard</legend>
 <div class="homey-form-group"><label class="homey-form-label" for="gridConnectionPhases">Aantal fasen van de netaansluiting</label><select id="gridConnectionPhases"><option value="1">1 fase</option><option value="3">3 fasen</option></select></div>
-<div id="phaseGuardOptions" class="hidden setting-cluster"><h4>Fasebewaking batterij laden</h4><input id="phaseGuard" type="hidden"/>
+<div id="phaseGuardOptions" class="hidden setting-cluster"><h4>Fasebewaking batterij en EV laden</h4><input id="phaseGuard" type="hidden"/>
 <label class="homey-form-checkbox"><input id="phaseGuardEnabled" type="checkbox"/> <span>Fasebewaking inschakelen</span></label>
+<div class="homey-form-group"><label for="phaseChargePriority">Bij fasebegrenzing voorrang geven aan</label><select id="phaseChargePriority"><option value="battery_first">Batterij eerst laden</option><option value="shared">Verdelen</option><option value="ev_first">EV eerst laden</option></select><p class="muted">Geldt voor batterij laden en EV-sturing op ampère of Hybrid. Een onbekende EV-fase wordt conservatief begrensd. Tijdens het wachten op EV-terugkoppeling kan de batterij tijdelijk extra afbouwen.</p></div>
 <div class="homey-form-group"><label for="phaseVoltage">Netspanning per fase (V)</label><input id="phaseVoltage" type="number" min="80" max="500" step="1"/></div>
 <div class="homey-form-group"><label for="phaseAmps">Maximale zekeringstroom per fase (A)</label><input id="phaseAmps" type="number" min="1" max="1000" step="1"/></div>
 <div class="homey-form-group"><label for="phaseSafety">Veiligheidsfactor (%)</label><input id="phaseSafety" type="number" min="1" max="100" step="1" value="80"/></div>
@@ -1178,7 +1179,7 @@ h3 { margin-bottom:6px; font-size:17px; }
 <p class="muted">Detectie toont de reactie bij 400 W. Controleer de fysieke aansluiting; deze test bewijst geen gelijkmatige faseverdeling bij elk laadvermogen.</p>
 <p class="muted">De batterij-Flow moet laadverlagingen tot 0 W kunnen uitvoeren. Een verplicht hardwareminimum of een genegeerd commando kan HomeFlux zonder afzonderlijke batterijvermogensmeting niet bevestigen of opheffen.</p>
 <button type="button" id="stopPhaseDetection" class="hidden">Fasedetectie stoppen</button><div id="phaseDetectionStatus" class="statusline"></div><div id="phaseGuardStatus" class="muted"></div>
-<p class="muted">Fasemetingen moeten minstens elke 15 seconden vernieuwd worden. Zonder betrouwbare data wordt batterij laden gestopt. Alleen batterij laden wordt begrensd; totale Peak Guard blijft apart actief.</p></div>
+<p class="muted">Fasemetingen moeten minstens elke 15 seconden vernieuwd worden. Zonder betrouwbare data worden batterij laden en EV-sturing op ampère of Hybrid gestopt. Totale Peak Guard blijft apart actief.</p></div>
 <label class="homey-form-checkbox"><input id="peakShaveEnabled" type="checkbox"/> <span>Peak shaving altijd bewaken</span></label>
 <div class="row">
 <div class="homey-form-group"><label class="homey-form-label" for="peakLimitW">Max netimport (W)</label><input class="homey-form-input" id="peakLimitW" max="50000" min="0" step="50" type="number"/></div>
@@ -2921,7 +2922,7 @@ async function onHomeyReady(Homey) {
     if(id==='phaseGuard'){
       const previous=JSON.parse(q('phaseGuard').value||'{}');
       const num=id=>q(id).value===''?null:Number(q(id).value);
-      return {phases:Number(q('gridConnectionPhases').value)||1,enabled:q('phaseGuardEnabled').checked,voltage:num('phaseVoltage'),amps:num('phaseAmps'),safetyPercent:num('phaseSafety')??80,limitW:num('phaseLimit'),batteries:Array.from({length:8},(_,i)=>q('phaseBattery'+i)?.value||previous.batteries?.[i]||'unknown')};
+      return {phases:Number(q('gridConnectionPhases').value)||1,enabled:q('phaseGuardEnabled').checked,priority:q('phaseChargePriority')?.value||previous.priority||'battery_first',voltage:num('phaseVoltage'),amps:num('phaseAmps'),safetyPercent:num('phaseSafety')??80,limitW:num('phaseLimit'),batteries:Array.from({length:8},(_,i)=>q('phaseBattery'+i)?.value||previous.batteries?.[i]||'unknown')};
     }
     if(id==='hvacCoordination')return Array.from({length:10},(_,index)=>{
       const stem=instanceStem('hvac',index+1),standby=q(stem+'StandbyTemperatureC')?.value;
@@ -4546,7 +4547,7 @@ async function onHomeyReady(Homey) {
           q(id).value=JSON.stringify(currentSettingValue(id));return;
         }
         if(id==='phaseGuard'){
-          const c=value||{};q('phaseGuard').value=JSON.stringify(c);q('gridConnectionPhases').value=String(c.phases||1);q('phaseGuardEnabled').checked=Boolean(c.enabled);
+          const c=value||{};q('phaseGuard').value=JSON.stringify(c);q('gridConnectionPhases').value=String(c.phases||1);q('phaseGuardEnabled').checked=Boolean(c.enabled);if(q('phaseChargePriority'))q('phaseChargePriority').value=['shared','ev_first'].includes(c.priority)?c.priority:'battery_first';
           q('phaseVoltage').value=c.voltage??'';q('phaseAmps').value=c.amps??'';q('phaseSafety').value=c.safetyPercent??80;q('phaseLimit').value=c.limitW??'';
           q('phaseBatteryRows').dataset.count='';updatePhaseUi(true);return;
         }
@@ -5735,8 +5736,8 @@ async function onHomeyReady(Homey) {
     q('stopPhaseDetection').classList.toggle('hidden',count<2);
     rows.querySelectorAll('[data-phase-detect]').forEach(b=>{b.disabled=value===null||!three||rows.dataset.running==='true';});
   }
-  function renderLivePhases(phase,now=Date.now()){
-    const values=phase.values||[],three=q('gridConnectionPhases').value==='3'||values.some(v=>v?.watts!=null);
+  function renderLivePhases(phase,now=phase.evaluatedAt??Date.now()){
+    const values=phase.displayValues||phase.values||[],three=q('gridConnectionPhases').value==='3'||values.some(v=>v?.watts!=null);
     const limit=phase.limitW==null?null:Number(phase.limitW),hasLimit=Number.isFinite(limit)&&limit>0;
     for(let i=0;i<3;i++){
       const sample=values[i],value=sample?.watts;

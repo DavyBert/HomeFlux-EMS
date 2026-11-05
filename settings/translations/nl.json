@@ -159,7 +159,18 @@
     "Handmatig goedgekeurd · zonder test": "Handmatig goedgekeurd · zonder test",
     "Huidige batterijconfiguratie handmatig goedgekeurd.": "Huidige batterijconfiguratie handmatig goedgekeurd.",
     "Bevestig eerst de verklaring.": "Bevestig eerst de verklaring.",
-    "Batterijtest gestopt · 0 W": "Batterijtest gestopt · 0 W"
+    "Batterijtest gestopt · 0 W": "Batterijtest gestopt · 0 W",
+    "Fasebewaking batterij en EV laden": "Fasebewaking batterij en EV laden",
+    "Bij fasebegrenzing voorrang geven aan": "Bij fasebegrenzing voorrang geven aan",
+    "Batterij eerst laden": "Batterij eerst laden",
+    "Verdelen": "Verdelen",
+    "EV eerst laden": "EV eerst laden",
+    "Geldt voor batterij laden en EV-sturing op ampère of Hybrid. Een onbekende EV-fase wordt conservatief begrensd. Tijdens het wachten op EV-terugkoppeling kan de batterij tijdelijk extra afbouwen.": "Geldt voor batterij laden en EV-sturing op ampère of Hybrid. Een onbekende EV-fase wordt conservatief begrensd. Tijdens het wachten op EV-terugkoppeling kan de batterij tijdelijk extra afbouwen.",
+    "Fasemetingen moeten minstens elke 15 seconden vernieuwd worden. Zonder betrouwbare data worden batterij laden en EV-sturing op ampère of Hybrid gestopt. Totale Peak Guard blijft apart actief.": "Fasemetingen moeten minstens elke 15 seconden vernieuwd worden. Zonder betrouwbare data worden batterij laden en EV-sturing op ampère of Hybrid gestopt. Totale Peak Guard blijft apart actief.",
+    "Fasebewaking begrenst EV-laadstroom": "Fasebewaking begrenst EV-laadstroom",
+    "EV wacht op geldige fasegegevens": "EV wacht op geldige fasegegevens",
+    "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling": "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling",
+    "Fasebewaking: EV-laden bewaken": "Fasebewaking: EV-laden bewaken"
   },
   "phrases": {},
   "strings": {

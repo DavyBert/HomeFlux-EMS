@@ -5698,7 +5698,17 @@
     "Bevestig eerst de verklaring.": "Confirmez d’abord la déclaration.",
     "Confirm the declaration first.": "Confirmez d’abord la déclaration.",
     "Batterijtest gestopt · 0 W": "Test batterie arrêté · 0 W",
-    "Battery test stopped · 0 W": "Test batterie arrêté · 0 W"
+    "Battery test stopped · 0 W": "Test batterie arrêté · 0 W",
+    "Fasebewaking batterij en EV laden": "Surveillance des phases pour la charge des batteries et VE",
+    "Bij fasebegrenzing voorrang geven aan": "Priorité en cas de limitation de phase",
+    "Batterij eerst laden": "Charger la batterie en priorité",
+    "EV eerst laden": "Charger le VE en priorité",
+    "Geldt voor batterij laden en EV-sturing op ampère of Hybrid. Een onbekende EV-fase wordt conservatief begrensd. Tijdens het wachten op EV-terugkoppeling kan de batterij tijdelijk extra afbouwen.": "S’applique à la charge des batteries et au pilotage VE en ampères ou Hybrid. Une phase VE inconnue est limitée de manière prudente. En attendant le retour du VE, la batterie peut temporairement réduire davantage sa charge.",
+    "Fasemetingen moeten minstens elke 15 seconden vernieuwd worden. Zonder betrouwbare data worden batterij laden en EV-sturing op ampère of Hybrid gestopt. Totale Peak Guard blijft apart actief.": "Les mesures de phase doivent être renouvelées au moins toutes les 15 secondes. Sans données fiables, la charge des batteries et le pilotage VE en ampères ou Hybrid s’arrêtent. Le Peak Guard total reste indépendant.",
+    "Fasebewaking begrenst EV-laadstroom": "La surveillance des phases limite le courant de charge du VE",
+    "EV wacht op geldige fasegegevens": "Le VE attend des données de phase valides",
+    "Fasebewaking begrenst EV-laadstroom · wachten op EV-terugkoppeling": "Limitation du courant VE par phase · en attente du retour du VE",
+    "Fasebewaking: EV-laden bewaken": "Surveillance des phases : suivi de la charge du VE"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Pour les chargeurs tels que Smappee, HomeFlux envoie stop, smart ou standard. Comme cette interface ne peut pas commander un courant partiel, HomeFlux arrête le chargeur lorsque Peak Guard doit limiter la puissance demandée.",

@@ -38,6 +38,7 @@ const hvacPermanent = require('./lib/hvac-permanent');
 const hvacPresentation = require('./lib/hvac-presentation');
 const hvacCoordination = require('./lib/hvac-coordination');
 const phaseGuard = require('./lib/phase-guard');
+const evPhaseGuard = require('./lib/ev-phase-guard');
 const autoTunePlanning = require('./lib/autotune-planning');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
@@ -3491,8 +3492,8 @@ class HomeFluxEmsApp extends Homey.App {
     this.updateEvPvImportSafety(now, settings);
     const hvacPvReady = hvacCoordination.observeSurplus(this, now);
 
-    let reason = '';
-    if (this.hasActiveFlexibleOutput(settings) && Boolean(settings.peakShaveEnabled)) {
+    let reason = evPhaseGuard.enabled(settings)&&evPhaseGuard.urgent(this,settings,now)?'ev_phase_guard':'';
+    if (!reason && this.hasActiveFlexibleOutput(settings) && Boolean(settings.peakShaveEnabled)) {
       const peak = Math.max(0, Number(settings.peakLimitW) || 0);
       if (gridW >= peak) reason = 'peak_guard';
     }
@@ -6569,7 +6570,7 @@ class HomeFluxEmsApp extends Homey.App {
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.gridPowerW = value;
-      if(phases)phaseGuard.ingest(this,args,now);
+      if(phases){phaseGuard.ingest(this,args,now);if(evPhaseGuard.enabled(inputSettings))evPhaseGuard.reference(this,inputSettings,now);}
       this.inputSeen.grid = true;
       this.inputUpdatedAt.grid = now;
       this.recordGridSample(value, now);
@@ -11118,6 +11119,13 @@ class HomeFluxEmsApp extends Homey.App {
     const usedNonSmartSupportW = applyNonSmartSupport(nonSmartSupportEntries, batterySupportRemainingW, false);
     batterySupportRemainingW = Math.max(0, batterySupportRemainingW - usedNonSmartSupportW);
 
+    if(evPhaseGuard.enabled(storedSettings)){
+      const phaseReserved=[0,0,0];
+      for(const entry of nonSmartEntries)evPhaseGuard.cap(this,entry.index,decisions[entry.index],storedSettings,Date.now(),phaseReserved);
+      nonSmartIntentionalGridTargetW=nonSmartEntries.reduce((sum,entry)=>{
+        const d=decisions[entry.index];return sum+(d.allowed&&d.intentionalGridImport?Math.max(0,Number(d.gridAllocatedW)||0):0);
+      },0);
+    }
     // Recalculate the actual non-Smart change after shared Peak Guard and any
     // battery support. Smart EVs use this physical increase when calculating
     // their remaining site headroom.
@@ -11368,6 +11376,10 @@ class HomeFluxEmsApp extends Homey.App {
     // Allocating whole ampere/mode steps can leave a fractional PV remainder.
     // An already-drawing EV physically consumes that remainder too. Attribute it
     // once across the portfolio; treating it as grid energy exempts the house.
+    if(evPhaseGuard.enabled(storedSettings)){
+      const phaseReserved=[0,0,0];
+      for(let index=0;index<decisions.length;index++)evPhaseGuard.cap(this,index,decisions[index],storedSettings,Date.now(),phaseReserved);
+    }
     const pvAccountingEntries = decisions.filter(d => d.allowed && Number(d.desiredPowerW) > 0);
     const assignedPvW = pvAccountingEntries.reduce((sum, d) => sum + (Number(d.pvAllocatedW) || 0), 0);
     const pvRemainderRoom = d => Math.max(0, Number(d.desiredPowerW) - (Number(d.pvAllocatedW) || 0)
@@ -11376,7 +11388,9 @@ class HomeFluxEmsApp extends Homey.App {
     const extraPhysicalPvW = Math.min(totalPvRoomW, Math.max(0, evPvPoolBudgetW - assignedPvW));
     for (const d of decisions) d.pvAttributedW = Math.max(0, Number(d.pvAllocatedW) || 0)
       + (d.allowed && totalPvRoomW > 0 ? extraPhysicalPvW * pvRemainderRoom(d) / totalPvRoomW : 0);
-    const combinedPortfolioGridImportTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW + portfolioEvGridImportTargetW));
+    let combinedPortfolioGridImportTargetW = Math.max(0, Math.round(nonSmartIntentionalGridTargetW + portfolioEvGridImportTargetW));
+    if(evPhaseGuard.enabled(storedSettings))combinedPortfolioGridImportTargetW=Math.min(combinedPortfolioGridImportTargetW,
+      Math.round(decisions.reduce((sum,d)=>sum+(d.allowed&&d.intentionalGridImport?Math.max(0,Number(d.gridAllocatedW)||0):0),0)));
     if (this.isDiagnosticEnabled('planning')) {
       try {
         this.getCompactDiagnostics().portfolio({ tariffId: tariff?.rateId || tariff?.className,
@@ -11516,7 +11530,7 @@ class HomeFluxEmsApp extends Homey.App {
     const currentSafetyReduction = ['current','hybrid'].includes(controlType)
       && ((desiredCurrentA === 0 && previousCurrentA > 0)
         || (desiredCurrentA < previousCurrentA
-          && (Boolean(decision?.peakLimited) || !Boolean(settings.evEnabled) || !Boolean(decision?.connected))));
+          && (Boolean(decision?.peakLimited) || Boolean(decision?.phaseLimited) && evPhaseGuard.enabled(settings) || !Boolean(settings.evEnabled) || !Boolean(decision?.connected))));
     const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
     const waitingForInterval = changed && !isSafetyReduction && now < allowedAt;
     const remainingSeconds = waitingForInterval
@@ -12026,6 +12040,10 @@ class HomeFluxEmsApp extends Homey.App {
     if (!decision) return;
     this.publishEvTargetWarning(0, decision).catch(err => this.error('EV target warning trigger failed', err));
     const settings = this.getSettings();
+    if(evPhaseGuard.enabled(settings)){
+      evPhaseGuard.cap(this,0,decision,settings);
+      if(evPhaseGuard.waitingForFailedAttempt(this,0,settings,decision))return;
+    }
     const controlType = this.getEvControlType(settings);
     const output = this.getEvOutputFor(0, decision, settings);
     const desiredA = output.currentA, chargeMode = output.mode;
@@ -12057,7 +12075,7 @@ class HomeFluxEmsApp extends Homey.App {
     const previousCurrentA = Number(this.lastPublishedEvCurrentA || 0);
     const modeSafetyReduction = ['mode','hybrid'].includes(controlType) && chargeMode === 'stop' && String(this.lastPublishedEvChargeMode || '') !== 'stop';
     const currentSafetyReduction = ['current','hybrid'].includes(controlType) && ((desiredA === 0 && previousCurrentA > 0)
-      || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || !Boolean(settings.evEnabled) || !decision.connected)));
+      || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || Boolean(decision.phaseLimited) && evPhaseGuard.enabled(settings) || !Boolean(settings.evEnabled) || !decision.connected)));
     const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
     if (!isSafetyReduction && now < allowedAt) {
       diagnosticOutput?.('waiting', { reason: 'command_interval', allowedAt });
@@ -12073,6 +12091,8 @@ class HomeFluxEmsApp extends Homey.App {
     const houseReferenceAtStart = controlType === 'mode' && !this.hasEvModeHouseCommandLock(settings)
       && ['smart', 'standard'].includes(chargeMode) ? this.getEvStartHouseReference(now) : null;
     this.evPublishing = true;
+    let phasePublished=false;
+    if(evPhaseGuard.enabled(settings))evPhaseGuard.begin(this,0,settings,allowed?desiredA:0);
     diagnosticOutput?.('publishing');
     try {
       if (currentChanged) {
@@ -12125,6 +12145,7 @@ class HomeFluxEmsApp extends Homey.App {
         diagnosticOutput?.('component_published', { component: 'allowed', value: allowed });
       }
       this.lastEvPublishedAt = Date.now();
+      phasePublished=true;
       this.forceEvOutput = false;
       if (allowed) this.rememberEvBatterySupply(0, decision);
       diagnosticOutput?.('published');
@@ -12132,6 +12153,7 @@ class HomeFluxEmsApp extends Homey.App {
       diagnosticOutput?.('failed', { error: String(err?.message || err).slice(0, 1000) });
       throw err;
     } finally {
+      if(evPhaseGuard.enabled(settings))evPhaseGuard.complete(this,0,this.getSettings(),allowed?desiredA:0,phasePublished);
       this.evPublishing = false;
     }
   }
@@ -12179,7 +12201,12 @@ class HomeFluxEmsApp extends Homey.App {
     const runtime = this.getExtraEv(index);
     this.publishEvTargetWarning(index, decision).catch(err => this.error(`EV ${index + 1} target warning trigger failed`, err));
     if (!runtime || !decision) return;
-    const settings = this.getEvInstanceSettings(index);
+    const phaseSettings=this.getSettings();
+    if(evPhaseGuard.enabled(phaseSettings)){
+      evPhaseGuard.cap(this,index,decision,phaseSettings);
+      if(evPhaseGuard.waitingForFailedAttempt(this,index,phaseSettings,decision))return;
+    }
+    const settings = this.getEvInstanceSettings(index,phaseSettings);
     settings.evMode = this.getEffectiveEvModeFor(index);
     const triggers = this.extraEvTriggers[index - 1] || {};
     const controlType = this.getEvControlType(settings);
@@ -12211,7 +12238,7 @@ class HomeFluxEmsApp extends Homey.App {
     const previousCurrentA = Number(runtime.lastPublishedCurrentA || 0);
     const modeSafetyReduction = ['mode','hybrid'].includes(controlType) && chargeMode === 'stop' && String(runtime.lastPublishedChargeMode || '') !== 'stop';
     const currentSafetyReduction = ['current','hybrid'].includes(controlType) && ((desiredA === 0 && previousCurrentA > 0)
-      || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || !Boolean(settings.evEnabled) || !decision.connected)));
+      || (desiredA < previousCurrentA && (Boolean(decision.peakLimited) || Boolean(decision.phaseLimited) && evPhaseGuard.enabled(settings) || !Boolean(settings.evEnabled) || !decision.connected)));
     const isSafetyReduction = modeSafetyReduction || currentSafetyReduction;
     if (!isSafetyReduction && now < allowedAt) {
       diagnosticOutput?.('waiting', { reason: 'command_interval', allowedAt });
@@ -12226,6 +12253,8 @@ class HomeFluxEmsApp extends Homey.App {
     const houseReferenceAtStart = controlType === 'mode' && !this.hasEvModeHouseCommandLock(this.getSettings())
       && ['smart', 'standard'].includes(chargeMode) ? this.getEvStartHouseReference(now) : null;
     runtime.publishing = true;
+    let phasePublished=false;
+    if(evPhaseGuard.enabled(phaseSettings))evPhaseGuard.begin(this,index,phaseSettings,allowed?desiredA:0);
     diagnosticOutput?.('publishing');
     try {
       if (currentChanged && triggers.current) {
@@ -12263,6 +12292,7 @@ class HomeFluxEmsApp extends Homey.App {
         diagnosticOutput?.('component_published', { component: 'allowed', value: allowed });
       }
       runtime.lastPublishedAt = Date.now();
+      phasePublished=Number(runtime.lastPublishedCurrentA)===desiredA;
       runtime.forceOutput = false;
       if (allowed) this.rememberEvBatterySupply(index, decision);
       diagnosticOutput?.('published');
@@ -12270,6 +12300,7 @@ class HomeFluxEmsApp extends Homey.App {
       diagnosticOutput?.('failed', { error: String(err?.message || err).slice(0, 1000) });
       throw err;
     } finally {
+      if(evPhaseGuard.enabled(phaseSettings))evPhaseGuard.complete(this,index,this.getSettings(),allowed?desiredA:0,phasePublished);
       runtime.publishing = false;
     }
   }
@@ -13533,6 +13564,7 @@ class HomeFluxEmsApp extends Homey.App {
             ? 'EV niet aangesloten of sessie beëindigd' : 'Wachten op geldige netmeting' };
       }
 
+      if(evPhaseGuard.enabled(liveSettings))evPhaseGuard.cap(this,index,decision,liveSettings);
       let desiredActive = this.isEvDecisionOutputActiveFor(index, decision, storedSettings);
       if (!previousActive && desiredActive && evStartedThisCycle) {
         decision.allowed = false;
@@ -15750,7 +15782,22 @@ class HomeFluxEmsApp extends Homey.App {
       const dischargeBlocked = this.getEvBatteryDischargePolicy(settings, now).blocked;
       const coordinatedCommands = dischargeBlocked
         ? efficiencyOutputTransition.commands.map(value => Math.min(0, value)) : efficiencyOutputTransition.commands;
-      const internalCommands=phaseGuard.limit(this,coordinatedCommands,settings,Date.now(),false);
+      let phaseSettings=settings;
+      if(evPhaseGuard.enabled(settings)){
+        const reduction=evPhaseGuard.reduceBeforeBattery(this,settings);
+        if(reduction){
+          await reduction;phaseSettings=this.getSettings();
+          // EV I/O may have yielded to a pause, test, handover or settings edit.
+          // Existing settings/input handling supplies the next fresh decision.
+          if(!phaseSettings.controlEnabled||!this.isChargeTestValid(phaseSettings)
+            ||this.chargeTestOperationRunning||batteryResponseTest.active(this)
+            ||this.isHybridExternalControlActive(phaseSettings)||String(this.hybridEmsRuntime?.status||'')==='handover_wait'
+            ||this.getBatteryCommandPauseInfo(Date.now(),phaseSettings).active
+            ||phaseSettings.phaseGuard!==settings.phaseGuard
+            ||['peakLimitW','peakShaveEnabled','peakSoftMarginW','forcedMode','minSoc'].some(key=>phaseSettings[key]!==settings[key]))return;
+        }
+      }
+      const internalCommands=phaseGuard.limit(this,coordinatedCommands,phaseSettings,Date.now(),false);
       this.inFlightBatteryCommands = internalCommands;
       this.recordDiagnosticBatteryOutput(result, 'requested', internalCommands);
       const internalTotal = internalCommands.reduce((sum, value) => sum + value, 0);
@@ -16537,6 +16584,12 @@ class HomeFluxEmsApp extends Homey.App {
         nextOutputChargeMode: String(outputTiming.nextChargeMode || ''),
         nextOutputAllowed: Boolean(outputTiming.nextAllowed),
         nextOutputReason: String(outputTiming.reason || decision?.reason || ''),
+        ...(evPhaseGuard.enabled(storedSettings)&&this.getEvControlType(instanceSettings)!=='mode'?{
+          phaseMaxCurrentA: decision?.phaseMaxCurrentA??null,
+          phaseLimited: Boolean(decision?.phaseLimited),
+          phaseFeedbackPending: Boolean(decision?.phaseFeedbackPending),
+          phaseFeedbackRemainingSeconds: Math.max(0,Number(decision?.phaseFeedbackRemainingSeconds)||0),
+        }:{}),
         stopHoldRemainingSeconds: Math.max(0, Math.ceil(((index === 0 ? Number(this.evPeakGuardStopHoldUntil) : Number(runtime?.stopHoldUntil)) - statusNow) / 1000)),
         batteryDischargeW: Math.max(0, Math.round(Number(this.state.lastTotalCommandW) || 0)),
         evGridImportTargetW: Math.max(0, Math.round(Number(evGridControl.requestedTargetW) || 0)),

@@ -1,0 +1,79 @@
+{
+  "version": "1.2.29",
+  "base_version": "1.2.28",
+  "base_library_version": 23,
+  "changes": [
+    "Optional EV current/Hybrid phase ceiling; disabled/one-phase path does not run phase arithmetic",
+    "Battery first default, shared and EV first phase charging priorities",
+    "60-second existing feedback horizon for an unconfirmed EV reduction; temporary battery relief",
+    "Command receipts alone never release physical EV phase capacity; explicit partial/failed publication bookkeeping",
+    "No immediate retry of an uncertain failed reduction; new unavoidable overload remains reducible",
+    "Final checks after EV I/O retain battery ownership, pause, direction-test, settings and power/SoC limits",
+    "Live phase display uses server time and separate last received display values with original timestamps; control still requires the original complete valid phase snapshot"
+  ],
+  "passed_suites": [
+    "engine",
+    "phase-guard-1.2.28",
+    "phase-output-1.2.28",
+    "phase-recovery-1.2.28",
+    "phase-detection-1.2.28",
+    "phase-live-1.2.28",
+    "direction-phase-1.2.28",
+    "safety-max-1.2.28",
+    "ev-phase-1.2.29",
+    "ev-phase-output-1.2.29",
+    "ev-grid-budget-1.2.13",
+    "ev-work-1.1.16",
+    "ev-confirmed-power-1.2.4",
+    "ev-mode-recording-1.2.5",
+    "ev-house-publication-1.2.5",
+    "ev-grid-permission-1.2.5",
+    "ev-battery-transition-1.1.9",
+    "ev-battery-options-1.2.4",
+    "ev-feedback-1.0.11",
+    "ev-context-delay-1.1.13",
+    "ev-deadline-integration-1.1.17",
+    "ev-physical-settings-1.1.16",
+    "ev-multiday-control-1.2.4",
+    "ev-flow-resume-waf-1.2.4",
+    "multi-flexible-loads",
+    "settings-runtime-audit",
+    "settings-translations",
+    "localization-1.2.18"
+  ],
+  "new_arithmetic_ui_metadata_scenario_groups": 16,
+  "new_real_app_scenario_groups": 25,
+  "disabled_mode_operating_parity_comparisons": 9,
+  "homey_validation": {
+    "cli_version": "4.6.2",
+    "level": "debug",
+    "compose_build": "passed",
+    "exact_final_source_manifest": "passed",
+    "regression_tests_excluded_from_build": true
+  },
+  "legacy_checks_retained": [
+    {
+      "suite": "phase-ui-1.2.28",
+      "result": "fails only its final literal version assertion (expects 1.2.28, actual 1.2.29); functional checks passed"
+    },
+    {
+      "suite": "settings-startup",
+      "result": "literal version assertion expects 1.2.28, actual 1.2.29; retained unmodified; metadata parity separately tested"
+    }
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent HVAC, boiler, AutoTune, savings and standalone price/planner suites",
+    "Physical Homey/EV/battery testing"
+  ],
+  "limitations": [
+    "One-phase EV wiring has no configured L1/L2/L3 identity; constrain on worst phase without assumed physical relief",
+    "Unknown battery phase distribution stays conservative; exact sharing cannot be promised for unknown wiring",
+    "Minimum EV current, integer ampere steps, SoC/power caps and delayed feedback can prevent an exact equal split",
+    "Battery power remains command-derived; EV release uses current feedback and phase measurements, not merely a successful Flow command",
+    "Live input on this installation is not directly available; missing L1/L2/L3 inputs still legitimately display an em dash after 15 seconds"
+  ],
+  "new_polling_timers_listeners": false,
+  "homey_install_publish": false,
+  "existing_test_files_modified": false
+}

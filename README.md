@@ -21,6 +21,8 @@ The core battery control and planning can now run. Optional day/night planning m
 
 The optional Charging strategy tab offers spread charging with a power correction, or maximum safe charging from the start, as late as possible with a 15-minute reserve, or centred on the cheapest interval. For variable prices, centring is used only if the full block is cheaper than the standard spread plan. Day/night and annual/seasonal settings are independent.
 
+Optional phase monitoring can also limit current/Hybrid EV charging, with selectable battery/EV priority.
+
 Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels, optional direct/parallel tariff and PV control and shared heat sources, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
 For the complete functionality, configuration and all Flow cards, see:  
@@ -29,6 +31,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.29
+
+Optionele fasebewaking begrenst nu ook EV-laden op ampère en Hybrid. Kies Batterij eerst laden (standaard), Verdelen of EV eerst laden. EV-terugkoppeling krijgt tijd; tijdens het wachten kan de batterij tijdelijk meer afbouwen. Live fasewaarden worden stabieler weergegeven met behoud van hun echte meettijd.
+
+Optional phase monitoring now also limits current and Hybrid EV charging. Choose Battery first (default), Share or EV first. EV feedback is given time; the battery can temporarily reduce charging further while waiting. Live phase readings display more consistently while retaining their actual measurement time.
+
+La surveillance facultative des phases limite aussi la charge VE en ampères et Hybrid. Choisissez Batterie en priorité (par défaut), Répartir ou VE en priorité. Le retour du VE dispose du temps nécessaire ; la batterie peut temporairement réduire davantage sa charge. L’affichage des phases est plus stable et conserve l’heure réelle des mesures.
+
+La supervisión opcional de fases también limita la carga del VE por amperios y Hybrid. Elija Batería primero (predeterminado), Repartir o VE primero. Se da tiempo a la respuesta del VE; la batería puede reducir temporalmente más su carga. Las lecturas de fase se muestran de forma más estable y conservan su hora de medición real.
+
+Die optionale Phasenüberwachung begrenzt jetzt auch EV-Laden nach Ampere und Hybrid. Wählbar sind Batterie zuerst (Standard), Verteilen oder EV zuerst. Der EV-Rückmeldung wird Zeit gegeben; die Batterie kann das Laden währenddessen vorübergehend stärker reduzieren. Live-Phasenwerte werden stabiler mit ihrer tatsächlichen Messzeit angezeigt.
 
 ### 1.2.28
 
