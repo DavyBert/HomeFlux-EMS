@@ -14,7 +14,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
   insights:{kwh:12,pvKwh:8.4,gridKwh:3.6,batteryKwh:0,unknownKwh:0,gridCost:1.08,solarValue:.252,solarSavings:2.268,solarKm:46.66667},incomplete:false})),sharedKwh:0};
  const H={getWidgetInstanceId:()=>instanceId,getSettings:()=>({...status===null?{}:{showStatus:status},showScheduler:scheduler,showInsights:insights,switchSections:switching}),ready(){},setHeight(){},on:(k,cb)=>{listeners[k]=cb;},
   __:key=>key.split('.').reduce((v,k)=>v?.[k],dictionary)||key,
-  api:async(method,url,body)=>{calls.push({method,url,body});if(method==='GET')return structuredClone(data);return {accepted:true,plan:{...data.evs.find(e=>e.id===body.evId).plan,time:body.change.time||'07:00'}};}};
+  api:async(method,url,body)=>{calls.push({method,url,body});if(method==='GET')return structuredClone(data);const ev=data.evs.find(e=>e.id===body.evId);if(body.change.deadline){ev.plan={...ev.plan,owner:'widget',manualDate:true,days:0,time:body.change.deadline.time,deadlineLabel:{dateKey:body.change.deadline.dateKey,en:body.change.deadline.dateKey,nl:body.change.deadline.dateKey}};return {accepted:true,plan:structuredClone(ev.plan)};}return {accepted:true,plan:{...ev.plan,time:body.change.time||'07:00'}};}};
  const RealDate=Date;class FakeDate extends RealDate{static now(){return clock;}}
  const ctx=vm.createContext({localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},Date:FakeDate,Math,JSON,console,HomeFluxEvController:controller,
   document:{hidden:false,getElementById:()=>host,addEventListener:(k,v)=>documentListeners[k]=v},
@@ -224,6 +224,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
   advanced.setData(data);advanced.listeners['homeflux.ev.changed']();await advanced.drain();
   assert(advanced.host.innerHTML.includes(language==='nl'?'vr 30/10/2026':'Fri 30/10/2026'));assert(advanced.host.innerHTML.includes('id="endDate"'));assert(advanced.host.innerHTML.includes('data-key="clear"'));assert(!advanced.host.innerHTML.includes('evWidget.'));
   const manual={key:'deadline',change:JSON.stringify({deadline:{dateKey:'2026-10-29',time:'12:00'}})};
+  vm.runInContext("manualDeadline={dateKey:'2026-10-29',time:'12:00'}",advanced.ctx);
   await advanced.click(manual);await advanced.click(manual);assert.equal(advanced.calls.filter(c=>c.method==='POST').length,3);
   const clear={key:'clear',change:JSON.stringify({clear:true})};await advanced.click(clear);assert.equal(advanced.calls.filter(c=>c.method==='POST').length,3);await advanced.click(clear);assert.equal(advanced.calls.filter(c=>c.method==='POST').length,4);
   reports.push(language+': days, Max PV, manual deadline and clear all double-confirm; central absolute date and provisional state translated');

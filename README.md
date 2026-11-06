@@ -32,6 +32,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.32
+
+EV-widgetplanning verbeterd: handmatige kalenderdatums zijn niet langer beperkt tot zeven dagen. Datum en tijd worden betrouwbaar bevestigd met duidelijke knopteksten en foutmeldingen. De widget toont de opgeslagen planning en voorkomt dubbele bevestigingen.
+
+Improved EV widget scheduling: manual calendar dates are no longer limited to seven days. Date and time confirmation now uses clear button labels and error messages. The widget displays the saved schedule and prevents duplicate submissions.
+
+Planification du widget VE améliorée : les dates choisies dans le calendrier ne sont plus limitées à sept jours. La date et l’heure sont confirmées avec des libellés clairs et des messages d’erreur explicites. Le widget affiche la planification enregistrée et évite les envois en double.
+
+Mejorada la programación del widget de VE: las fechas seleccionadas en el calendario ya no se limitan a siete días. La fecha y la hora se confirman con botones claros y mensajes de error explícitos. El widget muestra la programación guardada y evita envíos duplicados.
+
+Verbesserte Planung im EV-Widget: Manuell gewählte Kalenderdaten sind nicht mehr auf sieben Tage begrenzt. Datum und Uhrzeit lassen sich mit klaren Schaltflächenbeschriftungen und Fehlermeldungen bestätigen. Das Widget zeigt den gespeicherten Ladeplan an und verhindert doppelte Übermittlungen.
+
 ### 1.2.31
 
 Emergency Charge kan veilig starten nadat voldoende batterijlaadruimte is vrijgemaakt en gemeten, zonder vooraf netimport in export te veranderen. Een aparte Emergency-prioriteit volgt standaard de EV-instellingen. De normale optie Verdelen gebruikt nu de netlaadprioriteit en gewichten per EV.

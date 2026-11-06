@@ -21,14 +21,35 @@ const t=key=>H.__(`evWidget.${key}`), esc=v=>String(v??'').replace(/[&<>"']/g,c=
 const num=(v,d=1)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toLocaleString(undefined,{maximumFractionDigits:d}):'—';
 function button(key,label,change,css=''){
  const s=controller.snapshot(), confirm=s.pending?.key===key && Date.now()<s.pending.expiresAt;
- return `<button data-key="${esc(key)}" data-change="${esc(JSON.stringify(change))}" class="${css} ${confirm?'confirm':''}" ${s.busy?'disabled':''}>${esc(confirm?t('confirm'):label)}</button>`;
+ return `<button data-key="${esc(key)}" data-change="${esc(JSON.stringify(change))}" class="${css} ${confirm?'confirm':''}" ${s.busy?'disabled':''}>${esc(confirm?(t('confirm')||label):label)}</button>`;
 }
+function deadlineEdit(ev,s=controller.snapshot()){
+ const dateKey=Object.hasOwn(manualDeadline,'dateKey')?manualDeadline.dateKey:ev.plan?.deadlineLabel?.dateKey||'';
+ const time=Object.hasOwn(manualDeadline,'time')?manualDeadline.time:ev.plan?.time||s.draft.time||'';
+ const dirty=Object.keys(manualDeadline).length>0&&(dateKey!==(ev.plan?.deadlineLabel?.dateKey||'')||time!==(ev.plan?.time||s.draft.time||''));
+ return {dateKey,time,dirty,ready:/^\d{4}-\d\d-\d\d$/.test(dateKey)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(time)};
+}
+function deadlineAction(ev,s=controller.snapshot()){
+ const edit=deadlineEdit(ev,s);if(!edit.dirty||!edit.ready)return '';
+ const translated=t('confirmSchedule'),label=typeof translated==='string'&&translated.trim()&&translated!=='evWidget.confirmSchedule'?translated:'Confirm schedule';
+ return button('deadline',label,{deadline:{dateKey:edit.dateKey,time:edit.time}},'clear-plan');
+}
+function deadlineEdited(e){
+ if(!['endDate','endTime'].includes(e.target.id)||controller.snapshot().busy)return;
+ const next={dateKey:host.querySelector('#endDate')?.value||'',time:host.querySelector('#endTime')?.value||''};
+ if(next.dateKey===manualDeadline.dateKey&&next.time===manualDeadline.time)return;
+ manualDeadline=next;clearTimeout(confirmTimer);controller.cancel(false);
+ const actions=host.querySelector('#deadlineActions'),ev=payload?.evs.find(row=>row.id===selected);
+ if(actions&&ev)actions.innerHTML=deadlineAction(ev);
+ resize();
+}
+function resize(){const height=host.scrollHeight+2;if(height!==lastHeight){lastHeight=height;Promise.resolve(H.setHeight?.(height)).catch(()=>{});}}
 function activeScheduleText(ev){
  const p=ev.schedule;
  if(!p)return t('noActivePlan');
  if(p.mode==='emergency')return t('emergencyPlan');
  const mode=t(p.mode==='soc_target'?'socTargetPlan':'smartPlan');
- if(ev.plan?.owner==='widget'){const goal=num(ev.plan.value,1)+(ev.plan.type==='soc'?'%':' kWh');return `${t('planningTab')}: ${ev.plan.days?t('daysAhead').replace('{n}',ev.plan.days):t('standard')} · ${goal} · ${deadlineText(ev.plan)}${ev.plan.completed?' · '+t('targetReached'):ev.plan.expired?' · '+t('expired'):''}`;}
+ if(ev.plan?.owner==='widget'){const goal=num(ev.plan.value,1)+(ev.plan.type==='soc'?'%':' kWh');return `${t('planningTab')}: ${ev.plan.manualDate?t('calendarDate'):ev.plan.days?t('daysAhead').replace('{n}',ev.plan.days):t('standard')} · ${goal} · ${deadlineText(ev.plan)}${ev.plan.completed?' · '+t('targetReached'):ev.plan.expired?' · '+t('expired'):''}`;}
  if(p.continuing)return `${mode} · ${t('targetReachedPreferences')}`;
  if(p.completed)return `${mode} · ${t('targetReached')}`;
  if(!p.target)return mode;
@@ -52,6 +73,7 @@ function statusSummary(ev){
 function render(){
  if(!H||!payload)return;
  const ev=payload.evs.find(e=>e.id===selected), s=controller.snapshot();
+ if(active&&!s.busy&&['endDate','endTime'].includes(document.activeElement?.id))return;
  if(!ev){host.innerHTML=`<div class="eyebrow">HOMEFLUX EV</div><p class="empty">${esc(t('noEv'))}</p>`;return;}
  const activePlan=activeScheduleText(ev);
  const {views,switchable}=viewState();
@@ -72,8 +94,8 @@ function render(){
   const guaranteed=p?.guaranteed??s.draft.guaranteed??false;
   html+=button('guaranteed',`${t('guaranteed')}: ${t(guaranteed?'on':'off')}`,{guaranteed:!guaranteed},'guarantee '+(guaranteed?'active':''));
   const days=p?.days??s.draft.days??0,maxPv=p?.maxPv??s.draft.maxPv??false;
-  html+=`<div class="eyebrow" style="margin-top:14px">${esc(t('planningMode'))}</div><div class="planning-days">${Array.from({length:8},(_,n)=>button('days'+n,n?t('daysAhead').replace('{n}',n):t('standard'),{days:n},days===n?'active':'')).join('')}</div>`;
-  if(days>0){html+=`<div class="manual-deadline"><input aria-label="${esc(t('endDate'))}" type="date" id="endDate" value="${esc(manualDeadline.dateKey||p?.deadlineLabel?.dateKey||'')}"><input aria-label="${esc(t('endTime'))}" type="time" id="endTime" value="${esc(manualDeadline.time||time||'')}"></div>`;html+=button('deadline',t('applyDeadline'),{deadline:{dateKey:manualDeadline.dateKey||p?.deadlineLabel?.dateKey||'',time:manualDeadline.time||time||''}},'clear-plan');}
+  html+=`<div class="eyebrow" style="margin-top:14px">${esc(t('planningMode'))}</div><div class="planning-days">${Array.from({length:8},(_,n)=>button('days'+n,n?t('daysAhead').replace('{n}',n):t('standard'),{days:n},!p?.manualDate&&days===n?'active':'')).join('')}</div>`;
+  if(!emergency){const edit=deadlineEdit(ev,s);html+=`<div class="manual-deadline"><input aria-label="${esc(t('endDate'))}" type="date" id="endDate" value="${esc(edit.dateKey)}" ${s.busy?'disabled':''}><input aria-label="${esc(t('endTime'))}" type="time" id="endTime" value="${esc(edit.time)}" ${s.busy?'disabled':''}></div><div id="deadlineActions">${deadlineAction(ev,s)}</div>`;}
   html+=button('maxPv',`${t('maxPv')}: ${t(maxPv?'on':'off')}`,{maxPv:!maxPv},'guarantee '+(maxPv?'active':''));
   html+=button('emergency',`${t('emergencyButton')}: ${t(emergency?'on':'off')}`,{mode:emergency?'smart':'emergency'},'guarantee emergency '+(emergency?'active':''));
   if(p&&!emergency)html+=`<p class="note">${esc(t('emergencyClearsPlan'))}</p>`;
@@ -93,7 +115,7 @@ function render(){
   html+='</section>';
  }
  if(!views.length)html+=`<p class="empty">${esc(t('enableSection'))}</p>`;
- host.innerHTML=html;const height=host.scrollHeight+2;if(height!==lastHeight){lastHeight=height;Promise.resolve(H.setHeight?.(height)).catch(()=>{});}
+ host.innerHTML=html;resize();
 }
 async function refresh(){
  if(!active)return;
@@ -120,11 +142,13 @@ async function activate(el){
  const {switchable}=viewState();
  if(prefs.showScheduler===false||(switchable&&section!=='scheduler'))return;
  clearTimeout(confirmTimer);
- try{const result=await controller.tap(el.dataset.key,JSON.parse(el.dataset.change));
+ let change=JSON.parse(el.dataset.change);
+ if(el.dataset.key==='deadline'){const ev=payload.evs.find(row=>row.id===selected),edit=deadlineEdit(ev);if(!edit.dirty||!edit.ready)return;change={deadline:{dateKey:edit.dateKey,time:edit.time}};}
+ try{const result=await controller.tap(el.dataset.key,change);
   if(result.confirm)confirmTimer=setTimeout(()=>controller.cancel(),5000);
   if(result.draft){feedback=t('choosePlan');error=false;}
-  if(result.success){manualDeadline={};feedback=t('saved');error=false;await refresh();}
- }catch(e){feedback=t('errors.'+(String(e.message).match(/evWidget\.errors\.(ev|input|incomplete|changed|network)/)?.[1]||'network'));error=true;await refresh();}
+  if(result.success){generation++;const ev=payload.evs.find(row=>row.id===selected);if(ev){ev.plan=result.result.plan;if(result.result.mode)ev.schedule={...ev.schedule,mode:result.result.mode};}manualDeadline={};feedback=t('saved');error=false;await refresh();}
+ }catch(e){feedback=t('errors.'+(String(e.message).match(/evWidget\.errors\.(ev|input|incomplete|changed|network|schedule|save)/)?.[1]||'network'));error=true;await refresh();}
  render();
 }
 function onHomeyReady(Homey){
@@ -133,7 +157,7 @@ function onHomeyReady(Homey){
  controller=HomeFluxEvController.create({send:body=>H.api('POST','/schedule',body),changed:render,
   nonce:()=>globalThis.crypto?.randomUUID?.().replace(/-/g,'')||Math.random().toString(36).slice(2)});
  if(selected)controller.select(selected);
- host.addEventListener('input',e=>{if(!['endDate','endTime'].includes(e.target.id))return;manualDeadline={dateKey:host.querySelector('#endDate')?.value||'',time:host.querySelector('#endTime')?.value||''};clearTimeout(confirmTimer);if(controller.snapshot().pending)controller.cancel();const b=host.querySelector('[data-key=deadline]');if(b)b.dataset.change=JSON.stringify({deadline:manualDeadline});});
+ for(const event of ['input','change'])host.addEventListener(event,deadlineEdited);
  host.addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(b)pointer={id:e.pointerId,x:e.clientX,y:e.clientY,button:b,moved:false};});
  host.addEventListener('pointermove',e=>{if(pointer&&Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>8)pointer.moved=true;});
  host.addEventListener('pointercancel',()=>{pointer=null;controller.cancel();});

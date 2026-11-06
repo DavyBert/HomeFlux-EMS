@@ -344,7 +344,9 @@
       "input": "De wijziging is geweigerd. Controleer het doel en tijdstip.",
       "incomplete": "Kies eerst een doel en tijdstip.",
       "changed": "Een Flow heeft de planning gewijzigd. Vernieuw en probeer opnieuw.",
-      "network": "HomeFlux is niet bereikbaar. Je opgeslagen planning blijft actief."
+      "network": "HomeFlux is niet bereikbaar. Je opgeslagen planning blijft actief.",
+      "schedule": "Kies een geldige datum en tijd in de toekomst.",
+      "save": "De planning kon niet worden opgeslagen. Probeer opnieuw."
     },
     "saving": "Planning bijwerken…",
     "unpriced": "Sommige intervalprijzen ontbreken.",
@@ -378,6 +380,8 @@
     "homefluxPower": "Woningmeting",
     "reportedCurrent": "Teruggemeld",
     "commandCurrent": "Opdracht",
-    "statusTab": "Status"
+    "statusTab": "Status",
+    "confirmSchedule": "Planning bevestigen",
+    "calendarDate": "Kalenderdatum"
   }
 }

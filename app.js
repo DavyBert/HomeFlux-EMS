@@ -6346,7 +6346,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   planEvDeadline(index, input, target) {
     const settings = input.settings, now = input.now.getTime();
-    const advanced = settings.evWidgetPlan && (settings.evWidgetPlan.days > 0 || settings.evWidgetPlan.maxPv);
+    const advanced = settings.evWidgetPlan && (settings.evWidgetPlan.days > 0 || settings.evWidgetPlan.manualDate || settings.evWidgetPlan.maxPv);
     if ((!isDynamicContract(settings) && !advanced) || (!settings.evEnergyPlanActive && !settings.evSocPlanActive
       && !settings.evGuaranteeTarget && settings.evMode !== 'soc_target')
       || this.getEvSessionDetectionRuntime(index)?.endedLatched) return null;
@@ -6481,7 +6481,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   measureEvPlanningDecision(instanceIndex, origin, input) {
-    if (origin !== 'simulation' && (isDynamicContract(input.settings) || (input.settings.evWidgetPlan && (input.settings.evWidgetPlan.days > 0 || input.settings.evWidgetPlan.maxPv)))) {
+    if (origin !== 'simulation' && (isDynamicContract(input.settings) || (input.settings.evWidgetPlan && (input.settings.evWidgetPlan.days > 0 || input.settings.evWidgetPlan.manualDate || input.settings.evWidgetPlan.maxPv)))) {
       input = { ...input, planDeadline: target => this.planEvDeadline(instanceIndex, input, target) };
     }
     const instance = instanceIndex + 1;

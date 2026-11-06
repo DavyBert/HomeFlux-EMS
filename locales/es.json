@@ -344,7 +344,9 @@
       "input": "El cambio fue rechazado. Revisa el objetivo y el tiempo.",
       "incomplete": "Seleccione primero un objetivo y una hora límite.",
       "changed": "Un Flow cambió el plan. Refresca y prueba de nuevo.",
-      "network": "No podía llegar a HomeFlux. Tu plan guardado sigue activo."
+      "network": "No podía llegar a HomeFlux. Tu plan guardado sigue activo.",
+      "schedule": "Elija una fecha y hora futuras válidas.",
+      "save": "No se pudo guardar la programación. Inténtelo de nuevo."
     },
     "saving": "Actualizando planificación…",
     "unpriced": "Algunos precios de intervalo no están disponibles.",
@@ -378,6 +380,8 @@
     "homefluxPower": "Medición de la vivienda",
     "reportedCurrent": "Medido",
     "commandCurrent": "Comando",
-    "statusTab": "Situación"
+    "statusTab": "Situación",
+    "confirmSchedule": "Confirmar programación",
+    "calendarDate": "Fecha del calendario"
   }
 }

@@ -1,0 +1,206 @@
+{
+  "version": "1.2.32",
+  "source": {
+    "version": "1.2.31",
+    "sha256": "f2a449e7a77ea84e14377348729987f50d8eeae07c9bc9bbfa5695a92656db4d"
+  },
+  "scope": "EV calendar widget, central EV plan validation and necessary advanced-plan gates only",
+  "causes": [
+    "Calendar submit button rendered for every quick-day plan, including unchanged/incomplete selections; empty translation could produce an empty button.",
+    "Manual calendar validation incorrectly required quick days and capped the date at their seven-day horizon.",
+    "New-plan draft completion ignored deadline.time; only input event handled, and full re-render could destroy native picker nodes."
+  ],
+  "changes": [
+    "Manual absolute date metadata independent of days 1–7; past/invalid local dates and missing DST times rejected.",
+    "Input/change deduplicated in existing widget; confirm button only for complete changed date/time; actual saved date/time acknowledged.",
+    "Central calendar write checks durable selected goal and restores previous goal after storage failure without overwriting a newer concurrent goal.",
+    "Five supported languages updated; no timers, background polling or new EMS evaluation cycles."
+  ],
+  "tests": [
+    {
+      "name": "ev-widget-regression-1.2.4",
+      "exit": 0,
+      "seconds": 3.23,
+      "log": "/tmp/widget132-logs/ev-widget-regression-1.2.4.log"
+    },
+    {
+      "name": "ev-dashboard-1.2.4",
+      "exit": 0,
+      "seconds": 0.47,
+      "log": "/tmp/widget132-logs/ev-dashboard-1.2.4.log"
+    },
+    {
+      "name": "ev-multiday-control-1.2.4",
+      "exit": 0,
+      "seconds": 1.12,
+      "log": "/tmp/widget132-logs/ev-multiday-control-1.2.4.log"
+    },
+    {
+      "name": "ev-flow-resume-waf-1.2.4",
+      "exit": 0,
+      "seconds": 0.62,
+      "log": "/tmp/widget132-logs/ev-flow-resume-waf-1.2.4.log"
+    },
+    {
+      "name": "ev-plan-1.1.15",
+      "exit": 0,
+      "seconds": 6.94,
+      "log": "/tmp/widget132-logs/ev-plan-1.1.15.log"
+    },
+    {
+      "name": "ev-plan-centralization-1.1.16",
+      "exit": 0,
+      "seconds": 0.42,
+      "log": "/tmp/widget132-logs/ev-plan-centralization-1.1.16.log"
+    },
+    {
+      "name": "ev-deadline-planner-1.1.17",
+      "exit": 0,
+      "seconds": 0.17,
+      "log": "/tmp/widget132-logs/ev-deadline-planner-1.1.17.log"
+    },
+    {
+      "name": "ev-deadline-integration-1.1.17",
+      "exit": 0,
+      "seconds": 7.14,
+      "log": "/tmp/widget132-logs/ev-deadline-integration-1.1.17.log"
+    },
+    {
+      "name": "ev-deadline-cache-1.1.12",
+      "exit": 0,
+      "seconds": 1.42,
+      "log": "/tmp/widget132-logs/ev-deadline-cache-1.1.12.log"
+    },
+    {
+      "name": "ev-grid-budget-1.2.13",
+      "exit": 0,
+      "seconds": 1.57,
+      "log": "/tmp/widget132-logs/ev-grid-budget-1.2.13.log"
+    },
+    {
+      "name": "ev-headroom",
+      "exit": 0,
+      "seconds": 0.06,
+      "log": "/tmp/widget132-logs/ev-headroom.log"
+    },
+    {
+      "name": "ev-feedback-1.0.11",
+      "exit": 0,
+      "seconds": 3.88,
+      "log": "/tmp/widget132-logs/ev-feedback-1.0.11.log"
+    },
+    {
+      "name": "ev-persistence-1.1.20",
+      "exit": 0,
+      "seconds": 0.62,
+      "log": "/tmp/widget132-logs/ev-persistence-1.1.20.log"
+    },
+    {
+      "name": "ev-grid-permission-1.2.5",
+      "exit": 0,
+      "seconds": 4.68,
+      "log": "/tmp/widget132-logs/ev-grid-permission-1.2.5.log"
+    },
+    {
+      "name": "ev-energy-1.2.4",
+      "exit": 0,
+      "seconds": 0.31,
+      "log": "/tmp/widget132-logs/ev-energy-1.2.4.log"
+    },
+    {
+      "name": "widget",
+      "exit": 1,
+      "seconds": 0.06,
+      "log": "/tmp/widget132-logs/widget.log"
+    },
+    {
+      "name": "ev-widget-ui-1.2.4",
+      "exit": 0,
+      "seconds": 0.27,
+      "log": "/tmp/widget132-logs/ev-widget-ui-1.2.4.log"
+    },
+    {
+      "name": "ev-widget-calendar-1.2.32",
+      "exit": 0,
+      "seconds": 0.31,
+      "log": "/tmp/widget132-logs/ev-widget-calendar-1.2.32.log"
+    },
+    {
+      "name": "ev-widget-calendar-ui-1.2.32",
+      "exit": 0,
+      "seconds": 0.37,
+      "log": "/tmp/widget132-logs/ev-widget-calendar-ui-1.2.32.log"
+    },
+    {
+      "name": "ev-widget-emergency-1.2.4",
+      "exit": 0,
+      "seconds": 0.21,
+      "log": "/tmp/widget132-logs/ev-widget-emergency-1.2.4.log"
+    },
+    {
+      "name": "ev-multiday-1.2.4",
+      "exit": 0,
+      "log": "/tmp/widget132-logs/ev-multiday-1.2.4.log"
+    },
+    {
+      "name": "ev-widget-handler-audit-1.2.4",
+      "exit": 0,
+      "log": "/tmp/widget132-logs/ev-widget-handler-audit-1.2.4.log"
+    }
+  ],
+  "newChecks": {
+    "centralStorageControllerAndPlanner": 30,
+    "widgetEventsToCentralStorage": 17
+  },
+  "syntax": {
+    "scripts": 9,
+    "passed": true
+  },
+  "json": {
+    "files": 539,
+    "passed": true
+  },
+  "translationParity": {
+    "languages": [
+      "nl",
+      "en",
+      "fr",
+      "es",
+      "de"
+    ],
+    "allExistingKeysAndValuesPreserved": true,
+    "newKeysPerLanguage": 4
+  },
+  "baselineComparison": {
+    "ordinaryFlowGoalsAndPersistenceAndPlannerDecisionsEqual": true,
+    "fastAndContextCountersEqual": true,
+    "legacyWidgetTest": {
+      "path": "test/widget.test.js",
+      "status": "pre-existing failure",
+      "reason": "Hard-coded expected app version 1.2.27; same failure on unchanged 1.2.31 source. Test retained without modification."
+    }
+  },
+  "skipped": [
+    "Full regression suite",
+    "Independent battery, phase guard, HVAC, boiler, PV and battery-planning suites",
+    "Performance benchmarks for unrelated subsystems"
+  ],
+  "limitations": [
+    "Native Android/iOS/desktop browser picker not physically verified: browser execution blocked by environment. Actual widget JS/DOM events and backend storage tested together using simulated DOM.",
+    "Far dates retain absolute deadline; planner uses available dynamic prices or bounded eight-local-day configured-tariff horizon, with existing PV forecast horizon. Plan can remain provisional until future data is available.",
+    "Not installed or published on Homey."
+  ],
+  "preserved": [
+    "README and release notes byte-for-byte",
+    "Original Flow cards including deprecated cards",
+    "All original test paths",
+    "All unrelated runtime modules"
+  ],
+  "homeyValidation": {
+    "cliVersion": "4.6.2",
+    "debug": "passed",
+    "build": "passed",
+    "regressionTestsExcludedFromActualBuild": true,
+    "modifiedRuntimeMatchesBuild": true
+  }
+}

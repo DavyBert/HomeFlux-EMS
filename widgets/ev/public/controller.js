@@ -4,12 +4,12 @@
   function create({ send, now = () => Date.now(), changed = () => {}, nonce = () => Math.random().toString(36).slice(2) }) {
     let selected = null, current = null, pending = null, busy = false, epoch = 0;
     let draft = {}, sequence = 0;
-    function cancel() { pending = null; changed(); }
+    function cancel(notify = true) { pending = null; if (notify) changed(); }
     function select(id) { selected = id; epoch++; draft = {}; current = null; cancel(); }
     function update(plan) { current = plan; }
     async function tap(key, change) {
       if (busy || !selected) return { ignored: true };
-      if (!pending || pending.key !== key || now() >= pending.expiresAt) {
+      if (!pending || pending.key !== key || now() >= pending.expiresAt || (Object.keys(change).length && JSON.stringify(pending.change) !== JSON.stringify(change))) {
         pending = { key, change, expiresAt: now() + 5000 }; changed(); return { confirm: true };
       }
       const input = pending.change; pending = null;
@@ -17,7 +17,8 @@
       const modeAction = Object.hasOwn(input, 'mode');
       if (!current && !modeAction) {
         draft = { ...draft, ...input };
-        if (!draft.target || !draft.time) { changed(); return { draft: true }; }
+        if (Object.hasOwn(input, 'days')) { delete draft.deadline; delete draft.dateKey; }
+        if (!draft.target || !(draft.deadline?.time || draft.time)) { changed(); return { draft: true }; }
       }
       busy = true; changed();
       try {
@@ -25,6 +26,9 @@
           requestId: `${nonce()}_${++sequence}_${now()}` });
         if (token !== epoch) return { stale: true };
         if (result?.accepted !== true) throw new Error('evWidget.errors.input');
+        if (!modeAction && !input.clear && !result.plan) throw new Error('evWidget.errors.save');
+        const deadline = (current ? input : draft).deadline;
+        if (deadline && (result.plan?.deadlineLabel?.dateKey !== deadline.dateKey || result.plan.time !== deadline.time)) throw new Error('evWidget.errors.save');
         draft = {}; current = result.plan;
         return { success: true, result };
       } finally { busy = false; changed(); }

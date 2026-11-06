@@ -34,9 +34,9 @@ const create=(a,id=1,extra={})=>submit(a,id,{target:{type:'kwh',value:20},time:'
   await submit(a,1,{deadline:{dateKey:'2026-10-29',time:'12:00'}});assert.equal(a.evEnergyPlans[0].remainingKwh,12.5);
   assert.equal(a.evEnergyPlans[0].deadlineAt,at('2026-10-29','12:00'));
  });
- await check('Invalid horizon, past/invalid calendar dates and deadline beyond selected horizon preserve valid plan',async()=>{
+ await check('Invalid quick-day horizon and past/invalid calendar dates preserve valid plan',async()=>{
   const before=JSON.stringify(a.evEnergyPlans);
-  for(const change of [{days:8},{days:-1},{days:1.5},{maxPv:'yes'},{deadline:{dateKey:'2026-11-01',time:'07:00'}},{deadline:{dateKey:'2026-10-26',time:'07:00'}},{deadline:{dateKey:'2026-10-32',time:'07:00'}}])await assert.rejects(submit(a,1,change),/input/);
+  for(const change of [{days:8},{days:-1},{days:1.5},{maxPv:'yes'},{deadline:{dateKey:'2026-10-26',time:'07:00'}},{deadline:{dateKey:'2026-10-32',time:'07:00'}}])await assert.rejects(submit(a,1,change),/input|schedule/);
   assert.equal(JSON.stringify(a.evEnergyPlans),before);
  });
  await check('Midnight does not move fixed deadline or refill progress; restart preserves all options',async()=>{
@@ -101,7 +101,7 @@ const create=(a,id=1,extra={})=>submit(a,id,{target:{type:'kwh',value:20},time:'
  });
  await check('Local calendar handles 23h/25h DST days and rejects nonexistent local wall time',async()=>{
   const b=(await setup()).app;now=at('2027-03-27','10:00');await create(b,1,{days:1});assert.equal(b.evEnergyPlans[0].deadlineAt,at('2027-03-28','07:00'));
-  await assert.rejects(submit(b,1,{deadline:{dateKey:'2027-03-28',time:'02:30'}}),/input/);
+  await assert.rejects(submit(b,1,{deadline:{dateKey:'2027-03-28',time:'02:30'}}),/input|schedule/);
   now=at('2026-10-24','10:00');await submit(b,1,{days:1});assert.equal(b.evEnergyPlans[0].deadlineAt,at('2026-10-25','07:00'));
  });
  await check('PV resources reserve house and battery once; two EVs share remaining forecast without duplication',async()=>{

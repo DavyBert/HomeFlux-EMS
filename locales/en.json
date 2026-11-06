@@ -344,7 +344,9 @@
       "input": "The change was rejected. Check the target and time.",
       "incomplete": "Select a target and deadline first.",
       "changed": "A Flow changed the plan. Refresh and try again.",
-      "network": "Could not reach HomeFlux. Your saved plan remains active."
+      "network": "Could not reach HomeFlux. Your saved plan remains active.",
+      "schedule": "Choose a valid future date and time.",
+      "save": "The schedule could not be saved. Please try again."
     },
     "saving": "Updating planning…",
     "unpriced": "Some interval prices are unavailable.",
@@ -378,6 +380,8 @@
     "homefluxPower": "House measurement",
     "reportedCurrent": "Reported",
     "commandCurrent": "Command",
-    "statusTab": "Status"
+    "statusTab": "Status",
+    "confirmSchedule": "Confirm schedule",
+    "calendarDate": "Calendar date"
   }
 }
