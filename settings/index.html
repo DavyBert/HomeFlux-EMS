@@ -3211,8 +3211,8 @@ async function onHomeyReady(Homey) {
     const automatic=!direction||direction==='auto',outside=q(stem+'DirectionTemperatureSource')?.value==='outdoor';
     q(stem+'TariffAutoModeGroup')?.classList.toggle('hidden',!tariff||!automatic);
     q(stem+'CoolingOffsetCGroup')?.classList.toggle('hidden',!q(stem+'TariffAutoModeEnabled')?.checked);
-    q(stem+'DirectionTemperatureSourceGroup')?.classList.toggle('hidden',permanentActive&&!automatic);
-    q(stem+'OutdoorDirectionOptions')?.classList.toggle('hidden',permanentActive&&!automatic||!outside);
+    q(stem+'DirectionTemperatureSourceGroup')?.classList.toggle('hidden',false);
+    q(stem+'OutdoorDirectionOptions')?.classList.toggle('hidden',!outside);
     const sourceGroup=q(stem+'DirectionTemperatureSourceGroup'),sourceLabel=sourceGroup?.querySelector('label');
     if(sourceLabel)sourceLabel.textContent=uiLanguage==='nl'?'Verwarmen/koelen kiezen op':'Choose heating/cooling using';
     const source=q(stem+'DirectionTemperatureSource');
@@ -3231,18 +3231,14 @@ async function onHomeyReady(Homey) {
     q(`${stem}LearnheatGroup`)?.classList.toggle('hidden',direction==='cool');
     q(`${stem}LearncoolGroup`)?.classList.toggle('hidden',direction==='heat');
     panel.classList.toggle('instance-disabled', !enabled);
-    const showComfort=!permanentActive || q('hvacExtraGridBudgetEnabled')?.checked || q(stem+'PeriodicHeatEnabled')?.checked;
-    const showActivation=(!permanentActive || automatic)&&!outside;
+    const showComfort=true;
+    const showActivation=!outside;
     for(const suffix of ['ComfortMinC','ComfortMaxC']) q(stem+suffix+'Group')?.classList.toggle('hidden',!showComfort);
     for(const suffix of ['HeatingActivationBelowC','CoolingActivationAboveC']) q(stem+suffix+'Group')?.classList.toggle('hidden',!showActivation);
     q(stem+'ComfortActivationGroup')?.classList.toggle('hidden',!showComfort&&!showActivation);
     const comfortTitle=q(stem+'ComfortActivationTitle'),comfortHelp=q(stem+'ComfortActivationHelp');
-    if(comfortTitle)comfortTitle.textContent=uiLanguage==='nl'
-      ? (permanentActive?(showComfort?(showActivation?'Comfort en regelrichting':'Comforttemperaturen'):'Automatische regelrichting'):'Comfort en activering')
-      : (permanentActive?(showComfort?(showActivation?'Comfort and direction':'Comfort temperatures'):'Automatic direction'):'Comfort and activation');
-    if(comfortHelp)comfortHelp.textContent=permanentActive
-      ? [showComfort?(uiLanguage==='nl'?'Comforttemperaturen blijven de basis voor het extra netbudget en periodiek opwarmen.':'Comfort temperatures remain the baseline for the extra grid budget and periodic heating.'):'',showActivation?(uiLanguage==='nl'?'De activatiegrenzen bepalen de automatische keuze tussen verwarmen en koelen.':'Activation thresholds determine the automatic choice between heating and cooling.'):''].filter(Boolean).join(' ')
-      : (uiLanguage==='nl'?'Onder de verwarmingsgrens start Heat; boven de koelgrens start Cool. Binnen de activatiemarge doet PV niets.':'Heat starts below the heating threshold; Cool starts above the cooling threshold. PV does nothing within the activation range.');
+    if(comfortTitle)comfortTitle.textContent=translateUiText('Comfort en activering');
+    if(comfortHelp)comfortHelp.textContent=translateUiText("Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.");
     for(const suffix of ['PriorityGroup','EnergyDeviationCGroup']) q(stem+suffix)?.classList.toggle('hidden',permanentActive);
     for(const suffix of ['UsePvSurplusLegacyGroup','AllowOnBatteryLegacyGroup','FastResetImportWGroup'])q(stem+suffix)?.classList.toggle('hidden',false);
     panel.querySelector('.hvac-control-help')?.classList.toggle('hidden',permanentActive);

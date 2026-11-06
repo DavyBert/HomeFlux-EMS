@@ -1,0 +1,44 @@
+{
+  "version": "1.2.36",
+  "basedOn": "latest corrected 1.2.35",
+  "node": "22.22.0",
+  "scope": "HVAC settings visibility and help text, five translations, release notes and manifests",
+  "tests": [
+    {
+      "suite": "hvac-ui-1.2.7",
+      "passed": true,
+      "summary": "HVAC UI: 80 conditional-field combinations plus 1920 comfort/activation/source combinations, 10-channel form schema and three-column widget DOM checks passed."
+    },
+    {
+      "suite": "hvac-settings-1.2.34",
+      "passed": true,
+      "summary": "HVAC settings 1.2.34: 1271 DOM identity, visibility, storage, summary, language and event checks passed."
+    },
+    {
+      "suite": "hvac-settings-1.2.35",
+      "passed": true,
+      "summary": "HVAC settings 1.2.35: 1353 checks passed (10 channels, five languages, PV visibility, mode/offset controls, serialization, fan heading and permanent-block styling)."
+    },
+    {
+      "suite": "settings-translations",
+      "passed": true,
+      "summary": "settings translation bundle tests passed"
+    },
+    {
+      "suite": "settings-runtime-audit",
+      "passed": true,
+      "summary": "settings runtime audit passed (924 persisted UI settings)"
+    }
+  ],
+  "syntax": "passed (changed test scripts and inline settings JavaScript)",
+  "startup": "Clean install and upgrade from 1.2.35 passed; stored comfort/direction settings retained; startup logs use 1.2.36",
+  "formInventory": {
+    "retained": 764,
+    "removed": 0,
+    "valuesRangesChoices": "unchanged"
+  },
+  "build": "Homey CLI 4.6.2 build and debug validation passed",
+  "unchanged": "All control runtime files, Flow cards and Athom text are byte-identical to 1.2.35.",
+  "skipped": "HVAC runtime, battery, EV, boiler, Hybrid, AutoTune and savings regression suites; no corresponding runtime changes. Full suite not run.",
+  "risk": "No physical Homey/HVAC or actual mobile browser validation."
+}

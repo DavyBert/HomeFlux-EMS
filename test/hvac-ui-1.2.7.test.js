@@ -85,21 +85,21 @@ for(let i=1;i<=10;i++)for(const permanent of [false,true])for(const tariff of [f
  const stem='hvac'+(i===1?'':i),active=permanent&&(tariff||pv||periodic);
  q(stem+'PermanentEnabled').checked=permanent;q(stem+'TariffEnabled').checked=tariff;q(stem+'PvEnabled').checked=pv;q(stem+'PeriodicHeatEnabled').checked=periodic;
  q('hvacExtraGridBudgetEnabled').checked=budget;q(stem+'Direction').value=direction;q(stem+'DirectionTemperatureSource').value=source;
- const showComfort=!active||budget||periodic,showActivation=(!active||direction==='auto')&&source==='indoor';
+ const showComfort=true,showActivation=source==='indoor';
  for(const suffix of ['ComfortMinC','ComfortMaxC','HeatingActivationBelowC','CoolingActivationAboveC']) {
   assert(html.includes(`id="${stem}${suffix}Group"`));q(stem+suffix).value='21';
  }
  assert(html.includes(`id="${stem}ComfortActivationGroup"`));ctx.updateHvacInstanceUi(i);
  assert.equal(q(stem+'ComfortActivationGroup').classList.contains('hidden'),!showComfort&&!showActivation);
- assert.equal(q(stem+'DirectionTemperatureSourceGroup').classList.contains('hidden'),active&&direction!=='auto');
- assert.equal(q(stem+'OutdoorDirectionOptions').classList.contains('hidden'),active&&direction!=='auto'||source!=='outdoor');
+ assert.equal(q(stem+'DirectionTemperatureSourceGroup').classList.contains('hidden'),false);
+ assert.equal(q(stem+'OutdoorDirectionOptions').classList.contains('hidden'),source!=='outdoor');
  for(const suffix of ['ComfortMinC','ComfortMaxC'])assert.equal(q(stem+suffix+'Group').classList.contains('hidden'),!showComfort);
  for(const suffix of ['HeatingActivationBelowC','CoolingActivationAboveC'])assert.equal(q(stem+suffix+'Group').classList.contains('hidden'),!showActivation);
  for(const suffix of ['ComfortMinC','ComfortMaxC','HeatingActivationBelowC','CoolingActivationAboveC'])assert.equal(q(stem+suffix).value,'21','hiding must preserve stored form values');
  if(active&&showActivation)assert.match(q(stem+'ComfortActivationHelp').textContent,/automatische keuze/);
  if(!active)assert.equal(q(stem+'ComfortActivationTitle').textContent,'Comfort en activering');
 }
-q('hvacPermanentEnabled').checked=true;q('hvacTariffEnabled').checked=true;q('hvacDirection').value='auto';q('hvacDirectionTemperatureSource').value='indoor';ctx.uiLanguage='en';ctx.updateHvacInstanceUi(1);
+q('hvacPermanentEnabled').checked=true;q('hvacTariffEnabled').checked=true;q('hvacDirection').value='auto';q('hvacDirectionTemperatureSource').value='indoor';ctx.uiLanguage='en';ctx.translateUiText=require('../settings/display-language').createTranslator(JSON.parse(fs.readFileSync('settings/translations/en.json','utf8')));ctx.updateHvacInstanceUi(1);
 assert.match(q('hvacComfortActivationHelp').textContent,/automatic choice/);ctx.uiLanguage='nl';
 for(let i=1;i<=10;i++)for(const active of [false,true]) {
  const stem='hvac'+(i===1?'':i);q(stem+'OutdoorNoIncreaseEnabled').checked=active;q(stem+'OutdoorOffEnabled').checked=active;q(stem+'OutdoorOffAboveEnabled').checked=active;q(stem+'PeriodicHeatEnabled').checked=active;ctx.updateHvacInstanceUi(i);

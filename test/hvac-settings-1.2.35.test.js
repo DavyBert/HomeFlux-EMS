@@ -22,6 +22,9 @@ for(const lang of ['nl','en','fr','de','es']){
    ctx.updateHvacInstanceUi(i);
    assert(!masked(q(stem+'UsePvSurplus')),'fallback PV checkbox must stay visible');assert(q(stem+'UsePvSurplus').checked,'permanent PV must not clear fallback PV');
    assert.equal(masked(q(stem+'TariffAutoModeEnabled')),!(permanent&&tariff&&direction==='auto'));
+   for(const suffix of ['ComfortMinC','ComfortMaxC','DirectionTemperatureSource'])assert(!masked(q(stem+suffix)),stem+suffix+' must remain editable');
+   for(const source of ['indoor','outdoor']){q(stem+'DirectionTemperatureSource').value=source;ctx.updateHvacInstanceUi(i);for(const suffix of ['HeatingActivationBelowC','CoolingActivationAboveC'])assert.equal(masked(q(stem+suffix)),source==='outdoor');for(const suffix of ['OutdoorHeatingBelowC','OutdoorCoolingAboveC'])assert.equal(masked(q(stem+suffix)),source!=='outdoor');}
+   assert.equal(q(stem+'ComfortActivationHelp').textContent,t("Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur."));
    assert(q(stem+'PvEnabled').closest('.hvac-permanent-block'));assert(!q(stem+'UsePvSurplus').closest('.hvac-permanent-block'));
    const fan=q(stem+'FanMinValue').closest('.setting-cluster');assert(fan.querySelector('h4'));assert.equal(fan.querySelector('h4').textContent,'Ventilatorschaal');assert(!masked(fan));checks++;
   }

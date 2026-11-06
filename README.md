@@ -32,6 +32,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.36
+
+Comfort- en omschakelinstellingen blijven voor alle tien HVAC-kanalen zichtbaar bij permanent sturen, ook met tarief- of PV-sturing. De gekozen kamer- of buitentemperatuur bepaalt welke omschakelgrenzen worden getoond. De uitleg verduidelijkt dat verwarmings- en koeltemperatuur comfortdoelen zijn voor permanente sturing zonder tariefsturing.
+
+Comfort and mode-switch settings remain visible for all ten HVAC channels during permanent control, including tariff or PV control. The selected indoor or outdoor temperature determines which switching thresholds are shown. The explanation clarifies that heating and cooling temperatures are comfort targets for permanent control without tariff control.
+
+Les réglages de confort et de changement de mode restent visibles pour les dix canaux HVAC en pilotage permanent, y compris avec le pilotage tarifaire ou PV. Le choix de la température intérieure ou extérieure détermine les seuils affichés. L’aide précise que les températures de chauffage et de refroidissement sont des consignes de confort pour le pilotage permanent sans pilotage tarifaire.
+
+Komfort- und Moduswechseleinstellungen bleiben bei permanenter Steuerung für alle zehn HVAC-Kanäle sichtbar, auch bei Tarif- oder PV-Steuerung. Die gewählte Raum- oder Außentemperatur bestimmt, welche Umschaltschwellen angezeigt werden. Die Erklärung stellt klar, dass Heiz- und Kühltemperaturen Komfortziele für die permanente Steuerung ohne Tarifsteuerung sind.
+
+Los ajustes de confort y cambio de modo permanecen visibles para los diez canales HVAC durante el control permanente, también con control por tarifa o FV. La temperatura interior o exterior elegida determina qué umbrales se muestran. La explicación aclara que las temperaturas de calefacción y refrigeración son objetivos de confort del control permanente sin control por tarifa.
+
 ### 1.2.35
 
 Tariefsturing kan in automatische modus wisselen tussen verwarmen en koelen volgens de ingestelde kamer- of buitentemperatuurgrenzen. Een instelbaar koeloffset (standaard +2 °C) wordt bij het gekozen tarief- of COP-doel geteld. PV-doelen tijdens permanent sturen en PV-opvang daarbuiten zijn duidelijk gescheiden en blijven samen instelbaar. Permanente instellingen hebben een thema-afhankelijke groene achtergrond met contrastrijke tekst en invoervelden en de titel Ventilatorschaal is hersteld.
