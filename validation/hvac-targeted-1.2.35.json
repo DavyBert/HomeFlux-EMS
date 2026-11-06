@@ -1,0 +1,107 @@
+{
+  "node": "22.22.0",
+  "results": [
+    {
+      "test": "hvac-settings-1.2.34.test.js",
+      "passed": true,
+      "output": "HVAC settings 1.2.34: 1271 DOM identity, visibility, storage, summary, language and event checks passed."
+    },
+    {
+      "test": "hvac-runtime-1.2.34.test.js",
+      "passed": true,
+      "output": "HVAC runtime: 12 original 1.2.33 traces / 36 actual app decision moments and Flow commands remain identical with Essential disabled and existing settings."
+    },
+    {
+      "test": "hvac-essential-1.2.34.test.js",
+      "passed": true,
+      "output": "(node:11) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-permanent-1.2.7.test.js",
+      "passed": true,
+      "output": "(node:37) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-ui-1.2.7.test.js",
+      "passed": true,
+      "output": "HVAC UI: 80 conditional-field combinations plus 1920 comfort/activation/source combinations, 10-channel form schema and three-column widget DOM checks passed."
+    },
+    {
+      "test": "hvac-migration-1.2.7.test.js",
+      "passed": true,
+      "output": "(node:51) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-coordination-1.2.15.test.js",
+      "passed": true,
+      "output": "(node:58) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-comfort-1.2.21.test.js",
+      "passed": true,
+      "output": "(node:65) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-flow-1.2.22.test.js",
+      "passed": true,
+      "output": "(node:72) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-presentation-1.2.23.test.js",
+      "passed": true,
+      "output": "(node:79) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-budget-1.2.25.test.js",
+      "passed": true,
+      "output": "(node:86) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-keep-on-1.2.26.test.js",
+      "passed": true,
+      "output": "(node:93) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-keep-on-1.2.27.test.js",
+      "passed": true,
+      "output": "(node:100) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "hvac-comfort-cycle-1.2.28.test.js",
+      "passed": true,
+      "output": "(node:107) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "settings-translations.test.js",
+      "passed": true,
+      "output": "settings translation bundle tests passed"
+    },
+    {
+      "test": "settings-runtime-audit.test.js",
+      "passed": true,
+      "output": "settings runtime audit passed (924 persisted UI settings)"
+    },
+    {
+      "test": "app-control.test.js",
+      "passed": true,
+      "output": "(node:128) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time."
+    },
+    {
+      "test": "input-warnings-1.2.12.test.js",
+      "passed": true,
+      "output": "PASS input warnings: 13 targeted groups"
+    },
+    {
+      "test": "hvac-tariff-1.2.35.test.js",
+      "passed": true,
+      "output": "HVAC tariff 1.2.35: 3793 checks passed (10 channels, direction thresholds, signed offsets, COP, PV/periodic priority, Flow outputs, permissions, stale decisions, upgrade and clean start)."
+    },
+    {
+      "test": "hvac-settings-1.2.35.test.js",
+      "passed": true,
+      "output": "HVAC settings 1.2.35: 1350 checks passed (10 channels, five languages, PV visibility, mode/offset controls, serialization, fan heading and permanent-block styling)."
+    }
+  ],
+  "totalSuites": 20,
+  "existingTestUpdate": "The existing HVAC UI assertion now requires fallback PV capture to remain visible, as requested. Its test mock also includes the two new controls. No coverage removed."
+}

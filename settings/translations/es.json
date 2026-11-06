@@ -5782,7 +5782,20 @@
     "Regeltechniek": "Parámetros de control",
     "Een essentieel toestel telt als vast huisverbruik: Peak Guard en het HVAC-budget bouwen het niet af. Flow-UIT en andere stopvoorwaarden blijven gelden.": "Un equipo esencial cuenta como consumo fijo de la vivienda: Peak Guard y el presupuesto HVAC no lo reducen. APAGAR por Flow y las demás condiciones de parada siguen vigentes.",
     "Automatisch leren is uit bij directe sturing.": "El aprendizaje automático se desactiva con el control directo.",
-    "PV-overschot en opvang": "Excedentes y captación FV"
+    "PV-overschot en opvang": "Excedentes y captación FV",
+    "Bij tariefsturing automatisch wisselen tussen verwarmen en koelen": "Cambiar automáticamente entre calefacción y refrigeración con control por tarifa",
+    "Volgt warmen onder en koelen boven voor de gekozen kamer- of buitentemperatuur. Tussen de grenzen blijft de bestaande modus behouden. Tariefdoelen en COP-correcties blijven gelden; comfortdoelen worden niet gebruikt.": "Sigue los umbrales de calefacción y refrigeración para la temperatura interior o exterior elegida. Entre los umbrales se mantiene el modo actual. Se conservan los objetivos por tarifa y las correcciones COP; no se usan los objetivos de confort.",
+    "Koeloffset bij tariefsturing (°C)": "Desfase de refrigeración por tarifa (°C)",
+    "Alleen bij automatisch koelen op tarief: tel deze waarde op bij het tariefdoel, inclusief een actieve COP-correctie. +2 verhoogt het doel met 2 °C; −2 verlaagt het met 2 °C. PV- en periodieke doelen behouden hun eigen temperatuur.": "Solo para refrigeración automática por tarifa: suma este valor al objetivo por tarifa, incluida la corrección COP activa. +2 aumenta el objetivo 2 °C; −2 lo reduce 2 °C. Los objetivos FV y periódicos mantienen su propia temperatura.",
+    "PV-overschot gebruiken tijdens permanent sturen": "Usar excedente FV durante el control permanente",
+    "PV-overschot opvangen buiten permanent sturen": "Aprovechar excedente FV fuera del control permanente",
+    "PV-doelen tijdens permanent sturen": "Objetivos FV durante el control permanente",
+    "PV-opvang buiten permanent sturen": "Captación FV fuera del control permanente",
+    "Deze PV-opvang geldt uitsluitend wanneer permanent sturen uit staat, ook na uitschakelen via Flow. Beide PV-opties kunnen tegelijk ingesteld blijven.": "Esta captación FV solo se aplica cuando el control permanente está desactivado, también tras desactivarlo mediante Flow. Ambas opciones FV pueden permanecer configuradas a la vez.",
+    "Alle blokken met een lichtgroene achtergrond gelden uitsluitend tijdens permanent sturen.": "Todos los bloques con fondo verde claro solo se aplican durante el control permanente.",
+    "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.": "La temperatura interior o exterior elegida determina el modo automático mediante los umbrales de calefacción y refrigeración. Con control por tarifa se conservan sus objetivos y las correcciones COP.",
+    "Koeloffset moet tussen −20 en 20 °C liggen.": "El desfase de refrigeración debe estar entre −20 y 20 °C.",
+    "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.": "Todos los bloques con fondo verde solo se aplican durante el control permanente."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Para cargadores como Smappee, HomeFlux envía parada, inteligente o estándar. Debido a que esta interfaz no puede ordenar una corriente parcial, HomeFlux detiene el cargador cuando Peak Guard necesita limitar la potencia solicitada.",

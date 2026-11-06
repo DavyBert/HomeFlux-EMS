@@ -18,7 +18,8 @@ for(let i=1;i<=10;i++)for(const suffix of ['PeriodicHeatTargetC','CheapTargetC',
 for(let i=1;i<=10;i++)for(const suffix of ['DirectionTemperatureSource','OutdoorHeatingBelowC','OutdoorCoolingAboveC','PeriodicHeatEnabled','PeriodicHeatDays','PeriodicHeatHours','PeriodicHeatTargetC','OutdoorOffAboveEnabled','OutdoorOffAboveC','OutdoorOffAboveHysteresisC','OutdoorOffBelowHysteresisC','OutdoorNoIncreaseEnabled','OutdoorNoIncreaseAboveC','OutdoorOffEnabled','OutdoorOffBelowC','Name','PermanentEnabled','TariffEnabled','PvEnabled','Direction','CheapTargetC','NormalTargetC','ExpensiveTargetC','PvTargetC','AfterPvTargetC'])assert(ids.includes(`hvac${i===1?'':i}${suffix}`));
 function node(){return {checked:false,value:'',textContent:'',querySelector(){return this.label ||= node();},classList:{set:new Set(),toggle(n,b){if(b)this.set.add(n);else this.set.delete(n);},contains(n){return this.set.has(n);}}};}
 const nodes=new Map();const q=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);};
-const ctx=vm.createContext({q,rates:[{},{},{}],uiLanguage:'nl',instanceStem:(kind,i)=>kind+(i===1?'':i)});vm.runInContext(extract(html,'updateHvacInstanceUi'),ctx);
+const ctx=vm.createContext({q,rates:[{},{},{}],uiLanguage:'nl',translateUiText:s=>s,instanceStem:(kind,i)=>kind+(i===1?'':i)});vm.runInContext(extract(html,'updateHvacInstanceUi'),ctx);
+for(let i=1;i<=10;i++){const stem='hvac'+(i===1?'':i);q(stem+'CoolingOffsetC').value='2';q(stem+'TariffAutoModeEnabled').checked=true;}
 Object.assign(ctx,{boolean:new Set(),numeric:new Set(),jsonArray:new Set()});vm.runInContext(extract(html,'currentSettingValue'),ctx);
 // 1.2.15 keeps the visible per-device options in one compact persisted object.
 for(let i=1;i<=10;i++)for(const suffix of ['DirectTariffEnabled','DirectPvEnabled','SharedPowerEnabled','SharedPowerWith','StandbyTemperatureC','AutomaticOffAction'])assert(ids.includes('hvac'+(i===1?'':i)+suffix));
@@ -64,8 +65,9 @@ for(let i=1;i<=10;i++) {
 for(let i=1;i<=10;i++)for(const permanent of [false,true])for(const tariff of [false,true])for(const pv of [false,true]) {
  const stem='hvac'+(i===1?'':i);q(stem+'PermanentEnabled').checked=permanent;q(stem+'TariffEnabled').checked=tariff;q(stem+'PvEnabled').checked=pv;
  ctx.updateHvacInstanceUi(i);
- assert.equal(q(stem+'UsePvSurplusLegacyGroup').classList.contains('hidden'),permanent&&(tariff||pv));
- assert.equal(q(stem+'SurplusStartWGroup').classList.contains('hidden'),permanent&&tariff&&!pv);
+ // PV capture stays configurable for a later permanent-OFF Flow.
+ assert.equal(q(stem+'UsePvSurplusLegacyGroup').classList.contains('hidden'),false);
+ assert.equal(q(stem+'SurplusStartWGroup').classList.contains('hidden'),permanent&&tariff&&!pv&&!q(stem+'UsePvSurplus').checked);
  assert.equal(q(stem+'PermanentOptions').classList.contains('hidden'),!permanent);
  assert.equal(q(stem+'AfterPvTargetCGroup').classList.contains('hidden'),!pv||tariff);
  assert.equal(q(stem+'CheapTargetCGroup').classList.contains('hidden'),!tariff);

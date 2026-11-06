@@ -1,0 +1,32 @@
+{
+  "baseline": "uploaded 1.2.34",
+  "originalHvacControls": 744,
+  "retainedControls": 744,
+  "missingControls": [],
+  "newControls": [
+    "hvacTariffAutoModeEnabled",
+    "hvacCoolingOffsetC",
+    "hvac2TariffAutoModeEnabled",
+    "hvac2CoolingOffsetC",
+    "hvac3TariffAutoModeEnabled",
+    "hvac3CoolingOffsetC",
+    "hvac4TariffAutoModeEnabled",
+    "hvac4CoolingOffsetC",
+    "hvac5TariffAutoModeEnabled",
+    "hvac5CoolingOffsetC",
+    "hvac6TariffAutoModeEnabled",
+    "hvac6CoolingOffsetC",
+    "hvac7TariffAutoModeEnabled",
+    "hvac7CoolingOffsetC",
+    "hvac8TariffAutoModeEnabled",
+    "hvac8CoolingOffsetC",
+    "hvac9TariffAutoModeEnabled",
+    "hvac9CoolingOffsetC",
+    "hvac10TariffAutoModeEnabled",
+    "hvac10CoolingOffsetC"
+  ],
+  "existingControlAttributesAndChoices": "identical",
+  "allExistingControlsMounted": "passed",
+  "topLevelDefaultsKeys": "identical",
+  "checks": "All 10 channels retain all original settings; no test or Flow card removed."
+}

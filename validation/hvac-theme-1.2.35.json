@@ -1,0 +1,16 @@
+{
+  "themeUi": "HVAC settings 1.2.35: 1353 checks passed (10 channels, five languages, PV visibility, mode/offset controls, serialization, fan heading and permanent-block styling).",
+  "existingUi": "HVAC settings 1.2.34: 1271 DOM identity, visibility, storage, summary, language and event checks passed.",
+  "translations": "settings translation bundle tests passed",
+  "node": "22.22.0",
+  "syntax": "passed",
+  "homeyBuild": "passed",
+  "themes": [
+    "light: very pale green and dark text",
+    "dark: subdued green and light text"
+  ],
+  "contrast": "Both palettes pass 4.5:1 for normal/help/input text and 3:1 for input borders",
+  "originalHvacControlsRetained": 744,
+  "skipped": "Runtime battery, EV, boiler, Hybrid, AutoTune, savings and HVAC control suites: only presentation styles, label text and translations changed.",
+  "remainingRisk": "Actual Homey desktop/mobile rendering and browser forced-color extensions not tested."
+}

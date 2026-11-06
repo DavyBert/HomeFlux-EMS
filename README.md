@@ -23,7 +23,7 @@ The optional Charging strategy tab offers spread charging with a power correctio
 
 Optional phase monitoring can also limit current/Hybrid EV charging, with selectable battery/EV priority and a separate Emergency Charge priority.
 
-Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels, optional direct/parallel tariff and PV control and shared heat sources, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
+Optional features include EV charging and its dashboard widget, HVAC with up to 10 channels, optional automatic tariff heating/cooling with cooling offset, direct/parallel tariff and PV control and shared heat sources, boiler control, Hybrid EMS integration, sunshine reserves, multi-battery efficiency optimization, Autotune, Savings history and CSV export. Savings categories, totals and EV Insights can also be read through Flow for a chosen number of days, weeks, months or years.
 
 For the complete functionality, configuration and all Flow cards, see:  
 https://github.com/DavyBert/HomeFlux-EMS/discussions/3
@@ -31,6 +31,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 ---
 
 ## Release notes
+
+### 1.2.35
+
+Tariefsturing kan in automatische modus wisselen tussen verwarmen en koelen volgens de ingestelde kamer- of buitentemperatuurgrenzen. Een instelbaar koeloffset (standaard +2 °C) wordt bij het gekozen tarief- of COP-doel geteld. PV-doelen tijdens permanent sturen en PV-opvang daarbuiten zijn duidelijk gescheiden en blijven samen instelbaar. Permanente instellingen hebben een thema-afhankelijke groene achtergrond met contrastrijke tekst en invoervelden en de titel Ventilatorschaal is hersteld.
+
+Tariff control can automatically switch between heating and cooling using the configured indoor or outdoor thresholds. An adjustable cooling offset (default +2 °C) is added to the selected tariff or COP target. PV targets during permanent control and PV capture outside it are clearly separated and can remain configured together. Permanent settings use a theme-aware green background with contrasting text and input fields and the Fan scale heading has been restored.
+
+Le pilotage tarifaire peut basculer automatiquement entre chauffage et refroidissement selon les seuils intérieurs ou extérieurs configurés. Un décalage de refroidissement réglable (+2 °C par défaut) est ajouté à la consigne tarifaire ou COP choisie. Les consignes PV en pilotage permanent et la captation PV hors de ce mode sont clairement séparées et restent configurables ensemble. Les réglages permanents utilisent un fond vert adapté au thème avec du texte et des champs bien contrastés et le titre Échelle du ventilateur est rétabli.
+
+Die Tarifsteuerung kann anhand der eingestellten Raum- oder Außentemperaturschwellen automatisch zwischen Heizen und Kühlen wechseln. Ein einstellbarer Kühloffset (standardmäßig +2 °C) wird zum gewählten Tarif- oder COP-Ziel addiert. PV-Ziele bei permanenter Steuerung und PV-Aufnahme außerhalb davon sind klar getrennt und bleiben gemeinsam einstellbar. Permanente Einstellungen haben einen zum Farbschema passenden grünen Hintergrund mit kontrastreichem Text und Eingabefeldern und die Überschrift Lüfterskala wurde wiederhergestellt.
+
+El control por tarifa puede cambiar automáticamente entre calefacción y refrigeración según los umbrales interiores o exteriores configurados. Un desfase de refrigeración ajustable (+2 °C por defecto) se suma al objetivo por tarifa o COP elegido. Los objetivos FV del control permanente y la captación FV fuera de él se distinguen claramente y pueden configurarse juntos. Los ajustes permanentes usan un fondo verde adaptado al tema con texto y campos de buen contraste y se ha restaurado el título Escala del ventilador.
 
 ### 1.2.34
 

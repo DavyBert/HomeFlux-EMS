@@ -1,9 +1,9 @@
-/* Settings presentation only: existing nodes, storage and runtime stay intact. */
+/* HVAC settings grouping and behavior summary. */
 (function(root,factory){
  const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.HomeFluxHvacSettings=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  'use strict';
- const summaryFields=new Set(['Enabled','AutomaticControlEnabled','PermanentEnabled','TariffEnabled','PvEnabled','UsePvSurplus','PeriodicHeatEnabled','KeepOnEnabled','KeepOnLimitEnabled','KeepOnMarginC','EssentialEnabled','AllowPowerControl','AllowSetpointControl','OutdoorOffEnabled','OutdoorOffAboveEnabled','OutdoorNoIncreaseEnabled']);
+ const summaryFields=new Set(['TariffAutoModeEnabled','Direction','Enabled','AutomaticControlEnabled','PermanentEnabled','TariffEnabled','PvEnabled','UsePvSurplus','PeriodicHeatEnabled','KeepOnEnabled','KeepOnLimitEnabled','KeepOnMarginC','EssentialEnabled','AllowPowerControl','AllowSetpointControl','OutdoorOffEnabled','OutdoorOffAboveEnabled','OutdoorNoIncreaseEnabled']);
  const groups={base:'Activering en basisregeling',goal:'Gedrag bij doeltemperatuur',tariff:'Tariefsturing',pv:'PV-overschot en opvang',comfort:'Comfort en regelrichting',outdoor:'Buitentemperatuur en beveiligingen',advanced:'Aanvullend en geavanceerd'};
  const text={
  selected:'Geselecteerde instellingen; wijzigingen zijn mogelijk nog niet opgeslagen.',
@@ -67,14 +67,22 @@
   function fields(key,names){for(const name of names)move(atom(name),key);}
   fields('base',['Name','Enabled','AutomaticControlEnabled','PermanentEnabled','Direction','EssentialEnabled']);
   fields('goal',['KeepOnEnabled']);move(q('KeepOnLimitOptions'),'goal');
-  fields('tariff',['TariffEnabled','DirectTariffEnabled']);
+  fields('tariff',['TariffEnabled','DirectTariffEnabled']);move(q('TariffAutoModeGroup'),'tariff');
   for(const rate of ['Cheap','Normal','Expensive']){fields('tariff',[rate+'TargetC',rate+'CopOutsideBelowC',rate+'CopTargetC']);move(q(rate+'CopHelp'),'tariff');}
-  fields('pv',['PvEnabled','DirectPvEnabled','UsePvSurplus','PvTargetC','AfterPvTargetC','MinBatterySoc','SurplusStartW','SurplusStopW','AllowOnBattery','StopBatterySoc','FastResetImportW']);
+  const pvPermanent=element(doc,'section','hvac-pv-section hvac-permanent-block');pvPermanent.dataset.hvacSubgroup='pvPermanent';pvPermanent.appendChild(element(doc,'h4','hvac-settings-heading','PV-doelen tijdens permanent sturen',t));sections.pv.appendChild(pvPermanent);sections.pvPermanent=pvPermanent;
+  const pvCapture=element(doc,'section','hvac-pv-section');pvCapture.dataset.hvacSubgroup='pvCapture';pvCapture.appendChild(element(doc,'h4','hvac-settings-heading','PV-opvang buiten permanent sturen',t));sections.pv.appendChild(pvCapture);sections.pvCapture=pvCapture;
+  fields('pvPermanent',['PvEnabled','PvTargetC','AfterPvTargetC']);
+  fields('pvCapture',['UsePvSurplus','AllowOnBattery','StopBatterySoc','FastResetImportW']);
+  fields('pv',['DirectPvEnabled','MinBatterySoc','SurplusStartW','SurplusStopW']);
+  sections.pvCapture.appendChild(element(doc,'p','muted hvac-settings-note','Deze PV-opvang geldt uitsluitend wanneer permanent sturen uit staat, ook na uitschakelen via Flow. Beide PV-opties kunnen tegelijk ingesteld blijven.',t));
   move(q('ComfortActivationGroup'),'comfort');move(q('DirectionTemperatureSourceGroup'),'comfort');move(q('OutdoorDirectionOptions'),'comfort');
   fields('outdoor',['OutdoorOffAboveEnabled','OutdoorOffAboveC','OutdoorOffAboveHysteresisC','OutdoorNoIncreaseEnabled','OutdoorNoIncreaseAboveC','OutdoorOffEnabled','OutdoorOffBelowC','OutdoorOffBelowHysteresisC']);
   fields('periodic',['PeriodicHeatEnabled']);move(q('PeriodicHeatOptions'),'periodic');
   fields('power',['SharedPowerEnabled','SharedPowerWith','PhysicalGroup','Priority']);
-  fields('technical',['EnergyDeviationC','ControlIntervalMinutes','CoolingFanProfile','HeatingFanProfile','FanMinValue','FanMaxValue','FanStepValue']);
+  fields('technical',['EnergyDeviationC','ControlIntervalMinutes','CoolingFanProfile','HeatingFanProfile']);
+  move(q('FanMinValue')?.closest('.setting-cluster'),'technical');
+  for(const key of ['goal','tariff','outdoor','periodic'])sections[key].classList.add('hvac-permanent-block');
+  sections.base.appendChild(element(doc,'p','hvac-permanent-legend','Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.',t));
   const permission=q('AllowPowerControl')?.closest('fieldset');move(permission,'outputs');fields('outputs',['AutomaticOffAction','StandbyTemperatureC']);move(q('FlowReference'),'outputs');
   move(q('LearnheatGroup'),'diagnostics');move(q('LearncoolGroup'),'diagnostics');move(q('LearnNow'),'diagnostics');move(q('LearnStatus'),'diagnostics');move(q('InputStatusCard'),'diagnostics');move(panel.querySelector('.output-test-card'),'diagnostics');
   for(const [key,note]of [['base',text.enable],['base',text.permanent],['base','Een essentieel toestel telt als vast huisverbruik: Peak Guard en het HVAC-budget bouwen het niet af. Flow-UIT en andere stopvoorwaarden blijven gelden.'],['goal',text.goal],['goal',text.exception],['tariff',text.tariff],['tariff','Automatisch leren is uit bij directe sturing.'],['pv',text.pv],['comfort',text.comfort],['outdoor',text.outside],['power',text.budget],['power','Deelt de warmtebron met een andere HVAC. Geen aparte vermogensmeting.'],['outputs',text.flow]])sections[key].appendChild(element(doc,'p','muted hvac-settings-note',note,t));
@@ -98,7 +106,7 @@
   // Hide empty headings too; control visibility still comes exclusively from
   // the original updater and the recorded ancestor containers.
   for(const group of panel.querySelectorAll('[data-hvac-group]:not([data-hvac-group="base"]):not([data-hvac-group="advanced"]),[data-hvac-subgroup]')){
-   const visible=[...group.children].some(node=>node.classList.contains('hvac-setting-mount')&&!node.classList.contains('hidden')&&!node.firstElementChild?.classList.contains('hidden'));
+   const visible=[...group.querySelectorAll('.hvac-setting-mount')].some(node=>node.classList.contains('hvac-setting-mount')&&!node.classList.contains('hidden')&&!node.firstElementChild?.classList.contains('hidden'));
    if(group.classList.contains('hidden')===visible)group.classList.toggle('hidden',!visible);
   }
   const c=config(doc,stem),description=describe(c);

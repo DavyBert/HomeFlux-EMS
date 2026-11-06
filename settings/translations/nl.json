@@ -246,7 +246,20 @@
     "Regeltechniek": "Regeltechniek",
     "Een essentieel toestel telt als vast huisverbruik: Peak Guard en het HVAC-budget bouwen het niet af. Flow-UIT en andere stopvoorwaarden blijven gelden.": "Een essentieel toestel telt als vast huisverbruik: Peak Guard en het HVAC-budget bouwen het niet af. Flow-UIT en andere stopvoorwaarden blijven gelden.",
     "Automatisch leren is uit bij directe sturing.": "Automatisch leren is uit bij directe sturing.",
-    "PV-overschot en opvang": "PV-overschot en opvang"
+    "PV-overschot en opvang": "PV-overschot en opvang",
+    "Bij tariefsturing automatisch wisselen tussen verwarmen en koelen": "Bij tariefsturing automatisch wisselen tussen verwarmen en koelen",
+    "Volgt warmen onder en koelen boven voor de gekozen kamer- of buitentemperatuur. Tussen de grenzen blijft de bestaande modus behouden. Tariefdoelen en COP-correcties blijven gelden; comfortdoelen worden niet gebruikt.": "Volgt warmen onder en koelen boven voor de gekozen kamer- of buitentemperatuur. Tussen de grenzen blijft de bestaande modus behouden. Tariefdoelen en COP-correcties blijven gelden; comfortdoelen worden niet gebruikt.",
+    "Koeloffset bij tariefsturing (°C)": "Koeloffset bij tariefsturing (°C)",
+    "Alleen bij automatisch koelen op tarief: tel deze waarde op bij het tariefdoel, inclusief een actieve COP-correctie. +2 verhoogt het doel met 2 °C; −2 verlaagt het met 2 °C. PV- en periodieke doelen behouden hun eigen temperatuur.": "Alleen bij automatisch koelen op tarief: tel deze waarde op bij het tariefdoel, inclusief een actieve COP-correctie. +2 verhoogt het doel met 2 °C; −2 verlaagt het met 2 °C. PV- en periodieke doelen behouden hun eigen temperatuur.",
+    "PV-overschot gebruiken tijdens permanent sturen": "PV-overschot gebruiken tijdens permanent sturen",
+    "PV-overschot opvangen buiten permanent sturen": "PV-overschot opvangen buiten permanent sturen",
+    "PV-doelen tijdens permanent sturen": "PV-doelen tijdens permanent sturen",
+    "PV-opvang buiten permanent sturen": "PV-opvang buiten permanent sturen",
+    "Deze PV-opvang geldt uitsluitend wanneer permanent sturen uit staat, ook na uitschakelen via Flow. Beide PV-opties kunnen tegelijk ingesteld blijven.": "Deze PV-opvang geldt uitsluitend wanneer permanent sturen uit staat, ook na uitschakelen via Flow. Beide PV-opties kunnen tegelijk ingesteld blijven.",
+    "Alle blokken met een lichtgroene achtergrond gelden uitsluitend tijdens permanent sturen.": "Alle blokken met een lichtgroene achtergrond gelden uitsluitend tijdens permanent sturen.",
+    "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.": "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.",
+    "Koeloffset moet tussen −20 en 20 °C liggen.": "Koeloffset moet tussen −20 en 20 °C liggen.",
+    "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.": "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen."
   },
   "phrases": {},
   "strings": {

@@ -2243,7 +2243,20 @@
     "Regeltechniek": "Control parameters",
     "Een essentieel toestel telt als vast huisverbruik: Peak Guard en het HVAC-budget bouwen het niet af. Flow-UIT en andere stopvoorwaarden blijven gelden.": "An essential device counts as fixed household consumption: Peak Guard and the HVAC budget do not reduce it. Flow OFF and other stop conditions still apply.",
     "Automatisch leren is uit bij directe sturing.": "Automatic learning is disabled with direct control.",
-    "PV-overschot en opvang": "PV surplus and capture"
+    "PV-overschot en opvang": "PV surplus and capture",
+    "Bij tariefsturing automatisch wisselen tussen verwarmen en koelen": "Automatically switch between heating and cooling during tariff control",
+    "Volgt warmen onder en koelen boven voor de gekozen kamer- of buitentemperatuur. Tussen de grenzen blijft de bestaande modus behouden. Tariefdoelen en COP-correcties blijven gelden; comfortdoelen worden niet gebruikt.": "Follows heat below and cool above for the selected indoor or outdoor temperature. Between the thresholds, the current mode is retained. Tariff targets and COP corrections remain active; comfort targets are not used.",
+    "Koeloffset bij tariefsturing (°C)": "Cooling offset during tariff control (°C)",
+    "Alleen bij automatisch koelen op tarief: tel deze waarde op bij het tariefdoel, inclusief een actieve COP-correctie. +2 verhoogt het doel met 2 °C; −2 verlaagt het met 2 °C. PV- en periodieke doelen behouden hun eigen temperatuur.": "Only for automatic cooling during tariff control: add this value to the tariff target, including any active COP correction. +2 raises the target by 2 °C; −2 lowers it by 2 °C. PV and periodic targets keep their own temperatures.",
+    "PV-overschot gebruiken tijdens permanent sturen": "Use PV surplus during permanent control",
+    "PV-overschot opvangen buiten permanent sturen": "Capture PV surplus outside permanent control",
+    "PV-doelen tijdens permanent sturen": "PV targets during permanent control",
+    "PV-opvang buiten permanent sturen": "PV capture outside permanent control",
+    "Deze PV-opvang geldt uitsluitend wanneer permanent sturen uit staat, ook na uitschakelen via Flow. Beide PV-opties kunnen tegelijk ingesteld blijven.": "This PV capture applies only when permanent control is off, including after switching it off through Flow. Both PV options can remain configured together.",
+    "Alle blokken met een lichtgroene achtergrond gelden uitsluitend tijdens permanent sturen.": "All blocks with a light green background apply only during permanent control.",
+    "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.": "The selected indoor or outdoor temperature determines the automatic direction using heat below and cool above. During tariff control, tariff targets and COP corrections remain active.",
+    "Koeloffset moet tussen −20 en 20 °C liggen.": "Cooling offset must be between −20 and 20 °C.",
+    "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.": "All blocks with a green background apply only during permanent control."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

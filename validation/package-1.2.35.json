@@ -1,0 +1,23 @@
+{
+  "node": "22.22.0",
+  "syntax": {
+    "changedJavaScriptFiles": [
+      "test/hvac-settings-1.2.35.test.js",
+      "test/hvac-ui-1.2.7.test.js",
+      "test/hvac-tariff-1.2.35.test.js",
+      "lib/hvac-permanent.js",
+      "settings/hvac-settings.js"
+    ],
+    "inlineScripts": 1,
+    "passed": true
+  },
+  "athomText": "byte-identical in all five languages",
+  "flowCards": {
+    "count": 231,
+    "byteIdentical": true
+  },
+  "version": "1.2.35",
+  "build": "Homey CLI 4.6.2 build and debug validation passed",
+  "hardware": "not tested",
+  "skipped": "Independent battery/EV/boiler/Hybrid/AutoTune/savings suites and full regression suite; no changes to those control paths."
+}
