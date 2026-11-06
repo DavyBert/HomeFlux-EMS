@@ -1,0 +1,5349 @@
+{
+  "version": "1.2.34",
+  "baseVersion": "1.2.33",
+  "baseSha256": "3ea17838488aec377c65eb8fb16505f2e5259c2fd8c4c4e4644ba9bb3362812d",
+  "scope": {
+    "initial": "HVAC settings presentation, descriptions and translations.",
+    "userAdded": [
+      "One per-HVAC EssentialEnabled flag: excluded from HVAC watt-budget accounting and automatic Peak Guard/energy reduction. Actual P1 still includes consumption as fixed household load.",
+      "Explicit Flow permanent-control OFF still works. Temperature, outdoor and stale-input stops remain independent.",
+      "Reuse existing upper outdoor-temperature hysteresis field with 0.5 C for missing/new settings; no second hysteresis option or reset of saved margins."
+    ],
+    "packaging": "Regenerated inconsistent existing lock metadata using published dependencies, retaining homey-api 3.19.2 and its exact integrity; repaired four nonexistent transitive versions. jsdom is test-only."
+  },
+  "ui": {
+    "groups": [
+      "Activation and basic control",
+      "Behavior at target",
+      "Tariff",
+      "PV surplus",
+      "Comfort/direction",
+      "Outdoor protection",
+      "Advanced: periodic heating, shared power, control parameters, outputs/Flow, diagnostics"
+    ],
+    "originalFieldCount": 734,
+    "allOriginalFieldIdsAndRangesAndTypesRetained": true,
+    "existingStorageListsAndLoadSaveOrderUnchanged": true,
+    "hiddenSerializationFieldsRetained": true,
+    "originalVisibilityAncestorsRetainedThroughExistingUpdater": true,
+    "allChannels": 10,
+    "summary": "Four configuration-only parts, updated on relevant user events and existing initialization; explicitly labels selected settings as potentially unsaved. No physical-state prediction.",
+    "eventBindings": "Two delegated input/change handlers per panel registered once; no repeated binding on reopening.",
+    "validation": "Opens collapsed advanced section and navigates to the relevant existing device tab before focusing a validation error.",
+    "languages": [
+      "nl",
+      "en",
+      "fr",
+      "de",
+      "es"
+    ]
+  },
+  "runtime": {
+    "appFunctionsChanged": [
+      "calculateHvacControl"
+    ],
+    "hvacModules": [
+      "lib/hvac-permanent.js: essential default, current-setting check before delayed energy reductions, existing outdoor hysteresis default/fallback.",
+      "lib/hvac-coordination.js: mustSkipOff flag, fixed-source budget partition, Peak Guard/admission exemption, normal publication reservations retained."
+    ],
+    "defaultFlag": false,
+    "noNewTimersOrBackgroundListenersOrPolling": true,
+    "sameConfiguredInputsAndEssentialDisabled": "12 original 1.2.33 traces / 36 decision moments and actual published Flow commands match exactly.",
+    "otherControlModulesByteIdentical": [
+      "lib/ems-engine.js",
+      "lib/flexible-loads.js",
+      "lib/phase-guard.js",
+      "lib/ev-phase-guard.js",
+      "lib/ev-dashboard.js",
+      "lib/ev-plan-options.js",
+      "lib/autotune-planning.js",
+      "lib/autotune-learning.js",
+      "lib/hvac-periodic.js"
+    ]
+  },
+  "tests": [
+    {
+      "name": "hvac-ui-1.2.7",
+      "exit": 0,
+      "seconds": 1.22
+    },
+    {
+      "name": "hvac-permanent-1.2.7",
+      "exit": 0,
+      "seconds": 2.08
+    },
+    {
+      "name": "hvac-migration-1.2.7",
+      "exit": 0,
+      "seconds": 2.32
+    },
+    {
+      "name": "hvac-coordination-1.2.15",
+      "exit": 0,
+      "seconds": 0.77
+    },
+    {
+      "name": "hvac-comfort-1.2.21",
+      "exit": 0,
+      "seconds": 0.31
+    },
+    {
+      "name": "hvac-flow-1.2.22",
+      "exit": 0,
+      "seconds": 0.32
+    },
+    {
+      "name": "hvac-presentation-1.2.23",
+      "exit": 0,
+      "seconds": 0.31
+    },
+    {
+      "name": "hvac-budget-1.2.25",
+      "exit": 0,
+      "seconds": 0.57
+    },
+    {
+      "name": "hvac-keep-on-1.2.26",
+      "exit": 0,
+      "seconds": 0.37
+    },
+    {
+      "name": "hvac-keep-on-1.2.27",
+      "exit": 0,
+      "seconds": 0.26
+    },
+    {
+      "name": "hvac-comfort-cycle-1.2.28",
+      "exit": 0,
+      "seconds": 0.52
+    },
+    {
+      "name": "settings-runtime-audit",
+      "exit": 0,
+      "seconds": 0.11
+    },
+    {
+      "name": "settings-translations",
+      "exit": 0,
+      "seconds": 0.12
+    },
+    {
+      "name": "localization-1.2.18",
+      "exit": 0,
+      "seconds": 0.27
+    },
+    {
+      "name": "app-control",
+      "exit": 0
+    },
+    {
+      "name": "hvac-settings-1.2.34",
+      "exit": 0
+    },
+    {
+      "name": "hvac-essential-1.2.34",
+      "exit": 0
+    },
+    {
+      "name": "hvac-runtime-1.2.34",
+      "exit": 0
+    }
+  ],
+  "newChecks": {
+    "domVisibilityStorageLanguagesEvents": 1251,
+    "essentialAndHysteresis": 19,
+    "originalRuntimeDecisionMoments": 36
+  },
+  "syntax": {
+    "scripts": 9,
+    "passed": true
+  },
+  "homey": {
+    "cli": "4.6.2",
+    "cleanNpmCi": "passed",
+    "build": "passed",
+    "debugValidation": "passed",
+    "allModifiedRuntimeMatchesBuild": true,
+    "testsReportsAndJsdomExcludedFromApp": true,
+    "installedOrPublished": false
+  },
+  "lockRepairs": [
+    {
+      "package": "after",
+      "from": "0.8.4",
+      "to": "0.8.2"
+    },
+    {
+      "package": "dunder-proto",
+      "from": "1.0.2",
+      "to": "1.0.1"
+    },
+    {
+      "package": "es-define-property",
+      "from": "1.0.2",
+      "to": "1.0.1"
+    },
+    {
+      "package": "get-proto",
+      "from": "1.0.2",
+      "to": "1.0.1"
+    }
+  ],
+  "preserved": [
+    "All original test files byte-identical",
+    "Flow cards including deprecated definitions byte-identical",
+    "Slogan, product/support/community links unchanged",
+    "Existing translations preserved",
+    "README introduction unchanged; release notes at bottom in five languages"
+  ],
+  "skipped": [
+    "Full regression suite",
+    "Independent battery, EV, PV, phase, boiler, AutoTune and widget suites",
+    "Unrelated CPU benchmarks"
+  ],
+  "limitations": [
+    "DOM and storage tested on host; actual Homey mobile/desktop WebView rendering and physical HVAC behavior not tested. Narrow layout uses min-width:0, responsive columns and wrapping, but no native browser layout measurement was possible.",
+    "Essential excludes energy shedding only; Flow OFF, room/outdoor limits and stale-input actions can still stop the device as explicitly clarified.",
+    "An essential shared physical source is excluded once from the HVAC watt budget, preventing another zone from treating the source as shed-able power."
+  ],
+  "fieldInventory": [
+    {
+      "id": "hvacCount",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacExtraGridBudgetEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacExtraGridBudgetW",
+      "type": "number",
+      "min": "0",
+      "max": "200000",
+      "step": "1"
+    },
+    {
+      "id": "hvacInstanceTab1",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab2",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab3",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab4",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab5",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab6",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab7",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab8",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab9",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacInstanceTab10",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacName",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacDirection",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacDirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacDirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacOutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacOutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacCoordination",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacDirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacDirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacSharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacSharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacAutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacStandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacLearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacPhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacPermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacKeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacKeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacKeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacPeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacPeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvacPeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvacPeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacOutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacOutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacOutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvacOutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacOutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacOutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacOutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacOutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvacTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacCheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacCheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacCheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacNormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacNormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacNormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacAfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacAutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacAllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacStopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvacUsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacHeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacCoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacPriority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacEnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacCoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacHeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvacMinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvacSurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvacSurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvacFastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvacFanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvacFanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvacFanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvacAllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacAllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacAllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacAllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacTestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvacTestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvacTestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvacTestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac2Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac2PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac2PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac2OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac2TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac2UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac2MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac2SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac2SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac2FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac2FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac2FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac2FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac2AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac2TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac2TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac2TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac3Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac3PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac3PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac3OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac3TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac3UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac3MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac3SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac3SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac3FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac3FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac3FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac3FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac3AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac3TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac3TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac3TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac4Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac4PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac4PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac4OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac4TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac4UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac4MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac4SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac4SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac4FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac4FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac4FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac4FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac4AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac4TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac4TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac4TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac5Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac5PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac5PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac5OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac5TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac5UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac5MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac5SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac5SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac5FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac5FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac5FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac5FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac5AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac5TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac5TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac5TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac6Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac6PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac6PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac6OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac6TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac6UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac6MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac6SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac6SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac6FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac6FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac6FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac6FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac6AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac6TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac6TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac6TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac7Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac7PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac7PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac7OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac7TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac7UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac7MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac7SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac7SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac7FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac7FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac7FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac7FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac7AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac7TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac7TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac7TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac8Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac8PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac8PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac8OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac8TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac8UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac8MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac8SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac8SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac8FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac8FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac8FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac8FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac8AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac8TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac8TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac8TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac9Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac9PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac9PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac9OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac9TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac9UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac9MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac9SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac9SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac9FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac9FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac9FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac9FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac9AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac9TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac9TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac9TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac10Name",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10Enabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10Direction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10DirectionTemperature",
+      "type": "hidden",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10DirectionTemperatureSource",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10OutdoorHeatingBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10OutdoorCoolingAboveC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10DirectTariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10DirectPvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10SharedPowerEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10SharedPowerWith",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10AutomaticOffAction",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10StandbyTemperatureC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10LearnNow",
+      "type": "button",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10PhysicalGroup",
+      "type": "text",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10PermanentEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10KeepOnEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10KeepOnLimitEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10KeepOnMarginC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10PeriodicHeatEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10PeriodicHeatDays",
+      "type": "number",
+      "min": "1",
+      "max": "365",
+      "step": "1"
+    },
+    {
+      "id": "hvac10PeriodicHeatHours",
+      "type": "number",
+      "min": "0.1",
+      "max": "48",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac10PeriodicHeatTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10OutdoorOffAboveEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10OutdoorOffAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10OutdoorOffAboveHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac10OutdoorNoIncreaseEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10OutdoorNoIncreaseAboveC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10OutdoorOffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10OutdoorOffBelowC",
+      "type": "number",
+      "min": "-40",
+      "max": "60",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10OutdoorOffBelowHysteresisC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.1"
+    },
+    {
+      "id": "hvac10TariffEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10PvEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10CheapTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10CheapCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10CheapCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10NormalTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10NormalCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10NormalCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10ExpensiveTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10ExpensiveCopOutsideBelowC",
+      "type": "number",
+      "min": "-50",
+      "max": "70",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10ExpensiveCopTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10PvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10AfterPvTargetC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10AutomaticControlEnabled",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10AllowOnBattery",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10StopBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac10UsePvSurplus",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10ComfortMinC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10ComfortMaxC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10HeatingActivationBelowC",
+      "type": "number",
+      "min": "0",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10CoolingActivationAboveC",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10Priority",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10EnergyDeviationC",
+      "type": "number",
+      "min": "0",
+      "max": "10",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10CoolingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10HeatingFanProfile",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10ControlIntervalMinutes",
+      "type": "number",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    {
+      "id": "hvac10MinBatterySoc",
+      "type": "number",
+      "min": "0",
+      "max": "100",
+      "step": "1"
+    },
+    {
+      "id": "hvac10SurplusStartW",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "50"
+    },
+    {
+      "id": "hvac10SurplusStopW",
+      "type": "number",
+      "min": "0",
+      "max": "5000",
+      "step": "50"
+    },
+    {
+      "id": "hvac10FastResetImportW",
+      "type": "number",
+      "min": "0",
+      "max": "20000",
+      "step": "100"
+    },
+    {
+      "id": "hvac10FanMinValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac10FanMaxValue",
+      "type": "number",
+      "min": "0",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac10FanStepValue",
+      "type": "number",
+      "min": "1",
+      "max": "10000",
+      "step": "1"
+    },
+    {
+      "id": "hvac10AllowPowerControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10AllowModeControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10AllowSetpointControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10AllowFanControl",
+      "type": "checkbox",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10TestMode",
+      "type": "SELECT",
+      "min": null,
+      "max": null,
+      "step": null
+    },
+    {
+      "id": "hvac10TestSetpoint",
+      "type": "number",
+      "min": "5",
+      "max": "99",
+      "step": "0.5"
+    },
+    {
+      "id": "hvac10TestFanCurrent",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    },
+    {
+      "id": "hvac10TestFanTarget",
+      "type": "number",
+      "min": null,
+      "max": null,
+      "step": "1"
+    }
+  ]
+}

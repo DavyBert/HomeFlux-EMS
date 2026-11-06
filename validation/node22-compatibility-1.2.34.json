@@ -1,0 +1,824 @@
+{
+  "version": "1.2.34",
+  "runtime": {
+    "node": "22.22.0",
+    "npm": "10.9.4",
+    "homeyCLI": "4.4.0",
+    "cliEngineAudit": "398 lock entries, all compatible; installed with engine-strict"
+  },
+  "changes": {
+    "homey-api": [
+      "3.19.2",
+      "3.21.2"
+    ],
+    "jsdom": [
+      "31.0.0",
+      "29.1.1"
+    ],
+    "w3c-xmlserializer": [
+      "6.0.0",
+      "5.0.0 (transitive dev dependency)"
+    ],
+    "engines.node": [
+      ">=18",
+      ">=22.22.0"
+    ],
+    ".npmrc": "engine-strict=true"
+  },
+  "dependencySelection": "Latest stable compatible versions from npm registry; no prereleases. Used Homey energy API method specifications unchanged in local/cloud schemas; actual createAppAPI export and jsdom load under Node22.",
+  "checks": {
+    "cleanNpmCi": true,
+    "engineWarnings": 0,
+    "allDependencyEngines": "103 dependencies compatible",
+    "secondCleanCi": "same lock and compatible tree",
+    "productionCi": "64 packages, no jsdom or serializer",
+    "build": "Homey CLI4.4.0 build/debug validation passed under Node22; latest CLI4.6.2 requires Node24 and is not the supported build tool for Node22",
+    "syntaxFiles": 255,
+    "validJsonFiles": 543,
+    "flowCards": "231 identifiers/content identical in build; order differs only",
+    "homeyPackageExcludes": [
+      "test",
+      "validation",
+      "jsdom",
+      "w3c-xmlserializer"
+    ],
+    "appCodeChanges": []
+  },
+  "tests": [
+    {
+      "test": "test/active-charge-1.1.2.test.js",
+      "code": 0,
+      "seconds": 1.38
+    },
+    {
+      "test": "test/app-control.test.js",
+      "code": 0,
+      "seconds": 1.03
+    },
+    {
+      "test": "test/autotune-planning-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.07
+    },
+    {
+      "test": "test/autotune-restart-1.2.33.test.js",
+      "code": 0,
+      "seconds": 0.48
+    },
+    {
+      "test": "test/autotune.test.js",
+      "code": 0,
+      "seconds": 0.13
+    },
+    {
+      "test": "test/battery-night-1.1.18.test.js",
+      "code": 0,
+      "seconds": 7.68
+    },
+    {
+      "test": "test/battery-power-1.2.2.test.js",
+      "code": 0,
+      "seconds": 1.54
+    },
+    {
+      "test": "test/battery-response-1.2.19.test.js",
+      "code": 0,
+      "seconds": 0.89
+    },
+    {
+      "test": "test/battery-response-ui-1.2.19.test.js",
+      "code": 0,
+      "seconds": 0.07
+    },
+    {
+      "test": "test/battery-settings-isolation-1.2.8.test.js",
+      "code": 0,
+      "seconds": 0.48
+    },
+    {
+      "test": "test/blocked-feedback-1.2.10.test.js",
+      "code": 0,
+      "seconds": 2.09
+    },
+    {
+      "test": "test/charge-feedback-1.0.8.test.js",
+      "code": 0,
+      "seconds": 0.97
+    },
+    {
+      "test": "test/charge-margin-1.2.23.test.js",
+      "code": 0,
+      "seconds": 0.12
+    },
+    {
+      "test": "test/charge-strategy-1.2.12.test.js",
+      "code": 0,
+      "seconds": 0.45
+    },
+    {
+      "test": "test/charge-strategy-control-1.2.12.test.js",
+      "code": 0,
+      "seconds": 0.37
+    },
+    {
+      "test": "test/context-refresh-1.0.10.test.js",
+      "code": 0,
+      "seconds": 0.89
+    },
+    {
+      "test": "test/cpu-coalescing-1.2.13.test.js",
+      "code": 0,
+      "seconds": 6.86
+    },
+    {
+      "test": "test/direction-busy-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/direction-notice-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.23
+    },
+    {
+      "test": "test/direction-phase-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/efficiency.test.js",
+      "code": 0,
+      "seconds": 0.19
+    },
+    {
+      "test": "test/energy-range-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.18
+    },
+    {
+      "test": "test/engine.test.js",
+      "code": 0,
+      "seconds": 0.15
+    },
+    {
+      "test": "test/ev-battery-options-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.45
+    },
+    {
+      "test": "test/ev-battery-transition-1.1.9.test.js",
+      "code": 0,
+      "seconds": 4.57
+    },
+    {
+      "test": "test/ev-confirmed-power-1.2.4.test.js",
+      "code": 0,
+      "seconds": 4.01
+    },
+    {
+      "test": "test/ev-context-delay-1.1.13.test.js",
+      "code": 0,
+      "seconds": 2.48
+    },
+    {
+      "test": "test/ev-dashboard-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.51
+    },
+    {
+      "test": "test/ev-deadline-cache-1.1.12.test.js",
+      "code": 0,
+      "seconds": 1.36
+    },
+    {
+      "test": "test/ev-deadline-integration-1.1.17.test.js",
+      "code": 0,
+      "seconds": 14.63
+    },
+    {
+      "test": "test/ev-deadline-planner-1.1.17.test.js",
+      "code": 0,
+      "seconds": 0.1
+    },
+    {
+      "test": "test/ev-duplicate-cpu-1.1.12.test.js",
+      "code": 0,
+      "seconds": 0.55
+    },
+    {
+      "test": "test/ev-energy-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.25
+    },
+    {
+      "test": "test/ev-feedback-1.0.11.test.js",
+      "code": 0,
+      "seconds": 5.23
+    },
+    {
+      "test": "test/ev-flow-resume-waf-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.75
+    },
+    {
+      "test": "test/ev-grid-budget-1.2.13.test.js",
+      "code": 0,
+      "seconds": 3.06
+    },
+    {
+      "test": "test/ev-grid-permission-1.2.5.test.js",
+      "code": 0,
+      "seconds": 6.89
+    },
+    {
+      "test": "test/ev-headroom.test.js",
+      "code": 0,
+      "seconds": 0.04
+    },
+    {
+      "test": "test/ev-house-publication-1.2.5.test.js",
+      "code": 0,
+      "seconds": 0.89
+    },
+    {
+      "test": "test/ev-house-reference-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.84
+    },
+    {
+      "test": "test/ev-input-work-1.1.12.test.js",
+      "code": 0,
+      "seconds": 42.28
+    },
+    {
+      "test": "test/ev-mode-recording-1.2.5.test.js",
+      "code": 0,
+      "seconds": 5.2
+    },
+    {
+      "test": "test/ev-multiday-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.62
+    },
+    {
+      "test": "test/ev-multiday-control-1.2.4.test.js",
+      "code": 0,
+      "seconds": 1.16
+    },
+    {
+      "test": "test/ev-persistence-1.1.20.test.js",
+      "code": 0,
+      "seconds": 0.87
+    },
+    {
+      "test": "test/ev-phase-1.2.29.test.js",
+      "code": 0,
+      "seconds": 0.12
+    },
+    {
+      "test": "test/ev-phase-output-1.2.29.test.js",
+      "code": 0,
+      "seconds": 1.71
+    },
+    {
+      "test": "test/ev-physical-config-cache-1.1.16.test.js",
+      "code": 0,
+      "seconds": 0.38
+    },
+    {
+      "test": "test/ev-physical-settings-1.1.16.test.js",
+      "code": 0,
+      "seconds": 1.77
+    },
+    {
+      "test": "test/ev-plan-1.1.15.test.js",
+      "code": 0,
+      "seconds": 7.33
+    },
+    {
+      "test": "test/ev-plan-centralization-1.1.16.test.js",
+      "code": 0,
+      "seconds": 0.37
+    },
+    {
+      "test": "test/ev-pv-house-first-1.1.11.test.js",
+      "code": 0,
+      "seconds": 7.95
+    },
+    {
+      "test": "test/ev-recording-audit-1.2.4.test.js",
+      "code": 0,
+      "seconds": 3.81
+    },
+    {
+      "test": "test/ev-savings-export-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.1
+    },
+    {
+      "test": "test/ev-savings-flow-1.2.6.test.js",
+      "code": 0,
+      "seconds": 0.21
+    },
+    {
+      "test": "test/ev-widget-calendar-1.2.32.test.js",
+      "code": 0,
+      "seconds": 0.27
+    },
+    {
+      "test": "test/ev-widget-calendar-ui-1.2.32.test.js",
+      "code": 0,
+      "seconds": 0.4
+    },
+    {
+      "test": "test/ev-widget-emergency-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.25
+    },
+    {
+      "test": "test/ev-widget-handler-audit-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.28
+    },
+    {
+      "test": "test/ev-widget-regression-1.2.4.test.js",
+      "code": 0,
+      "seconds": 1.89
+    },
+    {
+      "test": "test/ev-widget-ui-1.2.4.test.js",
+      "code": 0,
+      "seconds": 0.25
+    },
+    {
+      "test": "test/ev-work-1.1.16.test.js",
+      "code": 0,
+      "seconds": 1.37
+    },
+    {
+      "test": "test/fast-control-audit-1.0.6.test.js",
+      "code": 0,
+      "seconds": 0.61
+    },
+    {
+      "test": "test/features-1.2.16.test.js",
+      "code": 0,
+      "seconds": 0.95
+    },
+    {
+      "test": "test/features-1.2.6.test.js",
+      "code": 0,
+      "seconds": 0.46
+    },
+    {
+      "test": "test/features-1.2.9.test.js",
+      "code": 0,
+      "seconds": 0.7
+    },
+    {
+      "test": "test/features-control-1.2.9.test.js",
+      "code": 0,
+      "seconds": 7.53
+    },
+    {
+      "test": "test/flexible-loads.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/flow-slot-cards.test.js",
+      "code": 0,
+      "seconds": 1.23
+    },
+    {
+      "test": "test/help-catalog.test.js",
+      "code": 1,
+      "seconds": 0.05
+    },
+    {
+      "test": "test/homey-energy.test.js",
+      "code": 0,
+      "seconds": 0.06
+    },
+    {
+      "test": "test/hvac-budget-1.2.25.test.js",
+      "code": 0,
+      "seconds": 0.64
+    },
+    {
+      "test": "test/hvac-comfort-1.2.21.test.js",
+      "code": 0,
+      "seconds": 0.25
+    },
+    {
+      "test": "test/hvac-comfort-cycle-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.93
+    },
+    {
+      "test": "test/hvac-coordination-1.2.15.test.js",
+      "code": 0,
+      "seconds": 0.65
+    },
+    {
+      "test": "test/hvac-essential-1.2.34.test.js",
+      "code": 0,
+      "seconds": 0.23
+    },
+    {
+      "test": "test/hvac-flow-1.2.22.test.js",
+      "code": 0,
+      "seconds": 0.55
+    },
+    {
+      "test": "test/hvac-keep-on-1.2.26.test.js",
+      "code": 0,
+      "seconds": 0.32
+    },
+    {
+      "test": "test/hvac-keep-on-1.2.27.test.js",
+      "code": 0,
+      "seconds": 0.24
+    },
+    {
+      "test": "test/hvac-migration-1.2.7.test.js",
+      "code": 0,
+      "seconds": 2.23
+    },
+    {
+      "test": "test/hvac-permanent-1.2.7.test.js",
+      "code": 0,
+      "seconds": 11.9
+    },
+    {
+      "test": "test/hvac-presentation-1.2.23.test.js",
+      "code": 0,
+      "seconds": 0.26
+    },
+    {
+      "test": "test/hvac-runtime-1.2.34.test.js",
+      "code": 0,
+      "seconds": 0.39
+    },
+    {
+      "test": "test/hvac-settings-1.2.34.test.js",
+      "code": 0,
+      "seconds": 6.39
+    },
+    {
+      "test": "test/hvac-ui-1.2.7.test.js",
+      "code": 0,
+      "seconds": 0.99
+    },
+    {
+      "test": "test/hybrid-handover-1.2.33.test.js",
+      "code": 0,
+      "seconds": 0.21
+    },
+    {
+      "test": "test/idle-guard-1.0.8.test.js",
+      "code": 0,
+      "seconds": 0.81
+    },
+    {
+      "test": "test/import-avoidance-1.2.17.test.js",
+      "code": 0,
+      "seconds": 2.67
+    },
+    {
+      "test": "test/input-monitor-1.1.14.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/input-monitor-ui-1.1.14.test.js",
+      "code": 0,
+      "seconds": 0.07
+    },
+    {
+      "test": "test/input-warnings-1.2.12.test.js",
+      "code": 0,
+      "seconds": 0.06
+    },
+    {
+      "test": "test/input-warnings-widget-1.2.12.test.js",
+      "code": 0,
+      "seconds": 0.23
+    },
+    {
+      "test": "test/localization-1.2.18.test.js",
+      "code": 0,
+      "seconds": 0.24
+    },
+    {
+      "test": "test/manual-approval-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.21
+    },
+    {
+      "test": "test/multi-flexible-loads.test.js",
+      "code": 0,
+      "seconds": 0.14
+    },
+    {
+      "test": "test/night-forecast-1.1.4.test.js",
+      "code": 0,
+      "seconds": 0.4
+    },
+    {
+      "test": "test/night-restart-1.1.18.test.js",
+      "code": 0,
+      "seconds": 0.35
+    },
+    {
+      "test": "test/output-tests.test.js",
+      "code": 0,
+      "seconds": 0.09
+    },
+    {
+      "test": "test/peak-guard-all-modes-1.2.11.test.js",
+      "code": 0,
+      "seconds": 1.06
+    },
+    {
+      "test": "test/performance-architecture.test.js",
+      "code": 0,
+      "seconds": 0.11
+    },
+    {
+      "test": "test/performance-split-loop.test.js",
+      "code": 0,
+      "seconds": 0.13
+    },
+    {
+      "test": "test/phase-detection-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.33
+    },
+    {
+      "test": "test/phase-emergency-1.2.31.test.js",
+      "code": 0,
+      "seconds": 3.03
+    },
+    {
+      "test": "test/phase-emergency-ui-1.2.31.test.js",
+      "code": 0,
+      "seconds": 0.11
+    },
+    {
+      "test": "test/phase-guard-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.23
+    },
+    {
+      "test": "test/phase-limiter-1.2.30.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/phase-live-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.05
+    },
+    {
+      "test": "test/phase-output-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/phase-recovery-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/phase-ui-1.2.28.test.js",
+      "code": 1,
+      "seconds": 0.04
+    },
+    {
+      "test": "test/planning-limits-1.0.7.test.js",
+      "code": 0,
+      "seconds": 0.25
+    },
+    {
+      "test": "test/price-alignment-names-1.0.6.test.js",
+      "code": 0,
+      "seconds": 0.38
+    },
+    {
+      "test": "test/price-sources-1.0.6.test.js",
+      "code": 0,
+      "seconds": 0.35
+    },
+    {
+      "test": "test/price-ui-1.0.6.test.js",
+      "code": 0,
+      "seconds": 0.07
+    },
+    {
+      "test": "test/pv-plan-feedback.test.js",
+      "code": 0,
+      "seconds": 0.12
+    },
+    {
+      "test": "test/pv-source-1.1.1.test.js",
+      "code": 0,
+      "seconds": 0.29
+    },
+    {
+      "test": "test/regressions-0.7.10.test.js",
+      "code": 0,
+      "seconds": 0.15
+    },
+    {
+      "test": "test/regressions-0.7.11.test.js",
+      "code": 0,
+      "seconds": 0.18
+    },
+    {
+      "test": "test/regressions-0.7.15.test.js",
+      "code": 0,
+      "seconds": 0.1
+    },
+    {
+      "test": "test/regressions-0.7.16.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/regressions-0.7.8.test.js",
+      "code": 0,
+      "seconds": 0.17
+    },
+    {
+      "test": "test/regressions-0.7.9.test.js",
+      "code": 0,
+      "seconds": 1.2
+    },
+    {
+      "test": "test/regressions-0.8.1.test.js",
+      "code": 0,
+      "seconds": 0.08
+    },
+    {
+      "test": "test/regressions-0.8.2.test.js",
+      "code": 0,
+      "seconds": 0.14
+    },
+    {
+      "test": "test/regressions-0.8.3.test.js",
+      "code": 0,
+      "seconds": 0.23
+    },
+    {
+      "test": "test/regressions-0.8.4.test.js",
+      "code": 0,
+      "seconds": 0.41
+    },
+    {
+      "test": "test/regressions-0.8.7.test.js",
+      "code": 0,
+      "seconds": 0.21
+    },
+    {
+      "test": "test/regressions-0.9.1.test.js",
+      "code": 0,
+      "seconds": 0.86
+    },
+    {
+      "test": "test/regressions-0.9.2.test.js",
+      "code": 0,
+      "seconds": 0.27
+    },
+    {
+      "test": "test/regressions-0.9.3.test.js",
+      "code": 0,
+      "seconds": 0.21
+    },
+    {
+      "test": "test/regressions-0.9.5.test.js",
+      "code": 0,
+      "seconds": 0.37
+    },
+    {
+      "test": "test/regressions-0.9.7.test.js",
+      "code": 0,
+      "seconds": 0.26
+    },
+    {
+      "test": "test/regressions-0.9.8.test.js",
+      "code": 0,
+      "seconds": 0.37
+    },
+    {
+      "test": "test/regressions-0.9.9.test.js",
+      "code": 1,
+      "seconds": 0.11
+    },
+    {
+      "test": "test/regressions-1.0.0.test.js",
+      "code": 0,
+      "seconds": 0.22
+    },
+    {
+      "test": "test/safety-max-1.2.28.test.js",
+      "code": 0,
+      "seconds": 0.24
+    },
+    {
+      "test": "test/savings.test.js",
+      "code": 0,
+      "seconds": 0.11
+    },
+    {
+      "test": "test/settings-cache-1.0.12.test.js",
+      "code": 0,
+      "seconds": 0.35
+    },
+    {
+      "test": "test/settings-runtime-audit.test.js",
+      "code": 0,
+      "seconds": 0.1
+    },
+    {
+      "test": "test/settings-startup.test.js",
+      "code": 1,
+      "seconds": 0.05
+    },
+    {
+      "test": "test/settings-translations.test.js",
+      "code": 0,
+      "seconds": 0.05
+    },
+    {
+      "test": "test/source-switch-1.1.3.test.js",
+      "code": 0,
+      "seconds": 0.27
+    },
+    {
+      "test": "test/split-resend-seconds-1.1.10.test.js",
+      "code": 0,
+      "seconds": 0.26
+    },
+    {
+      "test": "test/voltage-ui-0.7.16.test.js",
+      "code": 0,
+      "seconds": 0.08
+    },
+    {
+      "test": "test/waf-continuity-1.2.3.test.js",
+      "code": 0,
+      "seconds": 0.89
+    },
+    {
+      "test": "test/widget-decision-1.2.14.test.js",
+      "code": 0,
+      "seconds": 0.2
+    },
+    {
+      "test": "test/widget-insights-1.2.1.test.js",
+      "code": 0,
+      "seconds": 1.66
+    },
+    {
+      "test": "test/widget-insights-lifecycle-1.2.1.test.js",
+      "code": 0,
+      "seconds": 0.07
+    },
+    {
+      "test": "test/widget.test.js",
+      "code": 1,
+      "seconds": 0.05
+    }
+  ],
+  "results": {
+    "passed": 144,
+    "failed": 5,
+    "newHVAC": "1251 UI checks, 19 Essential checks and 36 runtime/Flow decision moments passed"
+  },
+  "baselineFailures": {
+    "help-catalog.test.js": "missing actions/set_grid_power_phases catalog item",
+    "phase-ui-1.2.28.test.js": "mock DOM missing phaseEmergencyPriorityRow",
+    "regressions-0.9.9.test.js": "mock Homey instance missing clock",
+    "settings-startup.test.js": "hardcoded expected version1.2.28",
+    "widget.test.js": "hardcoded expected version1.2.27"
+  },
+  "baselineConfirmation": "All five also fail in original unmodified1.2.34 under Node22; no tests weakened or removed.",
+  "limitations": [
+    "No physical Homey or authenticated live energy API test",
+    "Exact1.2.27 archive unavailable;1.2.28 found with same production homey-api3.19.2; cannot establish exact1.2.27 manifest",
+    "SDK homey provided by Homey runtime, not bundled npm dependency; tests use existing stubs",
+    "No application functional changes; existing test failures remain"
+  ],
+  "reproduce": [
+    "npm ci (Node22.22.0/npm10.9.4)",
+    "npx --yes homey@4.4.0 app build"
+  ],
+  "logs": {
+    "help-catalog.test.js": "node:internal/assert/utils:77\n    throw err;\n    ^\n\nAssertionError [ERR_ASSERTION]: Help catalog misses actions/set_grid_power_phases\n    at Object.<anonymous> (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/test/help-catalog.test.js:22:5)\n    at Module._compile (node:internal/modules/cjs/loader:1706:14)\n    at Object..js (node:internal/modules/cjs/loader:1839:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: undefined,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n\nNode.js v22.22.0\n",
+    "phase-ui-1.2.28.test.js": "evalmachine.<anonymous>:4\n    q('phaseEmergencyPriorityRow').classList.toggle('hidden',!three||!q('phaseGuardEnabled').checked);\n                                  ^\n\nTypeError: Cannot read properties of undefined (reading 'classList')\n    at Object.updatePhaseUi (evalmachine.<anonymous>:4:35)\n    at Object.<anonymous> (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/test/phase-ui-1.2.28.test.js:13:5)\n    at Module._compile (node:internal/modules/cjs/loader:1706:14)\n    at Object..js (node:internal/modules/cjs/loader:1839:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49\n\nNode.js v22.22.0\n",
+    "regressions-0.9.9.test.js": "0.9.9 Autotune scheduling regression tests passed\n/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/app.js:739\n      timezone: this.homey.clock.getTimezone() || 'UTC',\n                           ^\n\nTypeError: Cannot read properties of undefined (reading 'clock')\n    at HomeFluxEmsApp.refreshSettingsCache (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/app.js:739:28)\n    at HomeFluxEmsApp.getSettings (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/app.js:814:35)\n    at HomeFluxEmsApp.getDiagnosticsReport (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/app.js:1922:48)\n    at Object.<anonymous> (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/test/regressions-0.9.9.test.js:331:22)\n    at Module._compile (node:internal/modules/cjs/loader:1706:14)\n    at Object..js (node:internal/modules/cjs/loader:1839:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n\nNode.js v22.22.0\n",
+    "settings-startup.test.js": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: '1.2.34' == '1.2.28'\n    at Object.<anonymous> (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/test/settings-startup.test.js:19:10)\n    at Module._compile (node:internal/modules/cjs/loader:1706:14)\n    at Object..js (node:internal/modules/cjs/loader:1839:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.2.34',\n  expected: '1.2.28',\n  operator: '==',\n  diff: 'simple'\n}\n\nNode.js v22.22.0\n",
+    "widget.test.js": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.2.34' !== '1.2.27'\n\n    at Object.<anonymous> (/workspace/scratch/a74231326a67/node22-audit/work/HomeFlux-EMS/test/widget.test.js:22:8)\n    at Module._compile (node:internal/modules/cjs/loader:1706:14)\n    at Object..js (node:internal/modules/cjs/loader:1839:10)\n    at Module.load (node:internal/modules/cjs/loader:1441:32)\n    at Function._load (node:internal/modules/cjs/loader:1263:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:328:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.2.34',\n  expected: '1.2.27',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.22.0\n"
+  }
+}

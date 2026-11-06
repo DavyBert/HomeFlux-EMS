@@ -12693,13 +12693,14 @@ class HomeFluxEmsApp extends Homey.App {
     const evStartsGridCharge = Boolean(evDecision)
       && ['tariff', 'guarantee', 'pv+tariff'].includes(String(evDecision.source || ''))
       && Number(evDecision.desiredCurrentA || 0) > Number(evDecision.actualCurrentA || 0) + 0.5;
-    const fastReset = Boolean(options.hvacBudgetSafety) || Boolean(result?.override === 'peak_shave') || predictedGridAfterEvW >= fastImportW || evStartsGridCharge;
+    const fastReset = !hvacCoordination.mustSkipOff(settings) && (Boolean(options.hvacBudgetSafety) || Boolean(result?.override === 'peak_shave') || predictedGridAfterEvW >= fastImportW || evStartsGridCharge);
 
     const hasPublishedHvacSetpoint = this.lastPublishedHvacSetpoint !== null && this.lastPublishedHvacSetpoint !== undefined
       && Number.isFinite(Number(this.lastPublishedHvacSetpoint));
     const effectiveSetpoint = hasPublishedHvacSetpoint ? Number(this.lastPublishedHvacSetpoint) : actualSetpoint;
 
     if (activeMode && fastReset) {
+      decision.hvacEnergyReduction=true;
       return restoreImmediately(result?.override === 'peak_shave'
         ? 'Peak Guard · HVAC direct terug naar normaal'
         : evStartsGridCharge
