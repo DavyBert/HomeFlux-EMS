@@ -5717,7 +5717,11 @@
     "Emergency Charge wacht op veilige fasecapaciteit": "Notfallladen wartet auf sichere Phasenkapazität",
     "Emergency Charge wacht op totale Peak Guard": "Notfallladen wartet auf Spielraum beim gesamten Peak Guard",
     "Emergency Charge wacht op EV-terugkoppeling": "Notfallladen wartet auf EV-Rückmeldung",
-    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Bei Verteilen folgt die normale Phasenüberwachung der Netzladepriorität jedes EV."
+    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Bei Verteilen folgt die normale Phasenüberwachung der Netzladepriorität jedes EV.",
+    "Minimale SoC voor externe overdracht gebruiken": "Mindest-SoC für die Übergabe an das externe EMS aktivieren",
+    "Minimale SoC voor externe overdracht": "Mindest-SoC für die Übergabe an das externe EMS",
+    "HomeFlux draagt de batterij pas over aan de externe EMS wanneer de batterij-SoC deze grens bereikt. Gebruik dit wanneer de externe omvormer een hogere interne reserve heeft dan HomeFlux.": "HomeFlux übergibt die Batterie erst an das externe EMS, wenn der Batterie-SoC diesen Schwellenwert erreicht. Verwenden Sie diese Option, wenn der externe Wechselrichter eine höhere interne Reserve als HomeFlux hat.",
+    "Externe regeling blijft actief tot 1 procentpunt onder deze grens. Dit wijzigt de laad- en ontlaadgrenzen niet. Veiligheidsingrepen blijven altijd voorrang krijgen.": "Die externe Regelung bleibt aktiv, bis der SoC auf 1 Prozentpunkt unter diesen Schwellenwert fällt. Lade- und Entladegrenzen bleiben unverändert. Sicherheitseingriffe haben stets Vorrang."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Für Ladegeräte wie Smappee sendet HomeFlux Stop, Smart oder Standard. Da diese Schnittstelle keinen Teilstrom steuern kann, stoppt HomeFlux das Ladegerät, wenn Peak Guard die angeforderte Leistung begrenzen muss.",

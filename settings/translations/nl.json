@@ -179,7 +179,11 @@
     "Emergency Charge wacht op veilige fasecapaciteit": "Emergency Charge wacht op veilige fasecapaciteit",
     "Emergency Charge wacht op totale Peak Guard": "Emergency Charge wacht op totale Peak Guard",
     "Emergency Charge wacht op EV-terugkoppeling": "Emergency Charge wacht op EV-terugkoppeling",
-    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV."
+    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.",
+    "Minimale SoC voor externe overdracht gebruiken": "Minimale SoC voor externe overdracht gebruiken",
+    "Minimale SoC voor externe overdracht": "Minimale SoC voor externe overdracht",
+    "HomeFlux draagt de batterij pas over aan de externe EMS wanneer de batterij-SoC deze grens bereikt. Gebruik dit wanneer de externe omvormer een hogere interne reserve heeft dan HomeFlux.": "HomeFlux draagt de batterij pas over aan de externe EMS wanneer de batterij-SoC deze grens bereikt. Gebruik dit wanneer de externe omvormer een hogere interne reserve heeft dan HomeFlux.",
+    "Externe regeling blijft actief tot 1 procentpunt onder deze grens. Dit wijzigt de laad- en ontlaadgrenzen niet. Veiligheidsingrepen blijven altijd voorrang krijgen.": "Externe regeling blijft actief tot 1 procentpunt onder deze grens. Dit wijzigt de laad- en ontlaadgrenzen niet. Veiligheidsingrepen blijven altijd voorrang krijgen."
   },
   "phrases": {},
   "strings": {

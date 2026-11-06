@@ -5717,7 +5717,11 @@
     "Emergency Charge wacht op veilige fasecapaciteit": "La charge d’urgence attend une capacité de phase suffisante",
     "Emergency Charge wacht op totale Peak Guard": "La charge d’urgence attend une marge Peak Guard globale suffisante",
     "Emergency Charge wacht op EV-terugkoppeling": "La charge d’urgence attend le retour du VE",
-    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Avec Répartir, la surveillance normale des phases suit la priorité de charge réseau de chaque VE."
+    "Bij Verdelen volgt de normale fasebewaking de netlaadprioriteit per EV.": "Avec Répartir, la surveillance normale des phases suit la priorité de charge réseau de chaque VE.",
+    "Minimale SoC voor externe overdracht gebruiken": "Activer une SoC minimale pour le transfert à l’EMS externe",
+    "Minimale SoC voor externe overdracht": "SoC minimale pour le transfert à l’EMS externe",
+    "HomeFlux draagt de batterij pas over aan de externe EMS wanneer de batterij-SoC deze grens bereikt. Gebruik dit wanneer de externe omvormer een hogere interne reserve heeft dan HomeFlux.": "HomeFlux ne transfère la batterie à l’EMS externe que lorsque sa SoC atteint ce seuil. Utilisez cette option si l’onduleur externe conserve une réserve interne supérieure à celle de HomeFlux.",
+    "Externe regeling blijft actief tot 1 procentpunt onder deze grens. Dit wijzigt de laad- en ontlaadgrenzen niet. Veiligheidsingrepen blijven altijd voorrang krijgen.": "Le contrôle externe reste actif jusqu’à ce que la SoC tombe à 1 point de pourcentage sous ce seuil. Les limites de charge et de décharge ne changent pas. Les interventions de sécurité restent prioritaires."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Pour les chargeurs tels que Smappee, HomeFlux envoie stop, smart ou standard. Comme cette interface ne peut pas commander un courant partiel, HomeFlux arrête le chargeur lorsque Peak Guard doit limiter la puissance demandée.",

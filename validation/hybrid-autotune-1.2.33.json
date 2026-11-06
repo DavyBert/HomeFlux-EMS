@@ -1,0 +1,143 @@
+{
+  "version": "1.2.33",
+  "baseVersion": "1.2.32",
+  "baseSha256": "8296efbac29611e58347c4613686dd45c4f2940422f246f29b49969e0de752e5",
+  "scope": "Hybrid handover and its settings; compact AutoTune active-day persistence only",
+  "changedAppFunctions": [
+    "onInit",
+    "restoreAutoTuneLearning",
+    "persistAutoTuneLearning",
+    "finalizeAutoTunePlanningDay",
+    "recordAutoTunePlanningSample",
+    "runSlowHeartbeatHousekeeping",
+    "onUninit",
+    "isHybridExternalControlEligible"
+  ],
+  "ownership": {
+    "incidentalGridImport": "The existing self_consumption/avoid_import strategy plus plannedChargeW distinguishes incidental source attribution from deliberate charging; gridChargeAssistW calculations and presentation unchanged.",
+    "priorityGuards": "Existing Peak Guard/cooldown, overrides, floors, reserves, pauses and EV intentional import retained; explicit safety recovery and EV discharge-protection guards.",
+    "minimumHandoverSoc": {
+      "enabledByDefault": false,
+      "valueDefault": 11,
+      "range": [
+        0,
+        100
+      ],
+      "entry": "SoC >= configured value",
+      "externalRetention": "SoC > configured value - 1 percentage point",
+      "safety": "Handover eligibility only; no change to minSoc/safetySoc/Battery Save or battery commands."
+    }
+  },
+  "autotune": {
+    "storage": "Existing _autoTuneLearning with unchanged completed-day summaries plus compact currentDay totals.",
+    "routineCheckpoint": "Existing slow housekeeping, at most once per five minutes; duplicate totals skipped even if only a time anchor advanced.",
+    "extraFlushes": "Existing day-finalization path and graceful app shutdown.",
+    "restart": "Restores only valid current-day aggregates; fresh time/stability anchors exclude downtime. Previous active day uses existing finalization validity; history dates prevent duplicate finalization.",
+    "corruption": "Invalid active checkpoint discarded without losing historical summaries. Invalid dates/Intl failures cannot block startup.",
+    "reliability": "Existing reliableHours rules and recommendation calculations unchanged.",
+    "hybridFeedbackLimitation": "Existing Report external EMS battery power card documents actual power, but its handler stores externalSetpointW with no measured-versus-requested source discriminator. Genuine physical measurement cannot be verified from existing data. Delegated hours remain excluded from reliableHours; no inferred power or new input channel introduced.",
+    "physicalPositiveScenario": "Not enabled: trustworthy physical provenance unavailable in existing code. Fresh/stable external setpoints explicitly tested as excluded."
+  },
+  "couplings": {
+    "settingsDefaults": "Two app-only defaults extend engine defaults in app.js; lib/ems-engine.js unchanged.",
+    "settingsEventGuard": "_autoTuneLearning excluded from existing settings-change evaluation callback so persistence never creates extra EMS evaluations.",
+    "outsideRequestedScope": false
+  },
+  "tests": [
+    {
+      "name": "app-control",
+      "exit": 0,
+      "seconds": 1.07,
+      "note": "Two synthetic priority fixtures now specify their actual charging/discharging strategy; all existing assertions retained."
+    },
+    {
+      "name": "autotune-planning-1.2.28",
+      "exit": 0,
+      "seconds": 0.11
+    },
+    {
+      "name": "idle-guard-1.0.8",
+      "exit": 0,
+      "seconds": 0.92
+    },
+    {
+      "name": "context-refresh-1.0.10",
+      "exit": 0,
+      "seconds": 0.87
+    },
+    {
+      "name": "fast-control-audit-1.0.6",
+      "exit": 0,
+      "seconds": 0.67
+    },
+    {
+      "name": "settings-runtime-audit",
+      "exit": 0,
+      "seconds": 0.11
+    },
+    {
+      "name": "settings-translations",
+      "exit": 0,
+      "seconds": 0.11
+    },
+    {
+      "name": "localization-1.2.18",
+      "exit": 0,
+      "seconds": 0.26
+    },
+    {
+      "name": "autotune",
+      "exit": 0
+    },
+    {
+      "name": "hybrid-handover-1.2.33",
+      "exit": 0
+    },
+    {
+      "name": "autotune-restart-1.2.33",
+      "exit": 0
+    }
+  ],
+  "newChecks": {
+    "hybrid": 59,
+    "autotuneRestart": 37
+  },
+  "syntax": {
+    "scripts": 6,
+    "result": "passed"
+  },
+  "homey": {
+    "cliVersion": "4.6.2",
+    "build": "passed",
+    "debugValidation": "passed",
+    "testsExcludedFromActualBuild": true,
+    "modifiedRuntimeMatchesBuild": true,
+    "installedOrPublished": false
+  },
+  "preservation": {
+    "engineAndPlannerAndControlModulesByteIdentical": true,
+    "allFlowCardsIncludingDeprecatedByteIdentical": true,
+    "allOriginalTestPathsRetained": true,
+    "existingAssertionsRetained": true,
+    "websiteDescriptionsAndCommunityLinksUnchanged": true,
+    "oldTranslationsPreserved": true,
+    "readmeIntroductionUnchanged": true,
+    "releaseNotesLanguages": [
+      "nl",
+      "en",
+      "fr",
+      "es",
+      "de"
+    ]
+  },
+  "skipped": [
+    "Full regression suite",
+    "Independent EV/widget, HVAC, boiler, PV and phase-control suites",
+    "Unrelated performance benchmarks"
+  ],
+  "remainingRisks": [
+    "No Homey or physical inverter measurements; host tests simulate Homey I/O.",
+    "Forced termination can lose observations since the last checkpoint (normally up to five minutes plus the configured slow-heartbeat cadence).",
+    "Delegated hours cannot become reliable without verifiable physical battery-power provenance."
+  ]
+}

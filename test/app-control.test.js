@@ -3414,7 +3414,7 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
   assert.equal(app.updateHybridEmsDelegation(avoidImport, settings, enteredAt + 500), true);
   assert.equal(app.hybridEmsRuntime.delegated, true);
 
-  const netCharge = { ...pure, gridChargeAssistW: 500, statusText: 'Netladen' };
+  const netCharge = { ...pure, baseMode: 'charge', plannedChargeW: 500, gridChargeAssistW: 500, statusText: 'Netladen' };
   assert.equal(app.updateHybridEmsDelegation(netCharge, settings, enteredAt + 1000), false);
   assert.equal(app.hybridEmsRuntime.status, 'homeflux_priority');
 
@@ -3776,8 +3776,8 @@ for (const [priority, expectedA] of [['ev_first', 9], ['battery_first', 0]]) {
     app.requestContextEvaluate = () => {};
     const priorityResult = {
       ...result,
-      baseMode: 'self_consumption',
-      gridChargeAssistW: 500,
+      baseMode: 'manual_discharge',
+      gridChargeAssistW: 0,
       avgSoc: 50,
       lowForecastBatterySaveActive: false,
       lowForecastDischargeToTargetActive: false,

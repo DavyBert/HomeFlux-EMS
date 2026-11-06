@@ -27,7 +27,7 @@ const { performance } = require('perf_hooks');
 const { SlotFlowCards } = require('./lib/flow-slot-cards');
 const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
 const { HomeyAPI } = require('homey-api');
-const { DEFAULTS, evaluate, prepareControlContext, previewBatteryFeedback, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh } = require('./lib/ems-engine');
+const { DEFAULTS: ENGINE_DEFAULTS, evaluate, prepareControlContext, previewBatteryFeedback, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh } = require('./lib/ems-engine');
 const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { translate: translateDisplay, localizeDisplay, localizeTokens } = require('./lib/display-language');
 const { migrateVoltage } = require('./settings/ev-headroom');
@@ -40,7 +40,11 @@ const hvacCoordination = require('./lib/hvac-coordination');
 const phaseGuard = require('./lib/phase-guard');
 const evPhaseGuard = require('./lib/ev-phase-guard');
 const autoTunePlanning = require('./lib/autotune-planning');
+const autoTuneLearning = require('./lib/autotune-learning');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
+
+// App-only handover settings: the battery engine and its defaults stay intact.
+const DEFAULTS = { ...ENGINE_DEFAULTS, hybridHandoverMinSocEnabled:false, hybridHandoverMinSoc:11 };
 
 const EV_PHYSICAL_CONFIG_SUFFIXES = new Set([
   'Enabled', 'ControlType', 'Phases', 'Voltage', 'VoltageReference',
@@ -494,7 +498,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     this.homey.settings.on('set', async key => {
       try {
-        if (key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc') return;
+        if (key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
         // These keys persist EV state already changed by its handler or
         // energy accounting. Goal changes request their own context; energy
         // completion stops immediately. A later settings callback must not
@@ -2069,14 +2073,21 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
     const raw = this.homey.settings.get('_autoTuneLearning');
     const days = Array.isArray(raw?.days) ? raw.days : [];
-    // v0.6.4 persists only compact daily summaries. No second/minute/raw
-    // measurement history is stored. Fourteen days is enough for a useful
-    // planning trend while keeping storage tiny.
+    // Retain completed summaries and restore only compact active-day totals.
+    // No raw measurements or command-derived stability survive a restart.
     this.autoTuneRuntime.planning.days = days
       .filter(day => day && typeof day === 'object' && String(day.dateKey || ''))
       .slice(-14)
       .map(day => ({ ...day }));
-    this.autoTuneRuntime.planning.currentDay = null;
+    const planning = this.autoTuneRuntime.planning;
+    const now = Date.now(), timezone = this.homey.clock.getTimezone() || 'UTC';
+    const today = localParts(new Date(now),timezone).dateKey;
+    const active = autoTuneLearning.restore(raw?.currentDay,today,now,timezone);
+    planning.currentDay = active?.dateKey === today ? active : null;
+    planning.lastPersistCheckAt = now;
+    planning.lastSerialized = autoTuneLearning.fingerprint({days:planning.days,currentDay:autoTuneLearning.snapshot(planning.currentDay)});
+    this.autoTuneLearningRestored = true;
+    if (active && active.dateKey < today && !planning.days.some(day=>day.dateKey===active.dateKey)) this.finalizeAutoTunePlanningDay(active);
     const minimum=this.homey.settings.get('_autoTuneDailyMinimumSoc');
     this.autoTuneRuntime.dailyMinimumSoc=minimum&&typeof minimum.dateKey==='string'&&Number.isFinite(minimum.soc)&&minimum.soc>=0&&minimum.soc<=100?{dateKey:minimum.dateKey,soc:minimum.soc}:null;
   }
@@ -2096,12 +2107,22 @@ class HomeFluxEmsApp extends Homey.App {
     if(day?.dateKey===dateKey)day.minObservedSoc=day.minObservedSoc==null?minimum:Math.min(day.minObservedSoc,minimum);
   }
 
-  persistAutoTuneLearning() {
+  persistAutoTuneLearning(now = Date.now(), force = false) {
     if (!this.autoTuneRuntime) this.autoTuneRuntime = this.createAutoTuneRuntime();
+    const planning = this.autoTuneRuntime.planning;
+    if (!force && planning.lastPersistCheckAt > 0 && now >= planning.lastPersistCheckAt
+      && now-planning.lastPersistCheckAt < 5*60*1000) return false;
     const days = Array.isArray(this.autoTuneRuntime.planning?.days)
       ? this.autoTuneRuntime.planning.days.slice(-14)
       : [];
-    this.setSetting('_autoTuneLearning', { days });
+    const payload = { days, currentDay:autoTuneLearning.snapshot(planning.currentDay) };
+    const serialized = autoTuneLearning.fingerprint(payload);
+    if (serialized === planning.lastSerialized) { planning.lastPersistCheckAt=now; return false; }
+    try {
+      this.setSetting('_autoTuneLearning',payload);
+      planning.lastSerialized=serialized; planning.lastPersistCheckAt=now;
+      return true;
+    } catch (err) { this.error('AutoTune learning checkpoint failed',err); return false; }
   }
 
   finalizeAutoTunePlanningDay(day) {
@@ -2137,7 +2158,7 @@ class HomeFluxEmsApp extends Homey.App {
     const filtered = days.filter(item => String(item?.dateKey || '') !== summary.dateKey);
     filtered.push(summary);
     this.autoTuneRuntime.planning.days = filtered.slice(-14);
-    this.persistAutoTuneLearning();
+    this.persistAutoTuneLearning(Date.now(),true);
   }
 
   getAutoTuneMeasuredEvPowerW(settings = this.getSettings(), now = Date.now()) {
@@ -2226,7 +2247,9 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     const previousAt = Number(day.lastAt) || 0;
-    day.lastAt = Number(now) || Date.now();
+    const sampleAt = Number(now) || Date.now();
+    if (previousAt > 0 && sampleAt <= previousAt) return;
+    day.lastAt = sampleAt;
     if (previousAt <= 0) return;
     const gapMs = Math.max(0, day.lastAt - previousAt);
     // Planning learning now follows slow housekeeping. Allow one heartbeat of
@@ -3539,6 +3562,7 @@ class HomeFluxEmsApp extends Homey.App {
     // sample, Autotune due-check, savings housekeeping and EMS-device refresh
     // are deliberately bounded by the same slow cadence as context decisions.
     this.recordAutoTunePlanningSample(at, settings);
+    this.persistAutoTuneLearning(at);
     this.scheduleAutoTuneContextIfDue(at);
     this.recordSavingsSample(at);
     if ((at - Number(this.savings?.lastPersistAt || 0)) >= 5 * 60 * 1000) {
@@ -7208,6 +7232,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async onUninit() {
+    if (this.autoTuneLearningRestored) this.persistAutoTuneLearning(Date.now(),true);
     if (batteryResponseTest.active(this)) await batteryResponseTest.stop(this,'Reactietest afgebroken door een herstart.',false,false);
     // Retain the current kWh remainder on a graceful restart, rather than the
     // last five-minute checkpoint. Never overwrite saved goals after a failed
@@ -14859,6 +14884,12 @@ class HomeFluxEmsApp extends Homey.App {
     const atConfiguredUpperSocLimit = Number.isFinite(avgSoc)
       && Number.isFinite(configuredMaxSoc)
       && avgSoc >= configuredMaxSoc - 0.05;
+    const handoverMinSoc = parseFiniteInputNumber(settings.hybridHandoverMinSoc);
+    const externalOwns = Boolean(this.hybridEmsRuntime?.delegated) && !this.hybridEmsRuntime?.takeover;
+    const handoverSocAllowed = !settings.hybridHandoverMinSocEnabled
+      || (handoverMinSoc !== null && handoverMinSoc >= 0 && handoverMinSoc <= 100
+        && parseFiniteInputNumber(result?.avgSoc) !== null
+        && (externalOwns ? avgSoc > handoverMinSoc-1 : avgSoc >= handoverMinSoc));
     return this.isHybridEmsConfigured(settings)
       && Boolean(result?.inputReady)
       && Boolean(result?.controlEnabled)
@@ -14868,7 +14899,12 @@ class HomeFluxEmsApp extends Homey.App {
       // while the external EMS owns the battery group.
       && !this.isHybridPeakGuardRequired(result, settings)
       && !result?.override
-      && Math.max(0, Number(result?.gridChargeAssistW) || 0) <= 0
+      // Assist also labels incidental P1 import during PV charging. Only the
+      // actual strategy/planned request identifies deliberate grid charging.
+      && Math.max(0, Number(result?.plannedChargeW) || 0) <= 0
+      && !Boolean(result?.safetySocRecoveryActive)
+      && !Boolean(result?.batteryDischargeBlockedByEv)
+      && handoverSocAllowed
       && !Boolean(result?.lowForecastBatterySaveActive)
       && !Boolean(result?.lowForecastDischargeToTargetActive)
       // Intentional EV grid charging (selected tariff, guaranteed deadline or

@@ -32,6 +32,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.33
+
+Hybrid EMS blijft stabiel bij tijdelijke netimport tijdens PV-laden. Een optionele minimale SoC voor externe overdracht voorkomt ongewenste overdracht rond de reserve van de omvormer. AutoTune bewaart de actieve leerdag over herstarts en telt onderbrekingen niet als gemeten tijd.
+
+Hybrid EMS remains stable during temporary grid import while charging from solar. An optional minimum SoC for external handover prevents unwanted handover around the inverter’s reserve. AutoTune preserves the active learning day across restarts and excludes downtime from measured hours.
+
+Hybrid EMS reste stable lors d’un soutirage temporaire pendant la charge solaire. Une SoC minimale optionnelle pour le transfert à l’EMS externe évite les transferts indésirables autour de la réserve de l’onduleur. AutoTune conserve la journée d’apprentissage en cours après un redémarrage et exclut les interruptions des heures mesurées.
+
+Hybrid EMS mantiene la estabilidad durante importaciones temporales de red al cargar con energía solar. Un SoC mínimo opcional para ceder el control al EMS externo evita cesiones no deseadas cerca de la reserva del inversor. AutoTune conserva el día de aprendizaje activo tras los reinicios y excluye las interrupciones de las horas medidas.
+
+Hybrid EMS bleibt bei vorübergehendem Netzbezug während des Solarladens stabil. Ein optionaler Mindest-SoC für die Übergabe an das externe EMS verhindert unerwünschte Übergaben nahe der Wechselrichterreserve. AutoTune behält den laufenden Lerntag über Neustarts hinweg bei und zählt Ausfallzeiten nicht als Messzeit.
+
 ### 1.2.32
 
 EV-widgetplanning verbeterd: handmatige kalenderdatums zijn niet langer beperkt tot zeven dagen. Datum en tijd worden betrouwbaar bevestigd met duidelijke knopteksten en foutmeldingen. De widget toont de opgeslagen planning en voorkomt dubbele bevestigingen.
