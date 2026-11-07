@@ -2307,7 +2307,7 @@
     "Battery test not started": "Essai de la batterie non démarré",
     "Battery test passed for the current battery configuration and command sign.": "Test de batterie passé pour la configuration actuelle de la batterie et signe de commande.",
     "Battery test passed · EMS output is off. Enable the checkbox to publish battery commands.": "Test de batterie réussi · EMS sortie est désactivée. Activer la case à cocher pour publier les commandes de batterie.",
-    "Battery uses 2 different working modes for (dis)charging.": "La batterie utilise 2 modes de travail différents pour (dis)charger.",
+    "Battery uses 2 different working modes for (dis)charging.": "La batterie utilise des modes de charge et de décharge distincts.",
     "Battery {0} SoC": "Batterie {0} SoC",
     "Battery {0} · split command": "Batterie {0} · commande fractionnée",
     "Battery {device}: SoC input missing — check the Flow.": "Batterie {device}: SoC entrée manquante — vérifiez le Flow.",
@@ -5796,7 +5796,12 @@
     "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.": "La température intérieure ou extérieure choisie détermine le mode automatique via les seuils de chauffage et de refroidissement. Les consignes tarifaires et corrections COP restent actives.",
     "Koeloffset moet tussen −20 en 20 °C liggen.": "Le décalage de refroidissement doit être compris entre −20 et 20 °C.",
     "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.": "Tous les blocs sur fond vert s’appliquent uniquement pendant le pilotage permanent.",
-    "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.": "Les températures de chauffage et de refroidissement sont uniquement des consignes de confort pour le pilotage permanent sans pilotage tarifaire. Les consignes tarifaires, corrections COP et décalage de refroidissement restent applicables au pilotage tarifaire. Les seuils de chauffage et de refroidissement déterminent le choix automatique du mode selon la température intérieure ou extérieure sélectionnée."
+    "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.": "Les températures de chauffage et de refroidissement sont uniquement des consignes de confort pour le pilotage permanent sans pilotage tarifaire. Les consignes tarifaires, corrections COP et décalage de refroidissement restent applicables au pilotage tarifaire. Les seuils de chauffage et de refroidissement déterminent le choix automatique du mode selon la température intérieure ou extérieure sélectionnée.",
+    "Toelichting bij {0}": "Explication pour {0}",
+    "Batterij gebruikt afzonderlijke laad- en ontlaadmodi.": "La batterie utilise des modes de charge et de décharge distincts.",
+    "Verwarmings- en koeltemperatuur gelden alleen als doel bij niet-tariefgestuurde permanente comfortsturing.": "Les températures de chauffage et de refroidissement sont des consignes uniquement pour le pilotage permanent de confort sans pilotage tarifaire.",
+    "Seizoensindeling": "Choix des saisons",
+    "Instellingen": "Paramètres"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Pour les chargeurs tels que Smappee, HomeFlux envoie stop, smart ou standard. Comme cette interface ne peut pas commander un courant partiel, HomeFlux arrête le chargeur lorsque Peak Guard doit limiter la puissance demandée.",

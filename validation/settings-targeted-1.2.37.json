@@ -1,0 +1,100 @@
+{
+  "node": "22.22.0",
+  "results": [
+    {
+      "suite": "settings-help-1.2.37.test.js",
+      "passed": true,
+      "output": "Settings disclosures 1.2.37: 2516 checks passed across all tabs, 10 HVAC channels, five languages, dynamic Help/rates/strategy, conditions, unchanged controls, no writes/requests and repeated initialization."
+    },
+    {
+      "suite": "night-options-ui-1.2.37.test.js",
+      "passed": true,
+      "output": "Night options UI 1.2.37: real load/save/reopen passed for both checkboxes in both directions; margin remains numeric and unchanged fields are not saved."
+    },
+    {
+      "suite": "hvac-settings-1.2.34.test.js",
+      "passed": true,
+      "output": "HVAC settings 1.2.34: 1271 DOM identity, visibility, storage, summary, language and event checks passed."
+    },
+    {
+      "suite": "hvac-settings-1.2.35.test.js",
+      "passed": true,
+      "output": "HVAC settings 1.2.35: 1353 checks passed (10 channels, five languages, PV visibility, mode/offset controls, serialization, fan heading and permanent-block styling)."
+    },
+    {
+      "suite": "hvac-ui-1.2.7.test.js",
+      "passed": true,
+      "output": "HVAC UI: 80 conditional-field combinations plus 1920 comfort/activation/source combinations, 10-channel form schema and three-column widget DOM checks passed."
+    },
+    {
+      "suite": "settings-translations.test.js",
+      "passed": true,
+      "output": "settings translation bundle tests passed"
+    },
+    {
+      "suite": "settings-runtime-audit.test.js",
+      "passed": true,
+      "output": "settings runtime audit passed (924 persisted UI settings)"
+    },
+    {
+      "suite": "localization-1.2.18.test.js",
+      "passed": true,
+      "output": "Localization 1.2.18: 9225 strings, 2986 metadata objects, Flow errors and unchanged control sources passed."
+    },
+    {
+      "suite": "help-catalog.test.js",
+      "passed": true,
+      "output": "help-catalog tests passed (29 inputs, 26 outputs, 20 conditions, 53 tags)"
+    },
+    {
+      "suite": "battery-response-ui-1.2.19.test.js",
+      "passed": true,
+      "output": "UI: completion/cancellation hides Stop and enables Start; settings event refreshes only test status; inline syntax valid."
+    },
+    {
+      "suite": "input-monitor-ui-1.1.14.test.js",
+      "passed": true,
+      "output": "1.1.14 Input Monitor UI: polling, visibility, sorting, warning recovery, manual/auto stop, JSON download, errors and cleanup passed."
+    },
+    {
+      "suite": "phase-ui-1.2.28.test.js",
+      "passed": true,
+      "output": "Phase settings UI: calculator gating, defaults, per-battery persistence, manual limits, source-test exclusion and five-language Flow metadata passed."
+    },
+    {
+      "suite": "phase-emergency-ui-1.2.31.test.js",
+      "passed": true,
+      "output": "Emergency settings: four choices, default/migration, conditional visibility and five-language UI/status translations passed."
+    },
+    {
+      "suite": "price-ui-1.0.6.test.js",
+      "passed": true,
+      "output": "1.0.6 UI tests passed: checkbox-only selection, dynamic priorities, unavailable source visibility, null prices, stable widget numbering, NL/EN reasons, three SVG curves and currency"
+    },
+    {
+      "suite": "split-resend-seconds-1.1.10.test.js",
+      "passed": true,
+      "output": "1.1.10 split resend: migration, restart, eight batteries, 1-second timer, interval edits, mode-only outputs and safety gates passed."
+    },
+    {
+      "suite": "battery-settings-isolation-1.2.8.test.js",
+      "passed": true,
+      "output": "1.2.8 battery/HVAC isolation: 48 tariff/time/grid cases; HVAC getters unread, partial defaults retained, upgrade barrier and saved COP settings passed."
+    },
+    {
+      "suite": "features-1.2.6.test.js",
+      "passed": true,
+      "output": "PASS P1 zero: export within/beyond negative band, small import and zero use the real meter\nPASS Export attribution preserves PV, grid-origin battery and unknown battery export\nPASS Rolling day/week/calendar month/year boundaries, leap years and invalid input\nPASS Then Flow: category totals, current day, gaps, negative values, no extra records\nPASS Optional night hysteresis stops charge/discharge cycling, resumes at margin, unchanged when off\nPASS Night target anchor tolerates small forecast changes, allows material changes, matches planning\nPASS Night hold applies only to permitted windows across fixed, TOU and dynamic contracts\nPASS Night hold still captures solar and permits Peak Guard and Safety SoC recovery\nPASS Optional 00-02 median freezes exactly once, excludes evening/post-02 inputs and survives restart\nPASS Median default off, missing-window fallback, genuine PV start and next-night reset\nPASS Autotune interval hard limits clamp legacy ranges, permission and recommendations\nPASS Autotune symmetric realistic pair: evidence, steps, one-off and automatic permission/ranges\nPASS Autotune pair honors both ranges and preserves other parameter cooldowns\n13 feature regression groups passed (1.2.6)"
+    },
+    {
+      "suite": "settings-help-style-1.2.37.test.js",
+      "passed": true,
+      "output": "Settings help styles 1.2.37: [{\"theme\":\"light\",\"pair\":\"fg/bg\",\"ratio\":9.29},{\"theme\":\"light\",\"pair\":\"focus/bg\",\"ratio\":5.56},{\"theme\":\"light\",\"pair\":\"border/bg\",\"ratio\":3.21},{\"theme\":\"dark\",\"pair\":\"fg/bg\",\"ratio\":13.56},{\"theme\":\"dark\",\"pair\":\"focus/bg\",\"ratio\":8.94},{\"theme\":\"dark\",\"pair\":\"border/bg\",\"ratio\":6.44}]; 44 px targets, focus, normal flow, wrapping and collapsed-zero-space rules passed."
+    }
+  ],
+  "totalPassed": 18,
+  "preExistingIssuesFixed": [
+    "Help catalog referenced deprecated set_grid_power instead of current set_grid_power_phases; the previous grid-sign explanation is retained.",
+    "Phase UI test mock lacked the existing Emergency priority row and asserted version 1.2.28; mock updated and version consistency checked. No coverage removed."
+  ]
+}

@@ -15,10 +15,11 @@ window.HomeFluxChargeStrategy = (() => {
       return label(text, el);
     };
     const selector = document.createElement('div'); selector.className = 'setting-cluster';
+    const seasonTitle=document.createElement('h4');seasonTitle.id='strategy-season-title';seasonTitle.textContent='Seizoensindeling';selector.appendChild(seasonTitle);
     selector.append(radio('chargeStrategySeason', 'year', 'Dezelfde laadstrategie het hele jaar door', true),
       radio('chargeStrategySeason', 'seasonal', 'Afzonderlijke laadstrategie voor zomer- en wintermaanden', false));
     root.append(selector);
-    const months = document.createElement('p'); months.className = 'muted'; months.dataset.strategyMonths = '';
+    const months = document.createElement('p'); months.className = 'muted';months.dataset.hfHelp='';months.dataset.hfHelpFor=seasonTitle.id; months.dataset.strategyMonths = '';
     months.textContent = 'Winter gebruikt de geselecteerde maanden bij het seizoensminimum-SoC in EMS; de overige maanden zijn zomer. Deze indeling blijft gelden als het minimum-SoC uit staat.';
     const link = document.createElement('button'); link.type = 'button'; link.className = 'homey-button-secondary';
     link.textContent = 'Bestaande maandselectie openen'; link.dataset.strategyMonths = '';
@@ -48,7 +49,7 @@ window.HomeFluxChargeStrategy = (() => {
         const margin = document.createElement('input'); margin.type = 'number'; margin.className = 'homey-form-input';
         margin.min = '0'; margin.max = '100'; margin.step = '1'; margin.value = '0'; margin.id = prefix + '-margin';
         const marginLabel = document.createElement('label'); marginLabel.htmlFor = margin.id; marginLabel.textContent = 'Extra planningsmarge voor laadverliezen (%)';
-        const marginHelp = document.createElement('p'); marginHelp.className = 'muted';
+        const marginHelp = document.createElement('p'); marginHelp.className = 'muted';marginHelp.dataset.hfHelp='';marginHelp.dataset.hfHelpFor=margin.id;
         marginHelp.textContent = 'Alleen bij maximaal vermogen. 20% reserveert 20% meer laadtijd. Het SoC-doel blijft gelijk; de resterende planning krimpt met de actuele SoC. Standaard 0%.';
         positions.append(marginLabel, margin, marginHelp);
         card.append(positions); group.append(card);
@@ -69,6 +70,7 @@ window.HomeFluxChargeStrategy = (() => {
         card.querySelector('[data-strategy-maximum]').classList.toggle('hidden', !maximum);
       });
     });
+    if(typeof HomeFluxSettingsHelp!=='undefined')HomeFluxSettingsHelp.refresh(root);
   }
   function load(config = {}) {
     root.querySelector(`[name="chargeStrategySeason"][value="${config?.seasonal ? 'seasonal' : 'year'}"]`).checked = true;

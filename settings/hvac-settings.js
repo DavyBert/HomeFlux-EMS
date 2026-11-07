@@ -91,6 +91,13 @@
    const row=element(doc,'div','hvac-behavior-row');row.appendChild(element(doc,'strong','',label,t));const value=element(doc,'span','');value.dataset.hvacBehavior=key;row.appendChild(value);summary.appendChild(row);
   }
   sections.base.appendChild(summary);const example=element(doc,'p','muted hvac-limit-example');sections.goal.appendChild(example);
+  // Keep the source explanations that the compact layout previously left in
+  // its hidden skeleton, together with their original conditional ancestry.
+  const movedTargets=new Map([...layout.querySelectorAll('[id]')].map(node=>[node.id,node]));
+  for(const note of panel.querySelectorAll('[data-hf-help],[data-hf-help-keep]'))if(!layout.contains(note)&&!note.closest('.output-test-card')){
+   const target=note.dataset.hfHelpFor&&(movedTargets.get(note.dataset.hfHelpFor)||doc.getElementById(note.dataset.hfHelpFor)),section=target?.closest('[data-hvac-subgroup],[data-hvac-group]');
+   move(note,section?.dataset.hvacSubgroup||section?.dataset.hvacGroup||'technical');
+  }
   const anchors=element(doc,'div','hvac-original-anchors');anchors.setAttribute('aria-hidden','true');for(const n of original)if(n.parentElement===panel)anchors.appendChild(n);
   panel.appendChild(layout);panel.appendChild(anchors);
   // Only hidden serialization fields may remain in the original skeleton.

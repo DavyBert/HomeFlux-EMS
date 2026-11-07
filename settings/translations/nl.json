@@ -260,7 +260,13 @@
     "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.": "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.",
     "Koeloffset moet tussen −20 en 20 °C liggen.": "Koeloffset moet tussen −20 en 20 °C liggen.",
     "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.": "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.",
-    "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.": "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur."
+    "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.": "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.",
+    "Toelichting bij {0}": "Toelichting bij {0}",
+    "Batterij gebruikt afzonderlijke laad- en ontlaadmodi.": "Batterij gebruikt afzonderlijke laad- en ontlaadmodi.",
+    "Verwarmings- en koeltemperatuur gelden alleen als doel bij niet-tariefgestuurde permanente comfortsturing.": "Verwarmings- en koeltemperatuur gelden alleen als doel bij niet-tariefgestuurde permanente comfortsturing.",
+    "Battery uses 2 different working modes for (dis)charging.": "Batterij gebruikt afzonderlijke laad- en ontlaadmodi.",
+    "Seizoensindeling": "Seizoensindeling",
+    "Instellingen": "Instellingen"
   },
   "phrases": {},
   "strings": {

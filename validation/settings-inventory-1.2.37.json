@@ -1,0 +1,15 @@
+{
+  "settingsAndActionControlsRetained": 1306,
+  "removed": 0,
+  "existingFieldAttributesAndOptionValues": "identical",
+  "persistedSettingsKeys": "identical",
+  "hvacSettingsKeys": "identical",
+  "evSettingsKeys": "identical",
+  "checkboxRegistrationFix": [
+    "nightHysteresisEnabled",
+    "nightForecastHoldEnabled"
+  ],
+  "numericRegistrationFix": [
+    "nightHysteresisSoc"
+  ]
+}

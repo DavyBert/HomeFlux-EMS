@@ -1,0 +1,23 @@
+{
+  "version": "1.2.37",
+  "sourceVersion": "latest delivered 1.2.36",
+  "node": "22.22.0",
+  "targetedSuitesPassed": 18,
+  "syntax": "passed",
+  "build": "Homey CLI 4.6.2 build and debug validation passed; final changed resources match build",
+  "startup": "clean installation and upgrade passed, existing settings retained; startup version 1.2.37",
+  "unchangedFilesChecked": 305,
+  "scope": "Presentation only, plus requested night-option load/save type registration and split-command translation corrections. All EMS/control runtime files and Flow cards unchanged.",
+  "coverage": "Full settings page DOM initialized in all five languages; synthetic click disclosures, multiple open panels, no settings writes/requests, saved values, conditions, dynamic tariffs/AutoTune/Help/charge strategy, all ten HVAC channels and eight battery labels. Text and focus/border contrast calculated for both palettes.",
+  "visualChecksActuallyPerformed": [],
+  "visualChecksNotPerformed": [
+    "Actual desktop/browser screenshot/layout inspection",
+    "Real smartphone touchscreen",
+    "Native browser keyboard Enter/Space interaction",
+    "Actual screen reader",
+    "Physical Homey/HVAC devices"
+  ],
+  "browserBlock": "Cloud browser security policy disallowed opening the local test page. No workaround attempted.",
+  "keyboard": "Native type=button, tabIndex 0, aria-expanded/aria-controls and translated accessible names checked in DOM; browser interaction not executed.",
+  "skipped": "Full regression suite and independent battery/EV/HVAC/boiler/Hybrid/Peak Guard/AutoTune/savings control suites. Existing night-feature suite was included because the UI now stores its flags correctly."
+}

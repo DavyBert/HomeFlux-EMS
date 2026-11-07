@@ -2307,7 +2307,7 @@
     "Battery test not started": "Batterietest nicht gestartet",
     "Battery test passed for the current battery configuration and command sign.": "Batterietest bestanden für die aktuelle Batteriekonfiguration und Befehlszeichen.",
     "Battery test passed · EMS output is off. Enable the checkbox to publish battery commands.": "Batterietest bestanden · EMS Ausgang ist ausgeschaltet. Aktivieren Sie das Kontrollkästchen zum Veröffentlichen von Batteriebefehlen.",
-    "Battery uses 2 different working modes for (dis)charging.": "Die Batterie verwendet 2 verschiedene Arbeitsmodi zum (Dis-)Laden.",
+    "Battery uses 2 different working modes for (dis)charging.": "Die Batterie verwendet getrennte Lade- und Entlademodi.",
     "Battery {0} SoC": "Batterie {0} SoC",
     "Battery {0} · split command": "Batterie {0} · Split-Befehl",
     "Battery {device}: SoC input missing — check the Flow.": "Batterie {device}: SoC Eingang fehlt — überprüfen Sie die Flow.",
@@ -5796,7 +5796,12 @@
     "De gekozen kamer- of buitentemperatuur bepaalt via warmen onder en koelen boven de automatische regelrichting. Bij tariefsturing blijven de tariefdoelen en COP-correcties gelden.": "Die gewählte Raum- oder Außentemperatur bestimmt die automatische Richtung über die Heiz- und Kühlschwellen. Bei Tarifsteuerung bleiben Tarifziele und COP-Korrekturen aktiv.",
     "Koeloffset moet tussen −20 en 20 °C liggen.": "Der Kühloffset muss zwischen −20 und 20 °C liegen.",
     "Alle blokken met een groene achtergrond gelden uitsluitend tijdens permanent sturen.": "Alle Blöcke mit grünem Hintergrund gelten nur bei permanenter Steuerung.",
-    "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.": "Heiz- und Kühltemperaturen sind nur Ziele für die permanente Komfortsteuerung ohne Tarifsteuerung. Bei Tarifsteuerung gelten weiterhin die Tarifziele, COP-Korrekturen und der Kühloffset. Die Heiz- und Kühlschwellen bestimmen die automatische Wahl zwischen Heizen und Kühlen anhand der gewählten Raum- oder Außentemperatur."
+    "Verwarmings- en koeltemperatuur zijn alleen doelen voor permanente comfortsturing zonder tariefsturing. Tariefdoelen, COP-correcties en koeloffset blijven bij tariefsturing gelden. Warmen onder en koelen boven bepalen de automatische keuze tussen verwarmen en koelen volgens de gekozen kamer- of buitentemperatuur.": "Heiz- und Kühltemperaturen sind nur Ziele für die permanente Komfortsteuerung ohne Tarifsteuerung. Bei Tarifsteuerung gelten weiterhin die Tarifziele, COP-Korrekturen und der Kühloffset. Die Heiz- und Kühlschwellen bestimmen die automatische Wahl zwischen Heizen und Kühlen anhand der gewählten Raum- oder Außentemperatur.",
+    "Toelichting bij {0}": "Erläuterung zu {0}",
+    "Batterij gebruikt afzonderlijke laad- en ontlaadmodi.": "Die Batterie verwendet getrennte Lade- und Entlademodi.",
+    "Verwarmings- en koeltemperatuur gelden alleen als doel bij niet-tariefgestuurde permanente comfortsturing.": "Heiz- und Kühltemperaturen sind nur bei permanenter Komfortsteuerung ohne Tarifsteuerung Zieltemperaturen.",
+    "Seizoensindeling": "Saisonwahl",
+    "Instellingen": "Einstellungen"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Für Ladegeräte wie Smappee sendet HomeFlux Stop, Smart oder Standard. Da diese Schnittstelle keinen Teilstrom steuern kann, stoppt HomeFlux das Ladegerät, wenn Peak Guard die angeforderte Leistung begrenzen muss.",

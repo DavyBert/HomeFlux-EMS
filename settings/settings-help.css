@@ -1,0 +1,17 @@
+/* Local palettes also override the page's forced dark form styles. */
+.hf-help-title-row{display:flex;align-items:center;gap:4px;min-width:0;max-width:100%}
+.hf-help-title-row>:first-child{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.hf-help-toggle,.hf-help-panel{color-scheme:only light;--hf-info-fg:#254b30;--hf-info-bg:#f5f9f6;--hf-info-border:#78917e;--hf-info-focus:#2365af}
+@media(prefers-color-scheme:dark){.hf-help-toggle,.hf-help-panel{color-scheme:only dark;--hf-info-fg:#e7f4e9;--hf-info-bg:#14291e;--hf-info-border:#91af99;--hf-info-focus:#9cc9ff}}
+.panel .hf-help-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;min-width:44px;height:44px;min-height:44px;margin:0;padding:10px;border:0!important;border-radius:8px;background:transparent!important;color:var(--hf-info-fg)!important;cursor:pointer;vertical-align:middle;touch-action:manipulation;line-height:1}
+.panel .hf-help-toggle .hf-help-glyph,#panel-hvac .hvac-permanent-block .hf-help-toggle .hf-help-glyph{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;border-radius:50%;background:var(--hf-info-bg)!important;font-size:20px;line-height:1;color:var(--hf-info-fg)!important}
+.panel .hf-help-toggle:focus-visible{outline:3px solid var(--hf-info-focus)!important;outline-offset:1px;background:var(--hf-info-bg)!important}
+.panel .hf-help-panel{display:block;min-width:0;max-width:100%;margin:6px 0;padding:10px;border:1px solid var(--hf-info-border);border-radius:8px;background:var(--hf-info-bg)!important;background-image:linear-gradient(var(--hf-info-bg),var(--hf-info-bg))!important;color:var(--hf-info-fg)!important;overflow-wrap:anywhere;white-space:normal}
+.panel .hf-help-panel *,#panel-hvac .hvac-permanent-block .hf-help-panel *{color:var(--hf-info-fg)!important;max-width:100%;overflow-wrap:anywhere}
+.panel .hf-help-panel>:first-child{margin-top:0!important}.panel .hf-help-panel>:last-child{margin-bottom:0!important}
+.panel .hf-help-panel[hidden],.panel .hf-help-toggle[hidden]{display:none!important;margin:0!important;padding:0!important;border:0!important}
+.panel legend>.hf-help-toggle,.panel summary>.hf-help-toggle{margin-left:4px}
+.panel .hf-help-scope{font-size:12px;line-height:1.45;margin:5px 0;overflow-wrap:anywhere}
+
+.panel .hf-help-source[hidden]{display:none!important}.panel .hvac-setting-mount:empty{display:none}
+.panel .hf-help-source:first-child>:first-child{margin-top:0!important}.panel .hf-help-source:last-child>:last-child{margin-bottom:0!important}

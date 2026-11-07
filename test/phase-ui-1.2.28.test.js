@@ -4,7 +4,7 @@ const html=fs.readFileSync('settings/index.html','utf8'),calc=require('../settin
 for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g))if(!/src=/.test(match[1]))new vm.Script(match[2]);
 const nodes=new Map();
 function node(){const n={value:'',checked:false,disabled:false,dataset:{},children:[],classList:{toggle(){}},appendChild(x){this.children.push(x);},querySelectorAll(){return this.children.flatMap(x=>[...x.querySelectorAll(),...(x.dataset.phaseDetect?[x]:[])]);}};Object.defineProperty(n,'id',{set(id){nodes.set(id,n);},get(){return [...nodes].find(([,v])=>v===n)?.[0];}});Object.defineProperty(n,'innerHTML',{set(){n.children=[];}});return n;}
-for(const id of ['phaseGuard','gridConnectionPhases','phaseGuardOptions','phaseGuardEnabled','phaseVoltage','phaseAmps','phaseSafety','phaseProposed','phaseLimit','batteryCount','phaseBatteryRows','stopPhaseDetection'])nodes.set(id,node());
+for(const id of ['phaseEmergencyPriorityRow','phaseGuard','gridConnectionPhases','phaseGuardOptions','phaseGuardEnabled','phaseVoltage','phaseAmps','phaseSafety','phaseProposed','phaseLimit','batteryCount','phaseBatteryRows','stopPhaseDetection'])nodes.set(id,node());
 nodes.get('stopPhaseDetection').classList.toggle=(name,hidden)=>{nodes.get('stopPhaseDetection').hiddenByClass=hidden;};
 const q=id=>nodes.get(id),ctx=vm.createContext({q,HomeFluxPhaseCalculator:calc,translateUiText:x=>x,document:{createElement:()=>node()},boolean:new Set(),numeric:new Set(),jsonArray:new Set()});
 const read=html.slice(html.indexOf('  function currentSettingValue('),html.indexOf('  function captureSettingsBaseline('));vm.runInContext(read,ctx);
@@ -25,5 +25,5 @@ for(const lang of ['nl','en','fr','es','de']){const b=JSON.parse(fs.readFileSync
 const manifest=JSON.parse(fs.readFileSync('app.json')),c=manifest.flow.actions.find(c=>c.id==='set_grid_power_phases');assert(manifest.flow.actions.find(c=>c.id==='set_grid_power').deprecated);
 assert.deepEqual(c.args.map(x=>x.name),['power','l1','l2','l3']);assert(c.args.slice(1).every(x=>x.required===false));
 for(const lang of ['nl','en','fr','es','de'])for(const arg of c.args)assert(c.titleFormatted[lang].includes('[['+arg.name+']]'));
-assert.equal(manifest.version,'1.2.28');assert(fs.readFileSync('.homeyignore','utf8').includes('/test/**'));
+assert.equal(manifest.version,JSON.parse(fs.readFileSync('package.json')).version);assert(fs.readFileSync('.homeyignore','utf8').includes('/test/**'));
 console.log('Phase settings UI: calculator gating, defaults, per-battery persistence, manual limits, source-test exclusion and five-language Flow metadata passed.');
