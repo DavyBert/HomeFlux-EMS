@@ -294,7 +294,8 @@
       "reasonChargeDeferred": "Réserve de batterie préservée, recharge prévue plus tard.",
       "evPeakGuardLimited": "Charge limitée par Peak Guard",
       "hvacTarget": "Cible",
-      "hvacPermanentActive": "Pilotage permanent actif"
+      "hvacPermanentActive": "Pilotage permanent actif",
+      "on": "Marche"
     }
   },
   "evWidget": {

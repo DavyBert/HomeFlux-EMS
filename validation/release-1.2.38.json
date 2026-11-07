@@ -1,0 +1,90 @@
+{
+  "sourceVersion": "1.2.37",
+  "version": "1.2.38",
+  "node": "22.22.0",
+  "allOriginalSourceFilesRetained": true,
+  "relaxedConditions": [
+    "Nonzero commands no longer veto physical measurements",
+    "PV changes over 100 W are corrected rather than blindly rejected",
+    "Other stable HVACs are allowed",
+    "Connected EV with fresh idle-current feedback is allowed",
+    "An isolated outlier or missed P1 point is tolerated",
+    "Completed windows tolerate bounded scheduler jitter without delaying commands"
+  ],
+  "measurement": {
+    "houseLoadFormula": "P1 import + measured PV production + measured battery power; discharge positive, charge negative",
+    "batterySource": "Existing Report external EMS battery power Flow; MUST contain current actual TOTAL physical battery power, never a requested setpoint",
+    "pvMaximumAgeSeconds": 60,
+    "batteryMaximumAgeSeconds": 15,
+    "futureTimestampsRejected": true,
+    "reuseSameP1Timestamp": false,
+    "baseline": "median and MAD of recent corrected residuals, or existing idle battery-free reference buckets",
+    "referencePoints": 9,
+    "referenceSpanSeconds": 120,
+    "referenceWindowSeconds": 180,
+    "compressorStartupExcludedSeconds": 60,
+    "minimumObservationPoints": 8,
+    "minimumCoverageFraction": 0.65,
+    "uncertaintyLimitFractionOfPower": 0.25,
+    "minimumSignalW": 100,
+    "signalToBaselineMadScaleMinimum": 3,
+    "outlierCutoff": "max(150 W, 3 \u00d7 robust sigma)",
+    "modulationLimit": "robust sigma <= max(250 W, 60% signal); early/late drift <= max(300 W, 60% signal)",
+    "confidence": "3 independent estimates within max(50 W, 25% cluster median); at most 5 evidence records per mode",
+    "powerResolutionW": 10,
+    "preliminaryValuesUsedByBudget": false,
+    "priorReliableValuesRetained": true,
+    "retry": "Existing evaluations prepare a new reference; a real attributable HVAC step starts a new attempt, never a P1 update",
+    "activeBoiler": "Rejected: no existing actual boiler power meter can safely correct it"
+  },
+  "bounds": {
+    "activeObservations": 1,
+    "correctedResidualPoints": 40,
+    "evidenceRecordsPerMode": 5,
+    "maximumChannels": 10,
+    "newTimersPollingListeners": 0,
+    "unchangedStatusWritesSkipped": true,
+    "privatePersistenceInvalidatesSettingsCache": false
+  },
+  "widget": "Received device mode determines ON/OFF and heat/cool display over old commands, including when EMS control is off; existing 10 s refresh retained",
+  "validation": {
+    "passed": 31,
+    "failed": 0,
+    "learningScenarioGroups": 22,
+    "widgetRenderedChecks": 250,
+    "unchangedControlDecisionMoments": 36,
+    "fullIndependentSuite": "Not run: unchanged independent subsystems",
+    "physicalHomeyHvac": "Not tested",
+    "visualChecks": "DOM rendering and assertions only; no real desktop/mobile theme inspection",
+    "homeyBuild": "Passed, debug validation, Homey CLI 4.6.2"
+  },
+  "hostLearningCallbackBenchmark": {
+    "hostOnly": true,
+    "physicalHomeyMeasured": false,
+    "calls": 30000,
+    "simulatedSeconds": 300,
+    "cpuMs": 18.357,
+    "wallMs": 7.200912999999986,
+    "retainedHeapDeltaBytes": 1864,
+    "serializedLearnerBytes": 1509,
+    "maxReferencePoints": 40,
+    "maxObservationPoints": 40,
+    "maxEvidencePerMode": 5,
+    "observations": 1
+  },
+  "hostWorstCaseMemoryProbe": {
+    "environment": "Node 22 host; isolated real learner structures, 1000 models; GC before/after; excludes SDK storage implementation",
+    "devices": 10,
+    "evidenceRecords": 100,
+    "residualRecords": 40,
+    "activeObservations": 1,
+    "retainedBytesPerLearner": 30121,
+    "serializedBytes": 24740
+  },
+  "limitations": [
+    "No physical Homey or HVAC measurements",
+    "No visual inspection on a real desktop/phone or light/dark browser; DOM rendering checked",
+    "Underlying sensor age before the existing Flow receipt cannot be verified; feed genuine current measured aggregate battery power",
+    "Unchanged independent battery/EV/boiler/AutoTune/Hybrid/PV engines did not receive a full regression run; directly touched feedback/cache/Hybrid paths were tested"
+  ]
+}

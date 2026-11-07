@@ -1,0 +1,632 @@
+{
+  "environment": {
+    "node": "v22.22.0",
+    "platform": "linux",
+    "measurement": "Node host CPU and retained heap; mocked transport; no Homey device measurements"
+  },
+  "results": [
+    {
+      "count": 0,
+      "scenario": "stable-targets",
+      "warmupPasses": 100,
+      "passesPerRound": 250,
+      "rounds": {
+        "previous": [
+          {
+            "cpuMs": 21.334,
+            "wallMs": 12.587308,
+            "retainedHeapBytes": -7224,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 19.705,
+            "wallMs": 12.533379,
+            "retainedHeapBytes": 4312,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 14.097,
+            "wallMs": 10.723258,
+            "retainedHeapBytes": -144,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 16.497,
+            "wallMs": 10.080871,
+            "retainedHeapBytes": 8888,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 16.059,
+            "wallMs": 9.261664,
+            "retainedHeapBytes": 37864,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 21.84,
+            "wallMs": 10.633776,
+            "retainedHeapBytes": 10112,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 11.888,
+            "wallMs": 8.856945,
+            "retainedHeapBytes": -216,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          }
+        ],
+        "current": [
+          {
+            "cpuMs": 17.307,
+            "wallMs": 10.235931,
+            "retainedHeapBytes": 24216,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 13.944,
+            "wallMs": 8.369306,
+            "retainedHeapBytes": 4768,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 20.953,
+            "wallMs": 11.425945,
+            "retainedHeapBytes": 17336,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 14.898,
+            "wallMs": 8.895702,
+            "retainedHeapBytes": 12552,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 14.192,
+            "wallMs": 8.475352,
+            "retainedHeapBytes": 33072,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 20.594,
+            "wallMs": 8.993617,
+            "retainedHeapBytes": 13664,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          },
+          {
+            "cpuMs": 12.721,
+            "wallMs": 9.601062,
+            "retainedHeapBytes": -624,
+            "publications": 0,
+            "settingsBuilds": 0,
+            "calculations": 0
+          }
+        ]
+      }
+    },
+    {
+      "count": 5,
+      "scenario": "stable-targets",
+      "warmupPasses": 100,
+      "passesPerRound": 250,
+      "rounds": {
+        "previous": [
+          {
+            "cpuMs": 163.922,
+            "wallMs": 110.693516,
+            "retainedHeapBytes": 101616,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 162.049,
+            "wallMs": 114.370071,
+            "retainedHeapBytes": 51424,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 239.665,
+            "wallMs": 129.402835,
+            "retainedHeapBytes": 198560,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 197.329,
+            "wallMs": 114.509056,
+            "retainedHeapBytes": 13224,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 172.492,
+            "wallMs": 103.305169,
+            "retainedHeapBytes": -29760,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 271.538,
+            "wallMs": 162.523568,
+            "retainedHeapBytes": 21304,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 119.21,
+            "wallMs": 101.256666,
+            "retainedHeapBytes": 35448,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          }
+        ],
+        "current": [
+          {
+            "cpuMs": 218.561,
+            "wallMs": 127.769617,
+            "retainedHeapBytes": 159792,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 192.438,
+            "wallMs": 131.952947,
+            "retainedHeapBytes": -3648,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 243.046,
+            "wallMs": 123.60924,
+            "retainedHeapBytes": 151352,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 214.482,
+            "wallMs": 129.206436,
+            "retainedHeapBytes": 14216,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 222.075,
+            "wallMs": 130.536438,
+            "retainedHeapBytes": 20864,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 218.304,
+            "wallMs": 152.913497,
+            "retainedHeapBytes": 26136,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 181.477,
+            "wallMs": 112.081544,
+            "retainedHeapBytes": -20544,
+            "publications": 0,
+            "settingsBuilds": 3750,
+            "calculations": 1250
+          }
+        ]
+      }
+    },
+    {
+      "count": 5,
+      "scenario": "tariff-changing",
+      "warmupPasses": 100,
+      "passesPerRound": 250,
+      "rounds": {
+        "previous": [
+          {
+            "cpuMs": 351.834,
+            "wallMs": 235.897088,
+            "retainedHeapBytes": 195992,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 417.766,
+            "wallMs": 250.827413,
+            "retainedHeapBytes": 95856,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 312.907,
+            "wallMs": 234.704915,
+            "retainedHeapBytes": 95472,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 396.09,
+            "wallMs": 246.451978,
+            "retainedHeapBytes": -27768,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 410.734,
+            "wallMs": 250.249626,
+            "retainedHeapBytes": 14696,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 431.893,
+            "wallMs": 249.334831,
+            "retainedHeapBytes": 31312,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 236.018,
+            "wallMs": 206.933793,
+            "retainedHeapBytes": 41168,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          }
+        ],
+        "current": [
+          {
+            "cpuMs": 392.226,
+            "wallMs": 261.363965,
+            "retainedHeapBytes": 269192,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 365.711,
+            "wallMs": 258.310281,
+            "retainedHeapBytes": 43552,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 440.167,
+            "wallMs": 263.955648,
+            "retainedHeapBytes": 126616,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 432.156,
+            "wallMs": 251.03609,
+            "retainedHeapBytes": -21016,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 481.712,
+            "wallMs": 282.618658,
+            "retainedHeapBytes": 103200,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 268.355,
+            "wallMs": 237.053615,
+            "retainedHeapBytes": 46888,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          },
+          {
+            "cpuMs": 391.541,
+            "wallMs": 248.56148,
+            "retainedHeapBytes": -49880,
+            "publications": 1250,
+            "settingsBuilds": 7875,
+            "calculations": 1250
+          }
+        ]
+      }
+    },
+    {
+      "count": 10,
+      "scenario": "stable-targets",
+      "warmupPasses": 100,
+      "passesPerRound": 250,
+      "rounds": {
+        "previous": [
+          {
+            "cpuMs": 330.626,
+            "wallMs": 209.460932,
+            "retainedHeapBytes": 105952,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 356.307,
+            "wallMs": 218.668845,
+            "retainedHeapBytes": 7448,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 209.339,
+            "wallMs": 184.941336,
+            "retainedHeapBytes": 39448,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 323.866,
+            "wallMs": 224.438146,
+            "retainedHeapBytes": -40128,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 255.398,
+            "wallMs": 228.245338,
+            "retainedHeapBytes": 39016,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 355.837,
+            "wallMs": 241.296748,
+            "retainedHeapBytes": -27360,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 244.686,
+            "wallMs": 218.948486,
+            "retainedHeapBytes": 36472,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          }
+        ],
+        "current": [
+          {
+            "cpuMs": 358.925,
+            "wallMs": 257.810024,
+            "retainedHeapBytes": 115256,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 276.077,
+            "wallMs": 215.534801,
+            "retainedHeapBytes": 129544,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 324.339,
+            "wallMs": 230.735913,
+            "retainedHeapBytes": 12752,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 276.529,
+            "wallMs": 257.890765,
+            "retainedHeapBytes": 21880,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 365.313,
+            "wallMs": 247.891422,
+            "retainedHeapBytes": 41136,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 242.836,
+            "wallMs": 218.980238,
+            "retainedHeapBytes": 33536,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 342.032,
+            "wallMs": 230.20995,
+            "retainedHeapBytes": -49096,
+            "publications": 0,
+            "settingsBuilds": 7500,
+            "calculations": 2500
+          }
+        ]
+      }
+    },
+    {
+      "count": 10,
+      "scenario": "tariff-changing",
+      "warmupPasses": 100,
+      "passesPerRound": 250,
+      "rounds": {
+        "previous": [
+          {
+            "cpuMs": 600.468,
+            "wallMs": 465.883108,
+            "retainedHeapBytes": 184488,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 682.304,
+            "wallMs": 503.047668,
+            "retainedHeapBytes": -40232,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 648.331,
+            "wallMs": 505.224794,
+            "retainedHeapBytes": 7880,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 639.897,
+            "wallMs": 472.488518,
+            "retainedHeapBytes": 11584,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 636.821,
+            "wallMs": 469.707014,
+            "retainedHeapBytes": -8528,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 597.647,
+            "wallMs": 442.068462,
+            "retainedHeapBytes": 10624,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 647.233,
+            "wallMs": 493.743738,
+            "retainedHeapBytes": 5464,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          }
+        ],
+        "current": [
+          {
+            "cpuMs": 673.482,
+            "wallMs": 509.761262,
+            "retainedHeapBytes": 184776,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 503.738,
+            "wallMs": 455.258768,
+            "retainedHeapBytes": 79848,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 645.07,
+            "wallMs": 498.524129,
+            "retainedHeapBytes": -3904,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 642.945,
+            "wallMs": 494.7632,
+            "retainedHeapBytes": 23848,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 712.519,
+            "wallMs": 528.46722,
+            "retainedHeapBytes": -6600,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 670.04,
+            "wallMs": 514.41438,
+            "retainedHeapBytes": -6776,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          },
+          {
+            "cpuMs": 691.115,
+            "wallMs": 526.948647,
+            "retainedHeapBytes": 29904,
+            "publications": 2500,
+            "settingsBuilds": 16000,
+            "calculations": 2500
+          }
+        ]
+      }
+    }
+  ],
+  "sourceVersion": "1.2.37",
+  "currentVersion": "1.2.38",
+  "benchmarkSource": "test/hvac-host-benchmark-1.2.15.cjs"
+}

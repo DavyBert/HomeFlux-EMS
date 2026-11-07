@@ -18,8 +18,8 @@
     "Matrix A/C: five simultaneous reductions bypass budget, interval and already reached room",
     "Matrix B/D: at most one heat increase or cooling decrease per global interval",
     "Tariff matrix and all four optimization combinations with correct PV fallback",
-    "Budget respects learned power and review; necessary comfort survives optional grid cap",
-    "Shared HVAC import budget reserves other units and excludes unrelated household import",
+    "Budget respects learned power and review; necessary comfort also respects the joint cap",
+    "Joint HVAC power budget reserves other units and excludes unrelated household import",
     "All ten HVAC channels accept warm-water tariff/PV targets and clamp only beyond 5–99 C",
     "Warm-water targets publish, receive feedback and persist for channels 1–10",
     "Periodic warm-water heating supports 55–99 C and completes holding after measured target",
@@ -28,12 +28,12 @@
     "Restart restores receipts and delay; failed/partial outputs never record new target",
     "No duplicate published targets; stale queued settings do not publish obsolete goals",
     "Shared physical installation has one owner; other channels cannot issue conflicting goals",
-    "Learning uses existing minute bins, accepts a stable plateau and stores heat/cool separately",
-    "Learning rejects any configured EV with unknown or connected status, including 0 A",
+    "Learning reuses idle minute references and requires three independent heat/cool observations before trusting power",
+    "Learning rejects unknown EV connections and connected EVs without fresh measured idle current",
     "Short/unstable/missing/battery-contaminated learning is rejected without replacing stored power",
     "An immediate correction cancels observation without delaying the correction; review creates no output",
     "Production portfolio applies priority ordering and grants only one increase per HVAC interval",
     "No configured HVAC produces no controller allocation, extra P1 reference or observation timer",
-    "Bounded learning over 60 minutes reuses the unchanged 40-minute EV reference buffer"
+    "Bounded learning over 60 minutes keeps the EV reference unchanged and produces only provisional evidence"
   ]
 }

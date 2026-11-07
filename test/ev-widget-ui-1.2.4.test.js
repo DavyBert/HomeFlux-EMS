@@ -71,8 +71,11 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
  h.H.api=(method,url,body)=>method==='GET'?new Promise(r=>resolves.push(r)):realApi(method,url,body);
  h.listeners['homeflux.ev.changed']();await h.click({period:'week'});
  // Do not await an unresolved activate() promise: browser click callback is fire-and-forget.
- const data=h.data();resolves[1](structuredClone(data));await h.drain();resolves[0]({...structuredClone(data),evs:[{...data.evs[0],name:'STALE EV'}]});await h.drain();
- assert(!h.host.innerHTML.includes('STALE EV'));assert(h.host.innerHTML.includes('City EV'));reports.push('Delayed old refresh cannot overwrite newly selected EV/period');
+ const data=h.data();assert.equal(resolves.length,1,'a period change is combined with the pending status request');
+ resolves[0]({...structuredClone(data),evs:[{...data.evs[0],name:'STALE EV'}]});await h.drain();
+ assert(!h.host.innerHTML.includes('STALE EV'));assert.equal(resolves.length,2,'one trailing request reads the newly selected period');
+ resolves[1](structuredClone(data));await h.drain();
+ assert(!h.host.innerHTML.includes('STALE EV'));assert(h.host.innerHTML.includes('City EV'));reports.push('Delayed old refresh cannot overwrite newly selected EV/period; requests are combined');
  h.H.api=realApi;await h.click(target);h.windowListeners.pagehide();assert.equal(h.timers.size,0);
  const before=h.calls.length;h.listeners['homeflux.ev.changed']();await h.drain();assert.equal(h.calls.length,before);
  h.windowListeners.pageshow();await h.drain();assert(h.calls.length>before);reports.push('Hide/unload cancellation, dormant subscription and single resume fetch');

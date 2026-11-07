@@ -117,8 +117,11 @@ function render(){
  if(!views.length)html+=`<p class="empty">${esc(t('enableSection'))}</p>`;
  host.innerHTML=html;resize();
 }
+let refreshAgain=false;
 async function refresh(){
  if(!active)return;
+ if(inFlight){refreshAgain=true;return;}
+ inFlight=true;
  const token=++generation, chosen=selected, requestedPeriod=period;
  try{const data=await H.api('GET',`/?period=${requestedPeriod}`,{});
   if(!active||token!==generation||chosen!==selected||requestedPeriod!==period)return;
@@ -126,6 +129,7 @@ async function refresh(){
   if(!data.evs.some(e=>e.id===selected)){selected=data.evs[0]?.id||null;controller.select(selected);}
   controller.update(data.evs.find(e=>e.id===selected)?.plan||null);render();
  }catch(e){if(active&&token===generation){feedback=t('errors.network');error=true;if(!payload)host.textContent=feedback;else render();}}
+ finally{inFlight=null;const again=refreshAgain;refreshAgain=false;if(again&&active)refresh();}
 }
 async function activate(el){
  if(!active)return;

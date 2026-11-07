@@ -1,0 +1,302 @@
+{
+  "version": "1.2.38",
+  "node": "22.22.0",
+  "syntax": "All changed JavaScript, inline HTML scripts and JSON checked",
+  "targetedTests": [
+    {
+      "test": "test/homey-energy.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/price-sources-1.0.6.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/regressions-0.8.4.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/ev-deadline-planner-1.1.17.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/ev-deadline-integration-1.1.17.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/battery-night-1.1.18.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/app-control.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/settings-startup.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/regressions-0.8.3.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/hvac-learning-1.2.38.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/hvac-widget-feedback-1.2.38.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/hvac-permanent-1.2.7.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/hvac-coordination-1.2.15.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/hvac-comfort-cycle-1.2.28.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/ev-widget-calendar-1.2.32.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/ev-widget-ui-1.2.4.test.js",
+      "exit": 0,
+      "tail": "",
+      "note": "Existing concurrency scenario updated for one pending request and one trailing refresh; 43 UI cases passed."
+    },
+    {
+      "test": "test/ev-widget-calendar-ui-1.2.32.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/settings-translations.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/settings-runtime-audit.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/memory-and-hvac-rest-1.2.38.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/input-monitor-1.1.14.test.js",
+      "exit": 0,
+      "tail": ""
+    },
+    {
+      "test": "test/status-request-coalescing-1.2.38.cjs",
+      "exit": 0,
+      "tail": ""
+    }
+  ],
+  "browser": {
+    "node": "v22.22.0",
+    "browser": "Chromium",
+    "settings": [
+      {
+        "language": "nl",
+        "renderedEstimate": true,
+        "concurrentRequests": 1,
+        "recovery": true,
+        "timerCleanup": true
+      },
+      {
+        "language": "en",
+        "renderedEstimate": true,
+        "concurrentRequests": 1,
+        "recovery": true,
+        "timerCleanup": true
+      },
+      {
+        "language": "de",
+        "renderedEstimate": true,
+        "concurrentRequests": 1,
+        "recovery": true,
+        "timerCleanup": true
+      },
+      {
+        "language": "fr",
+        "renderedEstimate": true,
+        "concurrentRequests": 1,
+        "recovery": true,
+        "timerCleanup": true
+      },
+      {
+        "language": "es",
+        "renderedEstimate": true,
+        "concurrentRequests": 1,
+        "recovery": true,
+        "timerCleanup": true
+      }
+    ],
+    "ev": {
+      "burstRequests": 1,
+      "oneTrailingRefresh": true,
+      "hiddenDoesNotRestart": true
+    }
+  },
+  "productionBatteryRest": "Four batteries: real engine and successful zero-output publisher establish rest proof, learner accepts after 60 seconds.",
+  "memory": {
+    "profile": "10000 inputs and 2500 status reads after warmup; host process, GC between chunks",
+    "original": {
+      "connected": true,
+      "liveStatus": true,
+      "measuredInputs": 10000,
+      "statusReads": 2500,
+      "start": {
+        "rss": 118194176,
+        "heapTotal": 52678656,
+        "heapUsed": 14394424,
+        "external": 1905189,
+        "arrayBuffers": 16635,
+        "liveFakeTimers": 1
+      },
+      "samples": [
+        {
+          "rss": 119185408,
+          "heapTotal": 51892224,
+          "heapUsed": 14687200,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 118829056,
+          "heapTotal": 52154368,
+          "heapUsed": 14927936,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 121688064,
+          "heapTotal": 52678656,
+          "heapUsed": 15155664,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 122036224,
+          "heapTotal": 53202944,
+          "heapUsed": 15230736,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 121352192,
+          "heapTotal": 53202944,
+          "heapUsed": 15414000,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        }
+      ],
+      "retainedHeapBytes": 1019576,
+      "actuationCount": 0,
+      "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "updated": {
+      "connected": true,
+      "liveStatus": true,
+      "measuredInputs": 10000,
+      "statusReads": 2500,
+      "start": {
+        "rss": 116346880,
+        "heapTotal": 52948992,
+        "heapUsed": 14474048,
+        "external": 1905189,
+        "arrayBuffers": 16635,
+        "liveFakeTimers": 1
+      },
+      "samples": [
+        {
+          "rss": 118145024,
+          "heapTotal": 52162560,
+          "heapUsed": 14739104,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 119246848,
+          "heapTotal": 52424704,
+          "heapUsed": 14963656,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 117755904,
+          "heapTotal": 52948992,
+          "heapUsed": 15144784,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 116998144,
+          "heapTotal": 53473280,
+          "heapUsed": 15225152,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        },
+        {
+          "rss": 119754752,
+          "heapTotal": 53473280,
+          "heapUsed": 15379120,
+          "external": 1905189,
+          "arrayBuffers": 16635,
+          "liveFakeTimers": 1
+        }
+      ],
+      "retainedHeapBytes": 905072,
+      "actuationCount": 0,
+      "actuationDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "preserved": [
+    "App version 1.2.38",
+    "Every existing Flow definition, including deprecated cards",
+    "Athom descriptions (README.txt and localized README files)",
+    "Slogan",
+    "Dependency lockfile"
+  ],
+  "notRun": "No further full regression suite after the user testing guidelines; independent savings/boiler/EV allocation/charging-strategy suites skipped.",
+  "existingFailures": [
+    "The earlier broad test command stopped at regressions-0.9.3: outdated repeated-English translation expectation. Confirmed identical failure in original ZIP under Node 22.",
+    "regressions-0.9.9 has an incomplete Homey mock for getDiagnosticsReport in the original ZIP as well; replacement coverage uses real startup harness for diagnostics."
+  ],
+  "limitations": [
+    "No physical Homey/battery/HVAC hardware available. Rest state is an estimate, not a power measurement; Hybrid and previous non-zero physical feedback still require fresh actual measurements.",
+    "Stopped diagnostic reports are compressed; active planning diagnostic records are capped at 1 MiB and dropped records are counted."
+  ]
+}

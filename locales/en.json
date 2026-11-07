@@ -294,7 +294,8 @@
       "reasonChargeDeferred": "Battery reserve preserved; charging scheduled for later.",
       "evPeakGuardLimited": "Charging limited by Peak Guard",
       "hvacTarget": "Target",
-      "hvacPermanentActive": "Permanent control active"
+      "hvacPermanentActive": "Permanent control active",
+      "on": "On"
     }
   },
   "evWidget": {

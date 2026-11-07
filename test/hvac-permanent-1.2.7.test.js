@@ -353,18 +353,23 @@ async function main(){
   const h=await setup({hvacPhysicalGroup:'pump',hvac2PhysicalGroup:'pump',flexibleLoadPriorityOrder:['hvac2','hvac1']}),a=h.app;
   assert.equal(calc(a,0).setpointCommand,null);near(calc(a,1).setpointCommand,23);
  });
- await check('Learning uses existing minute bins, accepts a stable plateau and stores heat/cool separately',async()=>{
+ await check('Learning reuses idle minute references and requires three independent heat/cool observations before trusting power',async()=>{
   for(const mode of ['heat','cool']) {
-   const h=await setup(),a=h.app;const start=now;
-   a.evSessionDetection.houseHistory=[];
-   for(let m=-4;m<0;m++)for(let n=0;n<3;n++)recordMinuteSample(a.evSessionDetection.houseHistory,500,start+m*60000+n*1000);
-   H.begin(a,0,{direction:mode},now);assert(H.runtime(a).observation);
-   for(let n=1;n<=300;n++) {now=start+n*1000;a.state.gridPowerW=1300;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1300,now);H.observe(a,now);if(n%60===0)H.slowTick(a,now);}
-   H.finish(a,now);near(H.unit(a,0)[mode],800);assert.equal(H.runtime(a).observation,null);assert.equal(H.status(a,0)[`${mode}Status`],'Betrouwbaar');
+   const h=await setup(),a=h.app;
+   for(let round=1;round<=3;round++){
+    now+=240000;const start=now;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;
+    a.state.gridPowerW=500;a.evSessionDetection.houseHistory=[];
+    for(let m=-4;m<0;m++)for(let n=0;n<3;n++)recordMinuteSample(a.evSessionDetection.houseHistory,500,start+m*60000+n*1000);
+    H.begin(a,0,{direction:mode},now);assert(H.runtime(a).observation);
+    for(let n=1;n<=300;n++){now=start+n*1000;a.state.gridPowerW=1300;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1300,now);H.observe(a,now);if(n%60===0)H.slowTick(a,now);}
+    H.finish(a,now);assert.equal(H.runtime(a).observation,null);assert.equal(H.status(a,0)[mode+'Samples'],round);
+    if(round<3){assert.equal(H.unit(a,0)[mode],null);near(H.unit(a,0)[mode+'ProvisionalW'],800);}
+   }
+   near(H.unit(a,0)[mode],800);assert.equal(H.status(a,0)[mode+'Status'],'Betrouwbaar');
    assert.equal(H.status(a,0)[`${mode==='heat'?'cool':'heat'}W`],null);
   }
  });
- await check('Learning rejects any configured EV with unknown or connected status, including 0 A',async()=>{
+ await check('Learning rejects unknown EV connections and connected EVs without fresh measured idle current',async()=>{
   const h=await setup({evCount:2}),a=h.app;assert(!H.evFree(a));
   for(let i=0;i<2;i++){const input=i?a.getExtraEv(i):null;if(input){input.seen.connected=true;input.state.connected=false;}else{a.inputSeen.ev.connected=true;a.state.evConnected=false;}}
   assert(H.evFree(a));a.getExtraEv(1).state.connected=true;assert(!H.evFree(a));
@@ -377,7 +382,7 @@ async function main(){
    if(scenario==='short')a.setSetting('hvacControlIntervalMinutes',1);
    H.begin(a,0,{direction:'heat'},now);
    if(scenario==='short'){assert.equal(H.runtime(a).observation,null);continue;}
-   for(let n=1;n<=300;n++){now=start+n*1000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;if(scenario==='battery'&&n===50)a.state.lastTotalCommandW=1000;
+   for(let n=1;n<=300;n++){now=start+n*1000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;if(scenario==='battery'&&n===50){a.setSetting('batteryCount',1);a.state.lastTotalCommandW=1000;}
     if(scenario!=='gap'||n<50) {recordMinuteSample(a.evSessionDetection.houseHistory,scenario==='unstable'?(n%80<40?1000:3000):1300,now);H.observe(a,now);if(n%60===0)H.slowTick(a,now);}}
    H.finish(a,now);near(H.unit(a,0).heat,900);assert(H.unit(a,0).heatReview);assert.equal(H.runtime(a).observation,null);
   }
@@ -417,13 +422,13 @@ async function main(){
   assert.equal(h.app.hvacPermanentRuntime,undefined);const before=h.timers.length;
   H.observe(h.app);H.finish(h.app);assert.equal(h.timers.length,before);assert.equal(h.app.hvacPermanentRuntime,undefined);
  });
- await check('Bounded learning over 60 minutes reuses the unchanged 40-minute EV reference buffer',async()=>{
+ await check('Bounded learning over 60 minutes keeps the EV reference unchanged and produces only provisional evidence',async()=>{
   const h=await setup({hvacControlIntervalMinutes:60}),a=h.app,start=now;
   a.evSessionDetection.houseHistory=[];
   for(let m=-4;m<0;m++)for(let n=0;n<3;n++)recordMinuteSample(a.evSessionDetection.houseHistory,500,start+m*60000+n*1000);
   H.begin(a,0,{direction:'heat'},now);
-  for(let n=1;n<=3600;n++){now=start+n*1000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1300,now);H.observe(a,now);if(n%60===0)H.slowTick(a,now);}
-  assert(a.evSessionDetection.houseHistory.length<=40);near(H.unit(a,0).heat,800);assert.equal(H.runtime(a).observation,null);
+  for(let n=1;n<=3600;n++){now=start+n*1000;a.state.gridPowerW=1300;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1300,now);H.observe(a,now);if(n%60===0)H.slowTick(a,now);}
+  assert(a.evSessionDetection.houseHistory.length<=40);assert.equal(H.unit(a,0).heat,null);near(H.unit(a,0).heatProvisionalW,800);assert.equal(H.status(a,0).heatSamples,1);assert.equal(H.runtime(a).observation,null);
  });
  const benchmark=[];
  for(const count of [0,10]) {

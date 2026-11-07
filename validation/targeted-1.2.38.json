@@ -1,0 +1,172 @@
+{
+  "node": "v22.22.0",
+  "sourceVersion": "1.2.37",
+  "version": "1.2.38",
+  "results": [
+    {
+      "test": "hvac-learning-1.2.38.test.js",
+      "passed": true,
+      "seconds": 0.27
+    },
+    {
+      "test": "hvac-widget-feedback-1.2.38.test.js",
+      "passed": true,
+      "seconds": 1.22
+    },
+    {
+      "test": "hvac-runtime-1.2.34.test.js",
+      "passed": true,
+      "seconds": 0.4
+    },
+    {
+      "test": "hvac-coordination-1.2.15.test.js",
+      "passed": true,
+      "seconds": 0.75
+    },
+    {
+      "test": "hvac-comfort-1.2.21.test.js",
+      "passed": true,
+      "seconds": 0.33
+    },
+    {
+      "test": "hvac-flow-1.2.22.test.js",
+      "passed": true,
+      "seconds": 0.68
+    },
+    {
+      "test": "hvac-presentation-1.2.23.test.js",
+      "passed": true,
+      "seconds": 0.13
+    },
+    {
+      "test": "hvac-budget-1.2.25.test.js",
+      "passed": true,
+      "seconds": 0.6
+    },
+    {
+      "test": "hvac-keep-on-1.2.26.test.js",
+      "passed": true,
+      "seconds": 0.38
+    },
+    {
+      "test": "hvac-keep-on-1.2.27.test.js",
+      "passed": true,
+      "seconds": 0.32
+    },
+    {
+      "test": "hvac-comfort-cycle-1.2.28.test.js",
+      "passed": true,
+      "seconds": 1.02
+    },
+    {
+      "test": "hvac-essential-1.2.34.test.js",
+      "passed": true,
+      "seconds": 0.27
+    },
+    {
+      "test": "hvac-tariff-1.2.35.test.js",
+      "passed": true,
+      "seconds": 0.59
+    },
+    {
+      "test": "hvac-migration-1.2.7.test.js",
+      "passed": true,
+      "seconds": 2.25
+    },
+    {
+      "test": "hvac-ui-1.2.7.test.js",
+      "passed": true,
+      "seconds": 1.19
+    },
+    {
+      "test": "hvac-settings-1.2.34.test.js",
+      "passed": true,
+      "seconds": 6.52
+    },
+    {
+      "test": "hvac-settings-1.2.35.test.js",
+      "passed": true,
+      "seconds": 10.49
+    },
+    {
+      "test": "settings-startup.test.js",
+      "passed": true,
+      "seconds": 0.08
+    },
+    {
+      "test": "settings-translations.test.js",
+      "passed": true,
+      "seconds": 0.07
+    },
+    {
+      "test": "settings-runtime-audit.test.js",
+      "passed": true,
+      "seconds": 0.13
+    },
+    {
+      "test": "settings-help-1.2.37.test.js",
+      "passed": true,
+      "seconds": 38.31
+    },
+    {
+      "test": "night-options-ui-1.2.37.test.js",
+      "passed": true,
+      "seconds": 30.79
+    },
+    {
+      "test": "settings-help-style-1.2.37.test.js",
+      "passed": true,
+      "seconds": 0.64
+    },
+    {
+      "test": "settings-cache-1.0.12.test.js",
+      "passed": true,
+      "seconds": 0.35
+    },
+    {
+      "test": "ev-physical-config-cache-1.1.16.test.js",
+      "passed": true,
+      "seconds": 0.42
+    },
+    {
+      "test": "ev-feedback-1.0.11.test.js",
+      "passed": true,
+      "seconds": 4.79
+    },
+    {
+      "test": "hybrid-handover-1.2.33.test.js",
+      "passed": true,
+      "seconds": 0.23
+    },
+    {
+      "test": "flow-slot-cards.test.js",
+      "passed": true,
+      "seconds": 1.29
+    },
+    {
+      "test": "widget-decision-1.2.14.test.js",
+      "passed": true,
+      "seconds": 0.23
+    },
+    {
+      "test": "widget.test.js",
+      "passed": true,
+      "seconds": 0.07
+    },
+    {
+      "test": "hvac-permanent-1.2.7.test.js",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 31,
+    "failed": 0,
+    "learningScenarioGroups": 22,
+    "widgetRenderedChecks": 250,
+    "unchangedControlDecisionMoments": 36,
+    "fullIndependentSuite": "Not run: unchanged independent subsystems",
+    "physicalHomeyHvac": "Not tested",
+    "visualChecks": "DOM rendering and assertions only; no real desktop/mobile theme inspection",
+    "homeyBuild": "Passed, debug validation, Homey CLI 4.6.2"
+  }
+}

@@ -23,8 +23,8 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 4046.788,
-      "wallMs": 3721.788365
+      "cpuMs": 5872.931,
+      "wallMs": 5178.275963
     }
   },
   {
@@ -50,8 +50,8 @@
       "contexts": 787,
       "priceWindows": 1,
       "selections": 1,
-      "cpuMs": 3552.356,
-      "wallMs": 3331.8652989999996
+      "cpuMs": 4466.634,
+      "wallMs": 3787.9834200000005
     }
   },
   {
@@ -64,34 +64,34 @@
     "name": "CPU and calculation counts: 180 unchanged one-second meter inputs",
     "current": [
       {
-        "cpuMs": 88.615,
-        "wallMs": 76.36660100000063,
+        "cpuMs": 141.95,
+        "wallMs": 114.78381900000022,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 2.37,
-        "contextCpuMs": 8.129
+        "fastCpuMs": 3.143,
+        "contextCpuMs": 17.883999999999997
       },
       {
-        "cpuMs": 76.773,
-        "wallMs": 69.05281000000014,
+        "cpuMs": 232.875,
+        "wallMs": 144.72385099999883,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 2.3,
-        "contextCpuMs": 5.291999999999998
+        "fastCpuMs": 2.892,
+        "contextCpuMs": 14.547000000000004
       },
       {
-        "cpuMs": 72.996,
-        "wallMs": 68.14771599999949,
+        "cpuMs": 130.68,
+        "wallMs": 107.88115099999959,
         "contexts": 4,
         "fast": 4,
         "priceSorts": 0,
         "selections": 0,
-        "fastCpuMs": 4.896,
-        "contextCpuMs": 5.144
+        "fastCpuMs": 5.836,
+        "contextCpuMs": 11.248999999999995
       }
     ],
     "baseline": [],

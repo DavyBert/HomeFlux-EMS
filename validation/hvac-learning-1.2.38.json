@@ -1,0 +1,41 @@
+{
+  "passed": 22,
+  "cases": [
+    "A +10 W command is not physical evidence and does not blindly block with physical telemetry",
+    "Four active batteries and 350 W changing PV are corrected with the measured discharge/charge signs",
+    "Unknown/stale/future physical battery data refuse learning; commands and Hybrid setpoints never substitute",
+    "Lost battery telemetry during an otherwise valid event rejects the observation",
+    "Strong PV changes without fresh correction reject; future, negative and old PV inputs are not measurements",
+    "A stable PV source reporting once per minute remains usable with fresh P1 observations",
+    "A stable second HVAC is allowed; a second HVAC start or fan/mode change invalidates attribution",
+    "Normal 500–1000 W modulation, 100 W background noise and one large outlier remain learnable",
+    "Compressor startup peak is excluded and a single missing P1 sample is tolerated",
+    "Small indistinguishable signal, strong unexplained modulation and missing P1 data are refused",
+    "A connected EV with fresh zero current is allowed, whereas a charging transition invalidates the event",
+    "Boiler OFF is allowed; ON without actual telemetry is excluded",
+    "Confidence grows over three independent attempts, keeps heat/cool separate and survives restart",
+    "A bad review does not destroy stored reliable power; retry later succeeds without a manual reset",
+    "Direct mode remains excluded from automatic learning, and one observation serves all ten channels",
+    "Persistence is deduplicated, P1 never saves, and buffers stay capped for ten devices",
+    "Physical input Flow is reused outside Hybrid without changing commands, and connected zero-current receipts do not cancel",
+    "Manual relearning with four measured batteries can acquire a reference while keeping previous trusted watts",
+    "API HVAC input changes invalidate attribution without changing comfort-cycle ownership",
+    "A small scheduler delay does not reject a completed valid window or extend its measurements",
+    "A household load change before the command cannot be attributed to the HVAC start",
+    "One physical start cannot be counted twice; an active incremental setpoint increase is not certified as full device power"
+  ],
+  "benchmark": {
+    "hostOnly": true,
+    "physicalHomeyMeasured": false,
+    "calls": 30000,
+    "simulatedSeconds": 300,
+    "cpuMs": 18.357,
+    "wallMs": 7.200912999999986,
+    "retainedHeapDeltaBytes": 1864,
+    "serializedLearnerBytes": 1509,
+    "maxReferencePoints": 40,
+    "maxObservationPoints": 40,
+    "maxEvidencePerMode": 5,
+    "observations": 1
+  }
+}

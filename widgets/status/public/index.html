@@ -811,11 +811,13 @@
         &&Math.abs(Number(goal)-Number(hvac.setpointC))<=.11+1e-9;
     }
     function hvacState(hvac, Homey) {
+      const reported=hvac?.received?.mode?String(hvac.reportedMode??hvac.mode??'').toLowerCase():'';
+      const control=()=>{
       if (!hvac || !hvac.enabled || hvac.automaticControlEnabled === false) return tr(Homey, 'widget.status.emsControlOff', 'EMS control off');
       const reason = String(hvac.reason || '').toLowerCase();
       if(hvac.permanentControlEnabled===false)return reasonText(hvac.reason, Homey);
       if (reason.includes('peak guard')) return tr(Homey, 'widget.status.hvacPeakGuard', 'Stopped by Peak Guard');
-      if(hvac.outputPowerOn===false)return tr(Homey,'widget.status.off','Off');
+      if(!reported&&hvac.outputPowerOn===false)return tr(Homey,'widget.status.off','Off');
       if (hvac.permanent) {
         if (hvac.waiting) return reasonText(hvac.reason, Homey) || tr(Homey, 'widget.status.evWaiting', 'Waiting');
         if (hvac.periodicHeating) return tr(Homey, 'widget.status.hvacPeriodicHeating', 'Periodic heating');
@@ -831,6 +833,11 @@
       const mode = String(hvac.mode || hvac.currentMode || '').toLowerCase();
       if (mode === 'off') return tr(Homey, 'widget.status.off', 'Off');
       return tr(Homey, 'widget.status.hvacWaitingSurplus', 'Waiting for surplus');
+      };
+      const physical=['off','standby'].includes(reported)?tr(Homey,'widget.status.off','Off')
+        :['heat','cool','auto','dry','fan'].includes(reported)?tr(Homey,'widget.status.on','On'):'';
+      const explanation=control();
+      return physical&&physical!==explanation?physical+' · '+explanation:explanation;
     }
 
     function boilerState(boiler, Homey) {
@@ -1105,7 +1112,8 @@
           const head=document.createElement('tr');
           [tr(Homey,'widget.status.device','Device'),tr(Homey,'widget.status.hvacTarget','Target'),tr(Homey,'widget.status.room','Room')].forEach(t=>{const c=document.createElement('th');c.textContent=t;c.style.textAlign=head.children.length?'right':'left';head.appendChild(c);});table.appendChild(head);
           hvacs.forEach(h=>{const row=document.createElement('tr'),name=document.createElement('td'),goal=document.createElement('td'),actual=document.createElement('td');
-            const mode=h.outputPowerOn===false?'off':h.outputMode || h.currentMode || h.mode;
+            const reported=h.received?.mode?String(h.reportedMode??h.mode??'').toLowerCase():'';
+            const mode=reported||(h.outputPowerOn===false?'off':h.outputMode || h.currentMode || h.mode);
             const goalValue=hvacGoalValue(h);
             const publishedGoal=h.learning?.publishedSetpointC ?? h.outputSetpointC;
             const unpublished=h.permanent&&h.desiredSetpointC!=null&&(publishedGoal==null||Math.abs(h.desiredSetpointC-publishedGoal)>.1);
@@ -1113,11 +1121,12 @@
             const pv=h.energySource==='pv'&&!waiting&&demand&&h.enabled&&h.automaticControlEnabled!==false&&h.outputPowerOn!==false;
             const nameLine=document.createElement('div');nameLine.className='hvac-summary-name';
             const nameText=document.createElement('span');nameText.className='hvac-summary-name-text';nameText.textContent=String(h.name||'HVAC');nameLine.appendChild(nameText);
+            if(['off','standby','heat','cool','auto','dry','fan'].includes(reported)){const state=document.createElement('span');state.style.cssText='flex:0 0 auto;font-size:10.5px';state.textContent=tr(Homey,['off','standby'].includes(reported)?'widget.status.off':'widget.status.on',['off','standby'].includes(reported)?'Off':'On');nameLine.appendChild(state);}
             if(h.permanentControlEnabled&&h.enabled&&h.automaticControlEnabled!==false){const icon=hvacSummaryIcon('permanent');icon.setAttribute('aria-label',tr(Homey,'widget.status.hvacPermanentActive','Permanent control active'));nameLine.appendChild(icon);}
             if(['heat','cool'].includes(mode))nameLine.appendChild(hvacSummaryIcon(mode));
             if(pv)nameLine.appendChild(hvacSummaryIcon('sun'));if(waiting)nameLine.appendChild(hvacSummaryIcon('wait'));name.appendChild(nameLine);
             name.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-            if(pv)name.style.color='var(--green,#34a853)';else if(!h.enabled||h.automaticControlEnabled===false||mode==='off'||mode==='standby')name.style.opacity='.5';
+            if(pv)name.style.color='var(--green,#34a853)';else if(mode==='off'||mode==='standby'||!reported&&(!h.enabled||h.automaticControlEnabled===false))name.style.opacity='.5';
             goal.textContent=goalValue==null?'—':formatC(goalValue);
             goal.style.color=hvacGoalConfirmed(h,goalValue)?'var(--homey-text-color, inherit)':'var(--hf-muted)';
             const room=h.roomTemperatureC, reached=room!=null&&goalValue!=null&&(mode==='heat'?room>=goalValue-.25:mode==='cool'?room<=goalValue+.25:Math.abs(room-goalValue)<=.25);

@@ -1,0 +1,70 @@
+{
+  "sourceVersion": "1.2.37",
+  "version": "1.2.38",
+  "sourceZipSha256": "a3778ec445270286f0076a1958b1d7889162a0d2f9f235ff7d79e866fe394188",
+  "syntaxChecks": [
+    "app.js",
+    "lib/hvac-permanent.js",
+    "test/hvac-budget-1.2.25.test.js",
+    "test/widget.test.js",
+    "test/settings-startup.test.js",
+    "test/hvac-permanent-1.2.7.test.js",
+    "test/hvac-coordination-1.2.15.test.js",
+    "lib/hvac-learning.js",
+    "test/hvac-learning-1.2.38.test.js",
+    "test/hvac-widget-feedback-1.2.38.test.js",
+    "settings/index.html inline scripts",
+    "widgets/status/public/index.html inline scripts"
+  ],
+  "settingsControlsRetained": 1261,
+  "flowDefinitionsUnchanged": 231,
+  "athomTextUnchanged": [
+    "README.es.txt",
+    "README.nl.txt",
+    "README.de.txt",
+    "README.txt",
+    "README.fr.txt"
+  ],
+  "protectedControlModulesUnchanged": [
+    "lib/ems-engine.js",
+    "lib/hvac-coordination.js",
+    "lib/hvac-periodic.js",
+    "lib/phase-guard.js",
+    "lib/ev-phase-guard.js",
+    "lib/autotune-learning.js"
+  ],
+  "calculateAndPublicationControlLogicUnchanged": true,
+  "newTimersPollingListeners": false,
+  "changedFiles": [
+    ".homeychangelog.json",
+    "package.json",
+    "app.js",
+    "app.json",
+    "README.md",
+    "package-lock.json",
+    "lib/hvac-permanent.js",
+    "settings/index.html",
+    ".homeycompose/app.json",
+    "locales/nl.json",
+    "locales/fr.json",
+    "locales/de.json",
+    "locales/es.json",
+    "locales/en.json",
+    "test/hvac-budget-1.2.25.test.js",
+    "test/widget.test.js",
+    "test/settings-startup.test.js",
+    "test/hvac-permanent-1.2.7.test.js",
+    "test/hvac-coordination-1.2.15.test.js",
+    "settings/translations/nl.json",
+    "settings/translations/fr.json",
+    "settings/translations/de.json",
+    "settings/translations/es.json",
+    "settings/translations/en.json",
+    "widgets/status/public/index.html"
+  ],
+  "newCodeFiles": [
+    "lib/hvac-learning.js",
+    "test/hvac-learning-1.2.38.test.js",
+    "test/hvac-widget-feedback-1.2.38.test.js"
+  ]
+}

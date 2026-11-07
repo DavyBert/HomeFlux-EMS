@@ -75,6 +75,7 @@ function parseFiniteInputNumber(value) {
 
 class HomeFluxEmsApp extends Homey.App {
   async onInit() {
+    this.shuttingDown = false;
     this.appStartedAt = Date.now();
     this.state = {
       gridPowerW: null,
@@ -446,6 +447,15 @@ class HomeFluxEmsApp extends Homey.App {
       const saved = savedCurves?.[source];
       if (saved && Array.isArray(saved.slots)) Object.assign(this.getExternalPriceState(source), saved, { slots: trimCurve(saved.slots, new Date(), this.homey.clock.getTimezone() || 'UTC') });
     }
+    if (['external', 'external2'].some(source => Array.isArray(savedCurves?.[source]?.slots)
+      && savedCurves[source].slots.some(row => row?.raw !== undefined))) {
+      const compactCurves = {};
+      for (const source of ['external', 'external2']) {
+        const { slots, curveUpdatedAt, responseShape } = this.getExternalPriceState(source);
+        compactCurves[source] = { slots, curveUpdatedAt, responseShape, error: '' };
+      }
+      this.homey.settings.set('_externalPriceCurves', compactCurves);
+    }
 
     await this.migrateSettings();
     await this.ensureDefaults();
@@ -485,20 +495,24 @@ class HomeFluxEmsApp extends Homey.App {
 
     // Homey Energy is only polled automatically when it is actually selected as
     // the dynamic price source. Flow cards can still request a manual refresh.
-    this.homey.setTimeout(() => {
+    this.homeyEnergyInitialTimer = this.homey.setTimeout(() => {
+      this.homeyEnergyInitialTimer = null;
+      if (this.shuttingDown) return;
       if (this.usesHomeyEnergyPrices()) {
         this.refreshHomeyEnergyPrices(true).catch(err => this.error('Initial Homey Energy refresh failed', err));
       }
     }, 1500);
-    this.homey.setInterval(() => {
+    this.homeyEnergyTimer = this.homey.setInterval(() => {
+      if (this.shuttingDown) return;
       if (this.usesHomeyEnergyPrices()) {
         this.refreshHomeyEnergyPrices(false).catch(err => this.error('Homey Energy refresh failed', err));
       }
     }, 15 * 60 * 1000);
 
-    this.homey.settings.on('set', async key => {
+    this.settingsListener = async key => {
+      if (this.shuttingDown) return;
       try {
-        if (key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
+        if (key === '_hvacPermanent' || key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
         // These keys persist EV state already changed by its handler or
         // energy accounting. Goal changes request their own context; energy
         // completion stops immediately. A later settings callback must not
@@ -684,11 +698,12 @@ class HomeFluxEmsApp extends Homey.App {
       } catch (err) {
         this.error('Settings update failed', err);
       }
-    });
+    };
+    this.homey.settings.on('set', this.settingsListener);
 
     // The one-minute heartbeat checks context boundaries and independently
     // services EVs. The EV pass never runs battery/planning/HVAC/boiler work.
-    this.homey.on?.('cpuwarn', data => {
+    this.cpuWarningListener = data => {
       // Warning-boundary evidence survives in Homey's crash log. Do not build
       // a full report, serialize settings or write persistent state here.
       this.log('HomeFlux CPU warning', JSON.stringify({
@@ -698,7 +713,8 @@ class HomeFluxEmsApp extends Homey.App {
         commandPublishing: Boolean(this.commandPublishing),
         contextRunning: Boolean(this.contextEvaluationRunning), evPublishing: Boolean(this.evPortfolioPass),
       }));
-    });
+    };
+    this.homey.on?.('cpuwarn', this.cpuWarningListener);
     this.contextHeartbeatTimer = this.homey.setInterval(() => {
       const diagnosticCpu = this.startDiagnosticCpuSection('heartbeat');
       try {
@@ -772,6 +788,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   setSetting(key, value) {
+    if (key === '_hvacPermanent') { this.homey.settings.set(key, value); return; }
     // Internal bookkeeping does not change the control settings. Actual engine
     // inputs still invalidate the memo through dependencies/context boundaries.
     const widgetPreference = evDashboard.isSetting(String(key));
@@ -1372,6 +1389,7 @@ class HomeFluxEmsApp extends Homey.App {
         runtime.options = options;
         runtime.endedAt = now;
         if (!runtime.endReason) runtime.endReason = 'manual';
+        this.archiveDiagnosticsReport();
       }
       this.clearDiagnosticsExpiryTimer();
       this.setSetting('_diagnosticsStartedAt', 0);
@@ -1429,6 +1447,7 @@ class HomeFluxEmsApp extends Homey.App {
     runtime.endedAt = at;
     runtime.endReason = String(reason || 'expired');
     runtime.options = { planning: false, cpu: false, errors: false, memory: false };
+    this.archiveDiagnosticsReport();
     this.clearDiagnosticsExpiryTimer();
     for (const key of Object.values(DIAGNOSTIC_SETTING_KEYS)) this.setSetting(key, false);
     this.setSetting('_diagnosticsStartedAt', 0);
@@ -1440,6 +1459,24 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.diagnostics?.sessionActive) return false;
     if (Number(this.diagnostics.expiresAt) > Number(now)) return false;
     return this.expireDiagnostics('48h_expired', now);
+  }
+
+  archiveDiagnosticsReport() {
+    const runtime = this.diagnostics;
+    if (!runtime || runtime.sessionActive || runtime.archivedReport) return;
+    // Keep the stopped report exportable while releasing the object graph and
+    // comparison caches. Compression runs once, outside the control loop.
+    try {
+      runtime.archivedReport = require('node:zlib').gzipSync(JSON.stringify(this.getDiagnosticsReport()), { level: 1 });
+      for (const key of ['cpuSamples', 'memorySamples', 'planningEvents', 'batteryEfficiencyEvents', 'planningConfigurations', 'errors']) runtime[key] = [];
+      runtime.compact = null;
+      runtime.counters = {};
+      runtime.cpuSections = {};
+      runtime.batteryEfficiencyLatest = null;
+      runtime.cpuSampleUsage = null;
+    } catch (_) {
+      runtime.diagnosticRecordFailures = (runtime.diagnosticRecordFailures || 0) + 1;
+    }
   }
 
   resetDiagnosticsReport() {
@@ -1825,8 +1862,12 @@ class HomeFluxEmsApp extends Homey.App {
       plan: this.cloneDiagnosticValue(plan),
     };
     this.diagnostics.planningEvents.push(event);
-    if (this.diagnostics.planningEvents.length > 600) {
-      this.diagnostics.planningEvents.splice(0, this.diagnostics.planningEvents.length - 600);
+    Object.defineProperty(event, '_retainedBytes', { value: Buffer.byteLength(JSON.stringify(event)) });
+    const events = this.diagnostics.planningEvents;
+    let bytes = events.reduce((sum, item) => sum + (item._retainedBytes || 0), 0);
+    while (events.length > 600 || bytes > 1024 * 1024) {
+      bytes -= events.shift()._retainedBytes || 0;
+      this.diagnostics.droppedPlanningForMemory = (this.diagnostics.droppedPlanningForMemory || 0) + 1;
     }
   }
 
@@ -1898,6 +1939,11 @@ class HomeFluxEmsApp extends Homey.App {
   getDiagnosticsReport() {
     this.checkDiagnosticsExpiry(Date.now());
     const runtime = this.diagnostics || this.createDiagnosticsRuntime();
+    if (runtime.archivedReport) {
+      const report = JSON.parse(require('node:zlib').gunzipSync(runtime.archivedReport).toString('utf8'));
+      report.generatedAt = Date.now();
+      return report;
+    }
     const generatedAt = Date.now();
     if (this.isDiagnosticEnabled('planning', generatedAt) && !runtime.compact?.values) {
       this.getOrCreateDiagnosticPlanningConfig(this.getSettings(), generatedAt);
@@ -1972,7 +2018,8 @@ class HomeFluxEmsApp extends Homey.App {
         currentConfigId: runtime.compact?.id || null,
         reconstruction: 'Apply the first snapshot, then each changes object and removed-key list in order. Each event references configId.',
         droppedConfigurations: runtime.compact?.droppedConfigurations || 0,
-        droppedEvents: runtime.compact?.droppedPlanningEvents || 0,
+        droppedEvents: (runtime.compact?.droppedPlanningEvents || 0) + (runtime.droppedPlanningForMemory || 0),
+        maxEventBytes: 1024 * 1024,
         configurations: this.cloneDiagnosticValue(runtime.planningConfigurations) || [],
         events: this.cloneDiagnosticValue(runtime.planningEvents) || [],
         batteryEfficiencyLatest: this.cloneDiagnosticValue(runtime.batteryEfficiencyLatest),
@@ -3231,6 +3278,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   requestContextEvaluate(immediate = false, reason = 'context', requestedAt = 0, bypassInterval = false, invalidatesBatteryContext = true) {
+    if (this.shuttingDown) return;
     if (this.inputMonitor?.active) this.inputMonitor.noteRequest('context');
     if (this.contextTimer || this.contextEvaluationRunning) this.recordDiagnosticCounter('contextRequestsCoalesced');
     this.markContextDirty(reason, invalidatesBatteryContext);
@@ -3276,6 +3324,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async runContextEvaluation(forceStatus = false) {
+    if (this.shuttingDown) return this.latestResult;
     if (this.contextEvaluationRunning) {
       this.contextEvaluationPending = true;
       return this.latestResult;
@@ -7232,6 +7281,17 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async onUninit() {
+    this.shuttingDown = true;
+    if (this.homeyEnergyInitialTimer) clearTimeout(this.homeyEnergyInitialTimer);
+    if (this.homeyEnergyTimer) clearInterval(this.homeyEnergyTimer);
+    this.homeyEnergyInitialTimer = this.homeyEnergyTimer = null;
+    this.clearDiagnosticsExpiryTimer();
+    const remove = (emitter, event, listener) => {
+      if (listener) (emitter?.off || emitter?.removeListener)?.call(emitter, event, listener);
+    };
+    remove(this.homey.settings, 'set', this.settingsListener);
+    remove(this.homey, 'cpuwarn', this.cpuWarningListener);
+    this.settingsListener = this.cpuWarningListener = null;
     if (this.autoTuneLearningRestored) this.persistAutoTuneLearning(Date.now(),true);
     if (batteryResponseTest.active(this)) await batteryResponseTest.stop(this,'Reactietest afgebroken door een herstart.',false,false);
     // Retain the current kWh remainder on a graceful restart, rather than the
@@ -7298,6 +7358,9 @@ class HomeFluxEmsApp extends Homey.App {
       if (splitState?.recheckTimer) clearTimeout(splitState.recheckTimer);
       if (splitState?.safetyTimer) clearTimeout(splitState.safetyTimer);
     }
+    for (const api of new Set([this.homeyApi, this.ownerHomeyApi])) api?.destroy?.();
+    this.homeyApi = this.ownerHomeyApi = null;
+    this.homeyApiPromise = this.ownerHomeyApiPromise = null;
   }
 
   clearOverrideResumeTimer() {
@@ -7749,6 +7812,10 @@ class HomeFluxEmsApp extends Homey.App {
     if (!this.homeyApiPromise) {
       this.homeyApiPromise = HomeyAPI.createAppAPI({ homey: this.homey })
         .then(api => {
+          if (this.shuttingDown) {
+            api.destroy?.();
+            throw new Error('HomeFlux is shutting down');
+          }
           this.homeyApi = api;
           return api;
         })
@@ -7773,6 +7840,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async refreshHomeyEnergyPrices(force = false) {
+    if (this.shuttingDown) return this.getHomeyEnergyStatus();
     if (this.homeyEnergy.refreshing) return this.getHomeyEnergyStatus();
     const nowMs = Date.now();
     if (!force && nowMs - (this.homeyEnergy.lastAttemptAt || 0) < 5 * 60 * 1000) {
@@ -11596,7 +11664,6 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   updateEvStatusInput(index, connected, currentA, now = Date.now()) {
-    if (connected !== false) hvacPermanent.cancel(this);
     const input = this.getEvInputSnapshot(index);
     if (!input) return false;
     const parsed = parseFiniteInputNumber(currentA);
@@ -11606,6 +11673,9 @@ class HomeFluxEmsApp extends Homey.App {
     const nextConnected = hasConnection ? Boolean(connected) : wasConnected;
     const connectionChanged = hasConnection && this.hasBooleanInputChanged(input.connected, nextConnected, Boolean(input.seen?.connected));
     const currentChanged = hasCurrent && this.hasNumericInputChanged(input.chargeCurrentA, parsed, Boolean(input.seen?.chargeCurrent), 0.05);
+    if (nextConnected && (hasCurrent ? parsed > 0.5 : connectionChanged)) {
+      hvacPermanent.cancel(this, 'EV-laadactiviteit verstoorde de meting');
+    }
     const modeControl = this.getEvControlTypeFor(index) === 'mode';
     const measuredWasFresh = this.getEvMeasuredCurrent(index, input, now).fresh;
     const wasFresh = modeControl || measuredWasFresh;
@@ -14708,6 +14778,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   requestEvaluate(immediate = false) {
+    if (this.shuttingDown) return false;
     if (this.inputMonitor?.active) this.inputMonitor.noteRequest('fast');
     this.recordDiagnosticCounter('fastRequests');
     const now = Date.now();
@@ -15008,11 +15079,12 @@ class HomeFluxEmsApp extends Homey.App {
   handleExternalEmsSetpoint(power, now = Date.now()) {
     const value = Number(power);
     if (!Number.isFinite(value)) return false;
+    require('./lib/hvac-learning').batteryFeedback(this, value, now);
     const runtime = this.hybridEmsRuntime;
 
-    // External feedback only has meaning while the external EMS actually owns
-    // the battery. When HomeFlux has control, ignore background setpoints at the
-    // earliest possible point: no bookkeeping, no savings sample and no forced
+    // For Hybrid control, feedback only has meaning while the external EMS owns
+    // the battery. The learner above retains the reported physical measurement;
+    // HomeFlux ownership still skips Hybrid bookkeeping, savings and forced
     // EMS evaluation. This keeps Hybrid completely out of the normal control loop.
     if (!runtime?.delegated || runtime.takeover) return true;
 
@@ -15847,6 +15919,7 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
       const internalCommands=phaseGuard.limit(this,coordinatedCommands,phaseSettings,Date.now(),false);
+      if (internalCommands.some(value => value !== 0)) require('./lib/hvac-learning').resetBatteryRest(this);
       this.inFlightBatteryCommands = internalCommands;
       this.recordDiagnosticBatteryOutput(result, 'requested', internalCommands);
       const internalTotal = internalCommands.reduce((sum, value) => sum + value, 0);
@@ -16675,6 +16748,8 @@ class HomeFluxEmsApp extends Homey.App {
         received: { ...(input?.seen || {}) },
         ...(decision || {}),
         reason: hvacPresentation.reason(instanceSettings, decision),
+        reportedMode: input?.seen?.mode ? String(input.mode || 'off') : '',
+        modeFeedbackAt: Number(input?.updatedAt?.mode) || null,
         permanentControlEnabled: Boolean(instanceSettings.hvacPermanentEnabled),
         setpointFeedbackAt: Number(input?.updatedAt?.setpoint)||null,
         outputSetpointRequestedAt: this.hvacSetpointRequests?.[index]?.at||null,
@@ -16965,9 +17040,9 @@ class HomeFluxEmsApp extends Homey.App {
       const now = Date.now();
       if (Number.isFinite(Number(body.hvac.roomTemperatureC))) { this.state.hvacRoomTemperatureC = Number(body.hvac.roomTemperatureC); this.inputSeen.hvac.roomTemperature = true; this.inputUpdatedAt.hvac.roomTemperature = now; contextInputChanged = true; }
       if (Number.isFinite(Number(body.hvac.outdoorTemperatureC))) { this.state.hvacOutdoorTemperatureC = Number(body.hvac.outdoorTemperatureC); this.inputSeen.hvac.outdoorTemperature = true; this.inputUpdatedAt.hvac.outdoorTemperature = now; contextInputChanged = true; }
-      if (body.hvac.mode !== undefined) { this.state.hvacMode = String(body.hvac.mode || 'off'); this.inputSeen.hvac.mode = true; this.inputUpdatedAt.hvac.mode = now; contextInputChanged = true; }
-      if (Number.isFinite(Number(body.hvac.setpointC))) { this.state.hvacSetpointC = Number(body.hvac.setpointC); this.inputSeen.hvac.setpoint = true; this.inputUpdatedAt.hvac.setpoint = now; contextInputChanged = true; }
-      if (Number.isFinite(Number(body.hvac.fanSpeed))) { this.state.hvacFanSpeed = Math.max(0, Number(body.hvac.fanSpeed)); this.inputSeen.hvac.fanSpeed = true; this.inputUpdatedAt.hvac.fanSpeed = now; contextInputChanged = true; }
+      if (body.hvac.mode !== undefined) { if (this.state.hvacMode !== String(body.hvac.mode || 'off')) require('./lib/hvac-learning').inputChanged(this, 0, 'mode', String(body.hvac.mode || 'off')); this.state.hvacMode = String(body.hvac.mode || 'off'); this.inputSeen.hvac.mode = true; this.inputUpdatedAt.hvac.mode = now; contextInputChanged = true; }
+      if (Number.isFinite(Number(body.hvac.setpointC))) { if (this.state.hvacSetpointC !== Number(body.hvac.setpointC)) require('./lib/hvac-learning').inputChanged(this, 0, 'setpoint', Number(body.hvac.setpointC)); this.state.hvacSetpointC = Number(body.hvac.setpointC); this.inputSeen.hvac.setpoint = true; this.inputUpdatedAt.hvac.setpoint = now; contextInputChanged = true; }
+      if (Number.isFinite(Number(body.hvac.fanSpeed))) { if (this.state.hvacFanSpeed !== Math.max(0, Number(body.hvac.fanSpeed))) require('./lib/hvac-learning').inputChanged(this, 0, 'fan', Math.max(0, Number(body.hvac.fanSpeed))); this.state.hvacFanSpeed = Math.max(0, Number(body.hvac.fanSpeed)); this.inputSeen.hvac.fanSpeed = true; this.inputUpdatedAt.hvac.fanSpeed = now; contextInputChanged = true; }
     }
     if (Array.isArray(body.evs)) {
       body.evs.slice(0, 4).forEach((value, index) => {
@@ -16997,9 +17072,9 @@ class HomeFluxEmsApp extends Homey.App {
         if (!runtime) return;
         const now = Date.now();
         if (Number.isFinite(Number(value.roomTemperatureC))) { runtime.state.roomTemperatureC = Number(value.roomTemperatureC); runtime.seen.roomTemperature = true; runtime.updatedAt.roomTemperature = now; contextInputChanged = true; }
-        if (value.mode !== undefined) { runtime.state.mode = String(value.mode || 'off'); runtime.seen.mode = true; runtime.updatedAt.mode = now; contextInputChanged = true; }
-        if (Number.isFinite(Number(value.setpointC))) { runtime.state.setpointC = Number(value.setpointC); runtime.seen.setpoint = true; runtime.updatedAt.setpoint = now; contextInputChanged = true; }
-        if (Number.isFinite(Number(value.fanSpeed))) { runtime.state.fanSpeed = Math.max(0, Number(value.fanSpeed)); runtime.seen.fanSpeed = true; runtime.updatedAt.fanSpeed = now; contextInputChanged = true; }
+        if (value.mode !== undefined) { if (runtime.state.mode !== String(value.mode || 'off')) require('./lib/hvac-learning').inputChanged(this, index, 'mode', String(value.mode || 'off')); runtime.state.mode = String(value.mode || 'off'); runtime.seen.mode = true; runtime.updatedAt.mode = now; contextInputChanged = true; }
+        if (Number.isFinite(Number(value.setpointC))) { if (runtime.state.setpointC !== Number(value.setpointC)) require('./lib/hvac-learning').inputChanged(this, index, 'setpoint', Number(value.setpointC)); runtime.state.setpointC = Number(value.setpointC); runtime.seen.setpoint = true; runtime.updatedAt.setpoint = now; contextInputChanged = true; }
+        if (Number.isFinite(Number(value.fanSpeed))) { if (runtime.state.fanSpeed !== Math.max(0, Number(value.fanSpeed))) require('./lib/hvac-learning').inputChanged(this, index, 'fan', Math.max(0, Number(value.fanSpeed))); runtime.state.fanSpeed = Math.max(0, Number(value.fanSpeed)); runtime.seen.fanSpeed = true; runtime.updatedAt.fanSpeed = now; contextInputChanged = true; }
       });
     }
 

@@ -1,0 +1,9 @@
+{
+  "environment": "Node 22 host; isolated real learner structures, 1000 models; GC before/after; excludes SDK storage implementation",
+  "devices": 10,
+  "evidenceRecords": 100,
+  "residualRecords": 40,
+  "activeObservations": 1,
+  "retainedBytesPerLearner": 30121,
+  "serializedBytes": 24740
+}

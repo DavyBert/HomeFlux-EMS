@@ -186,7 +186,8 @@ async function main() {
   });
   await check('A single staggered unknown legacy PV source retains automatic learning under the same safety conditions', async () => {
     const h = await setup(1, { hvacPermanentEnabled: false, hvacComfortMinC: 22, hvacExtraGridBudgetEnabled: true, hvacExtraGridBudgetW: 400 }), a = h.app;
-    baseline(a); inputs(a, 0, { roomTemperatureC: 19 });
+    baseline(a); inputs(a, 0, { roomTemperatureC: 19, mode: 'off' });
+    for(const b of a.evSessionDetection.houseHistory)b.sumW=1500*b.samples;
     Object.assign(a.state, { gridPowerW: -5000, pvPowerW: 6500 });
     await cycle(h); assert(H.runtime(a).observation); assert.equal(H.runtime(a).observation.manual, false);
     assert.equal(H.runtime(a).observation.index, 0); assert.equal(H.runtime(a).budgetGuard.watts, 360);

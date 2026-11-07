@@ -21,10 +21,10 @@
     ],
     "deadlineMet": true,
     "planBuilds": 1,
-    "planReuses": 823,
-    "portfolioCalculations": 861,
-    "cpuMs": 3144.56,
-    "wallMs": 2703.825012
+    "planReuses": 1023,
+    "portfolioCalculations": 1060,
+    "cpuMs": 9464.241,
+    "wallMs": 8621.655541
   },
   {
     "name": "Gerrit SoC: same production decisions",
@@ -48,16 +48,16 @@
     ],
     "deadlineMet": true,
     "planBuilds": 1,
-    "planReuses": 818,
-    "portfolioCalculations": 858,
-    "cpuMs": 3708.198,
-    "wallMs": 3460.9280900000003
+    "planReuses": 1021,
+    "portfolioCalculations": 1060,
+    "cpuMs": 8352.431,
+    "wallMs": 7433.704084999999
   },
   {
     "name": "Midnight and 1-second inputs reuse EV plan",
     "planBuildsDuring180Seconds": 0,
     "fastPathBuilds": 0,
-    "portfolios": 10
+    "portfolios": 6
   },
   {
     "name": "Battery midnight PV refresh independent of EV plan",

@@ -16,7 +16,7 @@
     "Touch first tap and dragged/swiped second tap do not submit",
     "Exact five-second expiry, second deliberate confirmation and acknowledged success",
     "EV selection cancels pending confirmation",
-    "Delayed old refresh cannot overwrite newly selected EV/period",
+    "Delayed old refresh cannot overwrite newly selected EV/period; requests are combined",
     "Hide/unload cancellation, dormant subscription and single resume fetch",
     "EV selection survives reload per widget instance, without affecting another Dashboard",
     "Incomplete selected target is visibly a local Draft, never a submitted or fictitious plan",

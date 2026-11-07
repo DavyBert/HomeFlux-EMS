@@ -137,13 +137,17 @@ async function main(){
   a.setSetting('hvac2AutomaticControlEnabled',false);now+=300000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);
   assert(H.runtime(a).observation?.manual,JSON.stringify({r:H.runtime(a),d:a.latestHvacDecision,events:h.events}));assert.equal(H.runtime(a).observation.index,0);
  });
- await check('Learning accepts a stable manual plateau, retains prior watts on interference and restores the ordinary target',async()=>{
-  const h=await setup(1,{hvacDirectTariffEnabled:true,hvacCheapTargetC:20}),a=h.app;baseline(a);known(a,1,700);C.manualRequest(a,0);
-  a.state.hvacRoomTemperatureC=21;await cycle(h);const o=H.runtime(a).observation;assert(o?.manual);assert.equal(H.unit(a,0).heat,700);
-  const start=now;
-  for(let sec=1;sec<=300;sec++) {now=start+sec*1000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1400,now);H.observe(a,now);if(sec%60===0)H.slowTick(a,now);}
-  assert.equal(H.unit(a,0).heat,1000);assert.equal(H.runtime(a).manualQueue.length,0);await cycle(h);assert.equal(a.lastPublishedHvacSetpoint,20);
-  baseline(a);C.manualRequest(a,0);now+=300000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);await cycle(h);assert(H.runtime(a).observation);
+ await check('Manual plateaus build independent confidence, preserve prior watts, restore targets and retain trusted power on interference',async()=>{
+  const h=await setup(1,{hvacDirectTariffEnabled:true,hvacCheapTargetC:20}),a=h.app;known(a,1,700);C.manualRequest(a,0);
+  for(let round=1;round<=3;round++){
+   now+=300000;a.state.gridPowerW=400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);
+   a.state.hvacRoomTemperatureC=21;await cycle(h);const o=H.runtime(a).observation;assert(o?.manual);assert.equal(H.unit(a,0).heat,700);
+   const start=now;
+   for(let sec=1;sec<=300;sec++){now=start+sec*1000;a.state.gridPowerW=1400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1400,now);H.observe(a,now);if(sec%60===0)H.slowTick(a,now);}
+   assert.equal(H.unit(a,0).heat,round===3?1000:700);assert.equal(H.unit(a,0).heatSamples,round);
+   assert.equal(H.runtime(a).manualQueue.length,round===3?0:1);await cycle(h);assert.equal(a.lastPublishedHvacSetpoint,20);
+  }
+  C.manualRequest(a,0);now+=300000;a.state.gridPowerW=400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);await cycle(h);assert(H.runtime(a).observation);
   H.inputChanged(a,0,'fan',3);H.slowTick(a,now);assert.equal(H.runtime(a).observation,null);assert.equal(H.unit(a,0).heat,1000);assert(H.runtime(a).manualQueue.length);
  });
  await check('Automatic learning stays single-source; direct flags, queued manual work and real external changes prevent contaminated automatic results',async()=>{
@@ -194,7 +198,7 @@ async function main(){
   a.setSetting('hvacAutomaticOffAction','standby');await a.setHvacAutomaticControlFor(0,{enabled:'no',standby_temperature:15});assert.equal(a.lastPublishedHvacSetpoint,15);
  });
  await check('Manual learning also uses an ordinary legacy PV demand step when safe',async()=>{
-  const h=await setup(1,{hvacPermanentEnabled:false,hvacComfortMinC:22}),a=h.app;baseline(a);a.state.gridPowerW=-5000;a.state.pvPowerW=6500;a.state.hvacRoomTemperatureC=19;
+  const h=await setup(1,{hvacPermanentEnabled:false,hvacComfortMinC:22}),a=h.app;baseline(a);for(const b of a.evSessionDetection.houseHistory)b.sumW=1500*b.samples;a.state.gridPowerW=-5000;a.state.pvPowerW=6500;a.state.hvacRoomTemperatureC=19;a.state.hvacMode='off';
   C.manualRequest(a,0);await cycle(h);assert(H.runtime(a).observation?.manual);assert.equal(H.runtime(a).observation.index,0);assert(!H.unit(a,0).manualProbe);
  });
  await check('Shared source modes change together when all linked thermostats agree; conflicting modes remain blocked',async()=>{

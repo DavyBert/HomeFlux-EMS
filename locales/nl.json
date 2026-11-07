@@ -294,7 +294,8 @@
       "reasonChargeDeferred": "Batterij reserve behouden, laden later gepland.",
       "evPeakGuardLimited": "Laden begrensd door Peak Guard",
       "hvacTarget": "Doel",
-      "hvacPermanentActive": "Permanente sturing actief"
+      "hvacPermanentActive": "Permanente sturing actief",
+      "on": "Aan"
     }
   },
   "evWidget": {
