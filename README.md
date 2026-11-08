@@ -34,6 +34,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.41
+
+Configuratieadvies waarschuwt wanneer netladen de automatische zonnedagdrempel kan bereiken en daardoor batterijspaarbescherming kan wegvallen. AutoTune controleert gecombineerde aanbevelingen op dezelfde risicocombinatie en licht overgeslagen adviezen toe. De handmatige gedeelde HVAC-installatienaam en de bijbehorende prioriteitsblokkering zijn verwijderd; de bestaande gedeelde vermogenskoppeling blijft beschikbaar.
+
+Configuration advice warns when grid charging can reach the automatic sunny-day threshold and release battery-saving protection. AutoTune checks combined recommendations for the same risk and explains withheld advice. The manual shared HVAC installation name and its priority blocking have been removed; the existing shared-power link remains available.
+
+Le conseil de configuration avertit lorsque la charge réseau peut atteindre le seuil automatique de journée ensoleillée et lever la protection d’économie de batterie. AutoTune contrôle les recommandations combinées selon ce même risque et explique les conseils écartés. Le nom manuel d’installation HVAC partagée et son blocage de priorité sont supprimés ; la liaison de puissance partagée reste disponible.
+
+Der Konfigurationshinweis warnt, wenn Netzladen die automatische Sonnentagschwelle erreichen und dadurch den Batteriesparschutz aufheben kann. AutoTune prüft kombinierte Empfehlungen auf dasselbe Risiko und erläutert zurückgehaltene Hinweise. Der manuelle Name einer gemeinsamen HVAC-Anlage und die zugehörige Prioritätssperre wurden entfernt; die vorhandene gemeinsame Leistungskopplung bleibt verfügbar.
+
+El aviso de configuración advierte si la carga de red puede alcanzar el umbral automático de día soleado y desactivar la protección de ahorro de batería. AutoTune comprueba las recomendaciones combinadas con el mismo criterio y explica los consejos omitidos. Se eliminan el nombre manual de instalación HVAC compartida y su bloqueo por prioridad; se conserva la vinculación de potencia compartida.
+
 ### 1.2.40
 
 De WAF-widget kan groen tonen bij actief batterijsparen in het goedkoopste prijssegment, wanneer een duurder segment meer dan de ingestelde tijd weg is (standaard 90 minuten). Instelbaar onder EMS. De widget toont dan de resterende Peak Guard-netruimte, met fasebewaking en een neutrale waarde bij ontbrekende of verouderde metingen. Netruimte wordt via de bestaande minuutheartbeat in stappen van 100 W bijgewerkt. WAF-kleuren en afzonderlijke rood/oranje/groendrempels voor energiereserve (kWh) en netruimte (W) zijn instelbaar onder EMS. Peak Guard trekt het netruimteadvies direct in; hervatten kan pas na minstens één minuut zonder ingreep. De WAF blijft tijdens de ingreep en de wachttijd rood.

@@ -349,9 +349,9 @@ async function main(){
   const h=await setup(),a=h.app;await a.publishHvacDecisionFor(0,calc(a));assert.equal(calc(a).setpointCommand,null);
   const pending=calc(a,1);a.hvacConfigRevision=1;assert.equal(H.beforePublish(a,1,pending),false);
  });
- await check('Shared physical installation has one owner; other channels cannot issue conflicting goals',async()=>{
+ await check('Legacy physical installation names do not block independent channel goals',async()=>{
   const h=await setup({hvacPhysicalGroup:'pump',hvac2PhysicalGroup:'pump',flexibleLoadPriorityOrder:['hvac2','hvac1']}),a=h.app;
-  assert.equal(calc(a,0).setpointCommand,null);near(calc(a,1).setpointCommand,23);
+  near(calc(a,0).setpointCommand,23);near(calc(a,1).setpointCommand,23);
  });
  await check('Learning reuses idle minute references and requires three independent heat/cool observations before trusting power',async()=>{
   for(const mode of ['heat','cool']) {

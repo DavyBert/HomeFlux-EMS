@@ -4,6 +4,7 @@ const batteryResponseTest = require('./lib/battery-response-test');
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
+const batteryStrategyAdvice = require('./settings/battery-strategy-advice');
 const evDashboard = require('./lib/ev-dashboard');
 const evPlanOptions = require('./lib/ev-plan-options');
 const emsStatusTags = require('./lib/ems-status-tags');
@@ -2987,7 +2988,15 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    return recommendations.sort((a,b) => b.confidence - a.confidence || a.scope.localeCompare(b.scope));
+    const automaticStrategy = recommendations.filter(row => row.autoManaged && row.canAutoManage
+      && row.autoEligible && batteryStrategyAdvice.isRelevant(row.settingKey)).map(row => ({
+        settingKey: row.settingKey,
+        recommended: this.normalizeAutoTuneValue(row.settingKey, row.recommended, row.allowedRange),
+      })).filter(row => row.recommended !== null);
+    const strategyReview = batteryStrategyAdvice.review(settings, recommendations, automaticStrategy);
+    this.autoTuneStrategyAdvice = strategyReview.blocked.map(row => ({ settingKey: row.settingKey,
+      titleNl: row.titleNl, titleEn: row.titleEn }));
+    return strategyReview.recommendations.sort((a,b) => b.confidence - a.confidence || a.scope.localeCompare(b.scope));
   }
 
   getAutoTuneStatus() {
@@ -3009,6 +3018,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
     return {
       recommendations,
+      strategyConflicts: this.autoTuneStrategyAdvice || [],
       permissions,
       limits,
       minConfidencePercent,
@@ -3133,6 +3143,8 @@ class HomeFluxEmsApp extends Homey.App {
       if (!force && now - Number(lastApplied[key] || 0) < cooldownMs) continue;
       const next = this.normalizeAutoTuneValue(key, recommendation.recommended, allowedRange);
       if (!Number.isFinite(current) || next === null || Math.abs(current - next) < 1e-9) continue;
+      if (batteryStrategyAdvice.isRelevant(key)
+        && batteryStrategyAdvice.risk(batteryStrategyAdvice.project(this.getSettings(), { [key]: next }))) continue;
       this.setSetting(key, next);
       lastApplied[key] = now;
       lastAppliedChanged = true;
@@ -3212,6 +3224,10 @@ class HomeFluxEmsApp extends Homey.App {
     const next = this.normalizeAutoTuneValue(settingKey, recommendation.recommended);
     if (!Number.isFinite(current) || next === null) throw new Error('Deze Autotune-waarde kan niet veilig worden toegepast.');
     if (Math.abs(current - next) < 1e-9) return this.getAutoTuneStatus();
+    if (batteryStrategyAdvice.isRelevant(settingKey)
+      && batteryStrategyAdvice.risk(batteryStrategyAdvice.project(this.getSettings(), { [settingKey]: next }))) {
+      throw new Error(translateDisplay('Deze AutoTune-aanbeveling kan ongewenste batterijontlading veroorzaken. Controleer eerst de zonnedag- en batterijspaarinstellingen.', this.displayLanguage()));
+    }
 
     const now = Date.now();
     this.setSetting(settingKey, next);

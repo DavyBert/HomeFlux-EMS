@@ -78,7 +78,7 @@
   move(q('ComfortActivationGroup'),'comfort');move(q('DirectionTemperatureSourceGroup'),'comfort');move(q('OutdoorDirectionOptions'),'comfort');
   fields('outdoor',['OutdoorOffAboveEnabled','OutdoorOffAboveC','OutdoorOffAboveHysteresisC','OutdoorNoIncreaseEnabled','OutdoorNoIncreaseAboveC','OutdoorOffEnabled','OutdoorOffBelowC','OutdoorOffBelowHysteresisC']);
   fields('periodic',['PeriodicHeatEnabled']);move(q('PeriodicHeatOptions'),'periodic');
-  fields('power',['SharedPowerEnabled','SharedPowerWith','PhysicalGroup','Priority']);
+  fields('power',['SharedPowerEnabled','SharedPowerWith','Priority']);
   fields('technical',['EnergyDeviationC','ControlIntervalMinutes','CoolingFanProfile','HeatingFanProfile']);
   move(q('FanMinValue')?.closest('.setting-cluster'),'technical');
   for(const key of ['goal','tariff','outdoor','periodic'])sections[key].classList.add('hvac-permanent-block');

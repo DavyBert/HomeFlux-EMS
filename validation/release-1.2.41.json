@@ -1,0 +1,186 @@
+{
+  "version": "1.2.41",
+  "sourceVersion": "1.2.40",
+  "source": "latest uploaded HomeFlux-EMS-v1.2.40 (1).zip",
+  "sourceSha256": "d1e4187ad53aff45bdbf11c34e989b13dbb71d9739eed3e2888cac5eccf6a452",
+  "node": "22.22.0",
+  "tests": [
+    {
+      "test": "autotune.test.js",
+      "passed": true,
+      "seconds": 0.15,
+      "failure": null
+    },
+    {
+      "test": "autotune-planning-1.2.28.test.js",
+      "passed": true,
+      "seconds": 0.09,
+      "failure": null
+    },
+    {
+      "test": "autotune-restart-1.2.33.test.js",
+      "passed": true,
+      "seconds": 0.65,
+      "failure": null
+    },
+    {
+      "test": "hvac-permanent-1.2.7.test.js",
+      "passed": true,
+      "seconds": 2.3,
+      "failure": null
+    },
+    {
+      "test": "hvac-coordination-1.2.15.test.js",
+      "passed": true,
+      "seconds": 0.91,
+      "failure": null
+    },
+    {
+      "test": "hvac-budget-1.2.25.test.js",
+      "passed": true,
+      "seconds": 0.77,
+      "failure": null
+    },
+    {
+      "test": "hvac-essential-1.2.34.test.js",
+      "passed": true,
+      "seconds": 0.33,
+      "failure": null
+    },
+    {
+      "test": "hvac-runtime-1.2.34.test.js",
+      "passed": true,
+      "seconds": 0.42,
+      "failure": null
+    },
+    {
+      "test": "hvac-settings-1.2.34.test.js",
+      "passed": true,
+      "seconds": 8.37,
+      "failure": null
+    },
+    {
+      "test": "hvac-settings-1.2.35.test.js",
+      "passed": true,
+      "seconds": 15.1,
+      "failure": null
+    },
+    {
+      "test": "settings-cache-1.0.12.test.js",
+      "passed": true,
+      "seconds": 0.38,
+      "failure": null
+    },
+    {
+      "test": "settings-runtime-audit.test.js",
+      "passed": true,
+      "seconds": 0.11,
+      "failure": null
+    },
+    {
+      "test": "settings-translations.test.js",
+      "passed": true,
+      "seconds": 0.06,
+      "failure": null
+    },
+    {
+      "test": "settings-startup.test.js",
+      "passed": true,
+      "seconds": 0.1,
+      "failure": null
+    },
+    {
+      "test": "widget.test.js",
+      "passed": true,
+      "seconds": 0.08,
+      "failure": null
+    },
+    {
+      "test": "battery-strategy-advice-1.2.41.test.js",
+      "passed": true
+    },
+    {
+      "test": "strategy-settings-1.2.41.test.js",
+      "passed": true
+    },
+    {
+      "test": "hvac-legacy-group-1.2.41.test.js",
+      "passed": true
+    },
+    {
+      "test": "hvac-tariff-1.2.35.test.js",
+      "passed": true
+    },
+    {
+      "test": "hvac-keep-on-1.2.27.test.js",
+      "passed": true
+    },
+    {
+      "test": "hvac-learning-1.2.38.test.js",
+      "passed": true
+    }
+  ],
+  "syntax": "8 JS/inline sources and relevant JSON passed",
+  "homeyBuild": "CLI 4.6.2 debug validation and build passed",
+  "riskConditions": {
+    "required": [
+      "Automatic sunny-day promotion enabled; automatic mode; configured batteries",
+      "Day planned maximum, capped by maximum SoC, can reach or exceed the sunny-day threshold",
+      "Configured saving floor exceeds the effective minimum/safety SoC floor",
+      "Low-PV forecast threshold > 0 and an applicable battery-saving policy is configured",
+      "Positive permitted group/per-battery charging and discharging power"
+    ],
+    "floorPosition": "Below, equal to or above the sunny threshold are all checked, as clarified during implementation. A higher saving floor is not a workaround because promotion releases that floor.",
+    "fixed": "Fixed tariff saving enabled",
+    "dynamic": "Cheap/expensive saving, or normal-hour saving with normal-hour battery use enabled. Normal-hours saving that remains in force after promotion is excluded.",
+    "tou": "Actual scheduled coverage has a saving tariff and a daytime charging opportunity; explicit import avoidance, unused/fully shadowed rates, empty schedules and night-only charging are excluded."
+  },
+  "autoTune": {
+    "sharedCheck": "The browser and AutoTune import the same deterministic settings/battery-strategy-advice.js implementation. All proposed changes and the actual range-bounded automatic subset are checked.",
+    "behaviour": "Withhold conflicts with visible explanation. Existing safe/unrelated recommendations remain. Apply-time guards check actual latest settings, including partial or stale recommendation application.",
+    "authority": "Existing AutoTune does not own dayPlanningMaxSoc. No new authority or invented alternate threshold was added. Sunny/save thresholds are not adjusted merely to hide the warning.",
+    "learning": "Data, learning equations, historical summaries, polling/learning frequency, existing permissions and validation remain unchanged."
+  },
+  "hvac": {
+    "removed": "PhysicalGroup defaults, 10 name inputs, serialization, labels/translations, priority-owner scan and all of its setpoint/start eligibility gates.",
+    "preserved": "SharedPowerEnabled/With, root/source accounting with the 20% margin, independent temperature commands, budgets, essential-device policy, Peak Guard, phase guards, comfort/temperature safety, PV/tariff/permanent operation and all Flow contracts.",
+    "upgrade": "Old Homey names remain unused in stored settings; no migration/unset. Shared links and trusted learned power survive restart; independent setpoint publication proved with a linked source plus an independent source bearing the same legacy name."
+  },
+  "equivalence": "40 real app contexts and 33 battery publications, original WAF budgets and Peak Guard/phase results exactly matched uploaded 1.2.40.",
+  "performance": {
+    "newBackgroundWork": false,
+    "uiHandlers": "Two delegated UI-only input/change handlers, explicitly approved; no additional Homey/background listeners.",
+    "workload": "Risk checks run only at existing configuration/recommendation/apply moments. Old HVAC name-owner scans and 10 runtime cache keys removed. One bounded current advisory list added; no history.",
+    "benchmark": "10,000 fixed-policy risk checks took 12.9 ms on this host; Homey hardware CPU/RAM was not measured.",
+    "cache": "Existing fast-properties settings-cache regression passed."
+  },
+  "visual": {
+    "performed": "Five-language DOM/UI tests, reactive warning visibility, non-blocking save and retained controls.",
+    "notPerformed": "Rendered Chromium checks blocked at startup: socket() Operation not permitted; ptrace prohibited. No physical Homey, mobile rendering or hardware validation."
+  },
+  "skipped": "Full independent EV, boiler, PV, Battery Balance, WAF and Hybrid suites; their modules/Flow contracts are byte-identical. No full suite requested.",
+  "changedFiles": [
+    "package.json",
+    "README.md",
+    "app.json",
+    ".homeychangelog.json",
+    "app.js",
+    "package-lock.json",
+    ".homeycompose/app.json",
+    "settings/battery-strategy-advice.js",
+    "settings/hvac-settings.js",
+    "settings/index.html",
+    "lib/hvac-permanent.js",
+    "test/battery-strategy-advice-1.2.41.test.js",
+    "test/widget.test.js",
+    "test/settings-startup.test.js",
+    "test/hvac-permanent-1.2.7.test.js",
+    "test/strategy-settings-1.2.41.test.js",
+    "test/hvac-legacy-group-1.2.41.test.js",
+    "settings/translations/en.json",
+    "settings/translations/nl.json",
+    "settings/translations/es.json",
+    "settings/translations/fr.json",
+    "settings/translations/de.json"
+  ]
+}
