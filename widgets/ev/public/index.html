@@ -167,7 +167,7 @@ function onHomeyReady(Homey){
  host.addEventListener('pointercancel',()=>{pointer=null;controller.cancel();});
  host.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(e.detail!==0&&(!pointer||pointer.button!==b||pointer.moved)){pointer=null;controller.cancel();return;}pointer=null;activate(b);});
- const changed=()=>{if(active)refresh();};
+ const changed=event=>{if(event?.wafPeakGuard)return;if(active)refresh();};
  H.on('homeflux.ev.changed',changed);
  function hide(){manualDeadline={};active=false;generation++;pointer=null;clearTimeout(confirmTimer);controller.invalidate();}
  function show(){if(!active){active=true;refresh();}}

@@ -1,0 +1,139 @@
+{
+  "version": "1.2.40",
+  "sourceVersion": "1.2.40",
+  "sourceSha256": "45bb36bde133b4ffe84e1db16bc267a9875a6e1bec0dd1cde0c46c041f6c755a",
+  "node": "22.22.0",
+  "tests": [
+    {
+      "test": "waf-presentation-ui-1.2.40.test.js",
+      "passed": true,
+      "seconds": 64.8,
+      "failure": null
+    },
+    {
+      "test": "widget-insights-1.2.1.test.js",
+      "passed": true,
+      "seconds": 2.12,
+      "failure": null
+    },
+    {
+      "test": "widget-insights-lifecycle-1.2.1.test.js",
+      "passed": true,
+      "seconds": 0.1,
+      "failure": null
+    },
+    {
+      "test": "waf-continuity-1.2.3.test.js",
+      "passed": true,
+      "seconds": 1.02,
+      "failure": null
+    },
+    {
+      "test": "widget-decision-1.2.14.test.js",
+      "passed": true,
+      "seconds": 0.25,
+      "failure": null
+    },
+    {
+      "test": "settings-cache-1.0.12.test.js",
+      "passed": true,
+      "seconds": 0.47,
+      "failure": null
+    },
+    {
+      "test": "settings-startup.test.js",
+      "passed": true,
+      "seconds": 0.11,
+      "failure": null
+    },
+    {
+      "test": "settings-translations.test.js",
+      "passed": true,
+      "seconds": 0.06,
+      "failure": null
+    },
+    {
+      "test": "settings-runtime-audit.test.js",
+      "passed": true,
+      "seconds": 0.12,
+      "failure": null
+    },
+    {
+      "test": "phase-guard-1.2.28.test.js",
+      "passed": true,
+      "seconds": 0.26,
+      "failure": null
+    },
+    {
+      "test": "ev-widget-ui-1.2.4.test.js",
+      "passed": true,
+      "seconds": 0.25,
+      "failure": null
+    },
+    {
+      "test": "ev-widget-calendar-ui-1.2.32.test.js",
+      "passed": true,
+      "seconds": 0.42,
+      "failure": null
+    },
+    {
+      "test": "widget.test.js",
+      "passed": true,
+      "seconds": 0.06,
+      "failure": null
+    },
+    {
+      "test": "waf-presentation-1.2.40.test.js",
+      "passed": true
+    },
+    {
+      "test": "waf-presentation-cadence-1.2.40.test.js",
+      "passed": true
+    },
+    {
+      "test": "waf-peak-guard-1.2.40.test.js",
+      "passed": true
+    }
+  ],
+  "syntax": "App/helper/new regression and settings/status/EV inline scripts passed; relevant JSON validated",
+  "homeyBuild": "CLI 4.6.2 debug validation and build passed",
+  "updates": {
+    "peakGuard": "Existing result/status publication withdraws net-room advice immediately. Existing widget event updates the displayed circle to red without another API call, rerender, listener or timer. Repeated interventions restart the recovery interval. Missing grid/phase feedback cannot prove recovery.",
+    "recovery": "A full 60 seconds after the first clear result, checked via existing minute heartbeat/WAF refresh. Resume only if cached cheap-period eligibility and the current normalized Saving battery status still apply.",
+    "staleResponses": "An older in-flight status response cannot overwrite a newer blocked push; timestamp-based revisions distinguish fresh snapshots after an app restart.",
+    "wafSettings": "EMS > WAF-widget: WAF colours enabled plus separate ordered red/orange/green points. Defaults: energy reserve -4 / 1 / 7 kWh; grid room 0 / 1000 / 2000 W. Invalid order is rejected; old missing settings receive defaults. The existing widget colour switch still applies.",
+    "separateValues": "Original energy budget and Flow tags retain kWh. Grid room remains a separate widget/API value in W; no Flow card/tag added.",
+    "resources": "Nine small presentation preferences, one bounded snapshot and one four-scalar guard latch. No history, polling, timers, new listeners or periodic settings writes. 100,000 idle guard observations took 4.6 ms on the test host and allocated no guard runtime; not a Homey hardware benchmark."
+  },
+  "scope": {
+    "unchanged": "All controller libraries apart from waf-presentation.js, existing Flow cards/tokens and Athom website descriptions are byte-identical to the delivered 1.2.40. Forty controller snapshots and 33 battery publications, phase/Peak Guard statuses and original energy budgets matched exactly.",
+    "eventReuse": "Existing status widget subscription carries WAF-only updates. Existing EV widget callback ignores this payload to avoid an extra EV refresh.",
+    "changedFiles": [
+      "app.js",
+      "package.json",
+      "README.md",
+      ".homeychangelog.json",
+      "settings/index.html",
+      "locales/de.json",
+      "locales/nl.json",
+      "locales/es.json",
+      "locales/en.json",
+      "locales/fr.json",
+      "lib/waf-presentation.js",
+      "test/waf-peak-guard-1.2.40.test.js",
+      "test/waf-presentation-ui-1.2.40.test.js",
+      "widgets/status/public/index.html",
+      "widgets/ev/public/index.html",
+      "settings/translations/de.json",
+      "settings/translations/nl.json",
+      "settings/translations/es.json",
+      "settings/translations/en.json",
+      "settings/translations/fr.json"
+    ]
+  },
+  "visual": {
+    "performed": "Five-language DOM configuration/validation/save tests; widget push and stale-response simulation; no added interval or subscription; red hold and separate colour-scale anchors verified.",
+    "notPerformed": "No real Homey/gsm rendered visual checks or physical hardware tests."
+  },
+  "skipped": "Full independent HVAC, EV controller, boiler, battery, AutoTune, PV and Hybrid regression suites; their control modules were unchanged. No full suite requested."
+}

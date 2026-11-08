@@ -295,7 +295,10 @@
       "evPeakGuardLimited": "Charge limitée par Peak Guard",
       "hvacTarget": "Cible",
       "hvacPermanentActive": "Pilotage permanent actif",
-      "on": "Marche"
+      "on": "Marche",
+      "wafGridRoom": "Marge réseau",
+      "wafRoomSnapshot": "Arrondie vers le bas ; vérifiée chaque minute",
+      "wafPeakGuardHold": "Peak Guard : conseil suspendu jusqu’à au moins une minute sans intervention"
     }
   },
   "evWidget": {

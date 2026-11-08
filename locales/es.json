@@ -295,7 +295,10 @@
       "evPeakGuardLimited": "Carga limitada por Peak Guard",
       "hvacTarget": "Objetivo",
       "hvacPermanentActive": "Control permanente activo",
-      "on": "Encendido"
+      "on": "Encendido",
+      "wafGridRoom": "Margen de red",
+      "wafRoomSnapshot": "Redondeado hacia abajo; comprobado cada minuto",
+      "wafPeakGuardHold": "Peak Guard: consejo suspendido hasta al menos un minuto sin intervención"
     }
   },
   "evWidget": {

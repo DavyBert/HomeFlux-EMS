@@ -295,7 +295,10 @@
       "evPeakGuardLimited": "Gebühren begrenzt durch Peak Guard",
       "hvacTarget": "Ziel",
       "hvacPermanentActive": "Permanente Regelung aktiv",
-      "on": "Ein"
+      "on": "Ein",
+      "wafGridRoom": "Netzspielraum",
+      "wafRoomSnapshot": "Abgerundet; jede Minute geprüft",
+      "wafPeakGuardHold": "Peak Guard: Empfehlung bis zu mindestens einer Minute ohne Eingriff ausgesetzt"
     }
   },
   "evWidget": {

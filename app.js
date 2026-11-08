@@ -7,6 +7,7 @@ const sunChance = require('./settings/sun-chance');
 const evDashboard = require('./lib/ev-dashboard');
 const evPlanOptions = require('./lib/ev-plan-options');
 const emsStatusTags = require('./lib/ems-status-tags');
+const wafPresentation = require('./lib/waf-presentation');
 const evPlanResources = require('./lib/ev-plan-resources');
 const evHouseReference = require('./lib/ev-house-reference');
 const { resolveEvOutput } = require('./lib/ev-output-policy');
@@ -464,6 +465,7 @@ class HomeFluxEmsApp extends Homey.App {
     await this.migrateSettings();
     await this.ensureDefaults();
     this.refreshSettingsCache();
+    wafPresentation.loadPreferences(this);
     const initialEfficiencySettings = this.getSettings();
     if (initialEfficiencySettings.optimizeMultiBatteryEfficiency
       && this.getBatteryCount(initialEfficiencySettings) >= 2
@@ -535,6 +537,12 @@ class HomeFluxEmsApp extends Homey.App {
         // complete settings scan in every nested helper.
         const previousSettingValue = this.settingsCache?.[key];
         this.refreshCachedSetting(key);
+        if (wafPresentation.isSetting(key)) {
+          wafPresentation.loadPreferences(this);
+          // Display preferences must not invalidate plans, stop tests or request control.
+          if (this.planningCache && (key === 'wafBatterySavingEnabled' || key === 'wafMinCheapMinutes')) this.planningCache.wafPresentation = null;
+          return;
+        }
         if (batteryResponseTest.active(this) && Object.prototype.hasOwnProperty.call(DEFAULTS,key) && !evDashboard.isSetting(String(key))) await batteryResponseTest.stop(this,'Instellingen gewijzigd tijdens de reactietest.');
         if (evDashboard.isSetting(String(key))) { this.notifyEvDashboard(); return; }
         this.cachedRuntimeSettings = null;
@@ -724,6 +732,8 @@ class HomeFluxEmsApp extends Homey.App {
       try {
         this.sampleDiagnostics(Date.now());
         this.runContextHeartbeat();
+        try { wafPresentation.updateRoom(this, this.settingsCache || DEFAULTS); }
+        catch (err) { this.error('WAF grid-room refresh failed', err); }
         flowOutputKeepalive.tick(this).catch(err => this.error('Flow output keepalive failed', err));
         this.runEvHeartbeat().catch(err => this.error('EV heartbeat dispatch failed', err));
       } finally {
@@ -779,7 +789,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   refreshCachedSetting(key) {
     if (!this.settingsCache || !Object.prototype.hasOwnProperty.call(DEFAULTS, key)) return;
-    const widgetPreference = evDashboard.isSetting(String(key));
+    const widgetPreference = evDashboard.isSetting(String(key)) || wafPresentation.isSetting(key);
     if (!widgetPreference) this.batteryFeedbackMemo = null;
     const value = this.homey.settings.get(key);
     const nextValue = value !== null && value !== undefined ? value : DEFAULTS[key];
@@ -796,7 +806,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (key === '_hvacPermanent' || key === '_evSessionContinuity') { this.homey.settings.set(key, value); return; }
     // Internal bookkeeping does not change the control settings. Actual engine
     // inputs still invalidate the memo through dependencies/context boundaries.
-    const widgetPreference = evDashboard.isSetting(String(key));
+    const widgetPreference = evDashboard.isSetting(String(key)) || wafPresentation.isSetting(key);
     if (!widgetPreference && Object.prototype.hasOwnProperty.call(DEFAULTS, key)) this.batteryFeedbackMemo = null;
     const namedSource = Object.keys(NAME_SETTINGS).find(source => NAME_SETTINGS[source] === key);
     if (namedSource) value = sourceName(namedSource, { [key]: value });
@@ -1271,7 +1281,17 @@ class HomeFluxEmsApp extends Homey.App {
     // v0.3.41: settings UI startup uses one local API call instead of roughly
     // 194 individual Homey.get bridge round-trips. This is a read-only copy of
     // the RAM cache and does not run the EMS engine or rebuild planning.
-    const settings = this.getSettings();
+    const settings = { ...this.getSettings(),
+      wafBatterySavingEnabled: this.wafPreferences?.wafBatterySavingEnabled ?? true,
+      wafMinCheapMinutes: this.wafPreferences?.wafMinCheapMinutes ?? 90,
+      wafColorsEnabled: this.wafPreferences?.wafColorsEnabled ?? true,
+      wafReserveRedKwh: this.wafPreferences?.wafReserveRedKwh ?? -4,
+      wafReserveOrangeKwh: this.wafPreferences?.wafReserveOrangeKwh ?? 1,
+      wafReserveGreenKwh: this.wafPreferences?.wafReserveGreenKwh ?? 7,
+      wafRoomRedW: this.wafPreferences?.wafRoomRedW ?? 0,
+      wafRoomOrangeW: this.wafPreferences?.wafRoomOrangeW ?? 1000,
+      wafRoomGreenW: this.wafPreferences?.wafRoomGreenW ?? 2000,
+    };
     return this.getHvacCount(settings) ? { ...settings, hvacLearning: Array.from({length:this.getHvacCount(settings)}, (_,i)=>hvacPermanent.status(this,i)) } : settings;
   }
 
@@ -15343,6 +15363,10 @@ class HomeFluxEmsApp extends Homey.App {
       if (result._runHvacContextPass) this.lastHvacContextEvalAt = now;
 
       this.latestResult = result;
+      if (this.planningCache?.energyBudget?.calculatedAt === now) {
+        try { wafPresentation.refresh(this, result, settings, now); }
+        catch (err) { this.error('WAF presentation refresh failed', err); }
+      }
       if (Number(result.nextEventAt) > now && Array.from({length:this.getHvacCount(storedSettings)}, (_,i)=>storedSettings.hvacCoordination?.[i]?.DirectTariffEnabled).some(Boolean)) {
         this.scheduleContextEvaluationAt(Number(result.nextEventAt));
       }
@@ -15519,6 +15543,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   queueStatusUpdate(result, force = false) {
+    try { wafPresentation.observeGuard(this, this.latestResult || result, this.settingsCache || DEFAULTS); }
+    catch (err) { this.error('WAF Peak Guard presentation failed', err); }
     const signature = this.getStatusResultSignature(result);
     if (!force && signature) {
       // Coalesce duplicates against the value that is actually pending. Do not
@@ -16574,6 +16600,8 @@ class HomeFluxEmsApp extends Homey.App {
     const budget = this.planningCache?.energyBudget;
     preview.energyBudget = budget?.ready && statusNow >= budget.calculatedAt && statusNow < budget.validUntil
       ? budget : null;
+    preview.wafPresentation = this.planningCache?.wafPresentation || null;
+    preview.wafAppearance = this.wafPreferences || wafPresentation.defaults;
     // Select existing conditions only; do not infer communications failures
     // from old SoC (SoC intentionally has no freshness expiry in HomeFlux).
     preview.criticalAlert = !readiness.ready

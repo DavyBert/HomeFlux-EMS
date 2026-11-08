@@ -295,7 +295,10 @@
       "evPeakGuardLimited": "Charging limited by Peak Guard",
       "hvacTarget": "Target",
       "hvacPermanentActive": "Permanent control active",
-      "on": "On"
+      "on": "On",
+      "wafGridRoom": "Grid room",
+      "wafRoomSnapshot": "Rounded down; checked each minute",
+      "wafPeakGuardHold": "Peak Guard: advice paused until at least one minute without intervention"
     }
   },
   "evWidget": {

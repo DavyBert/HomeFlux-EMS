@@ -5836,7 +5836,22 @@
     "Externe EMS-modus periodiek herhalen": "Reenviar periódicamente la tarjeta de modo del EMS externo",
     "Herhaalinterval (minuten)": "Intervalo de repetición (minutos)",
     "Herhaalt alleen de laatst succesvol gepubliceerde batterijopdracht zolang HomeFlux zelf stuurt, ook zonder Hybrid EMS. Standaard uit. Geen herhaling tijdens externe regeling, tests, onveilige besturing of een lopende publicatie.": "Repite únicamente la última orden de batería publicada correctamente mientras controla HomeFlux, incluso sin Hybrid EMS. Desactivado por defecto. No repite durante el control externo, las pruebas, un control inseguro o una publicación en curso.",
-    "Herhaalt de bestaande externe zelfconsumptiekaart uitsluitend wanneer de externe EMS de batterijregeling bezit. Standaard uit. Deze keepalive verandert de watchdog of overdracht niet.": "Repite la tarjeta existente de autoconsumo externo únicamente mientras el EMS externo controla la batería. Desactivado por defecto. Este mantenimiento no modifica el watchdog ni la transferencia."
+    "Herhaalt de bestaande externe zelfconsumptiekaart uitsluitend wanneer de externe EMS de batterijregeling bezit. Standaard uit. Deze keepalive verandert de watchdog of overdracht niet.": "Repite la tarjeta existente de autoconsumo externo únicamente mientras el EMS externo controla la batería. Desactivado por defecto. Este mantenimiento no modifica el watchdog ni la transferencia.",
+    "WAF-widget": "Widget WAF",
+    "Groene WAF bij batterijsparen in het goedkoopste tarief": "WAF verde al ahorrar batería durante la tarifa más barata",
+    "Minimale tijd tot duurder prijssegment (minuten)": "Tiempo mínimo hasta un segmento de precio más caro (minutos)",
+    "Standaard aan. Alleen groen wanneer batterijsparen actief is en het goedkoopste prijssegment langer duurt dan de ingestelde tijd. De WAF-kleur volgt de bestaande WAF-verversing. Netruimte wordt per minuut gecontroleerd met bestaande P1-metingen en naar beneden afgerond in stappen van 100 W. Bij fasebewaking geldt de kleinste faseruimte. Dit is een momentopname en geen vermogensgarantie.": "Activado por defecto. Verde solo cuando el ahorro de batería está activo y el segmento de precio más barato dura más que el tiempo configurado. El color WAF sigue su actualización habitual. El margen de red se comprueba cada minuto con las lecturas P1 existentes y se redondea hacia abajo en pasos de 100 W. Con supervisión de fases se aplica el menor margen de fase. Es una instantánea, no una garantía de potencia.",
+    "WAF-kleuren weergeven": "Mostrar colores WAF",
+    "Kleuren energiereserve": "Colores de la reserva energética",
+    "Kleuren netruimte": "Colores del margen de red",
+    "Rood bij of onder (kWh)": "Rojo en o por debajo de (kWh)",
+    "Oranje bij (kWh)": "Naranja en (kWh)",
+    "Groen bij of boven (kWh)": "Verde en o por encima de (kWh)",
+    "Rood bij of onder (W)": "Rojo en o por debajo de (W)",
+    "Oranje bij (W)": "Naranja en (W)",
+    "Groen bij of boven (W)": "Verde en o por encima de (W)",
+    "WAF-kleurpunten moeten oplopen: rood < oranje < groen.": "Los puntos de color WAF deben aumentar: rojo < naranja < verde.",
+    "Afzonderlijke kleurpunten voor de energiereserve en de netruimte. Kleuren verlopen geleidelijk tussen rood, oranje en groen. Dit verandert geen EMS-limieten of energieberekeningen. Peak Guard trekt het netruimteadvies direct in; hervatten kan pas na minstens één minuut zonder ingreep. De bestaande optie Kleuren in widget moet ook ingeschakeld zijn.": "Puntos de color separados para la reserva energética y el margen de red. Los colores cambian gradualmente entre rojo, naranja y verde. No cambia límites EMS ni cálculos energéticos. Peak Guard retira inmediatamente el consejo de margen de red; solo puede volver tras al menos un minuto sin intervención. La opción existente Colores en widget también debe estar activada."
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Para cargadores como Smappee, HomeFlux envía parada, inteligente o estándar. Debido a que esta interfaz no puede ordenar una corriente parcial, HomeFlux detiene el cargador cuando Peak Guard necesita limitar la potencia solicitada.",

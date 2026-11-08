@@ -36,6 +36,8 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       background: var(--hf-border); font-size: 12px; font-weight: 750; line-height: 1.1; }
     .energy-budget small { font-size: 9px; margin-top: 2px; }
+    .energy-budget.saving small { max-width:100%; padding:0 2px; overflow-wrap:anywhere; text-align:center; line-height:1.05; }
+    .energy-budget.saving > span { font-size:11px; white-space:nowrap; }
     :root { --hf-positive: #00822a; --hf-attention: #b34b00; --hf-critical: #db0025;
       --hf-activity: #005ce6; --hf-solar: #916300; }
     @media (prefers-color-scheme: dark) {
@@ -122,21 +124,28 @@
       return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
     }
 
-    function budgetView(budget, colors, now = Date.now()) {
+    function wafColor(number, colors, red, orange, green) {
+      const hue = number <= orange ? Math.max(0, Math.min(1, (number - red) / (orange - red))) * 30
+        : 30 + Math.max(0, Math.min(1, (number - orange) / (green - orange))) * 90;
+      const lightness = hue <= 30 ? 42 - hue * 0.3
+        : hue <= 60 ? 33 - (hue - 30) / 3 : 23 + (hue - 60) / 20;
+      return colors ? `hsl(${hue}, 96%, ${lightness}%)` : '';
+    }
+    function wafThresholds(appearance, stem, unit, fallback) {
+      const values = ['Red','Orange','Green'].map(color => appearance?.[stem + color + unit]);
+      return values.every(known) && Number(values[0]) < Number(values[1]) && Number(values[1]) < Number(values[2])
+        ? values.map(Number) : fallback;
+    }
+    function budgetView(budget, colors, now = Date.now(), appearance = null) {
       const valid = budget?.ready && known(budget.valueKwh)
         && now >= budget.calculatedAt && now < budget.validUntil;
       if (!valid) return { text: '--', background: '', valid: false };
       const number = Number(budget.valueKwh);
       const rounded = Math.round(number * 10) / 10;
-      // Continuous, saturated red (-4) -> orange (+1) -> green (+7).
-      // Keep yellow/green darker so white text retains sufficient contrast.
-      const hue = number <= 1 ? Math.max(0, Math.min(1, (number + 4) / 5)) * 30
-        : 30 + Math.max(0, Math.min(1, (number - 1) / 6)) * 90;
-      const lightness = hue <= 30 ? 42 - hue * 0.3
-        : hue <= 60 ? 33 - (hue - 30) / 3 : 23 + (hue - 60) / 20;
+      const [red, orange, green] = wafThresholds(appearance, 'wafReserve', 'Kwh', [-4, 1, 7]);
       return { text: `${rounded >= 0 ? '+' : ''}${rounded.toLocaleString(undefined,
         { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`,
-        background: colors ? `hsl(${hue}, 96%, ${lightness}%)` : '', valid: true };
+        background: wafColor(number, colors, red, orange, green), valid: true };
     }
 
     function criticalAlertText(alert, Homey) {
@@ -188,7 +197,8 @@
       if (reason) reason.style.visibility = warning ? 'hidden' : '';
       const circle = document.getElementById('energy-budget');
       if (circle) {
-        const view = budgetView(status.energyBudget, enabled(settings, 'statusColors'), now);
+        const colors = enabled(settings, 'statusColors') && status.wafAppearance?.wafColorsEnabled !== false;
+        const view = budgetView(status.energyBudget, colors, now, status.wafAppearance);
         circle.firstChild.textContent = view.text;
         circle.style.background = view.background;
         circle.style.color = view.background ? '#fff' : '';
@@ -197,6 +207,31 @@
         if (view.valid && known(status.energyBudget.targetSoc)) {
           circle.title += ' · ' + tr(Homey, 'widget.status.energyBudgetBatteryTarget', 'Battery reserve: {soc}%')
             .replace('{soc}', Number(status.energyBudget.targetSoc).toLocaleString());
+        }
+        const saving = status.wafPresentation?.active && !status.wafPresentation.peakGuardBlocked
+          && status.override !== 'peak_shave' && status.action !== 'peak_shave' && !status.criticalAlert;
+        circle.className = 'energy-budget' + (saving ? ' saving' : '');
+        const unit = circle.lastElementChild || circle.children?.[1];
+        if (unit) unit.textContent = 'kWh';
+        if (saving) {
+          const watts = status.wafPresentation.gridRoomW;
+          const room = known(watts) ? (Number(watts) >= 1000
+            ? `${(Number(watts) / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} kW`
+            : `${Number(watts).toLocaleString()} W`) : '—';
+          const label = tr(Homey, 'widget.status.wafGridRoom', 'Grid room');
+          circle.firstChild.textContent = room;
+          if (unit) unit.textContent = label;
+          const [red, orange, green] = wafThresholds(status.wafAppearance, 'wafRoom', 'W', [0, 1000, 2000]);
+          circle.style.background = known(watts) ? wafColor(Number(watts), colors, red, orange, green) : '';
+          circle.style.color = circle.style.background ? '#fff' : '';
+          circle.title = `${tr(Homey, 'widget.status.decisionSaveBattery', 'Saving battery')} · ${label}: ${room}`
+            + ' · ' + tr(Homey, 'widget.status.wafRoomSnapshot', 'Rounded down; checked each minute');
+        }
+        if (status.wafPresentation?.peakGuardBlocked) {
+          circle.style.background = colors ? '#b00020' : '';
+          circle.style.color = colors ? '#fff' : '';
+          circle.title = tr(Homey, 'widget.status.wafPeakGuardHold',
+            'Peak Guard: advice paused until at least one minute without intervention') + ' · ' + circle.title;
         }
         circle.setAttribute('aria-label', circle.title);
       }
@@ -1205,12 +1240,14 @@
         return lastHeight;
       }
 
+      let wafGuardEvent = null;
       async function refresh(first = false) {
         if (refreshBusy) { refreshAgain = true; return; }
         refreshBusy = true;
         try {
           const status = await Homey.api('GET', '/status', {});
           latestStatus = status || {};
+          applyWafGuardEvent();
           renderStatus(latestStatus, settings, Homey);
           const previousAlert = alertIdentity;
           updateDecisionDisplay(latestStatus, settings, Homey);
@@ -1236,7 +1273,23 @@
         }
       }
 
-      const evPlanChanged=()=>{if(!document.hidden)refresh(false);};
+      function applyWafGuardEvent() {
+        if (wafGuardEvent?.peakGuardBlocked && (!latestStatus.wafPresentation
+          || Number(latestStatus.wafPresentation.guardRevision || 0) < Number(wafGuardEvent.guardRevision || 0))) {
+          latestStatus.wafPresentation = wafGuardEvent;
+        }
+      }
+      const evPlanChanged=event=>{
+        if (event?.wafPeakGuard) {
+          wafGuardEvent = event.wafPeakGuard;
+          if (latestStatus) {
+            latestStatus.wafPresentation = wafGuardEvent;
+            if (!document.hidden) updateDecisionDisplay(latestStatus, settings, Homey);
+          }
+          return;
+        }
+        if(!document.hidden)refresh(false);
+      };
       Homey.on?.('homeflux.ev.changed',evPlanChanged);
       await refresh(true);
       function syncDisplayClock(reset = false) {
