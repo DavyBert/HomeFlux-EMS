@@ -34,6 +34,18 @@ https://github.com/DavyBert/HomeFlux-EMS/discussions/3
 
 ## Release notes
 
+### 1.2.39
+
+Safety SoC-herstel gebruikt een proportioneel laadvermogen om het ontbrekende energietekort in ongeveer tien minuten aan te vullen. Optionele Flow-output keepalives herhalen het laatst gepubliceerde batterijsetpoint of de externe EMS-modus met afzonderlijke intervallen van 1–60 minuten. De laatst bekende EV-aansluitstatus en een via Flow beëindigde laadsessie blijven na een herstart behouden. De sessieblokkering wordt pas bij een echte ontkoppeling en nieuwe aansluiting opgeheven.
+
+Safety SoC recovery uses proportional charging power to replenish the missing energy in approximately ten minutes. Optional Flow-output keepalives repeat the last published battery setpoint or external EMS mode at separate intervals of 1–60 minutes. The last known EV connection state and a charging session ended through Flow survive an app restart. The session block is cleared only by a real disconnection and reconnection.
+
+La récupération du SoC de sécurité utilise une puissance de charge proportionnelle pour combler l’énergie manquante en environ dix minutes. Des maintiens optionnels des sorties Flow répètent la dernière consigne batterie publiée ou le mode EMS externe à des intervalles distincts de 1 à 60 minutes. Le dernier état de connexion connu du véhicule et une session de charge terminée par Flow sont conservés après redémarrage. Le blocage de session n’est levé qu’après une déconnexion et une reconnexion réelles.
+
+Die Wiederherstellung des Sicherheits-SoC nutzt proportionale Ladeleistung, um die fehlende Energie in etwa zehn Minuten aufzufüllen. Optionale Flow-Ausgabe-Keepalives wiederholen den zuletzt veröffentlichten Batterie-Sollwert oder externen EMS-Modus in getrennten Intervallen von 1–60 Minuten. Der zuletzt bekannte EV-Verbindungsstatus und eine per Flow beendete Ladesitzung bleiben nach einem Neustart erhalten. Die Sitzungssperre wird erst durch tatsächliches Trennen und erneutes Verbinden aufgehoben.
+
+La recuperación del SoC de seguridad utiliza una potencia de carga proporcional para reponer la energía que falta en unos diez minutos. Los mantenimientos opcionales de salidas Flow repiten la última consigna de batería publicada o el modo del EMS externo con intervalos independientes de 1 a 60 minutos. El último estado de conexión conocido del vehículo y una sesión de carga finalizada mediante Flow se conservan tras reiniciar. El bloqueo de sesión solo se elimina al desconectar y volver a conectar realmente.
+
 ### 1.2.38
 
 HVAC-vermogensleren verwerkt PV- en gemeten batterijvermogen, normale huishoudfluctuaties en stabiele andere warmtepompen. Robuuste metingen bouwen vertrouwen op over meerdere leermomenten, met concrete wacht- en afkeuringsredenen en behoud van eerder betrouwbare waarden. De HVAC-widget toont de gemelde aan/uit-status en modus ook wanneer HomeFlux het toestel niet stuurt, met voorrang op oude stuurcommando’s. Geheugenverbeteringen begrenzen prijsinvoer, bewaren compacte prijsvelden, comprimeren gestopte diagnostiek en bundelen statusverzoeken. Timers en listeners worden bij afsluiten opgeruimd. HVAC-leren ondersteunt geschatte, stabiele batterijrust bij Batterijsparen en Stand-by onder HomeFlux-sturing.

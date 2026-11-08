@@ -40,10 +40,11 @@ function expectFlow(a, type, value, time = '07:00', guarantee = true, id = 1) {
     if (type === 'kwh') assert.equal(a.evEnergyPlans[0].remainingKwh, value);
     assert.equal(options.runtime(a)[0].resumePlan, null); assert.deepEqual(h.errors, []);
   });
-  await check('Restart preserves saved Flow input; first explicit false restores it; second restart retains restored Flow', async () => {
+  await check('Restart preserves Flow input and the known connection; explicit disconnect restores the Flow goal', async () => {
     const h = await fixture(); await flow(h, 'kwh', 11, '06:30', 'no'); await widget(h.app, 'soc', 90);
     const restarted = await fixture(new Map(h.store)), b = restarted.app;
-    assert.equal(b.getEvInputSnapshot(0).seen.connected, false);
+    assert.equal(b.getEvInputSnapshot(0).seen.connected, true);
+    assert.equal(b.getEvInputSnapshot(0).connected, true);
     b.updateEvStatusInput(0, undefined, undefined, Date.now()); assert(options.widget(b, 0));
     b.updateEvStatusInput(0, false, 0, Date.now()); expectFlow(b, 'kwh', 11, '06:30', false);
     expectFlow((await fixture(new Map(restarted.store))).app, 'kwh', 11, '06:30', false);

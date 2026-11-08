@@ -1,0 +1,17 @@
+{
+  "passed": 9,
+  "cases": [
+    "New/older installations keep unknown connection inputs and need no migration or initial write",
+    "All four last-known connection states survive restart without restoring fake current/SoC telemetry",
+    "Flow-ended sessions remain blocked for all four EVs after one or repeated restarts",
+    "The first same-connection report and repeated current/heartbeat updates cannot rearm a Flow-ended session or rewrite its checkpoint",
+    "A real disconnect clears and persists the block; a later reconnection starts a normal new session",
+    "Disconnecting EV 2 cannot clear the saved Flow blocks of the other three EVs",
+    "Restoring a known connected session does not refill an existing energy goal on the first connected=true feedback",
+    "Continuity checkpoint events do not invalidate settings or queue a new EMS evaluation",
+    "Malformed checkpoints are ignored and a clock rollback cannot erase a valid Flow stop intent"
+  ],
+  "maximumSavedEvRecords": 4,
+  "periodicWrites": 0,
+  "currentAndSocTelemetryRestored": false
+}

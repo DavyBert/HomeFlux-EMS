@@ -1,0 +1,8 @@
+{
+  "attempted": true,
+  "browser": "Chromium headless",
+  "completed": false,
+  "blocker": "ProcessSingleton socket() failed: Operation not permitted (sandbox)",
+  "visualScreenshotsReviewed": false,
+  "alternative": "Actual settings DOM loading, toggling, translations, saving and reopening tested in five languages with existing jsdom harness"
+}

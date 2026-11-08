@@ -1,0 +1,217 @@
+{
+  "source": "1.2.38-aangepast",
+  "sourceSha256": "a88eadf93965b333f9c2600f6b58808a4a5f22d00402ea0b70497be872eba19e",
+  "version": "1.2.39",
+  "node": "22.22.0",
+  "results": [
+    {
+      "test": "engine.test.js",
+      "passed": true,
+      "seconds": 0.18
+    },
+    {
+      "test": "app-control.test.js",
+      "passed": true,
+      "seconds": 1.86
+    },
+    {
+      "test": "charge-feedback-1.0.8.test.js",
+      "passed": true,
+      "seconds": 0.98
+    },
+    {
+      "test": "battery-night-1.1.18.test.js",
+      "passed": true,
+      "seconds": 6.37
+    },
+    {
+      "test": "night-restart-1.1.18.test.js",
+      "passed": true,
+      "seconds": 0.32
+    },
+    {
+      "test": "charge-strategy-control-1.2.12.test.js",
+      "passed": true,
+      "seconds": 0.34
+    },
+    {
+      "test": "charge-strategy-1.2.12.test.js",
+      "passed": true,
+      "seconds": 0.32
+    },
+    {
+      "test": "charge-margin-1.2.23.test.js",
+      "passed": true,
+      "seconds": 0.11
+    },
+    {
+      "test": "peak-guard-all-modes-1.2.11.test.js",
+      "passed": true,
+      "seconds": 1.14
+    },
+    {
+      "test": "phase-guard-1.2.28.test.js",
+      "passed": true,
+      "seconds": 0.17
+    },
+    {
+      "test": "phase-output-1.2.28.test.js",
+      "passed": true,
+      "seconds": 0.23
+    },
+    {
+      "test": "phase-recovery-1.2.28.test.js",
+      "passed": true,
+      "seconds": 0.22
+    },
+    {
+      "test": "phase-limiter-1.2.30.test.js",
+      "passed": true,
+      "seconds": 0.23
+    },
+    {
+      "test": "phase-emergency-1.2.31.test.js",
+      "passed": true,
+      "seconds": 2.74
+    },
+    {
+      "test": "hybrid-handover-1.2.33.test.js",
+      "passed": true,
+      "seconds": 0.19
+    },
+    {
+      "test": "split-resend-seconds-1.1.10.test.js",
+      "passed": true,
+      "seconds": 0.22
+    },
+    {
+      "test": "battery-response-1.2.19.test.js",
+      "passed": true,
+      "seconds": 0.68
+    },
+    {
+      "test": "efficiency.test.js",
+      "passed": true,
+      "seconds": 0.17
+    },
+    {
+      "test": "flow-slot-cards.test.js",
+      "passed": true,
+      "seconds": 1.25
+    },
+    {
+      "test": "settings-startup.test.js",
+      "passed": true,
+      "seconds": 0.08
+    },
+    {
+      "test": "settings-translations.test.js",
+      "passed": true,
+      "seconds": 0.05
+    },
+    {
+      "test": "settings-runtime-audit.test.js",
+      "passed": true,
+      "seconds": 0.11
+    },
+    {
+      "test": "settings-help-1.2.37.test.js",
+      "passed": true,
+      "seconds": 43.23
+    },
+    {
+      "test": "night-options-ui-1.2.37.test.js",
+      "passed": true,
+      "seconds": 30.65
+    },
+    {
+      "test": "settings-cache-1.0.12.test.js",
+      "passed": true,
+      "seconds": 0.32
+    },
+    {
+      "test": "ev-feedback-1.0.11.test.js",
+      "passed": true,
+      "seconds": 4.88
+    },
+    {
+      "test": "ev-input-work-1.1.12.test.js",
+      "passed": true,
+      "seconds": 51.14
+    },
+    {
+      "test": "ev-house-reference-1.2.4.test.js",
+      "passed": true,
+      "seconds": 0.84
+    },
+    {
+      "test": "ev-persistence-1.1.20.test.js",
+      "passed": true,
+      "seconds": 0.77
+    },
+    {
+      "test": "ev-flow-resume-waf-1.2.4.test.js",
+      "passed": true,
+      "seconds": 0.31,
+      "note": "Updated connection-after-restart assertion to the new requested persistent behaviour; all Flow-goal and WAF checks retained."
+    },
+    {
+      "test": "ev-plan-centralization-1.1.16.test.js",
+      "passed": true,
+      "seconds": 0.36
+    },
+    {
+      "test": "ev-mode-recording-1.2.5.test.js",
+      "passed": true,
+      "seconds": 4.81
+    },
+    {
+      "test": "ev-energy-1.2.4.test.js",
+      "passed": true,
+      "seconds": 0.24
+    },
+    {
+      "test": "ev-phase-output-1.2.29.test.js",
+      "passed": true,
+      "seconds": 1.61
+    },
+    {
+      "test": "ev-confirmed-power-1.2.4.test.js",
+      "passed": true,
+      "seconds": 3.72
+    },
+    {
+      "test": "cpu-coalescing-1.2.13.test.js",
+      "passed": true,
+      "seconds": 6.46
+    },
+    {
+      "test": "safety-recovery-1.2.39.test.js",
+      "passed": true
+    },
+    {
+      "test": "flow-output-keepalive-1.2.39.test.js",
+      "passed": true
+    },
+    {
+      "test": "ev-session-continuity-1.2.39.test.js",
+      "passed": true
+    },
+    {
+      "test": "flow-keepalive-ui-1.2.39.test.js",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 40,
+    "failed": 0,
+    "unchangedNonRecoveryComparisons": 400,
+    "newRecoveryScenarioGroups": 11,
+    "newKeepaliveScenarioGroups": 17,
+    "newEvContinuityScenarioGroups": 9,
+    "newUiLanguageConditionalChecks": 15,
+    "physicalHomeyTested": false,
+    "browserVisualCheck": "Attempted; Chromium blocked by sandbox socket EPERM",
+    "fullIndependentSuite": "Not run; unchanged HVAC, PV-curtailment, AutoTune and independent UI/recording suites omitted"
+  }
+}

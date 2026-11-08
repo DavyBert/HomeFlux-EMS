@@ -1,0 +1,32 @@
+{
+  "passed": 17,
+  "cases": [
+    "No successful normal publication means no replay, including after restart",
+    "Exact last successful payload is repeated after five minutes with no control state or extra output changes",
+    "A newer normal publication takes priority and restarts the keepalive deadline",
+    "Zero commands, inversion and eight-battery Flow tokens replay verbatim",
+    "External ownership and pending handover immediately suppress battery replay",
+    "External-mode keepalive uses existing tokens without changing any Hybrid watchdog or ownership state",
+    "Watchdog retry and fallback timelines are identical with mode keepalive enabled or disabled",
+    "Both options off preserve outputs and allocate no extra timers or settings writes",
+    "Tests, missing/stale inputs, disabled control, pending work, invalid approval and command pauses block replay",
+    "A failed normal publication removes the old receipt; a failed replay releases the mutex",
+    "Shared publication mutex prevents duplicate replay and releases an already queued normal command",
+    "No stale replay after changed sign/limits or a split/phase-modified output",
+    "An in-flight external mode write suppresses battery replay during ownership return",
+    "Mode replay uses the publication mutex, keeps watchdog retry independent and lets queued takeover output finish afterwards",
+    "Current SoC bounds, Peak Guard and EV discharge protection continue to suppress unsafe replay",
+    "Existing minute heartbeat executes replay without a new timer or evaluator",
+    "Intervals are independent and clamp to 1–60 minutes; default is five minutes"
+  ],
+  "benchmark": {
+    "hostOnly": true,
+    "calls": 10000,
+    "cpuMs": 9.73,
+    "wallMs": 4.051226000000042,
+    "receiptSerializedBytes": 784,
+    "additionalTimers": 0,
+    "additionalListeners": 0,
+    "periodicSettingWrites": 0
+  }
+}

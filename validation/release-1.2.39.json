@@ -1,0 +1,81 @@
+{
+  "version": "1.2.39",
+  "sourceVersion": "1.2.38-aangepast",
+  "sourceSha256": "a88eadf93965b333f9c2600f6b58808a4a5f22d00402ea0b70497be872eba19e",
+  "node": "22.22.0",
+  "recovery": {
+    "formula": "min(existing allowed charge limit, max(250 W, effective capacity kWh * max(0, clamped Safety SoC - mean SoC) / 100 * 6000))",
+    "tenMinutes": "Power sizing only; no forced duration, latch, timer or new hysteresis",
+    "example216kWh6to7W": 1296,
+    "completion": "Existing safety condition clears at the safety boundary; ordinary control resumes",
+    "peakGuardPhaseBatteryDistribution": "Unchanged; existing final caps still apply"
+  },
+  "keepalives": {
+    "settingsDefaultOff": true,
+    "separateIntervalsMinutes": {
+      "min": 1,
+      "max": 60,
+      "default": 5
+    },
+    "scheduler": "Existing 60-second heartbeat only",
+    "batteryCard": "battery_commands_updated",
+    "externalModeCard": "external_ems_self_consumption_requested",
+    "calculatedSetpointCard": "Not used",
+    "batteryPayload": "One successful normal Flow receipt, exact published sign convention/tokens; dropped for failures and external mode writes; only replayed if the normal publication proof is still current",
+    "zeroSetpointSupported": true,
+    "mutex": "Existing commandPublishing lock; normal work already queued while locked is drained without requesting an evaluation",
+    "modeTokens": {
+      "reason": "keepalive",
+      "retry": 0
+    },
+    "watchdog": "No ownership/watchdog state reset; retry/fallback comparison passed, including an in-flight periodic mode write",
+    "minimumNormalCommandIntervalAndDeadband": "Unchanged",
+    "splitCommandSafetyResend": "Unchanged",
+    "periodicSettingWrites": 0,
+    "hostBenchmark": {
+      "hostOnly": true,
+      "calls": 10000,
+      "cpuMs": 9.73,
+      "wallMs": 4.051226000000042,
+      "receiptSerializedBytes": 784,
+      "additionalTimers": 0,
+      "additionalListeners": 0,
+      "periodicSettingWrites": 0
+    }
+  },
+  "evContinuity": {
+    "checkpoint": "_evSessionContinuity",
+    "maximumRecords": 4,
+    "persisted": "Last known connection flag/time and explicit Flow-ended latch/time",
+    "storedCurrentAndSoc": false,
+    "writeCadence": "Connection transitions or explicit Flow session end only",
+    "restart": "Known connected status and Flow block restored; first repeated true report does not rearm",
+    "newSession": "Confirmed disconnect clears the block; reconnect starts a new session",
+    "clockRollback": "Does not erase an explicit Flow-stop intent",
+    "settingsCacheInvalidatedByCheckpoint": false
+  },
+  "validation": {
+    "passed": 40,
+    "failed": 0,
+    "unchangedNonRecoveryComparisons": 400,
+    "newRecoveryScenarioGroups": 11,
+    "newKeepaliveScenarioGroups": 17,
+    "newEvContinuityScenarioGroups": 9,
+    "newUiLanguageConditionalChecks": 15,
+    "physicalHomeyTested": false,
+    "browserVisualCheck": "Attempted; Chromium blocked by sandbox socket EPERM",
+    "fullIndependentSuite": "Not run; unchanged HVAC, PV-curtailment, AutoTune and independent UI/recording suites omitted"
+  },
+  "syntax": "All changed/new JavaScript, inline settings scripts and changed JSON passed",
+  "homeyBuild": "Passed with CLI 4.6.2; debug validation",
+  "flowDefinitionsUnchanged": 231,
+  "settingsControlsRetained": 1261,
+  "newSettingsControls": 4,
+  "dependenciesAdded": false,
+  "untested": [
+    "Physical Homey/battery/EV transport and real hardware response",
+    "Visual browser inspection: Chromium startup blocked by sandbox socket EPERM; settings DOM/save/reopen tested in five languages",
+    "Unchanged independent regression suites omitted"
+  ],
+  "operationalLimit": "If an EV is unplugged and replugged while the app is stopped, that unobserved disconnect cannot be inferred from a later connected=true alone. Explicit Flow-stop intent remains conservatively blocked until a disconnect is observed."
+}

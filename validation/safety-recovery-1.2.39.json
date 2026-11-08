@@ -1,0 +1,17 @@
+{
+  "passed": 11,
+  "cases": [
+    "A 1 percentage point deficit in 21.6 kWh asks 1296 W, not 10 kW",
+    "Requested recovery tapers to the 250 W floor as SoC approaches safety",
+    "Floor obeys limits below 250 W, including a disabled charge ceiling",
+    "A large deficit can reach the configured maximum but never bypasses battery limits",
+    "Peak Guard still caps recovery below the recovery floor when necessary",
+    "Recovery exits exactly at safety without a new latch or discharge block",
+    "Reaching safety after two minutes ends recovery; ten minutes is not a mandatory duration",
+    "Effective capacity uses only valid batteries and respects individual capacities",
+    "Safety target remains clamped to the existing configured min/max range",
+    "Safety recovery stays independent of cheap/expensive tariff windows",
+    "400 non-recovery input combinations retain the exact 1.2.38 engine output"
+  ],
+  "unchanged138Comparisons": 400
+}

@@ -37,6 +37,8 @@ const savingsHistory = require('./lib/savings-history');
 const hvacPermanent = require('./lib/hvac-permanent');
 const hvacPresentation = require('./lib/hvac-presentation');
 const hvacCoordination = require('./lib/hvac-coordination');
+const flowOutputKeepalive = require('./lib/flow-output-keepalive');
+const evSessionContinuity = require('./lib/ev-session-continuity');
 const phaseGuard = require('./lib/phase-guard');
 const evPhaseGuard = require('./lib/ev-phase-guard');
 const autoTunePlanning = require('./lib/autotune-planning');
@@ -146,6 +148,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.lastEmitAt = 0;
     this.nextCommandAllowedAt = 0;
     this.commandPublishing = false;
+    this.flowOutputKeepalive = { battery: null, batteryAt: 0, externalAt: 0, externalPublishing: 0 };
     this.pendingCommandBypassInterval = false;
     this.chargeTestManualApproval=this.homey.settings.get('_chargeTestManualApproval')||null;
     this.chargeTestRunning = false;
@@ -363,6 +366,7 @@ class HomeFluxEmsApp extends Homey.App {
       pvSession: { active: false, rateId: '', overImportSince: 0, belowPvSince: 0 },
       latestDecision: null,
     }));
+    evSessionContinuity.restore(this);
     this.extraHvacInstances = Array.from({ length: 9 }, () => ({
       state: { roomTemperatureC: null, outdoorTemperatureC: null, mode: 'off', setpointC: null, fanSpeed: null },
       seen: { roomTemperature: false, outdoorTemperature: false, mode: false, setpoint: false, fanSpeed: false },
@@ -512,7 +516,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.settingsListener = async key => {
       if (this.shuttingDown) return;
       try {
-        if (key === '_hvacPermanent' || key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
+        if (key === '_evSessionContinuity' || key === '_hvacPermanent' || key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
         // These keys persist EV state already changed by its handler or
         // energy accounting. Goal changes request their own context; energy
         // completion stops immediately. A later settings callback must not
@@ -720,6 +724,7 @@ class HomeFluxEmsApp extends Homey.App {
       try {
         this.sampleDiagnostics(Date.now());
         this.runContextHeartbeat();
+        flowOutputKeepalive.tick(this).catch(err => this.error('Flow output keepalive failed', err));
         this.runEvHeartbeat().catch(err => this.error('EV heartbeat dispatch failed', err));
       } finally {
         this.endDiagnosticCpuSection(diagnosticCpu);
@@ -788,7 +793,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   setSetting(key, value) {
-    if (key === '_hvacPermanent') { this.homey.settings.set(key, value); return; }
+    if (key === '_hvacPermanent' || key === '_evSessionContinuity') { this.homey.settings.set(key, value); return; }
     // Internal bookkeeping does not change the control settings. Actual engine
     // inputs still invalidate the memo through dependencies/context boundaries.
     const widgetPreference = evDashboard.isSetting(String(key));
@@ -9181,6 +9186,7 @@ class HomeFluxEmsApp extends Homey.App {
       detectionSource: String(session.detectionSource || 'flow'),
       zeroCurrentSince: 0,
     });
+    if (session.endedLatched && session.endedReason === 'flow') evSessionContinuity.persist(this);
     // Finishing/stopping a session is not a physical cable disconnection.
     // Keep the binding and remaining energy through restart while connected;
     // only a real disconnected input arms the full kWh goal for a new cable
@@ -11707,6 +11713,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.markEvPlanChanged(index, 'connection');
       this.handleEvSessionConnectionTransitionFor(index, wasConnected, nextConnected);
       this.handleEvDetectionConnectionTransition(index, wasConnected, nextConnected, now);
+      evSessionContinuity.persist(this);
     }
     if (hasCurrent) {
       // A repeated mode-current sample is a liveness update, not a new
@@ -14998,12 +15005,18 @@ class HomeFluxEmsApp extends Homey.App {
 
   async requestExternalEmsSelfConsumption(reason = 'delegate', retry = false) {
     if (!this.externalEmsSelfConsumptionTrigger) return false;
+    flowOutputKeepalive.invalidate(this);
+    const keepalive = flowOutputKeepalive.runtime(this);
+    keepalive.externalPublishing++;
     try {
       await this.externalEmsSelfConsumptionTrigger.trigger(this.localizeDisplayTokens({ reason: String(reason), retry: retry ? 1 : 0 }), {});
+      keepalive.externalAt = Date.now();
       return true;
     } catch (err) {
       this.error('External EMS self-consumption trigger failed', err);
       return false;
+    } finally {
+      keepalive.externalPublishing--;
     }
   }
 
@@ -15886,6 +15899,7 @@ class HomeFluxEmsApp extends Homey.App {
     // Reference only the output that completed all token/Flow writes. Clear it
     // before attempting a command: failed/partial writes are never idle proof.
     this.batteryIdleKnownOutput = null;
+    flowOutputKeepalive.invalidate(this);
     this.recordDiagnosticCounter('batteryCommandPublishes');
     const diagnosticCpu = this.startDiagnosticCpuSection('battery_command_publish');
 
@@ -15943,10 +15957,12 @@ class HomeFluxEmsApp extends Homey.App {
       };
       for (let i = 1; i <= 8; i += 1) triggerTokens[`battery${i}command`] = commands[i - 1] || 0;
 
-      await this.commandTrigger.trigger(this.localizeDisplayTokens(triggerTokens), {
+      const publishedFlowTokens = this.localizeDisplayTokens(triggerTokens);
+      const publishedFlowState = {
         mode: result.baseMode,
         override: result.override || '',
-      });
+      };
+      await this.commandTrigger.trigger(publishedFlowTokens, publishedFlowState);
 
       // Split-command batteries use dedicated mode/power Flow cards. A mode
       // transition is followed by its power card exactly one second later. If
@@ -16049,6 +16065,7 @@ class HomeFluxEmsApp extends Homey.App {
         // invalidate a fresh proof established from that new output.
         this.requestContextEvaluate(false, 'battery_output_changed', 0, false, false);
       }
+      flowOutputKeepalive.remember(this, publishedFlowTokens, publishedFlowState, internalCommands, settings);
     } catch (err) {
       if(settings.phaseGuard?.enabled&&Number(settings.phaseGuard.phases)===3){const runtime=this.phaseGuardRuntime ||= {};runtime.publicationUncertain=true;}
       this.recordDiagnosticBatteryOutput(result, 'failed', this.inFlightBatteryCommands, err);
