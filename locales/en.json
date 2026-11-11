@@ -30,6 +30,10 @@
       "days": "days"
     },
     "status": {
+      "phaseGuardReceptionWarning": "3-phase monitoring: missing or outdated L1/L2/L3 readings. Check the three-phase grid Flow.",
+      "phaseReceptionReceived": "received",
+      "phaseReceptionMissing": "not received",
+      "phaseReceptionStale": "outdated",
       "currentDecision": "Current decision",
       "currentTariff": "Current tariff",
       "emsMode": "EMS mode",
@@ -298,7 +302,11 @@
       "on": "On",
       "wafGridRoom": "Grid room",
       "wafRoomSnapshot": "Rounded down; checked each minute",
-      "wafPeakGuardHold": "Peak Guard: advice paused until at least one minute without intervention"
+      "wafPeakGuardHold": "Peak Guard: advice paused until at least one minute without intervention",
+      "modeInjection": "Export to grid",
+      "reasonInjectionActive": "Active export mode is controlling the battery to supply energy to the grid",
+      "reasonSaveLowPv": "Low PV forecast: the active tariff rule preserves battery energy for later",
+      "reasonSaveLowPvTarget": "Low PV forecast: the reserve up to the calculated planning target is protected"
     }
   },
   "evWidget": {
@@ -322,6 +330,7 @@
     "month": "Month",
     "all": "All",
     "solarKm": "Estimated range powered by solar",
+    "gridKm": "Estimated range charged from the grid",
     "energySplit": "Charging energy sources",
     "solarEnergy": "Solar to EV",
     "gridEnergy": "Grid to EV",

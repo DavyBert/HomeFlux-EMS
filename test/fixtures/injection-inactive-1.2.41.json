@@ -1,0 +1,1106 @@
+{
+  "sourceVersion": "1.2.41",
+  "sourceSha256": "261dd816c46f4df8eacaccf60abe055d5007fccf91e08147acf0ad32f069482a",
+  "cases": [
+    {
+      "commands": [
+        -5200
+      ],
+      "totalCommandW": -5200,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -4675
+      ],
+      "totalCommandW": -4675,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -4150
+      ],
+      "totalCommandW": -4150,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -3100
+      ],
+      "totalCommandW": -3100,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -2575
+      ],
+      "totalCommandW": -2575,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -2050
+      ],
+      "totalCommandW": -2050,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -3800
+      ],
+      "totalCommandW": -3800,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -3275
+      ],
+      "totalCommandW": -3275,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -2750
+      ],
+      "totalCommandW": -2750,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -1700
+      ],
+      "totalCommandW": -1700,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -1175
+      ],
+      "totalCommandW": -1175,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -3450
+      ],
+      "totalCommandW": -3450,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -2400
+      ],
+      "totalCommandW": -2400,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -1875
+      ],
+      "totalCommandW": -1875,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -1350
+      ],
+      "totalCommandW": -1350,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -300
+      ],
+      "totalCommandW": -300,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -2575
+      ],
+      "totalCommandW": -2575,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -2050
+      ],
+      "totalCommandW": -2050,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -1000
+      ],
+      "totalCommandW": -1000,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -475
+      ],
+      "totalCommandW": -475,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        50
+      ],
+      "totalCommandW": 50,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -1700
+      ],
+      "totalCommandW": -1700,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -1175
+      ],
+      "totalCommandW": -1175,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        -650
+      ],
+      "totalCommandW": -650,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        1450
+      ],
+      "totalCommandW": 1450,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        -300
+      ],
+      "totalCommandW": -300,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        750
+      ],
+      "totalCommandW": 750,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        50
+      ],
+      "totalCommandW": 50,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        2150
+      ],
+      "totalCommandW": 2150,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        275
+      ],
+      "totalCommandW": 275,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        800
+      ],
+      "totalCommandW": 800,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        1450
+      ],
+      "totalCommandW": 1450,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "standby",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        100
+      ],
+      "totalCommandW": 100,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        625
+      ],
+      "totalCommandW": 625,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        3550
+      ],
+      "totalCommandW": 3550,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        1675
+      ],
+      "totalCommandW": 1675,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        0
+      ],
+      "totalCommandW": 0,
+      "baseMode": "solar_capture",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        2850
+      ],
+      "totalCommandW": 2850,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        975
+      ],
+      "totalCommandW": 975,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        1500
+      ],
+      "totalCommandW": 1500,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        2025
+      ],
+      "totalCommandW": 2025,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        4950
+      ],
+      "totalCommandW": 4950,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        275
+      ],
+      "totalCommandW": 275,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        800
+      ],
+      "totalCommandW": 800,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        1325
+      ],
+      "totalCommandW": 1325,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        4250
+      ],
+      "totalCommandW": 4250,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        2375
+      ],
+      "totalCommandW": 2375,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        2900
+      ],
+      "totalCommandW": 2900,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        3425
+      ],
+      "totalCommandW": 3425,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        3550
+      ],
+      "totalCommandW": 3550,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        1675
+      ],
+      "totalCommandW": 1675,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        2200
+      ],
+      "totalCommandW": 2200,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        2725
+      ],
+      "totalCommandW": 2725,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        5650
+      ],
+      "totalCommandW": 5650,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        3775
+      ],
+      "totalCommandW": 3775,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        4300
+      ],
+      "totalCommandW": 4300,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        2025
+      ],
+      "totalCommandW": 2025,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        4950
+      ],
+      "totalCommandW": 4950,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        3075
+      ],
+      "totalCommandW": 3075,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        3600
+      ],
+      "totalCommandW": 3600,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        4125
+      ],
+      "totalCommandW": 4125,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        7050
+      ],
+      "totalCommandW": 7050,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        5175
+      ],
+      "totalCommandW": 5175,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        2900
+      ],
+      "totalCommandW": 2900,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        3425
+      ],
+      "totalCommandW": 3425,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        6350
+      ],
+      "totalCommandW": 6350,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        4475
+      ],
+      "totalCommandW": 4475,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        5000
+      ],
+      "totalCommandW": 5000,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        5525
+      ],
+      "totalCommandW": 5525,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        8450
+      ],
+      "totalCommandW": 8450,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        3775
+      ],
+      "totalCommandW": 3775,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        4300
+      ],
+      "totalCommandW": 4300,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        4825
+      ],
+      "totalCommandW": 4825,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        7750
+      ],
+      "totalCommandW": 7750,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        5875
+      ],
+      "totalCommandW": 5875,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        6400
+      ],
+      "totalCommandW": 6400,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        6925
+      ],
+      "totalCommandW": 6925,
+      "baseMode": "solar_capture",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 100
+    },
+    {
+      "commands": [
+        7050
+      ],
+      "totalCommandW": 7050,
+      "baseMode": "self_consumption",
+      "override": null,
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    },
+    {
+      "commands": [
+        5175
+      ],
+      "totalCommandW": 5175,
+      "baseMode": "standby",
+      "override": "peak_shave",
+      "plannedChargeW": 0,
+      "targetSoc": 10,
+      "ordinaryDischargeFloorSoc": 10
+    }
+  ]
+}

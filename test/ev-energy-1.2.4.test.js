@@ -177,8 +177,38 @@ const check=(name,fn)=>{fn();cases.push(name);};
     const unavailable=a.getEvSavingsReadings(h.now(),h.now()+10000,a.getSettings())[0];
     near(unavailable.powerW,0);near(unavailable.coveredSeconds,0);
     cases.push('Mode-command estimates or unreliable phase/current feedback can be explicitly excluded without changing EV control');
-    const saved=a.savings.today.ev.total.pvKwh;a.setSetting('evConsumptionKwhPer100Km',25);a.getEvDashboard();near(a.savings.today.ev.total.pvKwh,saved);
+    const saved=a.savings.today.ev.total.pvKwh;
+    a.setSetting('evConsumptionKwhPer100Km',25);
+    const evView=a.getEvDashboard().evs[0];
+    assert(evView.insights,'EV Insights exists for recorded charging');
+    near(evView.insights.solarKm,evView.insights.pvKwh/25*100);
+    near(evView.insights.gridKm,evView.insights.gridKwh/25*100);
+    near(a.savings.today.ev.total.pvKwh,saved);
     cases.push('Consumption changes only recomputed range, never stored energy');
+    const four=await setup(undefined,{evCount:4,batteryCount:0,controlEnabled:false},start,0);
+    const fourApp=four.app;
+    fourApp.savings.today=run({pv:5000,grid:10000,readings:[reading(1,3000),reading(2,4000),reading(3,3000),reading(4,2000)]});
+    fourApp.savings.history={};
+    for(const [i,cons] of [15,20,25,30].entries()){
+      const key=i===0?'evConsumptionKwhPer100Km':`ev${i+1}ConsumptionKwhPer100Km`;
+      fourApp.setSetting(key,cons);
+    }
+    const ranges=fourApp.getEvDashboard('day').evs;
+    assert.equal(ranges.length,4);
+    for(const [i,ev] of ranges.entries()){
+      assert(ev.insights,`EV ${i+1} must have recorded Insights`);
+      near(ev.insights.gridKm,ev.insights.gridKwh/[15,20,25,30][i]*100);
+      near(ev.insights.solarKm,ev.insights.pvKwh/[15,20,25,30][i]*100);
+    }
+    const stored=JSON.stringify(fourApp.savings.today);
+    fourApp.setSetting('ev2ConsumptionKwhPer100Km',10);
+    const changed=fourApp.getEvDashboard('day').evs[1];
+    near(changed.insights.gridKm,changed.insights.gridKwh/10*100);
+    assert.equal(JSON.stringify(fourApp.savings.today),stored);
+    fourApp.setSetting('ev2ConsumptionKwhPer100Km',0);
+    const invalid=fourApp.getEvDashboard('day').evs[1];
+    assert.equal(invalid.insights.gridKm,null);assert.equal(invalid.insights.solarKm,null);
+    cases.push('Grid kilometres use independent consumption settings for EV 1–4; invalid consumption never fabricates range');
     let scans=0;const source=a.savings.history;a.savings.history=new Proxy(source,{ownKeys(t){scans++;return Reflect.ownKeys(t);}});a.savingsHistoryCache.clear();
     a.getEvDashboard('all');const count=scans;for(let i=0;i<100;i++)a.getEvDashboard('all');assert.equal(scans,count);
     cases.push('100 Insights widgets/reads reuse the SAME central historical aggregate and oldest-date cache');

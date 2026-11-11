@@ -30,6 +30,10 @@
       "days": "días"
     },
     "status": {
+      "phaseGuardReceptionWarning": "Control trifásico: faltan datos L1/L2/L3 o están desactualizados. Revise el Flow trifásico.",
+      "phaseReceptionReceived": "recibido",
+      "phaseReceptionMissing": "no recibido",
+      "phaseReceptionStale": "desactualizado",
       "currentDecision": "Decisión actual",
       "currentTariff": "Tarifa actual",
       "emsMode": "Modo EMS",
@@ -298,7 +302,11 @@
       "on": "Encendido",
       "wafGridRoom": "Margen de red",
       "wafRoomSnapshot": "Redondeado hacia abajo; comprobado cada minuto",
-      "wafPeakGuardHold": "Peak Guard: consejo suspendido hasta al menos un minuto sin intervención"
+      "wafPeakGuardHold": "Peak Guard: consejo suspendido hasta al menos un minuto sin intervención",
+      "modeInjection": "Exportar a la red",
+      "reasonInjectionActive": "El modo de exportación activo controla la batería para suministrar energía a la red",
+      "reasonSaveLowPv": "Previsión FV baja: la regla tarifaria activa conserva energía de la batería para más tarde",
+      "reasonSaveLowPvTarget": "Previsión FV baja: se protege la reserva hasta el objetivo de planificación calculado"
     }
   },
   "evWidget": {
@@ -322,6 +330,7 @@
     "month": "Mes",
     "all": "Todo",
     "solarKm": "Rango estimado alimentado por energía solar",
+    "gridKm": "Kilómetros estimados cargados desde la red",
     "energySplit": "Carga de fuentes de energía",
     "solarEnergy": "Solar a EV",
     "gridEnergy": "Grid to EV",

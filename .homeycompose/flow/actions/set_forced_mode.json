@@ -77,6 +77,16 @@
             "es": "Espera",
             "de": "Standby"
           }
+        },
+        {
+          "id": "injection",
+          "title": {
+            "nl": "Injecteren",
+            "en": "Export to grid",
+            "fr": "Injecter",
+            "de": "Einspeisen",
+            "es": "Exportar a la red"
+          }
         }
       ]
     }

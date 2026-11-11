@@ -1,0 +1,218 @@
+{
+  "title": {
+    "nl": "Stel actuele terugleverprijs in",
+    "en": "Set current feed-in price",
+    "fr": "Définir le prix de revente actuel",
+    "de": "Aktuellen Einspeisepreis setzen",
+    "es": "Establecer precio de vertido actual"
+  },
+  "hint": {
+    "nl": "Actuele exportprijs, geldig tot het volgende kwartier, ook bij een uurbron. Daarna gebruikt injectie de actuele inkoopprijs min de injectiekost. De startdrempel geldt vóór deze aftrek. De valuta moet overeenkomen met het contract. Een kaart die exact om 14:15 binnenkomt, geldt tot 14:30.",
+    "en": "Current export price, valid until the next quarter-hour, including hourly sources. Export then uses the current import price minus the export cost. The start threshold applies before this deduction. Currency must match the contract. A card received exactly at 14:15 is valid until 14:30.",
+    "fr": "Prix de revente actuel, valable jusqu’au prochain quart d’heure, même pour une source horaire. Ensuite, l’injection utilise le prix d’achat actuel moins le coût d’injection. Le seuil de démarrage s’applique avant cette déduction. La devise doit correspondre au contrat. Une carte reçue exactement à 14:15 est valable jusqu’à 14:30.",
+    "de": "Aktueller Einspeisepreis, gültig bis zur nächsten Viertelstunde, auch bei einer stündlichen Quelle. Danach wird der aktuelle Bezugspreis abzüglich der Einspeisekosten verwendet. Die Startschwelle gilt vor diesem Abzug. Die Währung muss zum Vertrag passen. Eine genau um 14:15 empfangene Karte gilt bis 14:30.",
+    "es": "Precio de exportación actual, válido hasta el siguiente cuarto de hora, también para fuentes horarias. Después se usa el precio de compra actual menos el coste de exportación. El umbral se aplica antes de este descuento. La moneda debe coincidir con el contrato. Una tarjeta recibida exactamente a las 14:15 es válida hasta las 14:30."
+  },
+  "args": [
+    {
+      "name": "price",
+      "type": "number",
+      "min": -10000,
+      "max": 100000,
+      "step": 0.0001,
+      "title": {
+        "nl": "Terugleverprijs",
+        "en": "Feed-in price",
+        "fr": "Prix de revente",
+        "de": "Einspeisepreis",
+        "es": "Precio de vertido"
+      }
+    },
+    {
+      "name": "currency",
+      "type": "dropdown",
+      "title": {
+        "nl": "Valuta",
+        "en": "Currency",
+        "fr": "Devise",
+        "de": "Währung",
+        "es": "Moneda"
+      },
+      "values": [
+        {
+          "id": "EUR",
+          "title": {
+            "nl": "EUR",
+            "en": "EUR",
+            "fr": "EUR",
+            "de": "EUR",
+            "es": "EUR"
+          }
+        },
+        {
+          "id": "GBP",
+          "title": {
+            "nl": "GBP",
+            "en": "GBP",
+            "fr": "GBP",
+            "de": "GBP",
+            "es": "GBP"
+          }
+        },
+        {
+          "id": "USD",
+          "title": {
+            "nl": "USD",
+            "en": "USD",
+            "fr": "USD",
+            "de": "USD",
+            "es": "USD"
+          }
+        },
+        {
+          "id": "CHF",
+          "title": {
+            "nl": "CHF",
+            "en": "CHF",
+            "fr": "CHF",
+            "de": "CHF",
+            "es": "CHF"
+          }
+        },
+        {
+          "id": "SEK",
+          "title": {
+            "nl": "SEK",
+            "en": "SEK",
+            "fr": "SEK",
+            "de": "SEK",
+            "es": "SEK"
+          }
+        },
+        {
+          "id": "NOK",
+          "title": {
+            "nl": "NOK",
+            "en": "NOK",
+            "fr": "NOK",
+            "de": "NOK",
+            "es": "NOK"
+          }
+        },
+        {
+          "id": "DKK",
+          "title": {
+            "nl": "DKK",
+            "en": "DKK",
+            "fr": "DKK",
+            "de": "DKK",
+            "es": "DKK"
+          }
+        },
+        {
+          "id": "PLN",
+          "title": {
+            "nl": "PLN",
+            "en": "PLN",
+            "fr": "PLN",
+            "de": "PLN",
+            "es": "PLN"
+          }
+        },
+        {
+          "id": "CZK",
+          "title": {
+            "nl": "CZK",
+            "en": "CZK",
+            "fr": "CZK",
+            "de": "CZK",
+            "es": "CZK"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unit",
+      "type": "dropdown",
+      "title": {
+        "nl": "Prijseenheid",
+        "en": "Price unit",
+        "fr": "Unité du prix",
+        "de": "Preiseinheit",
+        "es": "Unidad de precio"
+      },
+      "values": [
+        {
+          "id": "kWh",
+          "title": {
+            "nl": "kWh",
+            "en": "kWh",
+            "fr": "kWh",
+            "de": "kWh",
+            "es": "kWh"
+          }
+        },
+        {
+          "id": "cent/kWh",
+          "title": {
+            "nl": "cent/kWh",
+            "en": "cent/kWh",
+            "fr": "cent/kWh",
+            "de": "cent/kWh",
+            "es": "cent/kWh"
+          }
+        },
+        {
+          "id": "MWh",
+          "title": {
+            "nl": "MWh",
+            "en": "MWh",
+            "fr": "MWh",
+            "de": "MWh",
+            "es": "MWh"
+          }
+        }
+      ]
+    },
+    {
+      "name": "minutes",
+      "type": "dropdown",
+      "title": {
+        "nl": "Broninterval (minuten)",
+        "en": "Source interval (minutes)",
+        "fr": "Intervalle source (minutes)",
+        "de": "Quellintervall (Minuten)",
+        "es": "Intervalo de origen (minutos)"
+      },
+      "values": [
+        {
+          "id": "15",
+          "title": {
+            "nl": "15",
+            "en": "15",
+            "fr": "15",
+            "de": "15",
+            "es": "15"
+          }
+        },
+        {
+          "id": "60",
+          "title": {
+            "nl": "60",
+            "en": "60",
+            "fr": "60",
+            "de": "60",
+            "es": "60"
+          }
+        }
+      ]
+    }
+  ],
+  "titleFormatted": {
+    "nl": "Actuele terugleverprijs [[price]] ([[currency]], [[unit]]) · bron [[minutes]] min · tot volgend kwartier",
+    "en": "Current feed-in price [[price]] ([[currency]], [[unit]]) · source [[minutes]] min · until next quarter-hour",
+    "fr": "Prix de revente [[price]] ([[currency]], [[unit]]) · source [[minutes]] min · jusqu’au prochain quart d’heure",
+    "de": "Einspeisepreis [[price]] ([[currency]], [[unit]]) · Quelle [[minutes]] Min. · bis zur nächsten Viertelstunde",
+    "es": "Precio de exportación [[price]] ([[currency]], [[unit]]) · fuente [[minutes]] min · hasta el siguiente cuarto de hora"
+  }
+}

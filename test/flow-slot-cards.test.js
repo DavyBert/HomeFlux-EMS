@@ -55,6 +55,20 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
         args: expected.args.map((arg, index) => index === 0
           ? { ...arg, min: -200000, max: 200000 } : arg),
       }, 'P1 range may expand without changing the remaining Flow schema');
+    } else if ((kind === 'actions' && previous.id === 'set_forced_mode')
+      || (kind === 'conditions' && previous.id === 'ems_mode_is')) {
+      // 1.3.1 adds exactly one dropdown value. Every old value, argument,
+      // translation and card ID remains unchanged for saved Flows.
+      assert.deepEqual(card, {
+        ...expected,
+        args: expected.args.map(arg => arg.name === 'mode' ? {
+          ...arg,
+          values: [...arg.values, {
+            id: 'injection',
+            title: { nl: 'Injecteren', en: 'Export to grid', fr: 'Injecter', de: 'Einspeisen', es: 'Exportar a la red' },
+          }],
+        } : arg),
+      }, `Only the new injection value may extend ${card.id}`);
     } else if (displayMetadataChangeIds.has(previous.id)) {
       assert.deepEqual(withoutDisplayMetadata(card), withoutDisplayMetadata(expected),
         `Old functional schema changed: ${previous.id}`);
@@ -67,9 +81,11 @@ for (const kind of ['actions', 'triggers', 'conditions']) {
     assert.deepEqual(card, { id: card.id, ...composed }, `Manifest/Compose mismatch: ${card.id}`);
   }
 }
-assert.equal(manifest.flow.actions.filter(c => !c.deprecated).length, 29);
-assert.equal(manifest.flow.triggers.filter(c => !c.deprecated).length, 26);
-assert.equal(manifest.flow.conditions.filter(c => !c.deprecated).length, 20);
+// 1.3.1 adds three actions, two triggers and two conditions for injection.
+// Legacy schemas stay exact except the explicitly checked additive mode value.
+assert.equal(manifest.flow.actions.filter(c => !c.deprecated).length, 32);
+assert.equal(manifest.flow.triggers.filter(c => !c.deprecated).length, 28);
+assert.equal(manifest.flow.conditions.filter(c => !c.deprecated).length, 22);
 for (const [kind, items] of Object.entries(definitions)) {
   for (const d of items) {
     const card = manifest.flow[kind].find(c => c.id === d.id);

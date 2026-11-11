@@ -11,7 +11,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
  const dictionary=require('../locales/'+language+'.json');
  let data={currency:'€',evs:Array.from({length:count},(_,i)=>({id:String(i+1),name:i?'City EV':'Family EV',connected:true,soc:62,state:'scheduled',
   plan:{type:'soc',value:80,time:'07:00',guaranteed:false},schedule:{mode:'smart',source:'flow',target:{type:'soc',value:80},time:'07:00',guaranteed:false},presets:{mode:'soc',soc:[60,80,100],kwh:[5,10,20],times:['07:00','12:00','17:00']},
-  insights:{kwh:12,pvKwh:8.4,gridKwh:3.6,batteryKwh:0,unknownKwh:0,gridCost:1.08,solarValue:.252,solarSavings:2.268,solarKm:46.66667},incomplete:false})),sharedKwh:0};
+  insights:{kwh:12,pvKwh:8.4,gridKwh:3.6,batteryKwh:0,unknownKwh:0,gridCost:1.08,solarValue:.252,solarSavings:2.268,solarKm:46.66667,gridKm:20},incomplete:false})),sharedKwh:0};
  const H={getWidgetInstanceId:()=>instanceId,getSettings:()=>({...status===null?{}:{showStatus:status},showScheduler:scheduler,showInsights:insights,switchSections:switching}),ready(){},setHeight(){},on:(k,cb)=>{listeners[k]=cb;},
   __:key=>key.split('.').reduce((v,k)=>v?.[k],dictionary)||key,
   api:async(method,url,body)=>{calls.push({method,url,body});if(method==='GET')return structuredClone(data);const ev=data.evs.find(e=>e.id===body.evId);if(body.change.deadline){ev.plan={...ev.plan,owner:'widget',manualDate:true,days:0,time:body.change.deadline.time,deadlineLabel:{dateKey:body.change.deadline.dateKey,en:body.change.deadline.dateKey,nl:body.change.deadline.dateKey}};return {accepted:true,plan:structuredClone(ev.plan)};}return {accepted:true,plan:{...ev.plan,time:body.change.time||'07:00'}};}};
@@ -33,11 +33,40 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
  for(const language of ['en','nl'])for(const [scheduler,insights]of [[true,true],[true,false],[false,true],[false,false]]){
   const h=await session({language,scheduler,insights});
   assert.equal(h.host.innerHTML.includes('data-key="goal0"'),scheduler);
-  assert.equal(h.host.innerHTML.includes('class="km"'),insights);
+  assert.equal(h.host.innerHTML.includes('class="km" style='),insights);
+  if(insights){
+   assert(h.host.innerHTML.includes('class="range-split"'));
+   assert(/class="solar"[^>]*><span class="km"[^>]*>47<\/span>/.test(h.host.innerHTML));
+   assert(/class="grid-range"[^>]*><span class="km"[^>]*>20<\/span>/.test(h.host.innerHTML));
+   assert(h.host.innerHTML.indexOf('class="solar"')<h.host.innerHTML.indexOf('class="grid-range"'));
+  }
+
   assert(h.host.innerHTML.includes('data-ev="2"'),'EV selector exists in every display mode');
   assert(!h.host.innerHTML.includes('evWidget.'),'all user-facing translations resolved');
   assert.equal(h.timers.size,0,'no polling or local interval');
   reports.push(language+': independent visibility '+scheduler+'/'+insights);
+ }
+ for(const language of ['nl','en','fr','de','es']){
+  const h=await session({language,scheduler:false,insights:true,count:1});
+  const dict=require('../locales/'+language+'.json').evWidget;
+  assert(h.host.innerHTML.includes(dict.gridKm.replace(/'/g,'&#39;')),language+' grid kilometres label');
+  assert(h.host.innerHTML.includes(dict.solarKm.replace(/'/g,'&#39;')),language+' solar kilometres label');
+  assert(!h.host.innerHTML.includes('evWidget.gridKm'),language+' no unresolved translation');
+  assert.equal(h.timers.size,0,language+' no new polling');
+  reports.push(language+': solar and grid range translation');
+ }
+ {
+  const h=await session({language:'nl',scheduler:false,insights:true,count:2});
+  h.data().evs[1].insights={...h.data().evs[1].insights,solarKm:19.2,gridKm:37.8};
+  await h.click({ev:'2'});
+  assert(/class="grid-range"[^>]*><span class="km"[^>]*>38<\/span>/.test(h.host.innerHTML));
+  assert(/class="solar"[^>]*><span class="km"[^>]*>19<\/span>/.test(h.host.innerHTML));
+  await h.click({period:'week'});
+  assert(/class="grid-range"[^>]*><span class="km"[^>]*>38<\/span>/.test(h.host.innerHTML));
+  h.data().evs[1].insights.gridKm=null;
+  h.listeners['homeflux.ev.changed']();await h.drain();
+  assert(/class="grid-range"[^>]*><span class="km"[^>]*>—<\/span>/.test(h.host.innerHTML));
+  reports.push('Individual EV source kilometres, period switch and unknown grid range are shown correctly');
  }
  for(const language of ['en','nl']){
   const h=await session({language,scheduler:false,insights:true,count:1});
@@ -100,7 +129,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
   assert(html.indexOf('data-section="scheduler"')<html.indexOf('data-section="insights"'));
   assert(html.includes('data-section="status" class="active"'));
   assert(html.includes('status-summary'));assert(html.includes('80%'));assert(html.includes('07:00'));
-  assert(!html.includes('data-key='));assert(!html.includes('class="km"'));assert(!html.includes('evWidget.'));
+  assert(!html.includes('data-key='));assert(!html.includes('class="km" style='));assert(!html.includes('evWidget.'));
   const before=status.calls.length;
   // Even a stale click object from a removed Planning button cannot edit a plan.
   await status.click(target);await status.click(target);assert.equal(status.calls.length,before);
@@ -108,7 +137,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
   await status.click(target);assert.equal(status.timers.size,1);
   await status.click({section:'status'});assert.equal(status.timers.size,0);assert(!status.host.innerHTML.includes('data-key='));
   await status.click(target);await status.click(target);assert.equal(status.calls.length,before);
-  await status.click({section:'insights'});assert(status.host.innerHTML.includes('class="km"'));
+  await status.click({section:'insights'});assert(status.host.innerHTML.includes('class="km" style='));
   await status.click({section:'status'});assert.equal(status.calls.length,before);
   await status.click({ev:'2'});assert(status.host.innerHTML.includes('City EV'));assert(status.host.innerHTML.includes('status-summary'));
   assert.equal(status.calls.filter(c=>c.method==='POST').length,0);assert.equal(status.timers.size,0);
@@ -117,7 +146,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
  for(const language of ['en','nl'])for(const switching of [false,true]){
   const compact=await session({status:true,scheduler:false,insights:false,switching,language,count:1});
   assert(compact.host.innerHTML.includes('status-summary'));assert(!compact.host.innerHTML.includes('data-section='));
-  assert(!compact.host.innerHTML.includes('data-key='));assert(!compact.host.innerHTML.includes('class="km"'));
+  assert(!compact.host.innerHTML.includes('data-key='));assert(!compact.host.innerHTML.includes('class="km" style='));
   assert(!compact.host.innerHTML.includes(language==='nl'?'Schakel Status':'Enable Status'));
   const data=compact.data();data.evs[0].plan=null;data.evs[0].schedule={mode:'emergency',target:null,time:'07:00'};
   compact.listeners['homeflux.ev.changed']();await compact.drain();
@@ -140,7 +169,7 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
  const statusReopen=await session({status:true,switching:true,instanceId:'status_A',storage:savedStatus});
  assert(statusReopen.host.innerHTML.includes('data-section="status" class="active"'));
  await statusReopen.click({section:'insights'});
- const preserved=await session({status:true,switching:true,instanceId:'status_A',storage:savedStatus});assert(preserved.host.innerHTML.includes('class="km"'));
+ const preserved=await session({status:true,switching:true,instanceId:'status_A',storage:savedStatus});assert(preserved.host.innerHTML.includes('class="km" style='));
  const independent=await session({status:true,switching:true,instanceId:'status_B',storage:savedStatus});assert(independent.host.innerHTML.includes('status-summary'));
  reports.push('Status never displays a local draft as active; saved Status/Insights selection stays per instance and older saved tabs remain valid');
  for(const language of ['en','nl']){
@@ -165,17 +194,17 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
   assert(tabs.host.innerHTML.includes('data-section="scheduler"'));
   assert(tabs.host.innerHTML.includes('data-section="insights"'));
   assert(tabs.host.innerHTML.includes('data-key="goal0"'));
-  assert(!tabs.host.innerHTML.includes('class="km"'));
+  assert(!tabs.host.innerHTML.includes('class="km" style='));
   const before=tabs.calls.length;
   await tabs.click(target);assert(tabs.host.innerHTML.includes(language==='nl'?'Bevestig':'Confirm'));
   await tabs.click({section:'insights'});
   assert(!tabs.host.innerHTML.includes('data-key="goal0"'));
-  assert(tabs.host.innerHTML.includes('class="km"'));
+  assert(tabs.host.innerHTML.includes('class="km" style='));
   assert(tabs.host.innerHTML.includes('data-ev="2"'));
   assert.equal(tabs.timers.size,0,'view switch cancels five-second confirmation');
   await tabs.click({section:'scheduler'});
   assert(tabs.host.innerHTML.includes('data-key="goal0"'));
-  assert(!tabs.host.innerHTML.includes('class="km"'));
+  assert(!tabs.host.innerHTML.includes('class="km" style='));
   assert(!tabs.host.innerHTML.includes(language==='nl'?'Bevestig':'Confirm'));
   assert.equal(tabs.calls.length,before,'view switching makes no GET or POST call');
   assert(!tabs.host.innerHTML.includes('evWidget.'));
@@ -185,17 +214,17 @@ async function session({status=false,scheduler=true,insights=true,switching=fals
   const tabs=await session({switching:true,scheduler,insights});
   assert(!tabs.host.innerHTML.includes('data-section='));
   assert.equal(tabs.host.innerHTML.includes('data-key="goal0"'),scheduler);
-  assert.equal(tabs.host.innerHTML.includes('class="km"'),insights);
+  assert.equal(tabs.host.innerHTML.includes('class="km" style='),insights);
   reports.push('Switch option respects single/disabled sections '+scheduler+'/'+insights);
  }
  const tabStorage=new Map(),tabs=await session({switching:true,instanceId:'tabs_A',storage:tabStorage});
  await tabs.click({section:'insights'});await tabs.click({ev:'2'});
- assert(tabs.host.innerHTML.includes('City EV'));assert(tabs.host.innerHTML.includes('class="km"'));
+ assert(tabs.host.innerHTML.includes('City EV'));assert(tabs.host.innerHTML.includes('class="km" style='));
  const tabReopen=await session({switching:true,instanceId:'tabs_A',storage:tabStorage});
  assert(tabReopen.host.innerHTML.includes('data-ev="2" class="active"'));
- assert(tabReopen.host.innerHTML.includes('class="km"'));assert(!tabReopen.host.innerHTML.includes('data-key="goal0"'));
+ assert(tabReopen.host.innerHTML.includes('class="km" style='));assert(!tabReopen.host.innerHTML.includes('data-key="goal0"'));
  const tabOther=await session({switching:true,instanceId:'tabs_B',storage:tabStorage});
- assert(tabOther.host.innerHTML.includes('data-key="goal0"'));assert(!tabOther.host.innerHTML.includes('class="km"'));
+ assert(tabOther.host.innerHTML.includes('data-key="goal0"'));assert(!tabOther.host.innerHTML.includes('class="km" style='));
  reports.push('View and EV persist per widget instance; switching EV preserves Insights');
  const tabDraft=await session({switching:true,count:1}),tabDraftData=tabDraft.data();
  tabDraftData.evs[0].plan=null;tabDraft.setData(tabDraftData);tabDraft.listeners['homeflux.ev.changed']();await tabDraft.drain();

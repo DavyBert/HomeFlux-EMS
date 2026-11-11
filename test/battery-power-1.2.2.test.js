@@ -27,7 +27,9 @@ function element(id) {
   if (!elements.has(id)) {
     const tag = [...html.matchAll(/<input\b[^>]*>/g)].find(m => m[0].includes(`id="${id}"`))?.[0] || '';
     const attrs = Object.fromEntries([...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
-    elements.set(id, { id, value: uiDefaults[id] ?? 0, checked: false, disabled: false,
+    // New controls outside the engine defaults still have their real HTML
+    // initial values (for example the ordered WAF color thresholds).
+    elements.set(id, { id, value: uiDefaults[id] ?? attrs.value ?? 0, checked: false, disabled: false,
       getAttribute: key => attrs[key] ?? null, setAttribute: (key,value) => { attrs[key]=value; } });
   }
   return elements.get(id);
@@ -36,7 +38,7 @@ const rangeStart = html.indexOf('  const MAX_BATTERY_POWER_W');
 const rangeEnd = html.indexOf('  applyBatteryPowerInputRanges();',rangeStart) + '  applyBatteryPowerInputRanges();'.length;
 const validateStart = html.indexOf('  function validateNumericSettings()');
 const validateEnd = html.indexOf("  q('save').addEventListener",validateStart);
-const ui = vm.createContext({ q: element, numeric: new Set(), uiLanguage: 'en',
+const ui = vm.createContext({ q: element, numeric: new Set(), uiLanguage: 'en', translateUiText: text => text,
   document: { querySelector: () => null }, window: { HomeFluxSunChance: sunChance, HomeFluxChargeStrategy: { validate: () => null } },
   configuredBatteryCount: () => 1, MAX_FLEX_INSTANCES: 4,
   instanceStem: (kind,i) => i===1 ? kind : kind+i });

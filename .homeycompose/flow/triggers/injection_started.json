@@ -1,0 +1,35 @@
+{
+  "title": {
+    "nl": "Actieve injectie is gestart",
+    "en": "Active export started",
+    "fr": "L’injection active a démarré",
+    "de": "Aktive Einspeisung gestartet",
+    "es": "Inyección activa iniciada"
+  },
+  "tokens": [
+    {
+      "name": "reason",
+      "type": "string",
+      "title": {
+        "nl": "Reden",
+        "en": "Reason",
+        "fr": "Motif",
+        "de": "Grund",
+        "es": "Motivo"
+      },
+      "example": "reason"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "title": {
+        "nl": "Bron",
+        "en": "Source",
+        "fr": "Source",
+        "de": "Quelle",
+        "es": "Fuente"
+      },
+      "example": "source"
+    }
+  ]
+}

@@ -45,12 +45,24 @@ const create=(a,id=1,extra={})=>submit(a,id,{target:{type:'kwh',value:20},time:'
   a.persistEvEnergyPlanOverrides(true);const b=(await setup(Object.fromEntries(h.store))).app;
   assert.equal(b.evEnergyPlans[0].deadlineAt,deadline);assert.equal(b.evEnergyPlans[0].remainingKwh,12.5);assert(b.evEnergyPlans[0].guarantee);assert(b.evEnergyPlans[0].widgetPlan.maxPv);
  });
- await check('Unknown/null connection and a pause do not end widget plan; feedback display never becomes physical evidence',async()=>{
+ await check('Restart continuity and legacy feedback preserve widget plans without inventing current or SoC measurements',async()=>{
   a.updateEvStatusInput(0,true,10,now);a.getEvSessionDetectionRuntime(0).state='paused';options.capture(a,0,now,true);
   const b=(await setup(Object.fromEntries(h.store))).app;
-  assert.equal(b.getEvInputSnapshot(0).seen.connected,false);assert.equal(b.getEvMeasuredCurrent(0).fresh,false);
-  const ev=b.getEvDashboard().evs[0];assert.equal(ev.connected,true);assert.equal(ev.state,'paused');assert(ev.feedbackStale);assert.equal(b.getPublicStatus().evs[0].lastKnownFeedback.state,'paused');
+  // 1.2.39 persists the last explicit connection transition, while physical
+  // current/SoC and the formerly observed charging/paused state remain stale.
+  const input=b.getEvInputSnapshot(0);
+  assert.equal(input.seen.connected,true);assert.equal(input.connected,true);
+  assert.equal(input.seen.chargeCurrent,false);assert.equal(input.seen.soc,false);
+  assert.equal(b.getEvMeasuredCurrent(0).fresh,false);
+  const ev=b.getEvDashboard().evs[0];assert.equal(ev.connected,true);assert.equal(ev.state,'waiting');assert.equal(ev.feedbackStale,false);assert.equal(b.getPublicStatus().evs[0].lastKnownFeedback,null);
+  // Older saved widget plans without that checkpoint retain the original
+  // stale presentation, which must never become live physical evidence.
+  const legacyStore=Object.fromEntries([...h.store].filter(([key])=>key!=='_evSessionContinuity'));
+  const legacy=(await setup(legacyStore)).app,legacyEv=legacy.getEvDashboard().evs[0];
+  assert.equal(legacy.getEvInputSnapshot(0).seen.connected,false);assert.equal(legacy.getEvMeasuredCurrent(0).fresh,false);
+  assert.equal(legacyEv.connected,true);assert.equal(legacyEv.state,'paused');assert(legacyEv.feedbackStale);assert.equal(legacy.getPublicStatus().evs[0].lastKnownFeedback.state,'paused');
   b.updateEvStatusInput(0,undefined,undefined,now);b.updateEvStatusInput(0,null,undefined,now);assert(options.widget(b,0));
+  assert(options.widget(legacy,0));
  });
  await check('Connected widget goal defers latest ordinary Flow mode before state/output/context mutation',async()=>{
   now+=1000;a.updateEvStatusInput(0,true,0,now);

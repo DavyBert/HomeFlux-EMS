@@ -30,6 +30,10 @@
       "days": "jours"
     },
     "status": {
+      "phaseGuardReceptionWarning": "Surveillance triphasée : mesures L1/L2/L3 manquantes ou périmées. Vérifiez le Flow triphasé.",
+      "phaseReceptionReceived": "reçu",
+      "phaseReceptionMissing": "non reçu",
+      "phaseReceptionStale": "périmé",
       "currentDecision": "Décision actuelle",
       "currentTariff": "Tarif actuel",
       "emsMode": "Mode EMS",
@@ -298,7 +302,11 @@
       "on": "Marche",
       "wafGridRoom": "Marge réseau",
       "wafRoomSnapshot": "Arrondie vers le bas ; vérifiée chaque minute",
-      "wafPeakGuardHold": "Peak Guard : conseil suspendu jusqu’à au moins une minute sans intervention"
+      "wafPeakGuardHold": "Peak Guard : conseil suspendu jusqu’à au moins une minute sans intervention",
+      "modeInjection": "Injecter",
+      "reasonInjectionActive": "Le mode injection actif pilote la batterie pour fournir de l’énergie au réseau",
+      "reasonSaveLowPv": "Prévision PV faible : la règle tarifaire active conserve l’énergie de la batterie pour plus tard",
+      "reasonSaveLowPvTarget": "Prévision PV faible : la réserve jusqu’à l’objectif de planification calculé est protégée"
     }
   },
   "evWidget": {
@@ -322,6 +330,7 @@
     "month": "Mois",
     "all": "Tout",
     "solarKm": "Plage estimée alimentée par l'énergie solaire",
+    "gridKm": "Kilomètres estimés chargés depuis le réseau",
     "energySplit": "Charger les sources d'énergie",
     "solarEnergy": "Solaire à EV",
     "gridEnergy": "réseau à EV",

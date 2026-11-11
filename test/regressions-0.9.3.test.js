@@ -20,7 +20,12 @@ const composite = 'Slim laden via tarief (netlimiet 7000 W totaal) · gewicht 1 
 assert.equal(translate(composite), 'Smart charging via tariff (total grid limit 7000 W) · weight 1 · PV allocation EV 20% / battery 80% · 200 W of unused battery budget released to the EV');
 for (const output of [...Object.values(bundle.exact), ...Object.values(bundle.templates)]) {
   const concrete = output.replace(/\{\d+\}/g, '12');
-  assert.equal(translate(concrete), concrete, 'Repeated translation must preserve English: ' + concrete);
+  // This one retained English alias intentionally resolves to the current
+  // wording. Other catalog values must still remain byte-for-byte stable.
+  const expected = concrete === 'Battery uses 2 different working modes for (dis)charging.'
+    ? 'Battery uses separate charging and discharging modes.' : concrete;
+  assert.equal(translate(concrete), expected, 'Repeated translation must preserve English: ' + concrete);
+  assert.equal(translate(expected), expected, 'Canonical English must be idempotent: ' + expected);
 }
 for (const blank of ['', ' ', '\n  ', '\t']) assert.equal(translate(blank), blank);
 const source = { baseMode: 'solar_capture', modeLabel: examples[7][0], targetSoc: 23.2,

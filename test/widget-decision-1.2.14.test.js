@@ -39,8 +39,25 @@ const cases = [
   ['safe stop', { baseMode: 'safety_stop', action: 'grid_charge' }, 'decisionSafetyStop', 'reasonSafetyStop'],
   ['EV block during idle', { batteryDischargeBlockedByEv: true }, 'decisionSaveBattery', 'reasonEvDischargeBlocked'],
   ['active PV still wins over discharge block', { batteryDischargeBlockedByEv: true, action: 'pv_charge' }, 'decisionPvCharge', 'reasonPvCharge'],
+  ['injection active overrides ordinary battery discharge', { baseMode: 'injection', injectionActive: true, action: 'discharge' }, 'modeInjection', 'reasonInjectionActive'],
+  ['injection active overrides command pending', { baseMode: 'injection', injectionActive: true, decisionOutputPending: true }, 'modeInjection', 'reasonInjectionActive'],
+  ['net export alone never activates injection label', { baseMode: 'solar_capture', modeLabel: 'Batterij sparen', injectionActive: false, liveGridPowerW: -2700 }, 'decisionSaveBattery', 'reasonSaveBattery'],
+  ['EV discharge block retains priority over low PV plan', { baseMode: 'solar_capture', lowForecastBatterySaveActive: true, batteryDischargeBlockedByEv: true }, 'decisionSaveBattery', 'reasonEvDischargeBlocked'],
+  ['low PV forecast is primary battery-saving reason', { baseMode: 'solar_capture', modeLabel: 'Batterij sparen · lage PV-voorspelling', lowForecastBatterySaveActive: true, batteryPauseCode: 'discharge_floor', batteryPauseReason: 'Ontladen gepauzeerd · minimum ontlaad-SoC bereikt' }, 'decisionSaveBattery', 'reasonSaveLowPv'],
+  ['protected forecast target is named for battery saving', { baseMode: 'solar_capture', lowForecastBatterySaveActive: true, lowForecastDischargeToTargetActive: true }, 'decisionSaveBattery', 'reasonSaveLowPvTarget'],
+
 ];
 let checks = 0;
+// Functionality is exercised in NL/EN below; validate the new display-only keys
+// in all five supported locales without replicating the integration flow.
+for (const language of ['nl', 'en', 'fr', 'de', 'es']) {
+  const labels = require('../locales/' + language + '.json').widget.status;
+  for (const key of ['modeInjection', 'reasonInjectionActive', 'reasonSaveLowPv', 'reasonSaveLowPvTarget']) {
+    assert.equal(typeof labels[key], 'string', language + '/' + key);
+    assert(labels[key].trim().length > 0, language + '/' + key + ' must not be empty');
+    assert(!/\{[^}]+\}/.test(labels[key]), language + '/' + key + ' has no stray placeholders');
+  }
+}
 for (const language of ['nl', 'en']) {
   const locale = require('../locales/' + language + '.json');
   const Homey = { __: key => key.split('.').reduce((v, k) => v?.[k], locale) || key };

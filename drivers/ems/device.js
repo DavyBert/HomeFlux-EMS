@@ -22,7 +22,13 @@ class HomeFluxEmsDevice extends Homey.Device {
     }
 
     this.registerCapabilityListener('ems_control_mode', async value => {
-      await this.homey.app.setForcedMode(String(value || 'auto'), 'device');
+      const mode = await this.homey.app.setForcedMode(String(value || 'auto'), 'device');
+      if (value === 'injection' && mode !== 'injection') {
+        // Reject the requested picker value after persisting the actual fallback;
+        // Homey must not acknowledge an export mode that never became active.
+        await this.setCapabilityValue('ems_control_mode', mode);
+        throw new Error(this.homey.app.translateDisplay(this.homey.app.injectionRuntime?.reason || 'Actieve injectie niet toegestaan'));
+      }
       return true;
     });
 

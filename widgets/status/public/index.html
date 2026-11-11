@@ -53,6 +53,8 @@
     .decision-value { margin-top: 3px; font-size: 15px; line-height: 1.2; font-weight: 750; }
     .input-warnings { margin-top: 5px; color: var(--hf-attention); font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
     .input-warning + .input-warning { margin-top: 3px; }
+    .phase-reception-warning { margin: 0; padding: 7px 9px; border-radius: 8px; background: var(--hf-row); }
+    .phase-reception-details { margin-top: 3px; font-weight: 650; }
     .input-warnings summary { cursor: pointer; margin-top: 3px; }
     .decision-reason { margin-top: 4px; font-size: 11.5px; line-height: 1.25; font-weight: 650; }
     .section { display: grid; gap: 4px; }
@@ -491,6 +493,7 @@
         avoid_import: tr(Homey, 'widget.status.modeAvoidImport', 'Avoid grid import'),
         manual_charge: tr(Homey, 'widget.status.modeManualCharge', 'Manual charging'),
         standby: tr(Homey, 'widget.status.modeStandby', 'Standby'),
+        injection: tr(Homey, 'widget.status.modeInjection', 'Export to grid'),
       };
       return modes[String(status.forcedMode || 'auto')] || String(status.forcedMode || 'auto');
     }
@@ -505,6 +508,7 @@
       if (state === 'external') return tr(Homey, 'widget.status.decisionExternal', 'External EMS control');
       if (state === 'pending') return tr(Homey, 'widget.status.decisionPending', 'Waiting for battery output');
       if (state === 'peak_limited') return tr(Homey, 'widget.status.decisionPeakLimited', 'Peak Guard limited');
+      if (status.injectionActive === true) return tr(Homey, 'widget.status.modeInjection', 'Export to grid');
       const action = String(status.action || 'idle');
       const actionLabels = {
         peak_shave: tr(Homey, 'widget.status.decisionPeakShave', 'Peak Guard support'),
@@ -535,6 +539,7 @@
       if (state === 'external') return tr(Homey, 'widget.status.reasonExternal', 'Battery control has been handed over to the external EMS');
       if (state === 'pending') return tr(Homey, 'widget.status.reasonPending', 'The new battery command has not been published yet; the existing output still applies');
       if (state === 'peak_limited') return tr(Homey, 'widget.status.reasonPeakLimited', 'Peak Guard cannot request more battery support within the active limits');
+      if (status.injectionActive === true) return tr(Homey, 'widget.status.reasonInjectionActive', 'Active export mode is controlling the battery for grid export');
       const action = String(status.action || 'idle');
       // Actual actions take precedence over reasons from a future charging plan.
       if (action === 'peak_shave') return tr(Homey, 'widget.status.reasonPeakGuard', 'Peak Guard is intervening above the configured grid limit');
@@ -544,6 +549,18 @@
       if (action === 'discharge') return tr(Homey, 'widget.status.reasonDischarge', 'The battery is supplying the current shortfall between consumption and solar');
 
       if (status.batteryDischargeBlockedByEv) return tr(Homey, 'widget.status.reasonEvDischargeBlocked', 'Battery discharge is blocked during EV charging');
+      // Explain WHY battery saving is active, not only the SoC boundary at which
+      // the already selected strategy happens to prevent further discharge.
+      if (status.baseMode === 'solar_capture' && status.lowForecastBatterySaveActive) {
+        return tr(Homey, status.lowForecastDischargeToTargetActive
+          ? 'widget.status.reasonSaveLowPvTarget' : 'widget.status.reasonSaveLowPv',
+          'Low PV forecast: battery energy is reserved for later use');
+      }
+      const strategy = status.tariff?.chargeStrategy;
+      if (status.baseMode === 'charge' && !status.safetySocRecoveryActive
+        && strategy?.mode === 'maximum' && !strategy.active
+        && !(strategy.missingKwh > 0.000001) && !strategy.reserveMissed)
+        return tr(Homey, 'widget.status.reasonChargeDeferred', 'Battery reserve preserved; charging scheduled for later.');
       const pauseReason = String(status.batteryPauseReason || '').trim();
       if (pauseReason) return pauseReason;
       const pauseCode = String(status.batteryPauseCode || '');
@@ -552,11 +569,6 @@
       if (pauseCode === 'planning_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedPlanning', 'Discharge paused at protected planning target')} ${pauseSocText}`.trim();
       if (pauseCode === 'discharge_floor') return `${tr(Homey, 'widget.status.reasonDischargePausedFloor', 'Discharge paused at configured discharge SoC')} ${pauseSocText}`.trim();
       if (pauseCode === 'minimum_soc') return `${tr(Homey, 'widget.status.reasonDischargePausedMinimum', 'Discharge paused at minimum SoC')} ${pauseSocText}`.trim();
-      const strategy = status.tariff?.chargeStrategy;
-      if (status.baseMode === 'charge' && !status.safetySocRecoveryActive
-        && strategy?.mode === 'maximum' && !strategy.active
-        && !(strategy.missingKwh > 0.000001) && !strategy.reserveMissed)
-        return tr(Homey, 'widget.status.reasonChargeDeferred', 'Battery reserve preserved; charging scheduled for later.');
       const mode = String(status.modeLabel || '').trim();
       const separator = mode.indexOf('·');
       if (separator >= 0) return mode.slice(separator + 1).trim();
@@ -577,7 +589,7 @@
       if (status.controlEnabled === false) return 'off';
       if (status.batteryCommandPauseActive) return 'pause';
       if (status.decisionExternalControl || status.hybridEms?.owner === 'external' || status.hybridEms?.delegated && !status.hybridEms?.takeover) return 'external';
-      if (status.decisionOutputPending) return 'pending';
+      if (status.decisionOutputPending && status.injectionActive !== true) return 'pending';
       if ((status.action || 'idle') === 'idle' && status.override === 'peak_shave') return 'peak_limited';
       return '';
     }
@@ -979,10 +991,36 @@
       return root;
     }
 
+    // This is intentionally separate from the alternating critical alert: missing
+    // phase inputs remain visible until every L1/L2/L3 sample is valid again.
+    function renderPhaseReceptionWarning(status, Homey, now = status.phaseGuard?.evaluatedAt ?? Date.now()) {
+      const guard = status.phaseGuard;
+      if (!guard?.enabled) return null;
+      const states = Array.from({length:3}, (_, i) => {
+        const sample=guard.values?.[i],at=Number(sample?.at)||0,watts=sample?.watts;
+        const fresh=watts!=null&&watts!==''&&Number.isFinite(Number(watts))&&at>0&&now>=at&&now-at<=15000;
+        return {name:'L'+(i+1), state:fresh?'received':at>0?'stale':'missing', fresh};
+      });
+      if (states.every(sample => sample.fresh)) return null;
+      const root=document.createElement('div');
+      root.id='phase-reception-warning';root.className='input-warnings phase-reception-warning';
+      root.setAttribute('role','status');root.setAttribute('aria-live','polite');
+      const message=document.createElement('div');
+      message.textContent='\u26a0 '+tr(Homey,'widget.status.phaseGuardReceptionWarning',
+        '3-phase monitoring: missing or outdated L1/L2/L3 readings. Check the three-phase grid Flow.');
+      const details=document.createElement('div');details.className='phase-reception-details';
+      details.textContent=states.map(sample => sample.name+': '+tr(Homey,
+        'widget.status.phaseReception'+sample.state[0].toUpperCase()+sample.state.slice(1),sample.state)).join(' \u00b7 ');
+      root.append(message,details);
+      return root;
+    }
+
     function renderStatus(status, settings, Homey) {
       const content = document.getElementById('content');
       const inputWarningsExpanded = Boolean(document.getElementById('input-warning-details')?.open);
       content.innerHTML = '';
+      const phaseWarning=renderPhaseReceptionWarning(status, Homey);
+      if(phaseWarning)content.appendChild(phaseWarning);
 
       const tone = kind => enabled(settings, 'statusColors') ? metricTone(kind, status) : '';
       if (enabled(settings, 'showDecision') || enabled(settings, 'showEnergyBudget')) {

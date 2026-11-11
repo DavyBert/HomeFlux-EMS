@@ -8,6 +8,8 @@ const root = path.resolve(__dirname, '..');
 const settingsHtml = fs.readFileSync(path.join(root, 'settings', 'index.html'), 'utf8');
 const runtimeFiles = [
   'app.js',
+  'lib/active-injection.js',
+  'lib/injection-economics.js',
   'settings/sun-chance.js',
   'api.js',
   'lib/ems-engine.js',

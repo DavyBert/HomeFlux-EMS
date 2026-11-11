@@ -30,6 +30,10 @@
       "days": "dagen"
     },
     "status": {
+      "phaseGuardReceptionWarning": "Driefasebewaking: L1/L2/L3-metingen ontbreken of zijn verouderd. Controleer de driefasen-Flow.",
+      "phaseReceptionReceived": "ontvangen",
+      "phaseReceptionMissing": "niet ontvangen",
+      "phaseReceptionStale": "verouderd",
       "currentDecision": "Huidige beslissing",
       "currentTariff": "Huidig tarief",
       "emsMode": "EMS-modus",
@@ -298,7 +302,11 @@
       "on": "Aan",
       "wafGridRoom": "Netruimte",
       "wafRoomSnapshot": "Naar beneden afgerond; elke minuut gecontroleerd",
-      "wafPeakGuardHold": "Peak Guard: advies gepauzeerd tot minstens één minuut zonder ingreep"
+      "wafPeakGuardHold": "Peak Guard: advies gepauzeerd tot minstens één minuut zonder ingreep",
+      "modeInjection": "Injecteren",
+      "reasonInjectionActive": "De actieve injectiemodus stuurt de batterij aan om stroom aan het net te leveren",
+      "reasonSaveLowPv": "Lage PV-voorspelling: de actieve tariefregel bewaart batterijenergie voor later",
+      "reasonSaveLowPvTarget": "Lage PV-voorspelling: de reserve tot het berekende planningsdoel wordt beschermd"
     }
   },
   "evWidget": {
@@ -322,6 +330,7 @@
     "month": "Maand",
     "all": "Alles",
     "solarKm": "Geschatte actieradius op zonne-energie",
+    "gridKm": "Geschatte kilometers geladen via het net",
     "energySplit": "Herkomst laadenergie",
     "solarEnergy": "Zon naar EV",
     "gridEnergy": "Net naar EV",

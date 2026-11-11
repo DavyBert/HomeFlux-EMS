@@ -6,7 +6,9 @@ const H=require('../lib/hvac-permanent'),L=require('../lib/hvac-learning');
 const {normalizeDynamicPriceResponse}=require('../lib/homey-energy');
 const {parseExternalPrices}=require('../lib/external-prices');
 const {prepareEvPriceCurve}=require('../lib/ev-deadline-planner');
-const realNow=Date.now;let now=Date.UTC(2026,10,7,12);Date.now=()=>now;
+const NativeDate=Date,realNow=Date.now;let now=Date.UTC(2026,10,7,12);
+// Price parsing uses both Date.now() and new Date(); keep one test clock.
+global.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}};
 let checks=0;
 const check=async(name,fn)=>{await fn();checks++;console.log('PASS',name);};
 function fixture(){
@@ -116,4 +118,4 @@ async function run(){
  });
  console.log(`Memory and battery-rest learning 1.2.38: ${checks} scenario groups passed.`);
 }
-run().finally(()=>Date.now=realNow).catch(e=>{console.error(e);process.exitCode=1;});
+run().finally(()=>{global.Date=NativeDate;Date.now=realNow;}).catch(e=>{console.error(e);process.exitCode=1;});

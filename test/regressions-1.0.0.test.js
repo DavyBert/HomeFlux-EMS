@@ -71,7 +71,10 @@ function setup(mode = 'standard', count = 1) {
   app.syncEmsDevices = async () => {};
   app.persistEvEnergyPlanOverrides = () => {};
   app.persistEvSocPlanOverrides = () => {};
-  app.homey = { clock: { getTimezone: () => 'Europe/Brussels' }, i18n: { getLanguage: () => 'nl' } };
+  // Session completion persists its restart checkpoint since 1.2.39.
+  const persisted = new Map();
+  app.homey = { clock: { getTimezone: () => 'Europe/Brussels' }, i18n: { getLanguage: () => 'nl' },
+    settings: { get: key => persisted.get(key), set: (key, value) => persisted.set(key, value) } };
   const expectedW = evPowerPerAmp(settings) * (mode === 'smart' ? 6 : 16);
   function sample(seconds, evW, applianceW = 0, pvW = 0, batteryW = 0) {
     const now = start + seconds * 1000;clockNow=now;

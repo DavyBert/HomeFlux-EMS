@@ -43,11 +43,16 @@ check('legacy default equivalence', () => {
       const st = { ...state, batterySoc: [soc, soc], gridPowerW: grid, controlGridPowerW: grid };
       assert.equal(engine.prepareChargeStrategy(st, s, new Date(at('11:00'))), null);
       const result = engine.evaluate(st, s, new Date(at('11:00'))), plan = engine.buildSocPlan(st, s, new Date(at('11:00')));
+      // The 1.2.11 golden result predates these two presentation fields.
+      // Assert their disabled values, then compare every original field.
+      assert.equal(result.injectionActive, false);
+      assert.equal(result.injectionTargetW, 0);
+      const { injectionActive, injectionTargetW, ...legacyResult } = result;
       if (old) {
-        assert.deepEqual(result, old.evaluate(st, s, new Date(at('11:00'))));
+        assert.deepEqual(legacyResult, old.evaluate(st, s, new Date(at('11:00'))));
         assert.deepEqual(plan, old.buildSocPlan(st, s, new Date(at('11:00'))));
       }
-      digest.update(JSON.stringify([result, plan]));
+      digest.update(JSON.stringify([legacyResult, plan]));
     }
   // Golden result from the complete 1.2.11 engine; also usable without a sibling checkout.
   assert.equal(digest.digest('hex'), '5afb3a102286762b028bb637796a8d24eeb97b6b492ae0247bdada79acbd89a2');

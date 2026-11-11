@@ -1,5 +1,6 @@
 'use strict';
 
+const injection = require('./lib/active-injection');
 const batteryResponseTest = require('./lib/battery-response-test');
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
@@ -29,7 +30,7 @@ const { performance } = require('perf_hooks');
 const { SlotFlowCards } = require('./lib/flow-slot-cards');
 const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
 const { HomeyAPI } = require('homey-api');
-const { DEFAULTS: ENGINE_DEFAULTS, evaluate, prepareControlContext, previewBatteryFeedback, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh } = require('./lib/ems-engine');
+const { DEFAULTS: ENGINE_DEFAULTS, evaluate, prepareControlContext, previewBatteryFeedback, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh, batteryPowerLimits } = require('./lib/ems-engine');
 const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, analyzePriceSlots, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { translate: translateDisplay, localizeDisplay, localizeTokens } = require('./lib/display-language');
 const { migrateVoltage } = require('./settings/ev-headroom');
@@ -48,7 +49,7 @@ const autoTuneLearning = require('./lib/autotune-learning');
 const { DEFAULT_HISTORY_MINUTES, recordMinuteSample, getRobustAverageW, getHouseLoadToleranceW, calculatePhysicalSiteLoadW, calculateDetectedEvLoadW } = require('./lib/ev-session');
 
 // App-only handover settings: the battery engine and its defaults stay intact.
-const DEFAULTS = { ...ENGINE_DEFAULTS, hybridHandoverMinSocEnabled:false, hybridHandoverMinSoc:11 };
+const DEFAULTS = { ...ENGINE_DEFAULTS, ...injection.defaults, hybridHandoverMinSocEnabled:false, hybridHandoverMinSoc:11 };
 
 const EV_PHYSICAL_CONFIG_SUFFIXES = new Set([
   'Enabled', 'ControlType', 'Phases', 'Voltage', 'VoltageReference',
@@ -519,6 +520,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.settingsListener = async key => {
       if (this.shuttingDown) return;
       try {
+        if (key === '_injectionLatch') return;
         if (key === '_evSessionContinuity' || key === '_hvacPermanent' || key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
         // These keys persist EV state already changed by its handler or
         // energy accounting. Goal changes request their own context; energy
@@ -538,6 +540,7 @@ class HomeFluxEmsApp extends Homey.App {
         // complete settings scan in every nested helper.
         const previousSettingValue = this.settingsCache?.[key];
         this.refreshCachedSetting(key);
+        if (key.startsWith('injection') || injection.locked(this)) injection.tick(this,this.getSettings(),Date.now(),false);
         if (wafPresentation.isSetting(key)) {
           wafPresentation.loadPreferences(this);
           // Display preferences must not invalidate plans, stop tests or request control.
@@ -884,7 +887,7 @@ class HomeFluxEmsApp extends Homey.App {
     return localParts(new Date(Number(at) || Date.now()), this.homey.clock.getTimezone() || 'UTC').dateKey;
   }
 
-  getSavingsTariffSnapshot(settings = this.getSettings()) {
+  getSavingsTariffSnapshot(settings = this.getSettings(), at = Date.now()) {
     const type = String(settings.contractType || 'tou');
     const tariff = this.latestResult?.tariff || null;
     let importPrice = Number(tariff?.price);
@@ -924,6 +927,15 @@ class HomeFluxEmsApp extends Homey.App {
       // negative = a cost to inject.
       id = String(tariff?.rateId || this.latestResult?.homeyEnergy?.priceClass || 'dynamic');
       label = String(tariff?.label || this.latestResult?.homeyEnergy?.priceClass || 'Dynamic');
+    }
+
+    // Opting into injection also opts into its explicit export-price policy.
+    // Ordinary installations keep their existing fixed/TOU/legacy accounting
+    // when injection is off and the new price-input card has not been used.
+    if (settings.injectionEnabled || this.externalEnergy?.exportPriceFromInjectionCard) {
+      const exportPrice = injection.getEffectiveFeedInPrice(this, settings, at);
+      feedInPrice = exportPrice?.price ?? 0;
+      feedInSource = exportPrice?.source || 'none';
     }
 
     return {
@@ -1005,10 +1017,10 @@ class HomeFluxEmsApp extends Homey.App {
       // Charger telemetry remains usable when site telemetry cannot establish
       // its source. The SAME interval records EV energy as unknown, while the
       // existing site Savings buckets stay untouched for that interval.
-      if (!siteKnown && this.getEvCount(settings) === 0) return;
+      const evCount = this.getEvCount(settings);
+      if (!siteKnown && evCount === 0) return;
   
       const tariff = this.getSavingsTariffSnapshot(settings);
-      const evCount = this.getEvCount(settings);
       let evPriceKnown = true;
       if (evCount > 0) {
         // Validate the EXISTING selected price; do not select a new tariff here.
@@ -1020,11 +1032,27 @@ class HomeFluxEmsApp extends Homey.App {
           && knownPrice((Array.isArray(settings.touRates) ? settings.touRates : [])
             .find(rate => rate.id === this.latestResult?.tariff?.rateId)?.importPrice));
       }
-      const midnight = localDateTimeUtcMs(currentDate, '00:00', settings.timezone || 'UTC');
+      // Local midnight cannot be inside an interval whose endpoints have the
+      // same local date. Avoid repeated timezone-conversion iterations on P1.
+      const previousDate = this.getSavingsDateKey(previousAt);
+      const midnight = previousDate !== currentDate
+        ? localDateTimeUtcMs(currentDate, '00:00', settings.timezone || 'UTC') : null;
       const boundaries = previousAt < midnight && midnight < now ? [previousAt, midnight, now] : [previousAt, now];
+      const capacityKwh = configuredBatteryCapacityKwh(settings);
+      const injectionPrices = settings.injectionEnabled || this.externalEnergy?.exportPriceFromInjectionCard;
+      if (injectionPrices) {
+        // A Flow price expires exactly at the next quarter-hour. A P1 sample
+        // spanning that boundary must value each part at its own export price.
+        // Reuse incoming samples; no additional scheduler is needed.
+        for (let boundary = (Math.floor(previousAt / 900000) + 1) * 900000; boundary < now; boundary += 900000) {
+          if (!boundaries.includes(boundary)) boundaries.push(boundary);
+        }
+        boundaries.sort((a, b) => a - b);
+      }
       for (let segment = 1; segment < boundaries.length; segment++) {
         const start = boundaries[segment - 1], end = boundaries[segment];
-        const date = this.getSavingsDateKey(start);
+        const segmentTariff = injectionPrices ? this.getSavingsTariffSnapshot(settings, (start + end) / 2) : tariff;
+        const date = previousDate === currentDate ? currentDate : this.getSavingsDateKey(start);
         if (this.savings.today.date !== date) this.archiveSavingsDay(date);
         const before = totalSavings(this.savings.today);
         integrateInterval({
@@ -1037,10 +1065,10 @@ class HomeFluxEmsApp extends Homey.App {
           gridW: gridFreshness.value,
           pvW: pvPowerW,
           batteryW: Number(this.state.lastTotalCommandW) || 0,
-          importPrice: tariff.importPrice,
-          feedInPrice: tariff.feedInPrice,
-          tariff,
-          capacityKwh: configuredBatteryCapacityKwh(this.getSettings()),
+          importPrice: segmentTariff.importPrice,
+          feedInPrice: segmentTariff.feedInPrice,
+          tariff: segmentTariff,
+          capacityKwh,
         });
         const delta = totalSavings(this.savings.today) - before;
         if (Number.isFinite(delta)) this.savings.total += delta;
@@ -3606,6 +3634,9 @@ class HomeFluxEmsApp extends Homey.App {
     const hvacPvReady = hvacCoordination.observeSurplus(this, now);
 
     let reason = evPhaseGuard.enabled(settings)&&evPhaseGuard.urgent(this,settings,now)?'ev_phase_guard':'';
+    if(!reason&&this.hasActiveFlexibleOutput(settings)
+      &&(phaseGuard.phasePressure(this,settings,now)>0
+        ||this.flexibleSafetySignature==='peak_guard_phase'&&phaseGuard.phaseNearLimit(this,settings,now)))reason='peak_guard_phase';
     if (!reason && this.hasActiveFlexibleOutput(settings) && Boolean(settings.peakShaveEnabled)) {
       const peak = Math.max(0, Number(settings.peakLimitW) || 0);
       if (gridW >= peak) reason = 'peak_guard';
@@ -3666,6 +3697,7 @@ class HomeFluxEmsApp extends Homey.App {
   runContextHeartbeat() {
     const now = Date.now();
     const settings = this.getSettings();
+    injection.tick(this,settings,now,false);
     this.runSlowHeartbeatHousekeeping(now, settings);
     const activated = this.checkNightPlanningFallback(now);
     if (activated) return;
@@ -5481,7 +5513,7 @@ class HomeFluxEmsApp extends Homey.App {
     return {
       battery,
       enabled: Boolean(settings[`splitCommandBattery${battery}Enabled`]),
-      dischargeBlocked: this.getEvBatteryDischargePolicy(settings).blocked,
+      dischargeBlocked: !this.injectionRuntime?.active && this.getEvBatteryDischargePolicy(settings).blocked,
       chargePowerPositive: Boolean(settings[`splitCommandBattery${battery}ChargePowerPositive`]),
       keepMinimumPower: settings[`splitCommandBattery${battery}KeepMinimumPower`] !== false,
       minimumPowerW: Number.isFinite(Number(settings[`splitCommandBattery${battery}MinimumPowerW`])) ? Math.max(0, Math.round(Number(settings[`splitCommandBattery${battery}MinimumPowerW`]))) : 100,
@@ -5708,6 +5740,25 @@ class HomeFluxEmsApp extends Homey.App {
     await new Promise(resolve => this.homey.setTimeout(resolve, delay));
   }
 
+  limitInjectionSplitPower(index, mode, power, requestedInternal, settings, options) {
+    if (!options.injectionActive && !options.injectionStop) return power;
+    // A safety zero belongs to the physical output too. The normal Split
+    // minimum is a transport preference, never permission to drain a protected
+    // battery or to keep an injection session running after its stop.
+    if (options.injectionStop || requestedInternal === 0) return 0;
+    if (!injection.validPublication(this, options, settings)) return 0;
+    const soc = parseFiniteInputNumber(this.state.batterySoc[index]);
+    if (soc === null) return 0;
+    const floor = Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0,
+      Number(settings.injectionStopSoc) || 0);
+    if (mode === 'discharge' && soc <= floor) return 0;
+    if (mode === 'charge' && soc >= Number(settings.maxSoc)) return 0;
+    const limits = batteryPowerLimits(settings, index);
+    const cap = mode === 'charge' ? limits.maxCharge : limits.maxDischarge;
+    const magnitude = Math.min(Math.abs(power), Math.abs(requestedInternal), cap);
+    return magnitude === 0 ? 0 : Math.sign(power) * magnitude;
+  }
+
   async publishSplitBatteryCommands(internalCommands, settings = this.getSettings(), options = {}) {
     this.ensureSplitCommandState();
     const count = this.getBatteryCount(settings);
@@ -5734,7 +5785,11 @@ class HomeFluxEmsApp extends Homey.App {
       const state = this.splitCommandState[index];
       const triggers = this.splitCommandTriggers[index] || {};
       const requestedInternal = Math.round(Number(internalCommands[index]) || 0);
-      const desiredMode = this.getSplitDesiredMode(requestedInternal, config);
+      const protectedZero = Boolean(options.injectionStop || options.injectionActive && requestedInternal === 0);
+      // Keep the current direction for a protected zero: no direction switch
+      // or one-second mode delay is needed to stop the current power register.
+      const desiredMode = protectedZero && state.currentMode
+        ? state.currentMode : this.getSplitDesiredMode(requestedInternal, config);
       let outputMode = desiredMode;
       let outputInternal = requestedInternal;
 
@@ -5750,6 +5805,7 @@ class HomeFluxEmsApp extends Homey.App {
       }
 
       let power = this.getSplitPowerValue(outputMode, outputInternal, config);
+      power = this.limitInjectionSplitPower(index, outputMode, power, outputInternal, settings, options);
       if(outputMode==='charge'&&phaseSplitCeilings){const magnitude=Math.min(Math.abs(power),Math.max(0,-phaseSplitCeilings[index]));power=magnitude?(config.chargePowerPositive?magnitude:-magnitude):0;}
       // Split Command can deliberately turn an internal 0 W or a value below
       // its configured minimum into a real non-zero hardware command. Feed the
@@ -5767,15 +5823,24 @@ class HomeFluxEmsApp extends Homey.App {
         // discharge minimum through a stale configuration snapshot.
         const latestSettings=this.getSettings();
         let safePower = outputMode === 'discharge'
-          && this.getEvBatteryDischargePolicy(latestSettings).blocked ? 0 : power;
+          && !this.injectionRuntime?.active && this.getEvBatteryDischargePolicy(latestSettings).blocked ? 0 : power;
         if(outputMode==='charge'&&phaseSplitCeilings){
           const cap=phaseGuard.limit(this,phaseSplitExposure,latestSettings,Date.now(),false,false);
           const magnitude=Math.min(Math.abs(safePower),Math.max(0,-cap[index]));
           const latestConfig=this.getSplitBatteryConfig(index,latestSettings);
           safePower=latestConfig.enabled&&latestConfig.chargePowerPositive===config.chargePowerPositive? (magnitude?(config.chargePowerPositive?magnitude:-magnitude):0):0;
         }
+        safePower = this.limitInjectionSplitPower(index, outputMode, safePower, outputInternal, latestSettings, options);
         effectiveInternalCommands[index] = outputMode === 'charge' ? -Math.abs(safePower) : Math.abs(safePower);
         await this.setSplitOutputTokens(index, outputMode, safePower);
+        // Logic-tag writes also yield. If a gate or a per-battery limit changed
+        // during that I/O, publish a stable zero and let the next normal pass
+        // calculate a fresh request. Zero cannot revive a stopped session.
+        if (this.limitInjectionSplitPower(index, outputMode, safePower, outputInternal, this.getSettings(), options) !== safePower) {
+          safePower = 0;
+          effectiveInternalCommands[index] = 0;
+          await this.setSplitOutputTokens(index, outputMode, 0);
+        }
         if (powerTrigger) await powerTrigger.trigger(this.localizeDisplayTokens({ power: safePower }), { battery: config.battery, mode: outputMode });
         state.lastPower = safePower;
         this.scheduleSplitSafetyModeResend(index);
@@ -5818,7 +5883,7 @@ class HomeFluxEmsApp extends Homey.App {
     return effectiveInternalCommands;
   }
 
-  startBatteryResponseTest() { return batteryResponseTest.start(this); }
+  startBatteryResponseTest() { if(injection.locked(this))throw Error('Stop eerst actieve injectie');return batteryResponseTest.start(this); }
 
   stopBatteryResponseTest() { return batteryResponseTest.stop(this); }
 
@@ -5927,6 +5992,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async startChargeTestNow() {
+    if(injection.locked(this))throw Error('Stop eerst actieve injectie');
     const settings = this.getSettings();
     if (this.getBatteryCount(settings) === 0) throw new Error('Geen thuisbatterij geconfigureerd. Een batterijtest is niet nodig.');
     if (Boolean(settings.controlEnabled)) {
@@ -6031,27 +6097,61 @@ class HomeFluxEmsApp extends Homey.App {
       'avoid_import',
       'manual_charge',
       'standby',
+      'injection',
     ]);
     const value = String(mode || 'auto');
     return allowed.has(value) ? value : 'auto';
   }
 
+  getEmsControlMode(settings = this.getSettings()) {
+    // Injection is a live override, never a persisted battery strategy. This
+    // also prevents a stopped/refused session or reboot leaving a stale picker.
+    if (settings.injectionEnabled && (this.injectionRuntime?.active || this.injectionRuntime?.preparing)) return 'injection';
+    const mode = this.normalizeForcedMode(settings.forcedMode);
+    return mode === 'injection' ? 'auto' : mode;
+  }
+
   async setForcedMode(mode, source = 'app') {
     const normalized = this.normalizeForcedMode(mode);
+    const wantsInjection = normalized === 'injection';
     // Clear this synchronously as well as in the settings event. A P1 update may
     // arrive before Homey dispatches that event, and must never reuse the EV
     // headroom allocation from the previous battery mode.
     this.evBatteryCoordinationCache = { maxChargeW: null, at: 0 };
-    this.setSetting('forcedMode', normalized);
-    if (normalized === 'auto') {
+    // Selecting any other mode is an explicit manual stop, including Auto.
+    // Keep the existing interval latch so automatic export cannot undo it.
+    if (!wantsInjection && injection.locked(this)) injection.stop(this);
+    if (wantsInjection && (this.injectionRuntime?.active || this.injectionRuntime?.preparing)) {
+      this.injectionRuntime.initialForcedMode = 'auto';
+    }
+    this.setSetting('forcedMode', wantsInjection ? 'auto' : normalized);
+    if (wantsInjection || normalized === 'auto') {
       this.setSetting('forcedModeResumeAt', 0);
       this.clearOverrideResumeTimer();
     } else {
       this.armOverrideResume();
     }
+    let startError = null;
+    if (wantsInjection) {
+      if (!this.getSettings().injectionEnabled) {
+        // A Flow may select this value while permission is off: never enable
+        // permission implicitly, and fall back to Auto without failing the Flow.
+        if (injection.locked(this)) injection.stop(this, 'Actieve injectie niet toegestaan');
+        else injection.runtime(this).reason = 'Actieve injectie niet toegestaan';
+      } else {
+        try { await injection.start(this, 'manual'); }
+        catch (err) {
+          startError = err;
+          if (injection.locked(this)) injection.stop(this, err.message);
+        }
+      }
+    }
     this.requestContextEvaluate(true, `forced_mode:${source}`);
     await this.syncEmsDevices().catch(err => this.error(`EMS device sync after ${source} mode change failed`, err));
-    return normalized;
+    // Real start refusals (price, SoC, stale inputs, etc.) remain visible to Flow
+    // and the device UI, but the effective mode has already reverted to Auto.
+    if (startError) throw startError;
+    return wantsInjection ? this.getEmsControlMode() : normalized;
   }
 
   getBatteryCommandDeviceStatus() {
@@ -6333,7 +6433,7 @@ class HomeFluxEmsApp extends Homey.App {
   getEmsDeviceSnapshot(result = this.latestResult) {
     const settings = this.getSettings();
     const readiness = this.getInputReadiness(settings);
-    const forcedMode = this.normalizeForcedMode(settings.forcedMode);
+    const forcedMode = this.getEmsControlMode(settings);
     const tariff = result?.tariff?.label || 'Geen tarief';
     const action = result?.workingModeLabel || result?.modeLabel || 'Wachten op data';
     const status = result?.statusText || (readiness.ready ? 'HomeFlux EMS gereed' : `Wachten op data: ${readiness.missing.join(', ')}`);
@@ -7099,16 +7199,45 @@ class HomeFluxEmsApp extends Homey.App {
       return true;
     });
 
+    injection.runtime(this);
+    this.injectionStartedTrigger=flow.getTriggerCard('injection_started');
+    this.injectionStoppedTrigger=flow.getTriggerCard('injection_stopped');
+    flow.getActionCard('start_injection').registerRunListener(async()=>{await injection.start(this,'manual');return true;});
+    flow.getActionCard('stop_injection').registerRunListener(async()=>{injection.stop(this);return true;});
+    flow.getConditionCard('injection_is_active').registerRunListener(async()=>Boolean(this.injectionRuntime?.active));
+    flow.getConditionCard('injection_is_allowed').registerRunListener(async()=>Boolean(this.getSettings().injectionEnabled));
+    flow.getActionCard('set_current_feed_in_price').registerRunListener(async args => {
+      const now = Date.now();
+      // Validate before changing accounting; close the previous interval at
+      // its old price, then share the normalized price with injection/Savings.
+      const value = injection.normalizeFeed(args, now);
+      this.recordSavingsSample(now);
+      this.externalEnergy.exportPrice = value.price;
+      this.externalEnergy.exportUpdatedAt = now;
+      this.externalEnergy.exportPriceFromInjectionCard = true;
+      injection.feed(this, args, now);
+      return true;
+    });
     flow.getActionCard('set_external_export_price').registerRunListener(async args => {
       const price = Number(args.price);
       if (!Number.isFinite(price)) throw new Error('External export price must be a valid number');
       const now = Date.now();
-      // Close the previous accounting interval at the old export price before
-      // switching price. This input is accounting-only and never triggers EMS
-      // control or planning by itself.
+      // Preserve legacy accounting and input acceptance when injection is off.
+      // Injection can use the same current price without changing that path.
       this.recordSavingsSample(now);
       this.externalEnergy.exportPrice = price;
       this.externalEnergy.exportUpdatedAt = now;
+      this.externalEnergy.exportPriceFromInjectionCard = false;
+      try {
+        injection.feed(this,{price,currency:'EUR',unit:'kWh',minutes:this.getDynamicTargetInterval(this.getSettings())},now);
+      } catch (error) {
+        if (this.getSettings().injectionEnabled || injection.locked(this)) {
+          const runtime = injection.runtime(this);
+          runtime.feed = null;
+          runtime.price = null;
+          injection.stop(this, 'Ongeldige actuele terugleverprijs', true, now);
+        }
+      }
       return true;
     });
 
@@ -7173,8 +7302,14 @@ class HomeFluxEmsApp extends Homey.App {
       const settings = this.getSettings();
       return Boolean(settings.controlEnabled) && this.isChargeTestValid(settings);
     });
-    flow.getConditionCard('ems_mode_is').registerRunListener(async args =>
-      String(this.latestResult?.baseMode || '') === String(args.mode || ''));
+    flow.getConditionCard('ems_mode_is').registerRunListener(async args => {
+      const mode = String(args.mode || '');
+      // Injection can transition before the next engine result is published.
+      // Read the live state for this mode, not a stale injection baseMode.
+      if (mode === 'injection') return Boolean(this.getSettings().injectionEnabled && this.injectionRuntime?.active);
+      if (this.getEmsControlMode() === 'injection') return false;
+      return String(this.latestResult?.baseMode || '') === mode;
+    });
     flow.getConditionCard('ems_action_is').registerRunListener(async args =>
       String(this.latestResult?.action || 'idle') === String(args.action || ''));
     flow.getConditionCard('ems_current_tariff_is').registerRunListener(async args => {
@@ -9405,7 +9540,7 @@ class HomeFluxEmsApp extends Homey.App {
     const gridSelection = this.getGridControlSelection(settings, now, pvDeltaW);
     const selectedGridW = gridSelection.value;
     const evGridControl = this.getEvGridImportObservation(settings, now, evObservation);
-    const activeEvGridImportTargetW = Math.max(0, Number(evGridControl.activeTargetW) || 0);
+    const activeEvGridImportTargetW = this.injectionRuntime?.active ? 0 : Math.max(0, Number(evGridControl.activeTargetW) || 0);
     // The battery controller itself is unchanged. When Smart EV charging is
     // explicitly allowed to use grid energy, shift only its meter TARGET by
     // that EV allowance. Raw P1 remains untouched and Peak Guard still uses the
@@ -9417,6 +9552,7 @@ class HomeFluxEmsApp extends Homey.App {
 
     return {
       ...this.state,
+      ...injection.engineState(this,settings),
       batterySoc,
       batteryDischargeBlockedByEv: this.getEvBatteryDischargePolicy(settings, now).blocked,
       lastBatteryCommands: Array.from({ length: count }, (_, index) => Number(this.lastEmittedCommands[index]) || 0),
@@ -9438,7 +9574,7 @@ class HomeFluxEmsApp extends Homey.App {
       // The real meter remains authoritative. A positive EV grid target is a
       // target offset, not subtracted EV consumption: normal household import
       // is still regulated and Peak Guard continues to see raw gridPowerW.
-      controlGridPowerW: selectedControlGridW,
+      controlGridPowerW: this.injectionRuntime?.active ? selectedGridW : selectedControlGridW,
       evGridImportTargetW: activeEvGridImportTargetW,
       plannedBatteryGridLimitW: this.getPlannedBatteryGridLimitW(settings, now, evObservation),
       evGridImportRequestedTargetW: Math.max(0, Number(evGridControl.requestedTargetW) || 0),
@@ -10852,6 +10988,10 @@ class HomeFluxEmsApp extends Homey.App {
 
   calculateEvPortfolioDecisions(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, storedSettings = this.getSettings(), options = {}) {
     const evCount = this.getEvCount(storedSettings);
+    if(injection.locked(this)) return Array.from({length:evCount},(_,index)=>({instance:index+1,
+      enabled:Boolean(this.getEvInstanceSettings(index,storedSettings).evEnabled),connected:Boolean(this.getEvInputSnapshot(index)?.connected),
+      allowed:false,desiredCurrentA:0,desiredPowerW:0,requestedCurrentA:0,requestedPowerW:0,
+      effectiveChargeMode:'stop',source:'off',reason:'EV-laden geblokkeerd tijdens injectie'}));
     if (evCount <= 0) {
       this.clearEvContextRefresh(true);
       this.scheduleEvDeadlineWakeup([]);
@@ -10861,7 +11001,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (this.inputMonitor?.active) this.inputMonitor.noteEvaluation('evPortfolio');
     this.recordDiagnosticCounter('evPortfolioCalculations');
     for (let index = 0; index < evCount; index += 1) this.tickEvEnergyPlan(index);
-    const runtimeSettings = this.getRuntimeSettings(storedSettings);
+    const runtimeSettings = this.getRuntimeSettings(phaseGuard.flexiblePeakSettings(this,storedSettings,Date.now()));
     const batteryOutputEnabled = Boolean(runtimeSettings.controlEnabled)
       && this.getBatteryCount(runtimeSettings) > 0 && this.isChargeTestValid(runtimeSettings);
     const tariff = result?.tariff || findCurrentTariff(new Date(), runtimeSettings);
@@ -11626,7 +11766,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   getEvOutputFor(index, decision, settings = this.getSettings(), now = Date.now()) {
     const runtime = index === 0 ? null : this.getExtraEv(index);
-    return resolveEvOutput({ decision, settings, now,
+    return resolveEvOutput({ decision, settings, now, injectionBlocked:injection.locked(this),
       gridW: this.inputSeen?.grid ? this.state.gridPowerW : null,
       holdUntil: index === 0 ? Number(this.evPeakGuardStopHoldUntil) || 0 : Number(runtime?.stopHoldUntil) || 0,
       includeNightSurplus: index === 0 });
@@ -12243,6 +12383,7 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevcurrent');
         if (token) await token.setValue(desiredA);
         if (this.evCurrentTrigger) {
+          if(injection.locked(this)&&desiredA>0)return;
           if(evPhaseGuard.enabled(settings)&&!evPhaseGuard.permitted(this,0,decision,this.getSettings()))return;
           await this.evCurrentTrigger.trigger(this.localizeDisplayTokens({
             charge_current: desiredA,
@@ -12261,7 +12402,9 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevmode');
         if (token) await token.setValue(chargeMode);
         if (this.evModeTrigger) {
+          if(allowed&&injection.locked(this))return;
           if(allowed&&evPhaseGuard.enabled(settings)&&!evPhaseGuard.permitted(this,0,decision,this.getSettings()))return;
+          if(injection.locked(this)&&chargeMode!=='stop')return;
           const publish = () => this.evModeTrigger.trigger(this.localizeDisplayTokens({
             charge_mode: chargeMode,
             reason: String(decision.reason || ''),
@@ -12281,6 +12424,7 @@ class HomeFluxEmsApp extends Homey.App {
         const token = this.tokens.get('emsevallowed');
         if (token) await token.setValue(allowed ? 'Ja' : 'Nee');
         if (this.evAllowedTrigger) {
+          if(allowed&&injection.locked(this))return;
           if(allowed&&evPhaseGuard.enabled(settings)&&!evPhaseGuard.permitted(this,0,decision,this.getSettings()))return;
           await this.evAllowedTrigger.trigger(this.localizeDisplayTokens({
             allowed: allowed ? 'Ja' : 'Nee',
@@ -12406,6 +12550,7 @@ class HomeFluxEmsApp extends Homey.App {
     try {
       if (currentChanged && triggers.current) {
         if(evPhaseGuard.enabled(phaseSettings)&&!evPhaseGuard.permitted(this,index,decision,this.getSettings()))return;
+        if(injection.locked(this)&&desiredA>0)return;
         await triggers.current.trigger(this.localizeDisplayTokens({
           charge_current: desiredA,
           charge_power: Math.round(Number(decision.desiredPowerW) || 0),
@@ -12418,7 +12563,9 @@ class HomeFluxEmsApp extends Homey.App {
         this.noteAutoTuneEvCurrentCommand(index, desiredA, Date.now());
       }
       if (modeChanged && triggers.mode) {
+        if(allowed&&injection.locked(this))return;
         if(allowed&&evPhaseGuard.enabled(phaseSettings)&&!evPhaseGuard.permitted(this,index,decision,this.getSettings()))return;
+        if(injection.locked(this)&&chargeMode!=='stop')return;
         const publish = () => triggers.mode.trigger(this.localizeDisplayTokens({ charge_mode: chargeMode, reason: String(decision.reason || '') }), { charge_mode: chargeMode });
         let houseReference = null;
         if (controlType === 'mode') houseReference = await this.trackEvModeHousePublication(index, chargeMode, houseReferenceAtStart, publish);
@@ -12432,6 +12579,7 @@ class HomeFluxEmsApp extends Homey.App {
         }
       }
       if (allowedChanged && triggers.allowed) {
+        if(allowed&&injection.locked(this))return;
         if(allowed&&evPhaseGuard.enabled(phaseSettings)&&!evPhaseGuard.permitted(this,index,decision,this.getSettings()))return;
         await triggers.allowed.trigger(this.localizeDisplayTokens({
           allowed: allowed ? 'Ja' : 'Nee',
@@ -12456,6 +12604,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   async testEvOutput(body = {}) {
+    if(injection.locked(this))throw Error('EV-laden geblokkeerd tijdens injectie');
     const output = String(body.output || '').trim().toLowerCase();
     const index = Math.max(0, Math.min(3, Math.round(Number(body.instance) || 1) - 1));
     const instance = index + 1;
@@ -12691,6 +12840,9 @@ class HomeFluxEmsApp extends Homey.App {
       gridAgeSeconds: gridFreshness.ageSeconds,
     };
 
+    const optionalInjectionLimit = injection.limitLoads(this,settings)
+      && !settings.hvacCoordination?.EssentialEnabled && !settings.hvacCoordination?.KeepOnEnabled;
+    if (optionalInjectionLimit) decision.injectionLoadGeneration = Number(this.injectionRuntime?.loadGeneration) || 0;
     hvacPermanent.syncComfortCycle(this, instanceIndex, settings, Boolean(options.permanentOffFromFlow || options.automaticOffFromFlow));
 
     const resetBoostState = () => {
@@ -12758,6 +12910,25 @@ class HomeFluxEmsApp extends Homey.App {
 
     if (hvacPermanent.enabled(settings) || hvacPermanent.needsPeriodicRestore(this, instanceIndex)) return hvacPermanent.calculate(this, instanceIndex, settings, decision, { now, result, allowStart, batteryCharging: Number(currentBatteryCommandW)<0&&Number(nextBatteryCommandW)<0&&Number(options.hvacBatteryCommandW??nextBatteryCommandW)<0, portfolio: options.hvacPortfolio, budgetSnapshot: options.hvacBudgetSnapshot || (!options.hvacPortfolio ? hvacCoordination.prepare(this, settings, result, now, false) : null) });
 
+    if(optionalInjectionLimit&&(this.hvacBoostMode||this.hvacManagedPowerOn)) {
+      const roomAt=Number(this.inputUpdatedAt.hvac?.roomTemperature)||0;
+      const fresh=roomAt>0&&now>=roomAt&&now-roomAt<=300000;
+      // OFF feedback must not make an acknowledged heating/cooling session
+      // look like a new PV opportunity. Keep its direction until stop receipt.
+      const direction=['heat','cool'].includes(this.hvacBoostMode)?this.hvacBoostMode:mode;
+      const goal=direction==='cool'?Number(settings.hvacComfortMaxC):Number(settings.hvacComfortMinC);
+      decision.injectionComfortTarget=goal;
+      const reached=fresh&&Number.isFinite(room)&&Number.isFinite(goal)&&(direction==='heat'?room>=goal:direction==='cool'&&room<=goal);
+      if(reached){
+        decision.startEligible=false;decision.increase=false;
+        if(settings.hvacAllowPowerControl&&mode!=='off'&&now-Number(this.lastHvacControlAt||0)>=Math.max(1,Number(settings.hvacControlIntervalMinutes)||5)*60000){
+          decision.powerCommand=false;decision.injectionOptionalStop=true;
+        }
+        decision.reason='HVAC-comfortdoel bereikt tijdens injectie';return decision;
+      }
+      if(!fresh){decision.reason='Injectie: geen extra HVAC-stop zonder verse kamertemperatuur';return decision;}
+    }
+
     // A stale P1 value may never be interpreted as current PV surplus or spare
     // Peak Guard headroom. Existing HomeFlux-managed HVAC sessions fail safe by
     // returning to their baseline; inactive units simply wait for a fresh meter.
@@ -12800,7 +12971,7 @@ class HomeFluxEmsApp extends Homey.App {
     const stopW = Math.min(startW, Math.max(0, Number.isFinite(configuredStopW) ? configuredStopW : 200));
     const intervalMs = Math.max(1, Number(settings.hvacControlIntervalMinutes) || 5) * 60000;
     const intervalReady = this.lastHvacControlAt <= 0 || (now - this.lastHvacControlAt) >= intervalMs;
-    const hasPvBoost = Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW <= -startW;
+    const hasPvBoost = !injection.limitLoads(this,settings) && Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW <= -startW;
     const configuredFastImportW = Number(settings.hvacFastResetImportW);
     const fastImportW = Math.max(0, Number.isFinite(configuredFastImportW) ? configuredFastImportW : 1000);
     const evStartsGridCharge = Boolean(evDecision)
@@ -12825,7 +12996,9 @@ class HomeFluxEmsApp extends Homey.App {
     const stopBatterySoc = Math.min(minBatterySoc, Math.max(0, Math.min(100, Number.isFinite(configuredStopBatterySoc) ? configuredStopBatterySoc : 50)));
 
     if (activeMode) {
-      const targetSetpoint = this.getHvacTargetSetpoint(activeMode, settings);
+      const targetSetpoint = optionalInjectionLimit
+        ? (activeMode === 'cool' ? band.coolingTarget : band.heatingTarget)
+        : this.getHvacTargetSetpoint(activeMode, settings);
       const targetReached = activeMode === 'heat' ? room >= targetSetpoint : room <= targetSetpoint;
       const pvStillAvailable = Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW < -stopW;
       // Battery continuation is only allowed for a session that was already
@@ -12931,9 +13104,13 @@ class HomeFluxEmsApp extends Homey.App {
     }
     if (Boolean(settings.hvacAllowModeControl) && mode !== controlMode) decision.modeCommand = controlMode;
 
-    const targetSetpoint = this.getHvacTargetSetpoint(controlMode, settings);
+    const targetSetpoint = optionalInjectionLimit
+      ? (controlMode === 'cool' ? band.coolingTarget : band.heatingTarget)
+      : this.getHvacTargetSetpoint(controlMode, settings);
     if (Boolean(settings.hvacAllowSetpointControl) && intervalReady && Number.isFinite(targetSetpoint)) {
       let next = effectiveSetpoint;
+      if (optionalInjectionLimit && controlMode === 'heat' && effectiveSetpoint > targetSetpoint) next = Math.max(targetSetpoint, effectiveSetpoint - 0.5);
+      if (optionalInjectionLimit && controlMode === 'cool' && effectiveSetpoint < targetSetpoint) next = Math.min(targetSetpoint, effectiveSetpoint + 0.5);
       if (controlMode === 'cool' && effectiveSetpoint > targetSetpoint) next = Math.max(targetSetpoint, effectiveSetpoint - 0.5);
       if (controlMode === 'heat' && effectiveSetpoint < targetSetpoint) next = Math.min(targetSetpoint, effectiveSetpoint + 0.5);
       if (Math.abs(next - effectiveSetpoint) >= 0.1) decision.setpointCommand = Math.round(next * 2) / 2;
@@ -13100,6 +13277,11 @@ class HomeFluxEmsApp extends Homey.App {
         }
         try {
           await this._publishHvacDecisionNowFor(safeIndex, next);
+          if(!next.permanent&&next.injectionOptionalStop
+            &&(safeIndex===0?this.lastPublishedHvacPower:this.getExtraHvac(safeIndex)?.lastPublishedPower)===false){
+            this.withHvacRuntime(safeIndex,()=>{this.hvacBaselineSetpoint=null;this.hvacBaselineMode=null;this.hvacBoostMode=null;this.hvacManagedPowerOn=false;});
+            next.boostActive=false;next.boostMode=null;
+          }
           hvacPermanent.published(this, safeIndex, next);
           if (!next.permanent && (next.automaticControlOff || next.moduleControlOff) && (next.outputChanged!==false || next.permanentControlOff)) {
             const receipt=safeIndex===0?this.lastPublishedHvacPower:this.getExtraHvac(safeIndex).lastPublishedPower;
@@ -13151,24 +13333,31 @@ class HomeFluxEmsApp extends Homey.App {
     if (!runtime || !decision) return;
     const settings = this.getHvacInstanceSettings(index);
     const triggers = this.extraHvacTriggers[index - 1] || {};
+    const injectionGuard = hvacPermanent.injectionPublicationGuard(this,index,decision);
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
       if (runtime.lastPublishedPower !== on || decision.forceAutomaticOff || on && decision.hvacRestartFromFeedback) {
+        if(!injectionGuard.allowed())return;
         if (triggers.power) await triggers.power.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         runtime.lastPublishedPower = on;
         runtime.managedPowerOn = on;
+        injectionGuard.sent.powerCommand=on;
       }
     }
     if (decision.modeCommand && Boolean(settings.hvacAllowModeControl) && decision.modeCommand !== runtime.lastPublishedMode) {
+      if(!injectionGuard.allowed())return;
       if (triggers.mode) await triggers.mode.trigger(this.localizeDisplayTokens({ mode: String(decision.modeCommand), reason: String(decision.reason || '') }));
       runtime.lastPublishedMode = String(decision.modeCommand);
+      injectionGuard.sent.modeCommand=decision.modeCommand;
     }
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
       if (decision.forceAutomaticOff || runtime.lastPublishedSetpoint === null || !Number.isFinite(Number(runtime.lastPublishedSetpoint)) || Math.abs(setpoint - Number(runtime.lastPublishedSetpoint)) >= 0.1) {
+        if(!injectionGuard.allowed())return;
         const requestedAt = Date.now();
         if (triggers.setpoint) await triggers.setpoint.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         runtime.lastPublishedSetpoint = setpoint;
+        injectionGuard.sent.setpointCommand=setpoint;
         (this.hvacSetpointRequests ||= [])[index] = {value:setpoint,at:requestedAt};
         if (runtime.baselineSetpoint !== null && Math.abs(setpoint - Number(runtime.baselineSetpoint)) < 0.1) runtime.lastControlAt = 0;
       }
@@ -13181,6 +13370,7 @@ class HomeFluxEmsApp extends Homey.App {
       decision.fanTarget = targetSpeed;
       if (targetSpeed !== null && Number.isFinite(Number(targetSpeed))
         && (runtime.lastPublishedFanSpeed === null || Math.abs(targetSpeed - Number(runtime.lastPublishedFanSpeed)) > 0.0001)) {
+        if(!injectionGuard.allowed())return;
         const action = String(decision.fanAction || (Number.isFinite(currentSpeed)
           ? targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'hold'
           : 'set'));
@@ -13192,6 +13382,7 @@ class HomeFluxEmsApp extends Homey.App {
         }));
         runtime.lastPublishedFanAction = action;
         runtime.lastPublishedFanSpeed = targetSpeed;
+        injectionGuard.sent.fanTarget=targetSpeed;injectionGuard.sent.fanAction=action;
       }
     }
     // Do not overwrite a newer calculated decision that arrived while this
@@ -13202,27 +13393,34 @@ class HomeFluxEmsApp extends Homey.App {
   async _publishHvacDecisionNow(decision) {
     if (!decision) return;
     const settings = this.getSettings();
+    const injectionGuard = hvacPermanent.injectionPublicationGuard(this,0,decision);
     if (decision.powerCommand !== null && Boolean(settings.hvacAllowPowerControl)) {
       const on = Boolean(decision.powerCommand);
       if (this.lastPublishedHvacPower !== on || decision.forceAutomaticOff || on && decision.hvacRestartFromFeedback) {
+        if(!injectionGuard.allowed())return;
         if (this.hvacPowerTrigger) await this.hvacPowerTrigger.trigger(this.localizeDisplayTokens({ state: on ? 'Aan' : 'Uit', state_value: on ? 1 : 0, reason: String(decision.reason || '') }));
         this.lastPublishedHvacPower = on;
+        injectionGuard.sent.powerCommand=on;
         if (on) this.hvacManagedPowerOn = true;
         else this.hvacManagedPowerOn = false;
       }
     }
     if (decision.modeCommand && Boolean(settings.hvacAllowModeControl) && decision.modeCommand !== this.lastPublishedHvacMode) {
+      if(!injectionGuard.allowed())return;
       if (this.hvacModeTrigger) await this.hvacModeTrigger.trigger(this.localizeDisplayTokens({ mode: String(decision.modeCommand), reason: String(decision.reason || '') }));
       this.lastPublishedHvacMode = String(decision.modeCommand);
+      injectionGuard.sent.modeCommand=decision.modeCommand;
       const token = this.tokens.get('emshvacmode');
       if (token) await token.setValue(String(decision.modeCommand));
     }
     if (decision.setpointCommand !== null && Number.isFinite(Number(decision.setpointCommand)) && Boolean(settings.hvacAllowSetpointControl)) {
       const setpoint = Math.round(Number(decision.setpointCommand) * 2) / 2;
       if (decision.forceAutomaticOff || this.lastPublishedHvacSetpoint === null || this.lastPublishedHvacSetpoint === undefined || !Number.isFinite(Number(this.lastPublishedHvacSetpoint)) || Math.abs(setpoint - Number(this.lastPublishedHvacSetpoint)) >= 0.1) {
+        if(!injectionGuard.allowed())return;
         const requestedAt = Date.now();
         if (this.hvacSetpointTrigger) await this.hvacSetpointTrigger.trigger(this.localizeDisplayTokens({ setpoint, reason: String(decision.reason || '') }));
         this.lastPublishedHvacSetpoint = setpoint;
+        injectionGuard.sent.setpointCommand=setpoint;
         (this.hvacSetpointRequests ||= [])[0] = {value:setpoint,at:requestedAt};
         const token = this.tokens.get('emshvacsetpoint');
         if (token) await token.setValue(setpoint);
@@ -13241,6 +13439,7 @@ class HomeFluxEmsApp extends Homey.App {
       decision.fanTarget = targetSpeed;
       if (targetSpeed !== null && Number.isFinite(Number(targetSpeed))
         && (this.lastPublishedHvacFanSpeed === null || Math.abs(targetSpeed - Number(this.lastPublishedHvacFanSpeed)) > 0.0001)) {
+        if(!injectionGuard.allowed())return;
         const action = String(decision.fanAction || (Number.isFinite(currentSpeed)
           ? targetSpeed > currentSpeed ? 'higher' : targetSpeed < currentSpeed ? 'lower' : 'hold'
           : 'set'));
@@ -13252,6 +13451,7 @@ class HomeFluxEmsApp extends Homey.App {
         }));
         this.lastPublishedHvacFanAction = action;
         this.lastPublishedHvacFanSpeed = targetSpeed;
+        injectionGuard.sent.fanTarget=targetSpeed;injectionGuard.sent.fanAction=action;
       }
     } else if (!decision.fanAction && decision.fanTarget === null) {
       this.lastPublishedHvacFanAction = '';
@@ -13327,6 +13527,7 @@ class HomeFluxEmsApp extends Homey.App {
       : currentBatteryCommandW;
     const configuredPeakLimitW = Number(settings.peakLimitW);
     const peakLimitW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500);
+    const phasePeakActive=Boolean(options.phaseOverload)&&Boolean(settings.peakShaveEnabled);
     const peakGuardActive = Boolean(settings.peakShaveEnabled)
       && (String(result?.action || '') === 'peak_shave' || String(result?.override || '') === 'peak_shave');
     const peakGuardBatterySupportEnabled = hasHomeBattery && Boolean(settings.boilerPeakGuardBatterySupportEnabled);
@@ -13457,13 +13658,21 @@ class HomeFluxEmsApp extends Homey.App {
       return decision;
     }
 
+    if(phasePeakActive){
+      decision.on=false;decision.running=false;decision.outputCommand=running?false:null;
+      decision.startEligible=false;decision.reason='Peak Guard faseoverbelasting · boiler terugregelen';
+      this.boilerState.latestDecision=decision;
+      return decision;
+    }
     if (running) {
       const source = String(this.boilerState.activeSource || 'pv');
       // PV-driven boiler heating remains the first flexible load to yield during
       // Peak Guard. Tariff fallback is different: grid use is intentional there,
       // so the battery may support the boiler as long as the predicted grid value
       // remains within the configured hard Peak Guard limit.
-      if (source !== 'tariff' && peakGuardActive) {
+      if(source==='pv'&&injection.limitLoads(this,settings)) {
+        decision.on=false;decision.running=false;decision.outputCommand=false;decision.reason='Optionele boilerverwarming gepauzeerd tijdens injectie';
+      } else if (source !== 'tariff' && peakGuardActive) {
         decision.on = false;
         decision.outputCommand = false;
         decision.reason = 'Peak Guard · boiler onmiddellijk uit';
@@ -13537,7 +13746,7 @@ class HomeFluxEmsApp extends Homey.App {
       return decision;
     }
 
-    const source = tariffAllowed ? 'tariff' : pvEligible ? 'pv' : '';
+    const source = tariffAllowed ? 'tariff' : pvEligible && !injection.limitLoads(this,settings) ? 'pv' : '';
     if (!source) {
       if (tariffSelected && !tariffBatteryReady) {
         decision.reason = avgSoc === null
@@ -13956,12 +14165,13 @@ class HomeFluxEmsApp extends Homey.App {
 
   async publishFlexibleLoads(result = this.latestResult, nextBatteryCommandW = this.state.lastTotalCommandW, currentBatteryCommandW = this.state.lastTotalCommandW, options = {}) {
     const storedSettings = this.getSettings();
+    const phaseFlexSettings=phaseGuard.flexiblePeakSettings(this,storedSettings,Date.now());
     const { evDecisions, adjustedGridW, totalActualEvPowerW, totalDesiredEvPowerW, evStartedThisCycle }
       = await this.publishEvPortfolio(result, nextBatteryCommandW, currentBatteryCommandW, options);
     const runHvac = result?._runHvacContextPass !== false;
     if (runHvac) hvacPermanent.slowTick(this);
     const configuredHvacCount = this.getHvacCount(storedSettings);
-    const hvacPortfolio = runHvac ? hvacCoordination.prepare(this, storedSettings, result) : null;
+    const hvacPortfolio = runHvac ? hvacCoordination.prepare(this, phaseFlexSettings, result) : null;
     const hvacCount = runHvac ? configuredHvacCount : 0;
     const hvacDecisions = Array.from({length:configuredHvacCount}, (_,i)=>i===0?this.latestHvacDecision:this.getExtraHvac(i)?.latestDecision || null);
     const hvacPreviews = Array(hvacCount).fill(null);
@@ -13978,7 +14188,7 @@ class HomeFluxEmsApp extends Homey.App {
         nextBatteryCommandW,
         currentBatteryCommandW,
         {
-          storedSettings,
+          storedSettings:phaseFlexSettings,
           hvacBatteryCommandW: options.effectiveNextBatteryCommandW ?? nextBatteryCommandW,
           allowStart: active && !hvacPermanent.enabled(hvacPortfolio.settings[index]),
           hvacPortfolio,
@@ -13991,8 +14201,9 @@ class HomeFluxEmsApp extends Homey.App {
     const boilerNextBatteryCommandW = Number.isFinite(Number(options.effectiveNextBatteryCommandW))
       ? Number(options.effectiveNextBatteryCommandW)
       : nextBatteryCommandW;
-    let boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
+    let boilerDecision = this.calculateBoilerDecision(result, phaseFlexSettings, {
       allowStart: Boolean(this.boilerState.outputOn),
+      phaseOverload:phaseFlexSettings!==storedSettings,
       gridPowerW: adjustedGridW,
       currentBatteryCommandW,
       nextBatteryCommandW: boilerNextBatteryCommandW,
@@ -14032,7 +14243,7 @@ class HomeFluxEmsApp extends Homey.App {
           nextBatteryCommandW,
           currentBatteryCommandW,
           {
-            storedSettings,
+            storedSettings:phaseFlexSettings,
             hvacBatteryCommandW: options.effectiveNextBatteryCommandW ?? nextBatteryCommandW,
             allowStart: true,
             totalActualEvPowerW,
@@ -14070,8 +14281,9 @@ class HomeFluxEmsApp extends Homey.App {
     }
 
     if (!this.boilerState.outputOn && grantedId === 'boiler') {
-      boilerDecision = this.calculateBoilerDecision(result, storedSettings, {
+      boilerDecision = this.calculateBoilerDecision(result, phaseFlexSettings, {
         allowStart: true,
+        phaseOverload:phaseFlexSettings!==storedSettings,
         gridPowerW: adjustedGridW + (hvacPortfolio?.siteReservedW || 0),
         currentBatteryCommandW,
         nextBatteryCommandW: boilerNextBatteryCommandW,
@@ -14359,7 +14571,7 @@ class HomeFluxEmsApp extends Homey.App {
       // Select the meter before testing zones/deltas: averaged in-band P1
       // must never hide a live correction. PV-live is not a scheduling reason.
       const gridSelection = this.getGridControlSelection(settings, now);
-      evTargetW = Math.max(0, Number(this.getEvGridImportObservation(settings, now, evObservation).activeTargetW) || 0);
+      evTargetW = this.injectionRuntime?.active ? 0 : Math.max(0, Number(this.getEvGridImportObservation(settings, now, evObservation).activeTargetW) || 0);
       controlGridW = gridSelection.value - evTargetW;
     }
 
@@ -14368,14 +14580,19 @@ class HomeFluxEmsApp extends Homey.App {
     if (!Number.isFinite(zeroMin)) zeroMin = -5;
     if (!Number.isFinite(zeroMax)) zeroMax = 25;
     if (zeroMin > zeroMax) [zeroMin, zeroMax] = [zeroMax, zeroMin];
+    if(this.injectionRuntime?.active){const half=(zeroMax-zeroMin)/2,goal=-injection.target(this,settings);zeroMin=goal-half;zeroMax=goal+half;evTargetW=0;}
     const zone = controlGridW < zeroMin ? 'export' : controlGridW > zeroMax ? 'import' : 'inside';
     const configuredPeakLimitW = Number(settings.peakLimitW);
     const softPeakW = Math.max(0, Number.isFinite(configuredPeakLimitW) ? configuredPeakLimitW : 2500)
       - Math.max(0, Number(settings.peakSoftMarginW) || 0);
     const peak = Boolean(settings.peakShaveEnabled) && rawGridW >= softPeakW;
+    const phaseAssistActive=phaseGuard.assistEnabled(settings);
+    const phaseOverW=phaseAssistActive?phaseGuard.phasePressure(this,settings,now):0;
+    const phasePeak=phaseOverW>0||(phaseAssistActive&&Boolean(this.lastFastControlSnapshot?.phasePeak)
+      &&phaseGuard.phaseNearLimit(this,settings,now));
     const pvDeltaW = this.getRecentPvDelta(now);
     return { at: now, rawGridW, controlGridW, pvW, pvDeltaW, evTargetW,
-      adaptiveLive: this.isAdaptiveLiveControlActive(settings, now), zone, peak };
+      adaptiveLive: this.isAdaptiveLiveControlActive(settings, now), zone, peak, phasePeak, phaseOverW };
   }
 
   getBatteryFeedbackDependencies(state, plannedCharge = false) {
@@ -14680,6 +14897,21 @@ class HomeFluxEmsApp extends Homey.App {
     const state = this.getEvaluationState(settings, now, this.getRecentPvDelta(now), preflight?.evObservation);
     if (preflight) preflight.state = state;
     if (memo.dependencies !== this.getBatteryFeedbackDependencies(state, memo.result.baseMode === 'charge')) return false;
+    // A phase-assist candidate is intentionally different from the ordinary
+    // battery feedback preview. Once that exact command has been published,
+    // an otherwise identical P1 sample must not rerun the entire EMS. Phase
+    // and grid changes above the existing signal threshold are checked first
+    // by shouldRunFastEvaluation, before this bounded memo shortcut.
+    if(result.phaseBatteryAssist?.extraW){
+      const candidate=result.candidateCommands||[];
+      const committed=this.lastEmittedCommands||[];
+      if(candidate.length===committed.length&&candidate.every((w,i)=>w===committed[i])
+        &&this.lastEmittedMode===result.baseMode&&this.lastEmittedOverride===(result.override||'')
+        &&!this.commandPublishing&&!this.pendingResult&&!this.inFlightBatteryCommands
+        &&!this.splitModeChangeNeeded(result,settings,now)){
+        this.recordDiagnosticCounter('fastFeedbackUnchangedSkipped');return true;
+      }
+    }
     if (this.lastEmittedMode !== result.baseMode || this.lastEmittedOverride
       || !Array.isArray(this.lastEmittedCommands)) return false;
     const charging = result.baseMode === 'charge';
@@ -14736,6 +14968,14 @@ class HomeFluxEmsApp extends Homey.App {
     const previous = this.lastFastControlSnapshot;
     if (!previous) return true;
     if (current.peak !== previous.peak) { this.recordDiagnosticCounter('fastReasonPeakTransition'); return true; }
+    if(current.phasePeak!==previous.phasePeak)return true;
+    // Only a MATERIAL phase change reaches the fast controller. Persistent
+    // overload never sets peak=true and never bypasses the command interval.
+    const phaseSignalThreshold=this.getFastSignalThresholdW(settings);
+    const phaseIntervalMs=Math.max(1,Number(settings.commandIntervalSeconds)||DEFAULTS.commandIntervalSeconds||10)*1000;
+    if(current.phasePeak&&now-(Number(this.lastControlEvalAt)||0)>=phaseIntervalMs&&(
+      Math.abs(current.phaseOverW-(previous.phaseOverW||0))>=phaseSignalThreshold
+      ||Math.abs(current.rawGridW-previous.rawGridW)>=phaseSignalThreshold))return true;
     if (current.zone !== previous.zone) {
       // In planned charging a zone crossing can merely change the solar/grid
       // share at a fixed charge cap. Prove identical individual commands using
@@ -14764,7 +15004,7 @@ class HomeFluxEmsApp extends Homey.App {
     // Planned charging also uses live meter feedback: the plan is a floor,
     // while measured export may require more charging and excess import may
     // require less PV capture. Staying in the same zone must not strand it.
-    const feedbackMode = ['self_consumption', 'avoid_import', 'solar_capture', 'charge'].includes(baseMode);
+    const feedbackMode = ['injection','self_consumption', 'avoid_import', 'solar_capture', 'charge'].includes(baseMode);
     // PV observations only select the meter used above. The ordinary zone,
     // feedback and delta gates decide whether battery work is necessary.
     if (!feedbackMode && !current.peak && String(this.latestResult.override || '') !== 'peak_shave') {
@@ -14826,6 +15066,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.recordDiagnosticCounter('fastRequests');
     const now = Date.now();
     const controlSettings = this.getSettings();
+    injection.tick(this,controlSettings,now,false);
     const pauseInfo = this.getBatteryCommandPauseInfo(now, controlSettings);
     if (pauseInfo.active) {
       this.recordDiagnosticCounter('fastPaused');
@@ -14989,6 +15230,7 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   isHybridExternalControlEligible(result, settings = this.getSettings()) {
+    if(injection.locked(this))return false;
     const baseMode = String(result?.baseMode || '');
     const avgSoc = Number(result?.avgSoc);
     const configuredMaxSoc = Number(settings.maxSoc);
@@ -15241,6 +15483,7 @@ class HomeFluxEmsApp extends Homey.App {
       // Only requestEvaluate supplies this local snapshot, synchronously. A
       // later millisecond or any timer invocation gets a fresh settings/state.
       const storedSettings = preflight?.at === now ? preflight.settings : this.getSettings();
+      injection.tick(this,storedSettings,now,false);
       const paused = this.getPausedEvaluationResult(now, storedSettings, forceStatus);
       if (paused) return paused;
 
@@ -15313,6 +15556,7 @@ class HomeFluxEmsApp extends Homey.App {
     try {
       const now = Date.now();
       const storedSettings = this.getSettings();
+      injection.tick(this,storedSettings,now,true);
       this.ensureForecastDayCurrent(now);
       const pvDeltaW = this.getRecentPvDelta(now);
       const evaluationState = this.getEvaluationState(storedSettings, now, pvDeltaW);
@@ -15372,7 +15616,7 @@ class HomeFluxEmsApp extends Homey.App {
       // EV/input-triggered contexts may run sooner than the ordinary slow tick.
       // They reuse HVAC decisions until the slow cadence is due. Retain the
       // existing urgent safety context for Peak Guard and legacy fast reset.
-      const hvacSafety = (this.activeContextDiagnosticReasons || []).some(reason => reason === 'peak_guard' || /^hvac|^setting:hvac/.test(reason));
+      const hvacSafety = (this.activeContextDiagnosticReasons || []).some(reason => ['peak_guard','peak_guard_phase','ev_phase_guard'].includes(reason) || /^hvac|^setting:hvac/.test(reason));
       const hvacTariffChanged = hvacCoordination.tariffKey(result) !== hvacCoordination.tariffKey(this.latestResult);
       result._runHvacContextPass = hvacSafety || hvacTariffChanged || !this.lastHvacContextEvalAt
         || now - this.lastHvacContextEvalAt >= this.getSlowControlIntervalMs(storedSettings);
@@ -15494,7 +15738,10 @@ class HomeFluxEmsApp extends Homey.App {
     const actual = Number(this.state?.lastTotalCommandW) || 0;
     const threshold = Math.max(25, Number(this.settingsCache?.commandDeadbandW) || 25);
     const direction = watts => Math.abs(watts) > threshold ? Math.sign(watts) : 0;
+    // Use the live injectiemodus latch, never exported watts or an old engine result.
+    const injectionActive = Boolean(this.injectionRuntime?.active && (this.settingsCache || this.getSettings()).injectionEnabled);
     return emsStatusTags.values({ ...view,
+      injectionActive,
       batteryCommandPauseActive: view.batteryCommandPauseActive
         ?? (this.settingsCache?.batteryCommandPauseEnabled
           ? this.getBatteryCommandPauseInfo(now, this.settingsCache).active : false),
@@ -15833,6 +16080,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   queueCommandEmit(result, precomputedChange = null) {
+    if(this.injectionRuntime?.returningToControl&&!result.injectionActive)precomputedChange=true;
+    if (!injection.validPublication(this,result,this.getSettings())) return false;
     if (batteryResponseTest.active(this)) {
       if (!result.canPublishCommands || result.override === 'peak_shave') batteryResponseTest.stop(this,result.override === 'peak_shave' ? 'Peak Guard onderbreekt de reactietest.' : 'De batterijsturing is niet veilig beschikbaar.').catch(err=>this.error('Battery response safety stop',err));
       return false;
@@ -15850,7 +16099,8 @@ class HomeFluxEmsApp extends Homey.App {
       return false;
     }
     if (!result.canPublishCommands) {
-      const hadActiveOutput = this.lastEmittedCommands.some(value => Math.abs(value) > 0);
+      const hadActiveOutput = result.injectionStop || injection.locked(this) && this.commandPublishing
+        || this.lastEmittedCommands.some(value => Math.abs(value) > 0);
       if (hadActiveOutput) {
         const count = this.getBatteryCount(this.getSettings());
         const safetyReason = !result.controlEnabled
@@ -15916,10 +16166,11 @@ class HomeFluxEmsApp extends Homey.App {
       this.pendingCommandBypassInterval = false;
       return;
     }
+    if (!injection.validPublication(this,result,settings)) {this.pendingResult=null;return;}
     const intervalMs = Math.max(1, Number(settings.commandIntervalSeconds) || 10) * 1000;
     const now = Date.now();
     const pauseInfo = this.getBatteryCommandPauseInfo(now, settings);
-    if (pauseInfo.active) {
+    if (pauseInfo.active && !result.injectionStop) {
       // Never release a stale pending command into the no-control window, not
       // even a Peak Guard/safety recalculation. Re-evaluate fresh after the end.
       this.pendingResult = null;
@@ -15956,7 +16207,7 @@ class HomeFluxEmsApp extends Homey.App {
       const count = this.getBatteryCount(settings);
       const requestedInternalCommands = (result.candidateCommands || []).slice(0, count).map(value => Math.round(Number(value) || 0));
       const efficiencyOutputTransition = this.limitEfficiencyHandoverAtOutput(result, requestedInternalCommands, settings);
-      const dischargeBlocked = this.getEvBatteryDischargePolicy(settings, now).blocked;
+      const dischargeBlocked = !result.injectionActive && this.getEvBatteryDischargePolicy(settings, now).blocked;
       const coordinatedCommands = dischargeBlocked
         ? efficiencyOutputTransition.commands.map(value => Math.min(0, value)) : efficiencyOutputTransition.commands;
       let phaseSettings=settings;
@@ -15966,15 +16217,17 @@ class HomeFluxEmsApp extends Homey.App {
           await reduction;phaseSettings=this.getSettings();
           // EV I/O may have yielded to a pause, test, handover or settings edit.
           // Existing settings/input handling supplies the next fresh decision.
-          if(!phaseSettings.controlEnabled||!this.isChargeTestValid(phaseSettings)
+          if((!phaseSettings.controlEnabled||!this.isChargeTestValid(phaseSettings))&&!result.injectionStop
             ||this.chargeTestOperationRunning||batteryResponseTest.active(this)
             ||this.isHybridExternalControlActive(phaseSettings)||String(this.hybridEmsRuntime?.status||'')==='handover_wait'
-            ||this.getBatteryCommandPauseInfo(Date.now(),phaseSettings).active
-            ||phaseSettings.phaseGuard!==settings.phaseGuard
-            ||['peakLimitW','peakShaveEnabled','peakSoftMarginW','forcedMode','minSoc'].some(key=>phaseSettings[key]!==settings[key]))return;
+            ||!result.injectionStop&&this.getBatteryCommandPauseInfo(Date.now(),phaseSettings).active
+            ||!result.injectionStop&&phaseSettings.phaseGuard!==settings.phaseGuard
+            ||!result.injectionStop&&['peakLimitW','peakShaveEnabled','peakSoftMarginW','forcedMode','minSoc'].some(key=>phaseSettings[key]!==settings[key]))return;
         }
       }
-      const internalCommands=phaseGuard.limit(this,coordinatedCommands,phaseSettings,Date.now(),false);
+      if(!injection.validPublication(this,result,this.getSettings()))return;
+      const phaseCapped=phaseGuard.limit(this,coordinatedCommands,phaseSettings,Date.now(),false);
+      const internalCommands=phaseGuard.assistOutput(this,phaseCapped,result,phaseSettings,Date.now());
       if (internalCommands.some(value => value !== 0)) require('./lib/hvac-learning').resetBatteryRest(this);
       this.inFlightBatteryCommands = internalCommands;
       this.recordDiagnosticBatteryOutput(result, 'requested', internalCommands);
@@ -16004,6 +16257,7 @@ class HomeFluxEmsApp extends Homey.App {
         mode: result.baseMode,
         override: result.override || '',
       };
+      if(!injection.validPublication(this,result,this.getSettings()))return;
       await this.commandTrigger.trigger(publishedFlowTokens, publishedFlowState);
 
       // Split-command batteries use dedicated mode/power Flow cards. A mode
@@ -16011,7 +16265,10 @@ class HomeFluxEmsApp extends Homey.App {
       // the opposite direction is requested before that mode's minimum hold time
       // has elapsed, the current mode is kept at its configured minimum and a
       // fresh EMS calculation is scheduled for the first allowed switch moment.
-      const effectiveInternalCommands = await this.publishSplitBatteryCommands(internalCommands, settings);
+      const effectiveInternalCommands = await this.publishSplitBatteryCommands(internalCommands, settings, {
+        injectionActive: result.injectionActive, injectionTargetW: result.injectionTargetW,
+        injectionStop: Boolean(result.injectionStop),
+      });
       const effectiveInternalTotal = effectiveInternalCommands.reduce((sum, value) => sum + (Number(value) || 0), 0);
       this.recordDiagnosticBatteryOutput(result, 'published', effectiveInternalCommands);
 
@@ -16107,6 +16364,7 @@ class HomeFluxEmsApp extends Homey.App {
         // invalidate a fresh proof established from that new output.
         this.requestContextEvaluate(false, 'battery_output_changed', 0, false, false);
       }
+      injection.published(this,result);
       flowOutputKeepalive.remember(this, publishedFlowTokens, publishedFlowState, internalCommands, settings);
     } catch (err) {
       if(settings.phaseGuard?.enabled&&Number(settings.phaseGuard.phases)===3){const runtime=this.phaseGuardRuntime ||= {};runtime.publicationUncertain=true;}
@@ -16123,6 +16381,7 @@ class HomeFluxEmsApp extends Homey.App {
         // is retried only after that publication has completed atomically.
         this.requestContextEvaluate(true, 'hybrid_handover_after_publish');
       }
+      injection.resumeAfterPriceStop(this);
     }
   }
 
@@ -16594,6 +16853,7 @@ class HomeFluxEmsApp extends Homey.App {
     } else {
       preview.batteryCommandPauseActive = false;
     }
+    preview.injectionActive = Boolean(this.injectionRuntime?.active && storedSettings.injectionEnabled);
     const widgetTokens = this.getEmsWidgetTokens(preview, statusNow);
     preview.decisionText = widgetTokens.emsdecision;
     preview.decisionReason = widgetTokens.emsdecisionreasons;
@@ -16602,7 +16862,7 @@ class HomeFluxEmsApp extends Homey.App {
     preview.externalEnergy = this.getExternalEnergyStatus(storedSettings, new Date(statusNow));
     preview.externalEnergy2 = this.getExternalEnergyStatus(storedSettings, new Date(statusNow), 'external2');
     preview.controlProfile = String(settings.controlProfile || 'normal');
-    preview.forcedMode = String(settings.forcedMode || 'auto');
+    preview.forcedMode = this.getEmsControlMode(storedSettings);
     preview.forcedModeResumeAt = Number(settings.forcedModeResumeAt) || 0;
     preview.outputPvLimitPercent = this.lastPublishedPvLimitPercent ?? 100;
     preview.pvLimitPercent = Number.isFinite(Number(preview.pvLimitPercent)) ? Number(preview.pvLimitPercent) : preview.outputPvLimitPercent;
@@ -16850,6 +17110,7 @@ class HomeFluxEmsApp extends Homey.App {
     };
 
     return this.localizeDisplay({
+      injection:injection.status(this),
       phaseGuard: phaseGuard.status(this,storedSettings,statusNow),
       phaseGuardOutput: this.phaseGuardStatus || null,
       batteryPhaseDetection: require('./lib/phase-detection').status(this),

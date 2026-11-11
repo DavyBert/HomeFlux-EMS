@@ -1,6 +1,9 @@
 'use strict';
 
+const injection=require('./lib/active-injection');
 module.exports = {
+  async startInjection({homey}) {return injection.start(homey.app,'manual');},
+  async stopInjection({homey}) {return injection.stop(homey.app);},
   async approveChargeTestWithoutTest({homey,body}) {return homey.app.approveChargeTestWithoutTest(body||{});},
   async startBatteryPhaseDetection({homey,body}) { return require('./lib/phase-detection').start(homey.app,Number(body.instance)-1); },
   async stopBatteryPhaseDetection({homey}) { return require('./lib/phase-detection').stop(homey.app); },

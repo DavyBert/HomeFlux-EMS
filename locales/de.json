@@ -30,6 +30,10 @@
       "days": "Tage"
     },
     "status": {
+      "phaseGuardReceptionWarning": "Dreiphasenüberwachung: L1/L2/L3-Messwerte fehlen oder sind veraltet. Prüfen Sie den dreiphasigen Flow.",
+      "phaseReceptionReceived": "empfangen",
+      "phaseReceptionMissing": "nicht empfangen",
+      "phaseReceptionStale": "veraltet",
       "currentDecision": "Aktuelle Entscheidung",
       "currentTariff": "Aktueller Tarif",
       "emsMode": "EMS-Modus",
@@ -298,7 +302,11 @@
       "on": "Ein",
       "wafGridRoom": "Netzspielraum",
       "wafRoomSnapshot": "Abgerundet; jede Minute geprüft",
-      "wafPeakGuardHold": "Peak Guard: Empfehlung bis zu mindestens einer Minute ohne Eingriff ausgesetzt"
+      "wafPeakGuardHold": "Peak Guard: Empfehlung bis zu mindestens einer Minute ohne Eingriff ausgesetzt",
+      "modeInjection": "Einspeisen",
+      "reasonInjectionActive": "Der aktive Einspeisemodus steuert die Batterie zur Energieabgabe ins Netz",
+      "reasonSaveLowPv": "Geringe PV-Prognose: Die aktive Tarifregel bewahrt Batterieenergie für später auf",
+      "reasonSaveLowPvTarget": "Geringe PV-Prognose: Die Reserve bis zum berechneten Planungsziel wird geschützt"
     }
   },
   "evWidget": {
@@ -322,6 +330,7 @@
     "month": "Monat",
     "all": "Alle",
     "solarKm": "Geschätzte Reichweite mit Solarenergie",
+    "gridKm": "Geschätzte Reichweite aus Netzladung",
     "energySplit": "Ladeenergiequellen",
     "solarEnergy": "Solar bis EV",
     "gridEnergy": "Netz bis EV",

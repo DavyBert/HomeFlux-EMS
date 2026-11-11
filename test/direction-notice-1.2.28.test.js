@@ -5,7 +5,8 @@ const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('nod
  async function pass(){await a.startChargeTest();await a.confirmChargeTest({ok:true});await a.confirmChargeTest({ok:true});}
  await pass();assert(a.isChargeTestValid());await h.setExternalSetting('phaseGuard',{...a.getSettings().phaseGuard,phases:3,batteries:['balanced3']});assert(a.isChargeTestValid());assert.notEqual(a.getPublicStatus().chargeTest.invalidationCode,'configuration_changed');
  await h.setExternalSetting('batteryCount',2);assert.equal(a.isChargeTestValid(),false);assert.equal(a.getPublicStatus().chargeTest.invalidationCode,'configuration_changed');
- const html=fs.readFileSync('settings/index.html','utf8'),start=html.indexOf('  function notifyChargeTestRequirement('),end=html.indexOf('  async function refreshStatus()',start),alerts=[];
+ // Extract only the function under test, not later tab listeners.
+ const html=fs.readFileSync('settings/index.html','utf8'),start=html.indexOf('  function notifyChargeTestRequirement('),end=html.indexOf('  let statusRefreshBusy',start),alerts=[];
  const ctx=vm.createContext({directionTestRequest:{pending:false},translateUiText:x=>x,Homey:{alert:x=>alerts.push(x)}});vm.runInContext(html.slice(start,end),ctx);
  for(let i=0;i<5;i++)ctx.notifyChargeTestRequirement(a.getPublicStatus().chargeTest);assert.equal(alerts.length,1,'one popup only across status refreshes');
  await pass();ctx.notifyChargeTestRequirement(a.getPublicStatus().chargeTest);assert.equal(a.getPublicStatus().chargeTest.invalidationCode,'');assert.equal(alerts.length,1);

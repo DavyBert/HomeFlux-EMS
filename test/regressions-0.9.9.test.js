@@ -328,6 +328,9 @@ console.log('0.9.9 Autotune scheduling regression tests passed');
   assert(token, 'enabled CPU diagnostics should return a lightweight timing token');
   app.endDiagnosticCpuSection(token);
   assert.equal(app.diagnostics.cpuSections.fast_evaluation.calls, 1);
+  // Reports now also contain the optional phase envelope. Supply its
+  // settings dependency even though this fixture only measures CPU scopes.
+  app.getSettings = () => ({ phaseGuard: { enabled: false, phases: 1 } });
   const report = app.getDiagnosticsReport();
   assert.equal(report.cpu.perSectionCpuSampling, true);
   assert.equal(report.cpu.measurementMode, 'process_cpu_60s_plus_sync_cpu_and_section_wall_time');

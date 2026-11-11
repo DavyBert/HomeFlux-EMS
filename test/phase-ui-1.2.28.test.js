@@ -8,7 +8,8 @@ for(const id of ['phaseEmergencyPriorityRow','phaseGuard','gridConnectionPhases'
 nodes.get('stopPhaseDetection').classList.toggle=(name,hidden)=>{nodes.get('stopPhaseDetection').hiddenByClass=hidden;};
 const q=id=>nodes.get(id),ctx=vm.createContext({q,HomeFluxPhaseCalculator:calc,translateUiText:x=>x,document:{createElement:()=>node()},boolean:new Set(),numeric:new Set(),jsonArray:new Set()});
 const read=html.slice(html.indexOf('  function currentSettingValue('),html.indexOf('  function captureSettingsBaseline('));vm.runInContext(read,ctx);
-const update=html.slice(html.indexOf('  function updatePhaseUi('),html.indexOf('  async function refreshStatus('));vm.runInContext(update,ctx);
+// Phase rendering does not depend on later injection-tab event listeners.
+const update=html.slice(html.indexOf('  function updatePhaseUi('),html.indexOf('  let statusRefreshBusy'));vm.runInContext(update,ctx);
 q('gridConnectionPhases').value='3';q('phaseVoltage').value='';q('phaseAmps').value='25';q('phaseSafety').value='80';q('batteryCount').value='4';q('phaseGuard').value=JSON.stringify({batteries:['L1','L2','balanced3','unknown','L3']});
 ctx.updatePhaseUi();assert(q('phaseLimit').disabled);assert.equal(q('phaseProposed').textContent,'—');assert.equal(q('phaseBatteryRows').querySelectorAll().length,4);
 q('phaseVoltage').value='230';q('phaseLimit').value='4300';ctx.updatePhaseUi();assert.equal(q('phaseLimit').disabled,false);assert.equal(q('phaseProposed').textContent,'4600');assert.equal(q('phaseLimit').value,'4300');
