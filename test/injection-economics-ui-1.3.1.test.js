@@ -58,7 +58,7 @@ for(const lang of ['nl','en','fr','de','es']){
  ctx.renderInjectionStatus(status);yes(q('injectionStatus').textContent.includes(t(status.economic.reason)));
  status.economic={enabled:false};ctx.renderInjectionStatus(status);
  equal(q('injectionStatus').textContent.includes(t('Netto prijsverschil')),false,'disabled gate does not clutter status');
- const notes=JSON.parse(fs.readFileSync('.homeychangelog.json','utf8'))['1.3.1'][lang];
+ const notes=JSON.parse(fs.readFileSync('.homeychangelog.json','utf8'))[require('../app.json').version][lang];
  yes(notes.length>0);yes(fs.readFileSync('README.md','utf8').includes(notes),lang+' release note retained in README');
 }
 console.log(`Injection economics UI 1.3.1: ${checks} checks passed across five languages (bindings and production functions; no browser).`);

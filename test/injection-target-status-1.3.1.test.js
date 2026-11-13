@@ -82,7 +82,7 @@ async function fresh(extra = {}) {
   const numeric = vm.runInNewContext(html.match(/const numeric = new Set\((\[[\s\S]*?\])\);/)[1]);
   equal(ids.filter(id => id === 'injectionTargetW').length, 1, 'field bound once for load/save');
   yes(numeric.includes('injectionTargetW'), 'power is saved as a number');
-  const notes = JSON.parse(fs.readFileSync('.homeychangelog.json', 'utf8'))['1.3.1'];
+  const notes = JSON.parse(fs.readFileSync('.homeychangelog.json', 'utf8'))[require('../app.json').version];
   const readme = fs.readFileSync('README.md', 'utf8');
   for (const lang of ['nl', 'en', 'fr', 'de', 'es']) {
     const dictionary = JSON.parse(fs.readFileSync('settings/translations/' + lang + '.json', 'utf8'));

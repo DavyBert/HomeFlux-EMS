@@ -116,7 +116,7 @@ class Element {
  appendChild(x){this.children.push(x);return x;}get firstChild(){return this.children[0];}setAttribute(k,v){this.attributes[k]=v;}
 }
 const content=new Element('div'),dom={getElementById:()=>content,createElement:t=>new Element(t),createElementNS:(ns,t)=>new Element(t)};
-const wctx=vm.createContext({document:dom,Date,Number,Math,String,tr:(h,k,f)=>f,enabled:()=>false,batteryTimingText:()=>null,formatC:v=>`${Number(v).toFixed(1)} °C`});
+const wctx=vm.createContext({document:dom,Date,Number,Math,String,renderPhaseReceptionWarning:()=>null,tr:(h,k,f)=>f,enabled:()=>false,batteryTimingText:()=>null,formatC:v=>`${Number(v).toFixed(1)} °C`});
 vm.runInContext(extract(widget,'section')+extract(widget,'hvacGoalValue')+extract(widget,'hvacGoalConfirmed'),wctx);
 const start=widget.indexOf('    function renderStatus('),end=widget.indexOf('    async function onHomeyReady(',start);vm.runInContext(widget.slice(start,end),wctx);
 const hvacs=Array.from({length:10},(_,i)=>({instance:i+1,name:'A very long name '+i,enabled:true,mode:'heat',outputMode:'heat',direction:'auto',learning:{publishedSetpointC:i===9?null:21},outputSetpointC:null,roomTemperatureC:i===9?null:20,waiting:i===2,energySource:i===1?'pv':'tariff'}));

@@ -35,8 +35,8 @@ async function fresh(overrides={}) {
   const o=resolveEvOutput({decision:d,settings:{evEnabled:true,evControlType:type},injectionBlocked:true});
   check(!o.allowed&&o.currentA===0&&(type==='current'||o.mode==='stop'),'all EV output modes vetoed');
  }
- // Inactive defaults: compare production engine against unmodified 1.2.41.
- const fixture=require('./fixtures/injection-inactive-1.2.41.json');
+ // Inactive defaults: compare production engine against original supplied 1.3.2.
+ const fixture=require('./fixtures/injection-inactive-1.3.2.json');
  for(let i=0;i<100;i++) {
   const sample={...state,injectionActive:false,gridPowerW:-4000+i*125,batterySoc:[10+i*.8],lastTotalCommandW:(i%7-3)*400};
   const settings={...base,peakShaveEnabled:true,contractType:i%2?'fixed':'dynamic',forcedMode:['auto','solar_capture','self_consumption','standby'][i%4]};

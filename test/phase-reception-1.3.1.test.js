@@ -132,5 +132,5 @@ for (const lang of ['nl', 'en', 'fr', 'de', 'es']) {
 }
 assert(widgetHtml.includes('if(phaseWarning)content.appendChild(phaseWarning)'), 'phase warning must be outside optional decision section');
 assert(settingsHtml.includes("const phaseMonitoringOpen=q('panel-ems')"), 'reuse existing status timer on phase settings tab');
-assert.equal(require('../package.json').version, '1.3.1');
+assert.equal(require('../package.json').version, '1.3.3');
 console.log('PASS phase reception: no/partial/complete/stale/invalid samples, disabled guard, persistent widget, NL/EN/FR/DE/ES');

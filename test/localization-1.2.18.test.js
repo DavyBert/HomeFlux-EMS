@@ -24,7 +24,7 @@ for(const language of languages){
  for(const text of ['Choose heating/cooling using','Indoor temperature (existing behaviour)','Standby temperature must be between 5 and 99 °C.'])assert.notEqual(translate(text),text,`${language}: untranslated runtime text`);
  const website=fs.readFileSync(path.join(root,`README.${language}.txt`),'utf8');assert(website.length>1000);assert(website.startsWith('Your energy, managed differently'));assert(!/release notes|notes de version|Versionshinweise|notas de versión/i.test(website));
  assert(read('.homeychangelog.json')['1.2.18'][language].length>100);
- assert(fs.readFileSync(path.join(root,'README.md'),'utf8').includes(read('.homeychangelog.json')['1.2.18'][language]));
+ assert(fs.readFileSync(path.join(root,'README.md'),'utf8').includes(read('.homeychangelog.json')[read('app.json').version][language]));
 }
 function scan(value,where){
  if(Array.isArray(value))return value.forEach((x,i)=>scan(x,where+'/'+i));
