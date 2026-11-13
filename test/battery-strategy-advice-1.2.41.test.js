@@ -2,12 +2,15 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const A=require('../settings/battery-strategy-advice'),E=require('../lib/ems-engine'),{boot}=require('./startup-harness');
 const base={...E.DEFAULTS,batteryCount:1,contractType:'fixed',dayPlanningMaxSoc:95,lowForecastAutoSunnyEnabled:true,lowForecastAutoSunnySoc:90,batterySaveDischargeAboveSoc:30,lowForecastFixedEnabled:true,lowForecastSelfConsumptionMinKwh:10,minSoc:10,safetySoc:14};
+// Pack the existing readable four-flag fixtures into the compact persisted policy.
+const policy=require('../settings/high-forecast-policy'),risk=A.risk;
+A.risk=s=>risk({...s,highForecastDynamicPolicy:policy.normalize(policy.keys.some(k=>Object.hasOwn(s,k))?null:s.highForecastDynamicPolicy,s)});
 let checks=0;function check(name,fn){fn();checks++;}
 check('95/90/30 and all effective save-floor positions',()=>{for(const floor of [30,90,95,100])assert(A.risk({...base,batterySaveDischargeAboveSoc:floor}));assert(A.risk({...base,dayPlanningMaxSoc:90}),'reaching the threshold already permits promotion');});
 for(const change of [{dayPlanningMaxSoc:80},{lowForecastAutoSunnyEnabled:false},{lowForecastFixedEnabled:false},{batteryCount:0},{lowForecastSelfConsumptionMinKwh:0},{batterySaveDischargeAboveSoc:14},{safetySoc:40},{maxSoc:80},{forcedMode:'standby'},{maxTotalChargeW:0},{maxTotalDischargeW:0},{maxChargePerBatteryW:0},{maxDischargePerBatteryW:0}])check('no real configured risk '+JSON.stringify(change),()=>assert(!A.risk({...base,...change})));
-check('dynamic class relevance and unchanged normal-hours saving floor',()=>{
- const s={...base,contractType:'dynamic_quarter',lowForecastFixedEnabled:false,lowForecastDynamicNormalEnabled:true,lowForecastDynamicCheapEnabled:false,lowForecastDynamicExpensiveEnabled:false};
- assert(!A.risk(s));assert(A.risk({...s,dynamicUseBatteryNormalHours:true}));assert(A.risk({...s,lowForecastDynamicCheapEnabled:true}));assert(A.risk({...s,lowForecastDynamicExpensiveEnabled:true}));
+check('dynamic class relevance without obsolete normal-hours gate',()=>{
+ const s={...base,contractType:'dynamic_quarter',highForecastDynamicCheapBatterySave:false,highForecastDynamicNormalBatterySave:false,lowForecastFixedEnabled:false,lowForecastDynamicNormalEnabled:true,lowForecastDynamicCheapEnabled:false,lowForecastDynamicExpensiveEnabled:false};
+ assert(!A.risk({...s,highForecastDynamicNormalBatterySave:true,highForecastDynamicNormalDischargeToTarget:false}));assert(A.risk({...s,highForecastDynamicNormalBatterySave:true,highForecastDynamicNormalDischargeToTarget:true}));assert(A.risk(s));assert(A.risk({...s,dynamicUseBatteryNormalHours:true}));assert(A.risk({...s,lowForecastDynamicCheapEnabled:true}));assert(A.risk({...s,lowForecastDynamicExpensiveEnabled:true}));
 });
 const rate={id:'low',importPrice:.1,lowForecastBatterySave:true,avoidGridImport:false,weekdayChargeMode:'always',weekendChargeMode:'always'};
 const block={rateId:'low',start:'00:00',end:'00:00',days:[1,2,3,4,5,6,7]};

@@ -9,7 +9,8 @@
     'batterySaveDischargeAboveSoc','lowForecastAutoSunnyEnabled','lowForecastAutoSunnySoc',
     'lowForecastSelfConsumptionMinKwh','contractType','lowForecastFixedEnabled',
     'lowForecastDynamicCheapEnabled','lowForecastDynamicNormalEnabled','lowForecastDynamicExpensiveEnabled',
-    'dynamicUseBatteryNormalHours','touRates','touSchedule','touTariffs',
+    'highForecastDynamicPolicy',
+    'touRates','touSchedule','touTariffs',
     'maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW',
     'individualBatteryPowerLimitsEnabled'];
   for (let i = 1; i <= 8; i++) keys.push(`battery${i}MaxChargeW`, `battery${i}MaxDischargeW`);
@@ -44,7 +45,7 @@
         : r.startMinute < r.endMinute ? r.days.includes(day) && minute >= r.startMinute && minute < r.endMinute
           : minute >= r.startMinute && r.days.includes(day) || minute < r.endMinute && r.days.includes(previous));
       if (!rate || rate.avoidGridImport) continue;
-      saving ||= Boolean(rate.lowForecastBatterySave);
+      saving ||= Boolean(rate.lowForecastBatterySave) && (!rate.highForecastBatterySave || rate.highForecastDischargeToTarget);
       charging ||= dayCharge(rate, day >= 6, high > low && (number(rate.importPrice) ?? 0) === low);
     }
     return saving && charging;
@@ -67,9 +68,10 @@
         : Number(settings[`max${kind}PerBatteryW`]) > 0;
       if (!possible) return false;
     }
-    if (String(settings.contractType).startsWith('dynamic')) return Boolean(settings.lowForecastDynamicCheapEnabled
+    if (String(settings.contractType).startsWith('dynamic')) return Boolean(
+      settings.lowForecastDynamicCheapEnabled && (settings.highForecastDynamicPolicy?.highForecastDynamicCheapBatterySave === false || settings.highForecastDynamicPolicy?.highForecastDynamicCheapDischargeToTarget !== false)
       || settings.lowForecastDynamicExpensiveEnabled
-      || settings.lowForecastDynamicNormalEnabled && settings.dynamicUseBatteryNormalHours);
+      || settings.lowForecastDynamicNormalEnabled && (settings.highForecastDynamicPolicy?.highForecastDynamicNormalBatterySave === false || settings.highForecastDynamicPolicy?.highForecastDynamicNormalDischargeToTarget !== false));
     if (settings.contractType === 'tou') return touPolicy(settings);
     return Boolean(settings.lowForecastFixedEnabled);
   }

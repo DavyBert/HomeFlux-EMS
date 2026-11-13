@@ -1,6 +1,9 @@
 {
   "language": "nl",
   "exact": {
+    "Ingesteld gedrag": "Ingesteld gedrag",
+    "Bij hoge PV batterij sparen op dit tarief": "Bij hoge PV batterij sparen op dit tarief",
+    "Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel": "Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel",
     "Fasemeting ontvangen": "Fasemeting ontvangen",
     "Fasemeting verouderd": "Fasemeting verouderd",
     "Fasemeting niet ontvangen": "Fasemeting niet ontvangen",
@@ -406,6 +409,18 @@
   },
   "phrases": {},
   "strings": {
+    "contractBehavior.low": "Lage PV",
+    "contractBehavior.high": "Hoge PV",
+    "contractBehavior.fixed": "Vast tarief",
+    "contractBehavior.cheap": "Goedkoop",
+    "contractBehavior.normal": "Normaal",
+    "contractBehavior.expensive": "Duur",
+    "contractBehavior.tariff": "Tarief",
+    "contractBehavior.selfConsumption": "Zelfconsumptie volgens de bestaande regels; geen tariefgebonden batterij sparen.",
+    "contractBehavior.save": "Direct batterij sparen; gewone ontlading alleen boven de bestaande spaargrens ({floor}% SoC).",
+    "contractBehavior.saveForecast": "Direct batterij sparen; ontladen boven het actuele forecastdoel toegestaan. Op of onder dat doel vervalt deze uitzondering; de normale spaargrens geldt weer. Hogere reserves blijven beschermd.",
+    "contractBehavior.avoidImport": "Netimport vermijden volgens de bestaande ontlaadlogica.",
+    "contractBehavior.priority": "Gepland netladen, veiligheidsherstel, Peak Guard en bestaande beveiligingen behouden hun voorrang. PV-overschot opvangen blijft mogelijk. De bestaande dagclassificatie bepaalt lage/hoge PV.",
     "planning.forecastDecisionTomorrow": "Nachtplanning is actief. Zowel de energieplanning als de dagstrategie gebruiken nu de PV-voorspelling van morgen.",
     "planning.forecastDecisionToday": "Dagplanning is actief. Zowel de energieplanning als de dagstrategie gebruiken de resterende PV-voorspelling van vandaag.",
     "planning.targetPeakTitle": "Doelpiek",

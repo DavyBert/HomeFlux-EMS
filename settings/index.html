@@ -8,6 +8,7 @@
 <script data-origin="settings" src="/homey.js" type="text/javascript"></script>
 <script src="charge-strategy.js" type="text/javascript"></script>
 <script src="sun-chance.js" type="text/javascript"></script>
+<script src="high-forecast-policy.js" type="text/javascript"></script>
 <script src="battery-strategy-advice.js" type="text/javascript"></script>
 <script src="display-language.js" type="text/javascript"></script>
 <script src="hvac-settings.js" type="text/javascript"></script>
@@ -1541,6 +1542,7 @@ h3 { margin-bottom:6px; font-size:17px; }
 <div class="contract-block" id="contract-fixed">
 <div class="card">
 <h3 id="hf-help-anchor-22">Vast tarief</h3>
+<div class="muted" data-hf-help-keep><strong>Ingesteld gedrag</strong><div id="configuredBehavior-fixed"></div></div>
 <div class="row">
 <div class="homey-form-group"><label class="homey-form-label" id="fixedImportPriceLabel" for="fixedImportPrice">Import €/kWh</label><input class="homey-form-input" id="fixedImportPrice" max="5" min="-1" step="0.001" type="number"/></div>
 <div class="homey-form-group"><label class="homey-form-label" id="fixedFeedInPriceLabel" for="fixedFeedInPrice">Injectie €/kWh</label><input class="homey-form-input" id="fixedFeedInPrice" max="50" min="-10" step="0.001" type="number"/><div class="muted">Positief = vergoeding die je ontvangt voor export. Negatief = kost die je betaalt om te injecteren.</div></div>
@@ -1559,6 +1561,7 @@ h3 { margin-bottom:6px; font-size:17px; }
 <div class="contract-block" id="contract-tou">
 <div class="card">
 <h3 id="hf-help-anchor-23">Tarieven</h3>
+<div class="muted" data-hf-help-keep><strong>Ingesteld gedrag</strong><div id="configuredBehavior-tou"></div></div>
 <p data-hf-help="" data-hf-help-for="hf-help-anchor-23" class="muted" id="touRateCurrencyHelp">Definieer eerst je contracttarieven één keer, bijvoorbeeld Superdal, Dal en Piek. Per tarief kies je of een lage dagvoorspelling de batterij moet sparen én of HomeFlux daarbij de reserve boven het forecast-doel SoC nog mag gebruiken. Bij Injectie €/kWh betekent een positief bedrag een vergoeding die je ontvangt; een negatief bedrag is een kost om te injecteren.</p>
 <div id="rateRows"></div>
 <button class="homey-button-secondary" id="addRate" type="button">Tarief toevoegen</button>
@@ -1572,7 +1575,9 @@ h3 { margin-bottom:6px; font-size:17px; }
 </div>
 <div class="contract-block" id="contract-dynamic">
 <div class="card">
+<input id="highForecastDynamicPolicy" type="hidden"/>
 <h3 id="dynamicContractTitle">Dynamisch per kwartier</h3>
+<div class="muted" data-hf-help-keep><strong>Ingesteld gedrag</strong><div id="configuredBehavior-dynamic"></div></div>
 <div class="homey-form-group">
 <label class="homey-form-label">1. Selecteer prijsbronnen</label>
 <input id="dynamicPriceSources" type="hidden" value='["homey"]'/>
@@ -1590,34 +1595,46 @@ h3 { margin-bottom:6px; font-size:17px; }
 <p data-hf-help="" data-hf-help-for="dynamicPriceSources" class="muted">Deze namen verschijnen in de instellingen, widget en nieuwe Flow-bronkeuze. Leeg laten gebruikt de standaardnaam. Sla op om de namen overal toe te passen.</p>
 <div data-hf-help="" data-hf-help-for="dynamicPriceSources" class="muted">De eerste bron is leidend. Reservebronnen worden afgestemd op overlappende prijzen van de eerste bron, inclusief toeslagen en btw. Niet-geselecteerde bronnen worden niet gebruikt. Externe JSON-prijscurves mogen tot 120 uur vooruit bevatten.</div>
 </div>
-<div class="row">
-<div class="homey-form-group"><label class="homey-form-label" for="cheapHours">Goedkoopste uren voor laden</label><input class="homey-form-input" id="cheapHours" max="12" min="0.25" step="0.25" type="number"/></div>
-<div class="homey-form-group"><label class="homey-form-label" for="expensiveHours">Duurste uren gebruiken</label><input class="homey-form-input" id="expensiveHours" max="12" min="0.25" step="0.25" type="number"/></div>
-</div>
 <p data-hf-help="" data-hf-help-for="dynamicContractTitle" class="muted">Nachtplanning vergelijkt bekende prijzen tot het ochtenddoel, ook over middernacht. Goedkoopste uren is de voorkeursduur; bij onvoldoende laadruimte wordt deze uitgebreid voor de resterende energie. Normaal laden behoudt zijn eigen SoC-limiet. Nieuwe PV-voorspellingen en SoC-metingen blijven het plan bijwerken.</p>
+<p data-hf-help="" data-hf-help-for="dynamicContractTitle" class="muted">Kies per dynamische prijscategorie of een lage dagvoorspelling de batterij moet sparen. De goedkoopste en duurste uren/kwartieren worden automatisch geclassificeerd; alles ertussen is Normaal.</p>
+<div class="card">
+<h3>Goedkoop</h3>
+<div class="homey-form-group"><label class="homey-form-label" for="cheapHours">Goedkoopste uren voor laden</label><input class="homey-form-input" id="cheapHours" max="12" min="0.25" step="0.25" type="number"/></div>
+<div class="statusline">Zonkansreserve toepassen per prijscategorie</div>
+<label class="homey-form-checkbox"><input id="sunChanceDynamicCheapEnabled" type="checkbox"/> <span>Laag / goedkoop</span></label>
+<div class="statusline">Batterij sparen bij lage PV-voorspelling</div>
+<label class="homey-form-checkbox"><input id="lowForecastDynamicCheapEnabled" type="checkbox"/> <span>Laag / goedkoop</span></label>
+<div class="statusline" style="margin-top:10px">Ontladen tot forecast-doel tijdens Batterij sparen</div>
+<label class="homey-form-checkbox"><input id="lowForecastDynamicCheapDischargeToTarget" type="checkbox"/> <span>Laag / goedkoop</span></label>
+<label class="homey-form-checkbox"><input id="highForecastDynamicCheapBatterySave" type="checkbox" checked/> <span>Bij hoge PV batterij sparen op dit tarief</span></label>
+<label class="homey-form-checkbox"><input id="highForecastDynamicCheapDischargeToTarget" type="checkbox" checked disabled/> <span>Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel</span></label>
+</div>
+<div class="card">
+<h3>Normaal</h3>
 <label class="homey-form-checkbox"><input id="dynamicNormalChargeEnabled" type="checkbox"/> <span>Netladen tijdens normale prijsuren toestaan</span></label>
 <div class="homey-form-group"><label class="homey-form-label" for="dynamicNormalChargeMaxSoc">Maximum-SoC bij netladen tijdens Normaal (%)</label><input class="homey-form-input" id="dynamicNormalChargeMaxSoc" type="number" min="0" max="100" step="1"/></div>
 <p data-hf-help="" data-hf-help-for="dynamicNormalChargeEnabled" class="muted">Laadt alleen bij een planningstekort, tot het laagste van het planningsdoel en dit maximum. Goedkoop laden en PV-laden behouden hun eigen grenzen.</p>
-<label class="homey-form-checkbox"><input id="dynamicUseBatteryNormalHours" type="checkbox"/> <span>Batterij ook tijdens normale prijsuren gebruiken</span></label>
-<p data-hf-help="" data-hf-help-for="dynamicUseBatteryNormalHours" class="muted">Voor grotere batterijen: tijdens Normaal wordt netimport eveneens vermeden tot Minimum SoC. Uit = batterij sparen voor de duurste uren en PV-opvang.</p>
-<div class="card">
-</div>
-<div class="card"><div class="statusline">Zonkansreserve toepassen per prijscategorie</div>
-<label class="homey-form-checkbox"><input id="sunChanceDynamicCheapEnabled" type="checkbox"/> <span>Laag / goedkoop</span></label>
+
+<div class="statusline">Zonkansreserve toepassen per prijscategorie</div>
 <label class="homey-form-checkbox"><input id="sunChanceDynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label>
-<label class="homey-form-checkbox"><input id="sunChanceDynamicExpensiveEnabled" type="checkbox"/> <span>Hoog / duur</span></label>
-<p data-hf-help="" data-hf-help-for="sunChanceDynamicExpensiveEnabled" class="muted">De zonkansreserve moet ook bij de planningsinstellingen ingeschakeld zijn. Standaard uit tijdens duur/piek, zodat de zonkansreserve ontladen tot Safety SoC niet blokkeert.</p></div>
-<div class="card">
 <div class="statusline">Batterij sparen bij lage PV-voorspelling</div>
-<p data-hf-help="" data-hf-help-for="dynamicContractTitle" class="muted">Kies per dynamische prijscategorie of een lage dagvoorspelling de batterij moet sparen. De goedkoopste en duurste uren/kwartieren worden automatisch geclassificeerd; alles ertussen is Normaal.</p>
-<label class="homey-form-checkbox"><input id="lowForecastDynamicCheapEnabled" type="checkbox"/> <span>Laag / goedkoop</span></label>
 <label class="homey-form-checkbox"><input id="lowForecastDynamicNormalEnabled" type="checkbox"/> <span>Normaal</span></label>
+<div class="statusline" style="margin-top:10px">Ontladen tot forecast-doel tijdens Batterij sparen</div>
+<label class="homey-form-checkbox"><input id="lowForecastDynamicNormalDischargeToTarget" type="checkbox"/> <span>Normaal</span></label>
+<label class="homey-form-checkbox"><input id="highForecastDynamicNormalBatterySave" type="checkbox" checked/> <span>Bij hoge PV batterij sparen op dit tarief</span></label>
+<label class="homey-form-checkbox"><input id="highForecastDynamicNormalDischargeToTarget" type="checkbox" checked disabled/> <span>Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel</span></label>
+</div>
+<div class="card">
+<h3>Duur</h3>
+<div class="homey-form-group"><label class="homey-form-label" for="expensiveHours">Duurste uren gebruiken</label><input class="homey-form-input" id="expensiveHours" max="12" min="0.25" step="0.25" type="number"/></div>
+<div class="statusline">Zonkansreserve toepassen per prijscategorie</div>
+<label class="homey-form-checkbox"><input id="sunChanceDynamicExpensiveEnabled" type="checkbox"/> <span>Hoog / duur</span></label>
+<p data-hf-help="" data-hf-help-for="sunChanceDynamicExpensiveEnabled" class="muted">De zonkansreserve moet ook bij de planningsinstellingen ingeschakeld zijn. Standaard uit tijdens duur/piek, zodat de zonkansreserve ontladen tot Safety SoC niet blokkeert.</p>
+<div class="statusline">Batterij sparen bij lage PV-voorspelling</div>
 <label class="homey-form-checkbox"><input id="lowForecastDynamicExpensiveEnabled" type="checkbox"/> <span>Hoog / duur</span></label>
 <div class="statusline" style="margin-top:10px">Ontladen tot forecast-doel tijdens Batterij sparen</div>
-<p data-hf-help="" data-hf-help-for="lowForecastDynamicExpensiveEnabled" class="muted">Kies per prijscategorie of de batterijreserve boven het berekende forecast-doel SoC nog gebruikt mag worden. Op het forecast-doel stopt normale ontlading.</p>
-<label class="homey-form-checkbox"><input id="lowForecastDynamicCheapDischargeToTarget" type="checkbox"/> <span>Laag / goedkoop</span></label>
-<label class="homey-form-checkbox"><input id="lowForecastDynamicNormalDischargeToTarget" type="checkbox"/> <span>Normaal</span></label>
 <label class="homey-form-checkbox"><input id="lowForecastDynamicExpensiveDischargeToTarget" type="checkbox"/> <span>Hoog / duur</span></label>
+<p data-hf-help="" data-hf-help-for="lowForecastDynamicExpensiveEnabled" class="muted">Kies per prijscategorie of de batterijreserve boven het berekende forecast-doel SoC nog gebruikt mag worden. Op het forecast-doel stopt normale ontlading.</p>
 </div>
 <div class="decision-box">
 <div class="statusline">Beslislogica</div>
@@ -2767,14 +2784,14 @@ async function onHomeyReady(Homey) {
     'sunChanceReserveEnabled','sunChanceBand1Start','sunChanceBand1End','sunChanceBand1MinSoc','sunChanceBand2Start','sunChanceBand2End','sunChanceBand2MinSoc','sunChanceBand3Start','sunChanceBand3End','sunChanceBand3MinSoc','sunChanceBand4Start','sunChanceBand4End','sunChanceBand4MinSoc',
     'batteryCount','optimizeMultiBatteryEfficiency','optimalBatteryPowerW','battery1OptimalPowerW','battery2OptimalPowerW','battery3OptimalPowerW','battery4OptimalPowerW','battery5OptimalPowerW','battery6OptimalPowerW','battery7OptimalPowerW','battery8OptimalPowerW','autoTuneMinConfidencePercent','hybridEmsEnabled','batteryFlowKeepaliveEnabled','batteryFlowKeepaliveMinutes','externalEmsFlowKeepaliveEnabled','externalEmsFlowKeepaliveMinutes','hybridHandoverMinSocEnabled','hybridHandoverMinSoc','hybridWatchdogMinW','hybridWatchdogMaxW','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnyEnabled','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandStepW',
     'balanceEnabled','balanceDeadbandPct','balanceStrength','balanceWarningEnabled','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','controlEnabled','peakShaveEnabled','peakLimitW','peakSoftMarginW',
-    'gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','batteryCommandPauseEnabled','batteryCommandPauseStart','batteryCommandPauseEnd','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','nightTargetTime','solarTargetTime','dayPlanningMaxSoc','nightPlanningMaxSoc','nightHysteresisEnabled','nightHysteresisSoc','nightForecastHoldEnabled','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','sunnyMonthsMinSoc','peakReserveNightEnabled','controlProfile','overrideResumeOnTariffChange','contractType','currencySymbol','dynamicPriceSources','externalPrice1Name','externalPrice2Name','dynamicNormalChargeEnabled','dynamicNormalChargeMaxSoc','dynamicUseBatteryNormalHours',
+    'gridControlWindowSeconds','adaptiveLiveControlEnabled','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','batteryCommandPauseEnabled','batteryCommandPauseStart','batteryCommandPauseEnd','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','nightTargetTime','solarTargetTime','dayPlanningMaxSoc','nightPlanningMaxSoc','nightHysteresisEnabled','nightHysteresisSoc','nightForecastHoldEnabled','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','sunnyMonthsMinSoc','peakReserveNightEnabled','controlProfile','overrideResumeOnTariffChange','contractType','currencySymbol','dynamicPriceSources','externalPrice1Name','externalPrice2Name','dynamicNormalChargeEnabled','dynamicNormalChargeMaxSoc','highForecastDynamicPolicy',
     'fixedImportPrice','fixedFeedInPrice','fixedChargeWindowStart','fixedChargeWindowEnd','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','exportLimitEnabled',
     'evCount','evIdleHouseLoadW','evPvSharePercent','evBlockBatteryDischargeGridMajority','evBlockBatteryDischargeAlways','hvacCount','boilerCount',
     'boilerEnabled','boilerName','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerColdResetTime','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','boilerPeakGuardBatterySupportEnabled','boilerTariffPeriod','boilerDayStartTime','boilerDayEndTime','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled',
     'priorityEvaluationMinutes','flexibleLoadPriorityOrder'
   ];
   const numeric = new Set(['injectionMinimumPriceDifference','injectionMinimumSolarSharePercent','injectionMinimumPrice','injectionExportCost','injectionStopSoc','injectionTargetW','wafReserveRedKwh','wafReserveOrangeKwh','wafReserveGreenKwh','wafRoomRedW','wafRoomOrangeW','wafRoomGreenW','wafMinCheapMinutes','batteryFlowKeepaliveMinutes','externalEmsFlowKeepaliveMinutes','nightHysteresisSoc','sunChanceBand1Start','sunChanceBand1End','sunChanceBand1MinSoc','sunChanceBand2Start','sunChanceBand2End','sunChanceBand2MinSoc','sunChanceBand3Start','sunChanceBand3End','sunChanceBand3MinSoc','sunChanceBand4Start','sunChanceBand4End','sunChanceBand4MinSoc','dynamicNormalChargeMaxSoc','batteryCount','optimalBatteryPowerW','battery1OptimalPowerW','battery2OptimalPowerW','battery3OptimalPowerW','battery4OptimalPowerW','battery5OptimalPowerW','battery6OptimalPowerW','battery7OptimalPowerW','battery8OptimalPowerW','autoTuneMinConfidencePercent','hybridHandoverMinSoc','hybridWatchdogMinW','hybridWatchdogMaxW','totalCapacityKwh','minSoc','safetySoc','maxSoc','batterySaveDischargeAboveSoc','lowForecastSelfConsumptionMinKwh','lowForecastAutoSunnySoc','lowForecastAutoSunnyMinutes','maxTotalChargeW','maxTotalDischargeW','maxChargePerBatteryW','maxDischargePerBatteryW','batteryCommandStepW','balanceDeadbandPct','balanceStrength','balanceWarningSpreadPct','balanceWarningGrowthPct','balanceWarningDelayMinutes','balanceWarningMinCommandW','peakLimitW','peakSoftMarginW','gridControlWindowSeconds','adaptiveSetpointDeltaW','adaptiveSetpointWindowSeconds','pvDeltaThresholdW','commandIntervalSeconds','slowControlIntervalSeconds','commandDeadbandW','gridZeroMinW','gridZeroMaxW','minimumExportW','pvCurtailMinBatterySoc','pvCommandIntervalSeconds','dayPlanningMaxSoc','nightPlanningMaxSoc','nightHysteresisSoc','expectedEnergyNeedKwh','planningMinIntervalMinutes','peakReserveTargetSoc','sunnyMonthsMinSoc','fixedImportPrice','fixedFeedInPrice','cheapHours','expensiveHours','evFixedMaxGridImportW','evDynamicCheapMaxGridImportW','evDynamicNormalMaxGridImportW','evDynamicExpensiveMaxGridImportW','evCount','evIdleHouseLoadW','evPvSharePercent','hvacCount','boilerCount','boilerStartSoc','boilerStopSoc','boilerPowerW','boilerCycleMinutes','boilerFallbackDays','boilerTariffMinBatterySoc','boilerTariffStopBatterySoc','priorityEvaluationMinutes']);
-  const boolean = new Set(['injectionPriceDifferenceEnabled','injectionSolarOverrideEnabled','injectionEnabled','injectionAutomaticEnabled','injectionLimitOptionalLoads','wafColorsEnabled','wafBatterySavingEnabled','batteryFlowKeepaliveEnabled','externalEmsFlowKeepaliveEnabled','nightHysteresisEnabled','nightForecastHoldEnabled','evBlockBatteryDischargeGridMajority','evBlockBatteryDischargeAlways','sunChanceFixedEnabled','sunChanceDynamicCheapEnabled','sunChanceDynamicNormalEnabled','sunChanceDynamicExpensiveEnabled','sunChanceReserveEnabled','hybridEmsEnabled','hybridHandoverMinSocEnabled','optimizeMultiBatteryEfficiency','balanceEnabled','balanceWarningEnabled','controlEnabled','adaptiveLiveControlEnabled','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandPauseEnabled','exportLimitEnabled','peakShaveEnabled','overrideResumeOnTariffChange','dynamicNormalChargeEnabled','dynamicUseBatteryNormalHours','lowForecastAutoSunnyEnabled','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','peakReserveNightEnabled','boilerEnabled','boilerPeakGuardBatterySupportEnabled','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled']);
+  const boolean = new Set(['injectionPriceDifferenceEnabled','injectionSolarOverrideEnabled','injectionEnabled','injectionAutomaticEnabled','injectionLimitOptionalLoads','wafColorsEnabled','wafBatterySavingEnabled','batteryFlowKeepaliveEnabled','externalEmsFlowKeepaliveEnabled','nightHysteresisEnabled','nightForecastHoldEnabled','evBlockBatteryDischargeGridMajority','evBlockBatteryDischargeAlways','sunChanceFixedEnabled','sunChanceDynamicCheapEnabled','sunChanceDynamicNormalEnabled','sunChanceDynamicExpensiveEnabled','sunChanceReserveEnabled','hybridEmsEnabled','hybridHandoverMinSocEnabled','optimizeMultiBatteryEfficiency','balanceEnabled','balanceWarningEnabled','controlEnabled','adaptiveLiveControlEnabled','individualBatteryPowerLimitsEnabled','invertBatteryCommand','batteryCommandPauseEnabled','exportLimitEnabled','peakShaveEnabled','overrideResumeOnTariffChange','dynamicNormalChargeEnabled','lowForecastAutoSunnyEnabled','lowForecastFixedEnabled','lowForecastFixedDischargeToTarget','lowForecastDynamicCheapEnabled','lowForecastDynamicCheapDischargeToTarget','lowForecastDynamicNormalEnabled','lowForecastDynamicNormalDischargeToTarget','lowForecastDynamicExpensiveEnabled','lowForecastDynamicExpensiveDischargeToTarget','peakReserveMonth1','peakReserveMonth2','peakReserveMonth3','peakReserveMonth4','peakReserveMonth5','peakReserveMonth6','peakReserveMonth7','peakReserveMonth8','peakReserveMonth9','peakReserveMonth10','peakReserveMonth11','peakReserveMonth12','sunnyMonthsMinSocEnabled','peakReserveNightEnabled','boilerEnabled','boilerPeakGuardBatterySupportEnabled','boilerFixedChargeWindowEnabled','boilerDynamicCheapEnabled','boilerDynamicNormalEnabled','boilerDynamicExpensiveEnabled']);
   const jsonArray = new Set(['flexibleLoadPriorityOrder','dynamicPriceSources']);
   const evSuffixes = ['Enabled','Name','SocEnabled','SocFreshnessMinutes','Mode','EmergencyDynamicCheapEnabled','EmergencyDynamicNormalEnabled','EmergencyDynamicExpensiveEnabled','EmergencyFixedWindowEnabled','EmergencyFixedOutsideWindowEnabled','ControlType','SmartGridPriority','Weight','AllowUnselectedTariffForDeadline','PvGridTopUpMode','PvStartSurplusW','PvStopSurplusW','PvStopDelaySeconds','BatteryCapacityKwh','TargetSoc','AfterSocTarget','TargetTime','GuaranteeTarget','Phases','Voltage','VoltageReference','MinCurrentA','MaxCurrentA','StandardCurrentA','ModeSmartCurrentA','ModeStandardCurrentA','CommandIntervalSeconds','PeakGuardStopHoldSeconds','PeakGuardBatteryAssistNormal','NightSurplusChargeEnabled','PeakGuardBatteryAssistEmergency','FixedChargeWindowEnabled','DynamicCheapEnabled','DynamicNormalEnabled','DynamicExpensiveEnabled'];
   evSuffixes.push('WidgetPresetMode','WidgetSoc1','WidgetSoc2','WidgetSoc3','WidgetKwh1','WidgetKwh2','WidgetKwh3','WidgetTime1','WidgetTime2','WidgetTime3','ConsumptionKwhPer100Km','EnergyFeedbackScope');
@@ -3048,6 +3065,7 @@ async function onHomeyReady(Homey) {
 
   function currentSettingValue(id) {
     if (id === 'chargeStrategy') return window.HomeFluxChargeStrategy.read();
+    if (id === 'highForecastDynamicPolicy') return Object.fromEntries(HomeFluxHighForecastPolicy.keys.map(key => [key, q(key).checked]));
     const field = q(id);
     if (!field) return undefined;
     if(id==='phaseGuard'){
@@ -3101,13 +3119,19 @@ async function onHomeyReady(Homey) {
 
   function updateBatteryStrategyAdvice(event = null) {
     updateInjectionUi();
+    if (!event || /^(?:highForecastDynamic|lowForecast|batterySaveDischargeAboveSoc|minSoc|safetySoc|contractType)/.test(event.target?.id || '')
+      || event.target?.closest?.('#rateRows,#tariffRows')) {
+      if (/^highForecastDynamic/.test(event?.target?.id || '')) renderDynamicLogic();
+      else renderConfiguredBehavior();
+    }
     const advice = HomeFluxBatteryStrategyAdvice;
     const target = event?.target;
-    if (target && !advice.keys.includes(target.id) && !target.closest?.('#rateRows,#tariffRows')) return;
+    if (target && !advice.keys.includes(target.id) && !HomeFluxHighForecastPolicy.keys.includes(target.id) && !target.closest?.('#rateRows,#tariffRows')) return;
     const config = {};
     for (const key of advice.keys) {
       const field = q(key);
-      if (field) config[key] = field.type === 'checkbox' ? field.checked
+      if (key === 'highForecastDynamicPolicy') config[key] = currentSettingValue(key);
+      else if (field) config[key] = field.type === 'checkbox' ? field.checked
         : field.type === 'number' ? Number(field.value) : field.value;
     }
     config.touRates = rates; config.touSchedule = tariffs;
@@ -4212,6 +4236,40 @@ async function onHomeyReady(Homey) {
     }
   }
 
+  function renderConfiguredBehavior() {
+    const text = key => t('contractBehavior.' + key);
+    const floor = Math.max(Number(q('minSoc').value) || 0, Number(q('safetySoc').value) || 0,
+      Number(q('batterySaveDischargeAboveSoc').value) || 0);
+    const policy = (save, exception) => !save ? text('selfConsumption')
+      : exception ? text('saveForecast') : text('save').replace('{floor}', String(floor));
+    const line = (name, low, high) => `${name} — ${text('low')}: ${low} ${text('high')}: ${high}`;
+    const fill = (kind, lines) => {
+      const host = q('configuredBehavior-' + kind);
+      host.replaceChildren();
+      for (const value of [...lines, text('priority')]) {
+        const row = document.createElement('div'); row.textContent = value; host.appendChild(row);
+      }
+    };
+    fill('fixed', [line(text('fixed'), policy(q('lowForecastFixedEnabled').checked,
+      q('lowForecastFixedDischargeToTarget').checked), text('selfConsumption'))]);
+    fill('dynamic', ['Cheap','Normal','Expensive'].map(category => {
+      const save = q('highForecastDynamic' + category + 'BatterySave');
+      const exception = q('highForecastDynamic' + category + 'DischargeToTarget');
+      if (exception) exception.disabled = !save.checked;
+      return line(text(category.toLowerCase()), category === 'Expensive' && !q('lowForecastDynamicExpensiveEnabled').checked
+        ? text('avoidImport') : policy(q('lowForecastDynamic' + category + 'Enabled').checked,
+          q('lowForecastDynamic' + category + 'DischargeToTarget').checked), category === 'Expensive'
+          ? text('avoidImport') : policy(save.checked, exception.checked));
+    }));
+    fill('tou', rates.map((rate, index) => {
+      const field = document.querySelector(`[data-rate-i="${index}"][data-rate-k="highForecastDischargeToTarget"]`);
+      if (field) field.disabled = rate.avoidGridImport || !rate.highForecastBatterySave;
+      return line(rate.name || text('tariff'), rate.avoidGridImport ? text('avoidImport')
+        : policy(rate.lowForecastBatterySave, rate.lowForecastDischargeToTarget), rate.avoidGridImport
+          ? text('avoidImport') : policy(rate.highForecastBatterySave, rate.highForecastDischargeToTarget));
+    }));
+  }
+
   function showContract() {
     const type = q('contractType').value;
     const blockType = type.startsWith('dynamic') ? 'dynamic' : type;
@@ -4267,6 +4325,8 @@ async function onHomeyReady(Homey) {
       avoidGridImport: Boolean(rate.avoidGridImport),
       lowForecastBatterySave: Boolean(rate.lowForecastBatterySave),
       lowForecastDischargeToTarget: Boolean(rate.lowForecastDischargeToTarget),
+      highForecastBatterySave: Boolean(rate.highForecastBatterySave),
+      highForecastDischargeToTarget: Boolean(rate.highForecastDischargeToTarget),
       boilerChargeAllowed: Boolean(rate.boilerChargeAllowed),
       evMaxGridImportW: Math.max(0, Number(rate.evMaxGridImportW) || 0),
     };
@@ -4354,7 +4414,7 @@ async function onHomeyReady(Homey) {
       }
       const modeOptions=(selected)=>[['never',uiLanguage==='nl'?'Niet gebruiken':'Do not use'],['night',uiLanguage==='nl'?"Alleen 's nachts":'Night only'],['day',uiLanguage==='nl'?'Alleen overdag':'Day only'],['always',uiLanguage==='nl'?'Altijd':'Always']].map(([value,label])=>`<option value="${value}" ${selected===value?'selected':''}>${label}</option>`).join('');
       const policyBlock=`<div class="rate-policy-block"><div class="rate-policy-title">${uiLanguage==='nl'?'EMS-gebruik van dit tarief':'EMS use of this tariff'}</div><label class="${conflictClass.trim()}"><span class="tariff-label">${uiLanguage==='nl'?'Laden tijdens weekdagen':'Charging on weekdays'}</span><select class="homey-form-select" data-rate-i="${index}" data-rate-k="weekdayChargeMode" ${disabled}>${modeOptions(rate.weekdayChargeMode)}</select></label><label class="${conflictClass.trim()}"><span class="tariff-label">${uiLanguage==='nl'?'Laden tijdens weekend':'Charging on weekends'}</span><select class="homey-form-select" data-rate-i="${index}" data-rate-k="weekendChargeMode" ${disabled}>${modeOptions(rate.weekendChargeMode)}</select></label><label class="homey-form-checkbox"><input type="checkbox" data-rate-i="${index}" data-rate-k="avoidGridImport" ${rate.avoidGridImport?'checked':''}> <span>${uiLanguage==='nl'?'Vermijd alle netimport':'Avoid all grid import'}</span></label><p ${avoid?'data-hf-help-keep':'data-hf-help'} class="rate-policy-note">${avoid?(uiLanguage==='nl'?'Netimport vermijden heeft voorrang. Gepland netladen, Battery Save/forecast-ontladen, boiler-fallback en standaard EV-netladen zijn voor dit tarief uitgeschakeld. EV-laden op werkelijk PV-overschot blijft beschikbaar.':'Avoid grid import has priority. Planned grid charging, Battery Save/forecast discharge, water-heater fallback and standard EV grid charging are disabled for this tariff. EV charging on real PV surplus remains available.'):(uiLanguage==='nl'?"Kies afzonderlijk voor weekdagen en weekend of dit tarief nooit, alleen 's nachts, alleen overdag of altijd als laadvenster mag worden gebruikt. Nacht en dag volgen de actieve HomeFlux nacht-/dagplanning, niet vaste klokuren.":'Choose separately for weekdays and weekends whether this tariff may be used never, at night only, during the day only, or always. Night and day follow the active HomeFlux night/day planning phase, not fixed clock hours.')}</p></div>`;
-      row.innerHTML=`<label><span class="tariff-label">${uiLanguage==='nl'?'Naam':'Name'}</span><input class="homey-form-input" data-rate-i="${index}" data-rate-k="name" value="${escapeHtml(rate.name||'')}" placeholder="Superdal"></label><label><span class="tariff-label" data-currency-import-unit>Import ${currencyPerKwh()}</span><input class="homey-form-input" data-rate-i="${index}" data-rate-k="importPrice" type="number" step="0.001" value="${Number(rate.importPrice||0)}"></label><label><span class="tariff-label" data-currency-feed-unit>${uiLanguage==='nl'?'Injectie':'Feed-in'} ${currencyPerKwh()}</span><input class="homey-form-input" data-rate-i="${index}" data-rate-k="feedInPrice" type="number" min="-10" max="50" step="0.001" value="${Number(rate.feedInPrice||0)}"></label><label class="homey-form-checkbox${conflictClass}"><input type="checkbox" data-rate-i="${index}" data-rate-k="lowForecastBatterySave" ${rate.lowForecastBatterySave?'checked':''} ${disabled}> <span>${uiLanguage==='nl'?'Batterij sparen bij lage PV':'Save battery on low PV'}</span></label><label class="homey-form-checkbox${conflictClass}"><input type="checkbox" data-rate-i="${index}" data-rate-k="lowForecastDischargeToTarget" ${rate.lowForecastDischargeToTarget?'checked':''} ${disabled}> <span>${uiLanguage==='nl'?'Ontladen tot forecast-doel':'Discharge to forecast target'}</span></label><label class="homey-form-checkbox"><input type="checkbox" data-rate-i="${index}" data-rate-k="sunChanceReserveAllowed" ${(typeof rate.sunChanceReserveAllowed === 'boolean' ? rate.sunChanceReserveAllowed : window.HomeFluxSunChance.touDefaultAllowed(rate, rates.filter(r => tariffs.some(t => t.rateId === r.id))))?'checked':''}> <span>${uiLanguage==='nl'?'Zonkansreserve op dit tarief':'Apply sunshine reserve on this tariff'}</span></label>${policyBlock}<button class="remove-button" type="button" data-remove-rate="${index}" title="${uiLanguage==='nl'?'Tarief verwijderen':'Remove tariff'}">×</button>`;
+      row.innerHTML=`<label><span class="tariff-label">${uiLanguage==='nl'?'Naam':'Name'}</span><input class="homey-form-input" data-rate-i="${index}" data-rate-k="name" value="${escapeHtml(rate.name||'')}" placeholder="Superdal"></label><label><span class="tariff-label" data-currency-import-unit>Import ${currencyPerKwh()}</span><input class="homey-form-input" data-rate-i="${index}" data-rate-k="importPrice" type="number" step="0.001" value="${Number(rate.importPrice||0)}"></label><label><span class="tariff-label" data-currency-feed-unit>${uiLanguage==='nl'?'Injectie':'Feed-in'} ${currencyPerKwh()}</span><input class="homey-form-input" data-rate-i="${index}" data-rate-k="feedInPrice" type="number" min="-10" max="50" step="0.001" value="${Number(rate.feedInPrice||0)}"></label><label class="homey-form-checkbox${conflictClass}"><input type="checkbox" data-rate-i="${index}" data-rate-k="lowForecastBatterySave" ${rate.lowForecastBatterySave?'checked':''} ${disabled}> <span>${uiLanguage==='nl'?'Batterij sparen bij lage PV':'Save battery on low PV'}</span></label><label class="homey-form-checkbox${conflictClass}"><input type="checkbox" data-rate-i="${index}" data-rate-k="lowForecastDischargeToTarget" ${rate.lowForecastDischargeToTarget?'checked':''} ${disabled}> <span>${uiLanguage==='nl'?'Ontladen tot forecast-doel':'Discharge to forecast target'}</span></label><label class="homey-form-checkbox${conflictClass}"><input type="checkbox" data-rate-i="${index}" data-rate-k="highForecastBatterySave" ${rate.highForecastBatterySave?'checked':''} ${disabled}> <span>${translateUiText('Bij hoge PV batterij sparen op dit tarief')}</span></label><label class="homey-form-checkbox${conflictClass}"><input type="checkbox" data-rate-i="${index}" data-rate-k="highForecastDischargeToTarget" ${rate.highForecastDischargeToTarget?'checked':''} ${avoid||!rate.highForecastBatterySave?'disabled':''}> <span>${translateUiText('Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel')}</span></label><label class="homey-form-checkbox"><input type="checkbox" data-rate-i="${index}" data-rate-k="sunChanceReserveAllowed" ${(typeof rate.sunChanceReserveAllowed === 'boolean' ? rate.sunChanceReserveAllowed : window.HomeFluxSunChance.touDefaultAllowed(rate, rates.filter(r => tariffs.some(t => t.rateId === r.id))))?'checked':''}> <span>${uiLanguage==='nl'?'Zonkansreserve op dit tarief':'Apply sunshine reserve on this tariff'}</span></label>${policyBlock}<button class="remove-button" type="button" data-remove-rate="${index}" title="${uiLanguage==='nl'?'Tarief verwijderen':'Remove tariff'}">×</button>`;
       host.appendChild(row);
     });
     host.querySelectorAll('[data-rate-k]').forEach(input=>input.addEventListener('change',()=>{
@@ -4384,6 +4444,7 @@ async function onHomeyReady(Homey) {
     }));
     renderEvContractUi(); renderBoilerContractSummary();
     for(let i=1;i<=10;i++) updateHvacInstanceUi(i);
+    renderConfiguredBehavior();
     if(typeof HomeFluxSettingsHelp!=='undefined')HomeFluxSettingsHelp.refresh(q('rateRows'));
   }
 
@@ -4474,8 +4535,8 @@ async function onHomeyReady(Homey) {
     const unit = hourly ? 'uren' : 'kwartieren';
     const peakEnabled = q('peakShaveEnabled').checked;
     const peakLimit = Math.round(Number(q('peakLimitW').value) || 0);
-    const normalUse = q('dynamicUseBatteryNormalHours').checked;
-    const saveFloor = Math.max(Number(q('minSoc').value) || 0, Number(q('batterySaveDischargeAboveSoc').value) || 0);
+    const normalSave = q('highForecastDynamicNormalBatterySave').checked;
+    const saveFloor = Math.max(Number(q('minSoc').value) || 0, Number(q('safetySoc').value) || 0, Number(q('batterySaveDischargeAboveSoc').value) || 0);
     const lowForecastMin = Math.max(0, Number(q('lowForecastSelfConsumptionMinKwh').value) || 0);
     const lowForecastCategories = [
       q('lowForecastDynamicCheapEnabled').checked ? 'Laag' : '',
@@ -4489,15 +4550,15 @@ async function onHomeyReady(Homey) {
     if (q('dynamicNormalChargeEnabled').checked) q('dynamicChargeRule').textContent += ` Netladen tijdens Normaal is ook toegestaan tot maximaal ${q('dynamicNormalChargeMaxSoc').value}% SoC en nooit boven het planningsdoel.`;
     q('dynamicExpensiveRule').textContent = `${expensiveHours} uur = ${expensiveSlots} duurste ${unit}. Daar gebruikt de EMS de batterij om netimport te vermijden, zolang Minimum SoC dit toelaat.`;
     q('dynamicNormalLabel').textContent = hourly ? 'Normale uren' : 'Normale kwartieren';
-    q('dynamicNormalRule').textContent = normalUse
-      ? 'Batterij wordt ook tijdens Normaal gebruikt om netimport te vermijden. PV-overschot blijft laden; Minimum SoC en Peak Guard blijven gelden.'
-      : `Batterij sparen: boven ${saveFloor}% SoC mag de batterij nog zelfconsumptie leveren; vanaf ${saveFloor}% wordt gewone ontlading gestopt. PV-overschot blijft laden en Peak Guard mag altijd ingrijpen.`;
+    q('dynamicNormalRule').textContent = t('contractBehavior.high') + ': ' + (!normalSave
+      ? t('contractBehavior.selfConsumption') : q('highForecastDynamicNormalDischargeToTarget').checked
+        ? t('contractBehavior.saveForecast') : t('contractBehavior.save').replace('{floor}', String(saveFloor)));
     q('dynamicPeakRule').textContent = peakEnabled ? `Altijd actief boven alle prijslogica. Ingestelde netgrens: ${peakLimit} W.` : 'Uitgeschakeld.';
     if (lowForecastCategories.length) {
       q('dynamicNormalRule').textContent += ` Lage-PV drempel ${lowForecastMin.toFixed(1)} kWh; Batterij sparen is geselecteerd voor: ${lowForecastCategories.join(', ')}.`;
     }
 
-    if (!status) return;
+    if (!status) { renderConfiguredBehavior(); return; }
     if (!status.inputReady) {
       const missing = Array.isArray(status.missingInputs) ? status.missingInputs.join(', ') : 'meetdata';
       q('dynamicDecisionNow').textContent = `Wachten op data: ${missing}`;
@@ -4531,7 +4592,6 @@ async function onHomeyReady(Homey) {
   q('peakLimitW').addEventListener('input', () => renderDynamicLogic());
   q('dynamicNormalChargeEnabled').addEventListener('change', () => renderDynamicLogic());
   q('dynamicNormalChargeMaxSoc').addEventListener('change', () => renderDynamicLogic());
-  q('dynamicUseBatteryNormalHours').addEventListener('change', () => renderDynamicLogic());
   q('lowForecastDynamicCheapEnabled').addEventListener('change', () => renderDynamicLogic());
   q('lowForecastDynamicNormalEnabled').addEventListener('change', () => renderDynamicLogic());
   q('lowForecastDynamicExpensiveEnabled').addEventListener('change', () => renderDynamicLogic());
@@ -4736,6 +4796,12 @@ async function onHomeyReady(Homey) {
       ids.forEach((id) => {
         const injectionDefaults={injectionPriceDifferenceEnabled:false,injectionMinimumPriceDifference:.2,injectionSolarOverrideEnabled:false,injectionMinimumSolarSharePercent:50,injectionEnabled:false,injectionAutomaticEnabled:false,injectionMinimumPrice:.7,injectionExportCost:0,injectionStopSoc:40,injectionTargetW:3000,injectionLimitOptionalLoads:false};
         const value = snapshot[id]??injectionDefaults[id];
+        if (id === 'highForecastDynamicPolicy') {
+          const policy = HomeFluxHighForecastPolicy.normalize(value, snapshot);
+          for (const key of HomeFluxHighForecastPolicy.keys) q(key).checked = policy[key];
+          q(id).value = JSON.stringify(policy);
+          return;
+        }
         if (id === 'chargeStrategy') { window.HomeFluxChargeStrategy.load(value); return; }
         const directionStem=/^(hvac(?:[2-9]|10)?)DirectionTemperature$/.exec(id)?.[1];
         if(directionStem) {

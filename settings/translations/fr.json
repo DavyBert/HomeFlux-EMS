@@ -1,6 +1,9 @@
 {
   "language": "fr",
   "exact": {
+    "Ingesteld gedrag": "Comportement configuré",
+    "Bij hoge PV batterij sparen op dit tarief": "Économiser la batterie à ce tarif lorsque le PV est élevé",
+    "Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel": "Pendant cette économie de batterie, autoriser la décharge jusqu’à l’objectif de planification/prévision",
     "Fasemeting ontvangen": "Mesure de phase reçue",
     "Fasemeting verouderd": "Mesure de phase périmée",
     "Fasemeting niet ontvangen": "Mesure de phase non reçue",
@@ -6439,6 +6442,18 @@
     "SoC target reached": "Objectif SoC atteint"
   },
   "strings": {
+    "contractBehavior.low": "PV faible",
+    "contractBehavior.high": "PV élevé",
+    "contractBehavior.fixed": "Tarif fixe",
+    "contractBehavior.cheap": "Économique",
+    "contractBehavior.normal": "Normal",
+    "contractBehavior.expensive": "Cher",
+    "contractBehavior.tariff": "Tarif",
+    "contractBehavior.selfConsumption": "Autoconsommation selon les règles existantes ; aucune économie de batterie propre à ce tarif.",
+    "contractBehavior.save": "Économie de batterie immédiate ; décharge ordinaire uniquement au-dessus du seuil existant ({floor}% SoC).",
+    "contractBehavior.saveForecast": "Économie de batterie immédiate ; décharge autorisée au-dessus de l’objectif actuel de prévision. À cet objectif ou en dessous, cette exception cesse et le seuil normal d’économie s’applique à nouveau. Les réserves supérieures restent protégées.",
+    "contractBehavior.avoidImport": "Éviter l’importation réseau selon les règles de décharge existantes.",
+    "contractBehavior.priority": "La charge réseau planifiée, le rétablissement de sécurité, Peak Guard et les protections existantes restent prioritaires. Le surplus PV peut toujours être stocké. La classification existante détermine le PV faible/élevé.",
     "planning.forecastDecisionTomorrow": "La planification nocturne est active. La planification de l'énergie et la stratégie de jour utilisent maintenant demain les prévisions PV.",
     "planning.forecastDecisionToday": "La planification de la journée est active. La planification de l'énergie et l'utilisation de la stratégie de jour aujourd'hui sont les prévisions restantes PV.",
     "planning.targetPeakTitle": "Cible maximale",

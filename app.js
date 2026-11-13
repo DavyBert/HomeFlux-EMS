@@ -5,6 +5,7 @@ const batteryResponseTest = require('./lib/battery-response-test');
 const { NAME_SETTINGS, sourceName } = require('./lib/price-source-names');
 const { parseExternalPrices, trimCurve } = require('./lib/external-prices');
 const sunChance = require('./settings/sun-chance');
+const highForecastPolicy = require('./settings/high-forecast-policy');
 const batteryStrategyAdvice = require('./settings/battery-strategy-advice');
 const evDashboard = require('./lib/ev-dashboard');
 const evPlanOptions = require('./lib/ev-plan-options');
@@ -3717,15 +3718,19 @@ class HomeFluxEmsApp extends Homey.App {
     // when the grid value becomes stale; it does not create a periodic full EMS
     // evaluation while the meter remains healthy.
     if (isDynamicContract(settings)) {
-      const selection = this.getDynamicPriceSelection(settings, new Date(now));
-      const signature = `${selection.source}|${selection.calibrationState}`;
+      // The existing price-input listeners request an immediate context refresh
+      // when a curve/source changes. Heartbeat only catches a source/interval
+      // expiring with no new input; it must never rank all price sources.
+      const selection = this.evDeadlinePriceSelection?.selection;
+      const ready = this.getPreparedDynamicPriceReady(settings, now);
+      const signature = `${ready ? selection?.source || 'none' : 'none'}|${ready ? selection?.calibrationState || 'disabled' : 'expired'}`;
       if (this.priceSourceHeartbeatSignature !== signature) {
         this.priceSourceHeartbeatSignature = signature;
         this.invalidatePlanningCache();
         this.requestContextEvaluate(true, 'dynamic_price_source_changed');
       }
     }
-    const readiness = this.getInputReadiness(settings);
+    const readiness = this.getInputReadiness(settings, { gridOnly: true });
     if (!readiness.gridFresh && Boolean(this.latestResult?.inputReady)) {
       this.requestContextEvaluate(true, 'grid_stale');
       return;
@@ -4463,6 +4468,13 @@ class HomeFluxEmsApp extends Homey.App {
   async migrateSettings() {
     const schema = Number(this.homey.settings.get('settingsSchemaVersion') || 0);
 
+    // A single compact preference replaces four flat keys before the cache is built.
+    const highPvPolicy = this.homey.settings.get('highForecastDynamicPolicy');
+    if (!highForecastPolicy.complete(highPvPolicy)) {
+      const legacy = Object.fromEntries(highForecastPolicy.keys.map(key => [key, this.homey.settings.get(key)]));
+      this.setSetting('highForecastDynamicPolicy', highForecastPolicy.normalize(highPvPolicy, legacy));
+    }
+
     if (schema < 3) {
       const count = this.getBatteryCount({ batteryCount: this.homey.settings.get('batteryCount') });
       const oldChargeRaw = this.homey.settings.get('maxChargePerBatteryW');
@@ -4493,7 +4505,6 @@ class HomeFluxEmsApp extends Homey.App {
       }
       if (this.homey.settings.get('dynamicNormalChargeEnabled') == null) this.setSetting('dynamicNormalChargeEnabled', false);
       if (this.homey.settings.get('dynamicNormalChargeMaxSoc') == null) this.setSetting('dynamicNormalChargeMaxSoc', 50);
-      if (this.homey.settings.get('dynamicUseBatteryNormalHours') === null) this.setSetting('dynamicUseBatteryNormalHours', false);
       if (this.homey.settings.get('overrideResumeOnTariffChange') === null) this.setSetting('overrideResumeOnTariffChange', true);
       if (this.homey.settings.get('forcedModeResumeAt') === null) this.setSetting('forcedModeResumeAt', 0);
       if (this.homey.settings.get('controlProfile') === null) this.setSetting('controlProfile', 'normal');
@@ -6780,7 +6791,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (value === null) return false;
       this.recordDiagnosticCounter('gridInputs');
       const inputSettings = this.getSettings();
-      const wasGridReady = this.getInputReadiness(inputSettings).ready;
+      const wasGridReady = this.getInputReadiness(inputSettings, { gridOnly: true }).ready;
       const now = Date.now();
       this.recordSavingsSample(now);
       this.state.gridPowerW = value;
@@ -8100,14 +8111,14 @@ class HomeFluxEmsApp extends Homey.App {
       this.homeyEnergyResampleCache = { key: '', value: [] };
       this.invalidatePlanningCache();
       this.armOverrideResume();
-      this.requestContextEvaluate(false, 'homey_energy_prices');
+      this.requestContextEvaluate(true, 'homey_energy_prices');
       return this.getHomeyEnergyStatus();
     } catch (err) {
       this.homeyEnergy.available = false;
       this.homeyEnergy.error = err && err.message ? err.message : String(err);
       this.error('Could not read Homey Energy prices', err);
       this.invalidatePlanningCache();
-      this.requestContextEvaluate(false, 'homey_energy_prices_unavailable');
+      this.requestContextEvaluate(true, 'homey_energy_prices_unavailable');
       return this.getHomeyEnergyStatus();
     } finally {
       this.homeyEnergy.refreshing = false;
@@ -8161,7 +8172,7 @@ class HomeFluxEmsApp extends Homey.App {
     this.homeyEnergyAnalysisCache = { key: '', value: null };
     this.cachedRuntimeSettings = null;
     this.invalidatePlanningCache();
-    this.requestContextEvaluate(false, `${source}_electricity_price_curve`);
+    this.requestContextEvaluate(true, `${source}_electricity_price_curve`);
     return true;
   }
 
@@ -8246,7 +8257,8 @@ class HomeFluxEmsApp extends Homey.App {
         alignment: index > 0 ? { referenceSource: primarySource, referenceName: sourceName(primarySource, settings),
           source: id, state: calibrationState, ...(model?.details || alignmentDetails || {}) } : null,
         error: states[id].error || '', slots, analysis,
-        calibration: index > 0 && calibrated ? { scale:model.scale,offset:model.offset,learnedAt:model.learnedAt,validUntil:model.validUntil } : null });
+        calibration: index > 0 && calibrated ? { scale:model.scale,offset:model.offset,learnedAt:model.learnedAt,validUntil:model.validUntil,
+          trendAligned:model.details?.method?.startsWith('trend_') || false } : null });
     }
     if (!readOnly) {
       this.priceCalibrationAttempts = attempts;
@@ -9590,7 +9602,46 @@ class HomeFluxEmsApp extends Homey.App {
     };
   }
 
-  getInputReadiness(settings = this.getSettings()) {
+  // The fast battery path already uses the price selection prepared by the
+  // slow context. For its input warning, check only the active interval and
+  // source lifetime; never repeat multi-source ranking/calibration on P1.
+  getPreparedDynamicPriceReady(settings, now = Date.now()) {
+    const runtime = this.controlRuntimeSettings;
+    if (!runtime || !runtime.dynamicPriceDataReady
+      || runtime.contractType !== settings.contractType) return false;
+    const selection = this.evDeadlinePriceSelection?.selection;
+    if (!selection) return false;
+    // A pending battery-context refresh is not proof that its last selected
+    // price curve is invalid. Keep source/price-class setting changes strict,
+    // but do not expose unrelated battery/forecast invalidation as stale prices.
+    // This additional comparison runs only during a pending context refresh.
+    if (this.controlContextDirty) {
+      const configuredOrder = sourceOrder(settings.dynamicPriceSource, settings.dynamicPriceSources).filter(Boolean);
+      if (configuredOrder.length !== selection.sourceOrder?.length
+        || configuredOrder.some((source, index) => source !== selection.sourceOrder[index])
+        || Number(settings.cheapHours || 3) !== Number(runtime.cheapHours || 3)
+        || Number(settings.expensiveHours || 3) !== Number(runtime.expensiveHours || 3)) return false;
+    }
+    if (selection.source === 'none' || !selection.slots?.length) return false;
+    if (selection.source === 'homey') {
+      const homey = this.homeyEnergy;
+      if (homey?.available === false || !Number(homey?.lastUpdatedAt)
+        || now - Number(homey.lastUpdatedAt) > 20 * 60000) return false;
+    }
+    if (selection.source !== selection.primarySource) {
+      const selected = selection.sources?.find(source => source.source === selection.source);
+      if (!selected?.calibration || now > Number(selected.calibration.validUntil)) return false;
+    }
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const current = localParts(new Date(now), timezone);
+    const duration = selection.analysis.intervalMinutes;
+    return selection.slots.some(slot => slot.dateKey === current.dateKey
+      && current.minuteOfDay >= slot.minute
+      && current.minuteOfDay < slot.minute + duration
+      && Number.isFinite(Number(slot.price)));
+  }
+
+  getInputReadiness(settings = this.getSettings(), { gridOnly = false, preparedPrices = false } = {}) {
     const count = this.getBatteryCount(settings);
     const missing = [];
     const degraded = [];
@@ -9615,9 +9666,11 @@ class HomeFluxEmsApp extends Homey.App {
       if (!batterySocAvailable[i]) degraded.push(`SoC batterij ${i + 1}`);
     }
 
-    if (isDynamicContract(settings)) {
-      const slots = this.getHomeyEngineSlots(settings);
-      if (!slots.length) {
+    if (!gridOnly && isDynamicContract(settings)) {
+      const priceReady = preparedPrices
+        ? this.getPreparedDynamicPriceReady(settings, now)
+        : this.getHomeyEngineSlots(settings).length > 0;
+      if (!priceReady) {
         degraded.push(this.isExternalPriceFallbackEnabled(settings) ? 'dynamische prijs-slots' : 'Homey Energy prijs-slots');
       }
     }
@@ -10390,7 +10443,7 @@ class HomeFluxEmsApp extends Homey.App {
     const settings = this.getEvInstanceSettings(index, runtimeBase, 'single');
     settings.evMode = this.getEffectiveEvModeFor(index, storedSettings);
     const input = this.getEvInputSnapshot(index);
-    const readiness = this.getInputReadiness(storedSettings);
+    const readiness = this.getInputReadiness(storedSettings, { gridOnly: true });
     const connected = Boolean(input?.seen?.connected) && Boolean(input?.connected);
     const socFreshness = this.getEvSocFreshness(index, settings);
     const soc = socFreshness.fresh ? Number(input.soc) : NaN;
@@ -10434,7 +10487,7 @@ class HomeFluxEmsApp extends Homey.App {
     const storedSettings = this.getSettings();
     this.tickEvEnergyPlan(0);
     const settings = this.getEvInstanceSettings(0, this.getRuntimeSettings(storedSettings));
-    const readiness = this.getInputReadiness(storedSettings);
+    const readiness = this.getInputReadiness(storedSettings, { gridOnly: true });
     const connected = Boolean(this.inputSeen.ev?.connected) && Boolean(this.state.evConnected);
     const ev1Freshness = this.getEvSocFreshness(0, settings);
     const soc = ev1Freshness.fresh ? Number(this.state.evSoc) : NaN;
@@ -14879,7 +14932,7 @@ class HomeFluxEmsApp extends Homey.App {
       return false;
     }
     // A stopped/stale meter or disabled output must still reach the safety stop.
-    if (!settings.controlEnabled || !this.getInputReadiness(settings).ready
+    if (!settings.controlEnabled || !this.getInputReadiness(settings, { gridOnly: true }).ready
       || !this.isChargeTestValid(settings)) return false;
     if (result.baseMode === 'charge') {
       if (memo.outputDependencies !== this.getBatteryFeedbackOutputDependencies(null, settings)) {
@@ -15506,7 +15559,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.lastControlEvalAt = now;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
 
-      const readiness = this.getInputReadiness(storedSettings);
+      const readiness = this.getInputReadiness(storedSettings, { preparedPrices: true });
       const result = this.createSafetyResult(calculated, settings, readiness);
       this.applyCachedEvBatteryCoordination(result, storedSettings, now);
       phaseGuard.apply(this,result,storedSettings,now);
@@ -15587,7 +15640,7 @@ class HomeFluxEmsApp extends Homey.App {
       this.lastControlEvalAt = now;
       this.rememberFastControlSnapshot(storedSettings, now, evaluationState);
 
-      const readiness = this.getInputReadiness(storedSettings);
+      const readiness = this.getInputReadiness(storedSettings, { preparedPrices: true });
       const result = this.createSafetyResult(calculated, settings, readiness);
       const rawCandidateTotalW = Number(result.candidateTotalCommandW) || 0;
       this.coordinateEvBatteryPriority(result, storedSettings);
@@ -16758,7 +16811,7 @@ class HomeFluxEmsApp extends Homey.App {
     // Reuse the last slow-loop runtime snapshot instead of rebuilding dynamic
     // tariffs and derived settings on every read-only status request.
     const settings = this.controlRuntimeSettings || this.cachedRuntimeSettings || this.getRuntimeSettings(storedSettings);
-    const readiness = this.getInputReadiness(storedSettings);
+    const readiness = this.getInputReadiness(storedSettings, { preparedPrices: true });
 
     // v0.3.28: /status is deliberately read-only and lightweight. The settings
     // page polls this endpoint every two seconds while visible, so it must never
@@ -17133,7 +17186,7 @@ class HomeFluxEmsApp extends Homey.App {
         externalPrice2Name: sourceName('external2', storedSettings),
         peakShaveEnabled: storedSettings.peakShaveEnabled,
         peakLimitW: storedSettings.peakLimitW,
-        dynamicUseBatteryNormalHours: Boolean(storedSettings.dynamicUseBatteryNormalHours),
+        highForecastDynamicPolicy: storedSettings.highForecastDynamicPolicy,
         dynamicNormalChargeEnabled: Boolean(storedSettings.dynamicNormalChargeEnabled),
         dynamicNormalChargeMaxSoc: storedSettings.dynamicNormalChargeMaxSoc ?? 50,
         batterySaveDischargeAboveSoc: storedSettings.batterySaveDischargeAboveSoc,
@@ -17270,7 +17323,7 @@ class HomeFluxEmsApp extends Homey.App {
 
   setInput(body = {}) {
     if ((body.ev && typeof body.ev === 'object') || Array.isArray(body.evs)) this.recordSavingsSample(Date.now());
-    const wasGridReady = this.getInputReadiness().ready;
+    const wasGridReady = this.getInputReadiness(this.getSettings(), { gridOnly: true }).ready;
     let fastInputChanged = false;
     let contextInputChanged = false;
     let meterContextInputChanged = false;
@@ -17416,7 +17469,7 @@ class HomeFluxEmsApp extends Homey.App {
     if (gridInputChanged) this.checkFlexibleSafetyFromGrid(Date.now(), this.getSettings());
     if (gridInputChanged && batteryResponseTest.active(this)) batteryResponseTest.observe(this,Date.now(),this.getSettings()).catch(err=>this.error('Battery response input',err));
 
-    const gridRecovered = !wasGridReady && this.getInputReadiness().ready;
+    const gridRecovered = !wasGridReady && this.getInputReadiness(this.getSettings(), { gridOnly: true }).ready;
     if (gridRecovered && Boolean(this.getSettings().controlEnabled)) {
       this.requestContextEvaluate(true, 'api_grid_recovered');
     } else if (body.force) {

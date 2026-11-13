@@ -31,6 +31,7 @@ function baseSettings(overrides = {}) {
     gridZeroMaxW: 5,
     timezone: 'Europe/Brussels',
     ...overrides,
+    highForecastDynamicPolicy: require('../settings/high-forecast-policy').normalize(overrides.highForecastDynamicPolicy, overrides),
   };
 }
 
@@ -288,7 +289,7 @@ function state(overrides = {}) {
 }
 
 
-// Dynamic normal-price behavior can optionally use a larger battery for self-consumption.
+// Removed legacy normal-hours flag has no effect; explicit PV tariff options now decide.
 {
   const dynamicSlots = Array.from({ length: 24 }, (_, hour) => ({
     time: `${String(hour).padStart(2, '0')}:00`,
@@ -300,6 +301,7 @@ function state(overrides = {}) {
     cheapHours: 3,
     expensiveHours: 3,
     dynamicSlots,
+    highForecastDynamicPolicy: { highForecastDynamicCheapBatterySave: false, highForecastDynamicNormalBatterySave: false },
     expectedEnergyNeedKwh: 0,
   });
   const saved = evaluate(state({ gridPowerW: 1200, batterySoc: [70,70,70,70] }), {
@@ -307,8 +309,8 @@ function state(overrides = {}) {
     dynamicUseBatteryNormalHours: false,
   }, new Date('2026-08-22T12:00:00+02:00'));
   assert.equal(saved.tariff.className, 'normal');
-  assert.equal(saved.baseMode, 'solar_capture');
-  assert.equal(saved.totalCommandW, 0);
+  assert.equal(saved.baseMode, 'self_consumption');
+  assert.equal(saved.totalCommandW, 1200);
 
   const used = evaluate(state({ gridPowerW: 1200, batterySoc: [70,70,70,70] }), {
     ...common,
@@ -400,7 +402,7 @@ function state(overrides = {}) {
       contractType: 'dynamic_quarter',
       dynamicSlots: [],
       dynamicPriceDataReady: false,
-      dynamicUseBatteryNormalHours: true,
+      highForecastDynamicNormalBatterySave: false,
     }),
     new Date('2026-08-22T12:00:00+02:00'),
   );
@@ -702,7 +704,7 @@ function state(overrides = {}) {
     forcedMode: 'auto',
     contractType: 'dynamic_hour',
     dynamicPriceDataReady: true,
-    dynamicUseBatteryNormalHours: true,
+    highForecastDynamicNormalBatterySave: false,
     cheapHours: 1,
     expensiveHours: 1,
     forecastDataReady: true,
@@ -743,7 +745,7 @@ function state(overrides = {}) {
     forcedMode: 'auto',
     contractType: 'dynamic_quarter',
     dynamicPriceDataReady: true,
-    dynamicUseBatteryNormalHours: true,
+    highForecastDynamicNormalBatterySave: false,
     cheapHours: 0.25,
     expensiveHours: 0.25,
     forecastDataReady: true,
@@ -1734,7 +1736,7 @@ console.log('HomeFlux EMS v0.2.28 planning tests: OK');
     minSoc: 10,
     safetySoc: 15,
     peakShaveEnabled: false,
-    dynamicUseBatteryNormalHours: true,
+    highForecastDynamicNormalBatterySave: false,
     touRates: [
       { id: 'dal', name: 'Dal', importPrice: 0.20, feedInPrice: 0.03, lowForecastBatterySave: false },
       { id: 'piek', name: 'Piek', importPrice: 0.40, feedInPrice: 0.03, lowForecastBatterySave: false },

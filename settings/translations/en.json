@@ -1,6 +1,9 @@
 {
   "language": "en",
   "exact": {
+    "Ingesteld gedrag": "Configured behavior",
+    "Bij hoge PV batterij sparen op dit tarief": "Save battery on this tariff when PV is high",
+    "Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel": "While saving battery on high PV, still discharge to the planning/forecast target",
     "Fasemeting ontvangen": "Phase reading received",
     "Fasemeting verouderd": "Phase reading outdated",
     "Fasemeting niet ontvangen": "Phase reading not received",
@@ -2655,6 +2658,18 @@
     "SoC-doel bereikt": "SoC target reached"
   },
   "strings": {
+    "contractBehavior.low": "Low PV",
+    "contractBehavior.high": "High PV",
+    "contractBehavior.fixed": "Fixed tariff",
+    "contractBehavior.cheap": "Cheap",
+    "contractBehavior.normal": "Normal",
+    "contractBehavior.expensive": "Expensive",
+    "contractBehavior.tariff": "Tariff",
+    "contractBehavior.selfConsumption": "Self-consumption follows existing rules; no tariff-specific battery saving.",
+    "contractBehavior.save": "Save battery immediately; ordinary discharge only above the existing save floor ({floor}% SoC).",
+    "contractBehavior.saveForecast": "Save battery immediately; discharge above the current forecast target is allowed. At or below the target this exception ends and the normal save floor applies again. Higher reserves remain protected.",
+    "contractBehavior.avoidImport": "Avoid grid import using the existing discharge rules.",
+    "contractBehavior.priority": "Planned grid charging, safety recovery, Peak Guard and existing protections keep priority. PV surplus capture remains available. The existing day classification determines low/high PV.",
     "planning.forecastDecisionTomorrow": "Night planning is active. Both energy planning and day strategy now use tomorrow’s PV forecast.",
     "planning.forecastDecisionToday": "Day planning is active. Both energy planning and day strategy use today’s remaining PV forecast.",
     "planning.targetPeakTitle": "Target peak",

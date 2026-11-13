@@ -1,6 +1,9 @@
 {
   "language": "de",
   "exact": {
+    "Ingesteld gedrag": "Eingestelltes Verhalten",
+    "Bij hoge PV batterij sparen op dit tarief": "Bei hoher PV-Prognose in diesem Tarif Batterie sparen",
+    "Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel": "Beim Batteriesparen bei hoher PV-Prognose bis zum Planungs-/Prognoseziel entladen",
     "Fasemetingen ontbreken of zijn verouderd. Controleer de Flow-kaart met L1, L2 en L3.": "Phasenmesswerte fehlen oder sind veraltet. Prüfen Sie die Flow-Karte mit L1, L2 und L3.",
     "Fasemetingen L1, L2 en L3 worden ontvangen.": "Phasenmesswerte für L1, L2 und L3 werden empfangen.",
     "Fasemeting ontvangen": "Phasenmesswert empfangen",
@@ -6439,6 +6442,18 @@
     "SoC target reached": "SoC Ziel erreicht"
   },
   "strings": {
+    "contractBehavior.low": "Geringe PV-Prognose",
+    "contractBehavior.high": "Hohe PV-Prognose",
+    "contractBehavior.fixed": "Festpreis",
+    "contractBehavior.cheap": "Günstig",
+    "contractBehavior.normal": "Normal",
+    "contractBehavior.expensive": "Teuer",
+    "contractBehavior.tariff": "Tarif",
+    "contractBehavior.selfConsumption": "Eigenverbrauch gemäß den bestehenden Regeln; kein tarifbezogenes Batteriesparen.",
+    "contractBehavior.save": "Sofort Batterie sparen; normale Entladung nur oberhalb der bestehenden Spargrenze ({floor}% SoC).",
+    "contractBehavior.saveForecast": "Sofort Batterie sparen; Entladung oberhalb des aktuellen Prognoseziels erlaubt. Am oder unter dem Ziel endet diese Ausnahme und die normale Spargrenze gilt wieder. Höhere Reserven bleiben geschützt.",
+    "contractBehavior.avoidImport": "Netzbezug gemäß den bestehenden Entladeregeln vermeiden.",
+    "contractBehavior.priority": "Geplantes Netzladen, Sicherheitsnachladung, Peak Guard und bestehende Schutzfunktionen behalten Vorrang. PV-Überschuss kann weiterhin gespeichert werden. Die bestehende Tagesklassifikation bestimmt die geringe/hohe PV-Prognose.",
     "planning.forecastDecisionTomorrow": "Die Nachtplanung ist aktiv. Sowohl die Energieplanung als auch die Tagesstrategie verwenden jetzt die Prognose von PV von morgen.",
     "planning.forecastDecisionToday": "Die Tagesplanung ist aktiv. Sowohl die Energieplanung als auch die Tagesstrategie verwenden die heutige verbleibende PV Prognose.",
     "planning.targetPeakTitle": "Zielpeak",

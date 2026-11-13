@@ -33,10 +33,16 @@ function prepare(settings = {}, input = {}, now = at('11:00'), curve = null, pre
 }
 let groups = 0;
 function check(name, run) { run(); groups++; }
-check('legacy default equivalence', () => {
+check('default equivalence with explicit normal-price policy', () => {
   const oldRoot = path.resolve(process.env.HEMS_BASELINE_ROOT || '../HomeFlux-EMS-1.2.11');
   const old = fs.existsSync(path.join(oldRoot, 'lib/ems-engine.js')) ? require(path.join(oldRoot, 'lib/ems-engine.js')) : null;
   const digest = require('node:crypto').createHash('sha256');
+  // v1.3.2 adds high-PV fields and removes implicit normal-hours saving.
+  // Compare all older fields against the equivalent explicit normal policy.
+  const legacyFields = value => Array.isArray(value) ? value.map(legacyFields)
+    : value instanceof Date ? value : value && typeof value === 'object'
+      ? Object.fromEntries(Object.entries(value).filter(([key]) => !key.startsWith('highForecast')
+        && !['injectionActive','injectionTargetW'].includes(key)).map(([key, item]) => [key, legacyFields(item)])) : value;
   for (const contractType of ['fixed', 'tou', 'dynamic_quarter']) for (const forcedMode of ['auto', 'standby', 'manual_charge', 'self_consumption', 'avoid_import', 'solar_capture'])
     for (const soc of [null, 10, 50, 80, 100]) for (const grid of [-600, 600, 3600]) {
       const s = { ...base, contractType, forcedMode, chargeStrategy: strategy.normalize() };
@@ -47,15 +53,16 @@ check('legacy default equivalence', () => {
       // Assert their disabled values, then compare every original field.
       assert.equal(result.injectionActive, false);
       assert.equal(result.injectionTargetW, 0);
-      const { injectionActive, injectionTargetW, ...legacyResult } = result;
+      const legacyResult = legacyFields(result), legacyPlan = legacyFields(plan);
       if (old) {
-        assert.deepEqual(legacyResult, old.evaluate(st, s, new Date(at('11:00'))));
-        assert.deepEqual(plan, old.buildSocPlan(st, s, new Date(at('11:00'))));
+        assert.deepEqual(legacyResult, legacyFields(old.evaluate(st, { ...s, dynamicUseBatteryNormalHours: true }, new Date(at('11:00')))));
+        assert.deepEqual(legacyPlan, legacyFields(old.buildSocPlan(st, s, new Date(at('11:00')))));
       }
-      digest.update(JSON.stringify([legacyResult, plan]));
+      digest.update(JSON.stringify([legacyResult, legacyPlan]));
     }
-  // Golden result from the complete 1.2.11 engine; also usable without a sibling checkout.
-  assert.equal(digest.digest('hex'), '5afb3a102286762b028bb637796a8d24eeb97b6b492ae0247bdada79acbd89a2');
+  // Golden result for the explicit v1.3.2 normal-price policy. Optional baseline
+  // comparisons also verify every older field against equivalent original behavior.
+  assert.equal(digest.digest('hex'), 'cb04c909dadecf9c91b582028df2e1a2f2234561f7febd35e79e9fc60320e701');
 });
 check('standard independent percentage and limits', () => {
   for (const percent of [0, 10, 50, 100]) {

@@ -1,6 +1,9 @@
 {
   "language": "es",
   "exact": {
+    "Ingesteld gedrag": "Comportamiento configurado",
+    "Bij hoge PV batterij sparen op dit tarief": "Ahorrar batería en esta tarifa con previsión FV alta",
+    "Tijdens batterij sparen bij hoge PV toch ontladen tot plannings-/forecastdoel": "Durante este ahorro de batería, permitir descargar hasta el objetivo de planificación/previsión",
     "Fasemetingen ontbreken of zijn verouderd. Controleer de Flow-kaart met L1, L2 en L3.": "Faltan mediciones de fase o están desactualizadas. Compruebe la tarjeta Flow con L1, L2 y L3.",
     "Fasemetingen L1, L2 en L3 worden ontvangen.": "Se reciben mediciones de fase de L1, L2 y L3.",
     "Fasemeting ontvangen": "Medición de fase recibida",
@@ -6439,6 +6442,18 @@
     "SoC target reached": "Meta SoC alcanzada"
   },
   "strings": {
+    "contractBehavior.low": "Previsión FV baja",
+    "contractBehavior.high": "Previsión FV alta",
+    "contractBehavior.fixed": "Tarifa fija",
+    "contractBehavior.cheap": "Barata",
+    "contractBehavior.normal": "Normal",
+    "contractBehavior.expensive": "Cara",
+    "contractBehavior.tariff": "Tarifa",
+    "contractBehavior.selfConsumption": "Autoconsumo según las reglas existentes; sin ahorro de batería específico de la tarifa.",
+    "contractBehavior.save": "Ahorrar batería inmediatamente; descarga normal solo por encima del umbral de ahorro existente ({floor}% SoC).",
+    "contractBehavior.saveForecast": "Ahorrar batería inmediatamente; se permite descargar por encima del objetivo actual de previsión. En el objetivo o por debajo termina esta excepción y vuelve a aplicarse el umbral normal de ahorro. Las reservas superiores siguen protegidas.",
+    "contractBehavior.avoidImport": "Evitar la importación de red según las reglas de descarga existentes.",
+    "contractBehavior.priority": "La carga de red planificada, la recuperación de seguridad, Peak Guard y las protecciones existentes conservan su prioridad. Se puede seguir captando excedente FV. La clasificación existente determina la previsión FV baja/alta.",
     "planning.forecastDecisionTomorrow": "La planificación nocturna está activa. Tanto la planificación energética como la estrategia del día utilizan ahora el pronóstico PV de mañana.",
     "planning.forecastDecisionToday": "La planificación del día está activa. Tanto la planificación energética como la estrategia diurna utilizan el pronóstico restante PV.",
     "planning.targetPeakTitle": "Metas máximas",
