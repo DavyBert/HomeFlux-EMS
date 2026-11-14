@@ -33,7 +33,7 @@ const { SlotFlowCards } = require('./lib/flow-slot-cards');
 const { ConfiguredFlowCards } = require('./lib/configured-flow-cards');
 const { HomeyAPI } = require('homey-api');
 const { DEFAULTS: ENGINE_DEFAULTS, evaluate, prepareControlContext, previewBatteryFeedback, findCurrentTariff, isDynamicContract, buildSocPlan, distributeCommand, roundBatteryCommand, computeAverageSoc, configuredBatteryCapacityKwh, batteryPowerLimits } = require('./lib/ems-engine');
-const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, analyzePriceSlots, preparePriceAnalysis, readPriceAnalysis, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
+const { localParts, shiftDateKey, localDateTimeUtcMs, normalizeDynamicPriceResponse, analyzePriceSlots, preparePriceAnalysis, readPriceAnalysis, buildDynamicTariffTimeline, currentMatches, resamplePriceSlots, inferIntervalMinutes } = require('./lib/homey-energy');
 const { translate: translateDisplay, localizeDisplay, localizeTokens } = require('./lib/display-language');
 const { migrateVoltage } = require('./settings/ev-headroom');
 const { calculateEvDecision, evPowerPerAmp, findNextLocalTime, isEvTariffSelected, getEvPvTariffPolicy } = require('./lib/flexible-loads');
@@ -8676,6 +8676,26 @@ class HomeFluxEmsApp extends Homey.App {
       }));
   }
 
+  getHomeyEngineTariffTimeline(settings = this.getSettings(), now = new Date()) {
+    // The price selection and both calendar days' classes are already cached
+    // by getHomeyEngineSlots(). Reuse that preparation; never rerank prices in
+    // the P1 loop, read-only status or each slow-context refresh.
+    const snapshot = this.getPriceSelectionSnapshot();
+    const selection = snapshot?.selection;
+    if (!selection || selection.source === 'none') return [];
+    const prepared = selection.prepared?.candidates?.find(candidate => candidate.source === selection.source);
+    if (!prepared || prepared.slots !== selection.slots) return [];
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const dateKey = localParts(now, timezone).dateKey;
+    const existing = snapshot.tariffTimeline;
+    if (existing?.source === selection.source && existing?.dateKey === dateKey
+      && existing.slots === prepared.slots && existing.days === prepared.days) return existing.rows;
+    const rows = buildDynamicTariffTimeline(prepared.slots, prepared.days, now, timezone);
+    snapshot.tariffTimeline = { source: selection.source, dateKey,
+      slots: prepared.slots, days: prepared.days, rows };
+    return rows;
+  }
+
   restoreLowForecastSunnyState(at = Date.now()) {
     const stored = String(this.homey.settings.get('_lowForecastSunnyOverrideDate') || '');
     const today = this.getForecastDateKey(at);
@@ -9629,8 +9649,11 @@ class HomeFluxEmsApp extends Homey.App {
       pvDataReady: Boolean(this.inputSeen.pv),
     };
     if (!isDynamicContract(settings)) return runtime;
-    const dynamicSlots = this.getHomeyEngineSlots(settings);
-    return { ...runtime, dynamicSlots, dynamicPriceDataReady: dynamicSlots.length > 0 };
+    const priceNow = new Date();
+    const dynamicSlots = this.getHomeyEngineSlots(settings, priceNow);
+    const dynamicTariffTimeline = this.getHomeyEngineTariffTimeline(settings, priceNow);
+    return { ...runtime, dynamicSlots, dynamicTariffTimeline,
+      dynamicPriceDataReady: dynamicSlots.length > 0 };
   }
 
   recordGridSample(value, at = Date.now()) {
@@ -12222,7 +12245,8 @@ class HomeFluxEmsApp extends Homey.App {
       if (!decision || decision.connected === false || decision.emergencyTariffBlocked) continue;
       // Use current tariff eligibility as well as the latest EV decision, so a
       // tariff transition cannot leave a stale reservation behind.
-      if (!tariff) tariff = findCurrentTariff(new Date(now), { ...settings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || settings.dynamicSlots });
+      if (!tariff) tariff = findCurrentTariff(new Date(now), { ...settings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || settings.dynamicSlots,
+          dynamicTariffTimeline: this.cachedRuntimeSettings?.dynamicTariffTimeline || settings.dynamicTariffTimeline });
       const deadlinePolicy = this.getEvDeadlinePolicy(index, decision, settings, now);
       if (!(deadlinePolicy ? deadlinePolicy.selected : isEvTariffSelected(evSettings, tariff))
         && !(getEvPvTariffPolicy(evSettings, tariff).gridTopUpAllowed && decision.gridRequestPowerW > 0)) continue;
@@ -12379,7 +12403,8 @@ class HomeFluxEmsApp extends Homey.App {
         && now <= pendingInputDrop.expiresAt && Number(this.inputUpdatedAt?.grid) < pendingInputDrop.at;
       if (!settings.evEnabled || (!input?.connected && !awaitingDisconnectMeter)) continue;
       const tariff = storedSettings.contractType
-        ? (currentTariff ||= findCurrentTariff(new Date(now), { ...storedSettings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || storedSettings.dynamicSlots })) : null;
+        ? (currentTariff ||= findCurrentTariff(new Date(now), { ...storedSettings, dynamicSlots: this.cachedRuntimeSettings?.dynamicSlots || storedSettings.dynamicSlots,
+          dynamicTariffTimeline: this.cachedRuntimeSettings?.dynamicTariffTimeline || storedSettings.dynamicTariffTimeline })) : null;
       const modeOnly = this.getEvControlType(settings) === 'mode';
       const deadlinePolicy = this.getEvDeadlinePolicy(index, decision, storedSettings, now);
       const tariffAllowed = !tariff || modeOnly || (deadlinePolicy ? deadlinePolicy.selected : isEvTariffSelected(settings, tariff))
