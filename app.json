@@ -161,6 +161,22 @@
       "method": "GET",
       "path": "/savings/export"
     },
+    "getP1Trace": {
+      "method": "GET",
+      "path": "/p1-trace"
+    },
+    "startP1Trace": {
+      "method": "POST",
+      "path": "/p1-trace/start"
+    },
+    "stopP1Trace": {
+      "method": "POST",
+      "path": "/p1-trace/stop"
+    },
+    "clearP1Trace": {
+      "method": "POST",
+      "path": "/p1-trace/clear"
+    },
     "getInputMonitor": {
       "method": "GET",
       "path": "/input-monitor"

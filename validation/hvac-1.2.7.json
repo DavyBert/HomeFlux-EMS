@@ -27,7 +27,7 @@
     "Automatic direction switches are treated conservatively as energy increases",
     "Restart restores receipts and delay; failed/partial outputs never record new target",
     "No duplicate published targets; stale queued settings do not publish obsolete goals",
-    "Shared physical installation has one owner; other channels cannot issue conflicting goals",
+    "Legacy physical installation names do not block independent channel goals",
     "Learning reuses idle minute references and requires three independent heat/cool observations before trusting power",
     "Learning rejects unknown EV connections and connected EVs without fresh measured idle current",
     "Short/unstable/missing/battery-contaminated learning is rejected without replacing stored power",

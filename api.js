@@ -28,6 +28,10 @@ module.exports = {
     return homey.app.resetDiagnosticsReport();
   },
 
+  async getP1Trace({ homey }) { return homey.app.getP1TraceReport(); },
+  async startP1Trace({ homey }) { return homey.app.startP1Trace(); },
+  async stopP1Trace({ homey }) { return homey.app.stopP1Trace(); },
+  async clearP1Trace({ homey }) { return homey.app.clearP1Trace(); },
   async getInputMonitor({ homey }) { return homey.app.getInputMonitorReport(); },
   async startInputMonitor({ homey }) { return homey.app.startInputMonitor(); },
   async stopInputMonitor({ homey }) { return homey.app.stopInputMonitor(); },
@@ -115,7 +119,7 @@ module.exports = {
 // Translate only presentation fields at the API boundary. Stored settings and
 // internal controller decisions retain their original values and identifiers.
 for (const [name, operation] of Object.entries(module.exports)) {
-  if (['getInputMonitor', 'startInputMonitor', 'stopInputMonitor', 'clearInputMonitor'].includes(name) || name === 'getSettingsSnapshot' || name === 'getDiagnostics' || name === 'resetDiagnostics') continue;
+  if (['getP1Trace', 'startP1Trace', 'stopP1Trace', 'clearP1Trace', 'getInputMonitor', 'startInputMonitor', 'stopInputMonitor', 'clearInputMonitor'].includes(name) || name === 'getSettingsSnapshot' || name === 'getDiagnostics' || name === 'resetDiagnostics') continue;
   module.exports[name] = async function localizedOperation(args) {
     try {
       const result = await operation(args);

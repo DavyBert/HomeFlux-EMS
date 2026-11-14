@@ -16,6 +16,7 @@
 <script src="battery-response-guidance.js" type="text/javascript"></script>
 <script src="ev-headroom.js" type="text/javascript"></script>
 <script src="input-monitor.js" type="text/javascript"></script>
+<script src="p1-trace-monitor.js" type="text/javascript"></script>
 <style>
     :root {
       color-scheme: dark;
@@ -2566,6 +2567,39 @@ h3 { margin-bottom:6px; font-size:17px; }
 <textarea class="homey-form-input" id="inputMonitorExport" readonly hidden aria-label="Input Monitor JSON"></textarea>
 </div>
 
+<div class="card" id="p1TraceCard">
+<h3>P1 / EMS Control Loop Trace</h3>
+<p class="muted">Registreert maximaal 15 minuten wat een P1-invoer in de bestaande EMS-regelkring veroorzaakt: Savings, Phase Guard, EV/HVAC-observatie, veiligheidscontroles, snelle batterijberekening en getSettings()-kopieën. Geen extra metingen of regelacties.</p>
+<div class="input-monitor-toolbar">
+<button class="homey-button-primary" id="p1TraceStart" type="button">Start P1-trace</button>
+<button class="homey-button-secondary" id="p1TraceStop" type="button" disabled>Stop</button>
+<button class="homey-button-secondary" id="p1TraceExportButton" type="button" disabled>Export JSON</button>
+<button class="homey-button-secondary" id="p1TraceClear" type="button" disabled>Wissen</button>
+<span id="p1TraceCountdown" style="font-variant-numeric:tabular-nums;font-weight:700;margin-left:auto">15:00</span>
+</div>
+<div class="statusline" id="p1TraceState" role="status">Klaar om te starten</div>
+<div class="input-monitor-summary">
+<span>P1-inputs: <strong id="p1TraceTotal">0</strong></span>
+<span>getSettings()-kopieën: <strong id="p1TraceSettings">0</strong></span>
+<span>Snelle aanvragen / direct / timer: <strong id="p1TraceFast">0 / 0 / 0</strong></span>
+<span>Contextaanvragen: <strong id="p1TraceContext">0</strong></span>
+<span>Met / zonder fasen: <strong id="p1TracePhase">0 / 0</strong></span>
+<span>Proces-CPU: <strong id="p1TraceProcessCpu">—</strong></span>
+</div>
+<h4>CPU- en tijdsverdeling per P1-onderdeel</h4>
+<div class="input-monitor-table-wrap" tabindex="0">
+<table class="input-monitor-table" style="min-width:900px"><thead><tr><th>Onderdeel</th><th>Uitvoeringen</th><th>Settings-kopieën</th><th>Totaal ms</th><th>Gem. ms</th><th>Max. ms</th><th>CPU ms</th></tr></thead><tbody id="p1TraceStageRows"></tbody></table>
+</div>
+<p id="p1TraceStagesEmpty" class="muted">Nog geen metingen.</p>
+<h4>Aangevraagde acties en trage context</h4>
+<div class="input-monitor-table-wrap" tabindex="0"><table class="input-monitor-table" style="min-width:480px"><thead><tr><th>Gebeurtenis of reden</th><th>Aantal</th></tr></thead><tbody id="p1TraceOutcomeRows"></tbody></table></div>
+<h4>Laatste 120 P1-cycli</h4>
+<div class="input-monitor-table-wrap" tabindex="0"><table class="input-monitor-table" style="min-width:1150px"><thead><tr><th>#</th><th>Tijd</th><th>P1-type</th><th>Vermogen</th><th>Settings</th><th>Tijd ms</th><th>CPU ms</th><th>Toponderdelen en gevolgen</th></tr></thead><tbody id="p1TraceCycleRows"></tbody></table></div>
+<p id="p1TraceCyclesEmpty" class="muted">Nog geen P1-cycli opgenomen.</p>
+<p class="muted">De stage-tijden kunnen overlappen: de snelle batterijberekening zit in de snelle aanvraag. Tel deze niet dubbel. Uitgestelde timers en latere trage contextberekeningen kunnen door meerdere P1-metingen of een andere gebeurtenis worden veroorzaakt; die zijn apart geteld en nooit aan de laatste P1 toegeschreven. CPU per onderdeel is synchrone proces-CPU (met een kleine meetoverhead), niet de geïsoleerde totale Homey-belasting. App-herstart wist de opname.</p>
+<textarea class="homey-form-input" id="p1TraceExport" readonly hidden aria-label="P1 trace JSON" style="width:100%;min-height:140px;font-family:monospace"></textarea>
+</div>
+
 </section>
 <section class="panel" id="panel-support">
 <div class="card">
@@ -2937,6 +2971,7 @@ async function onHomeyReady(Homey) {
   applyBatteryPowerInputRanges();
 
   const inputMonitorUi = HomeFluxInputMonitor.create({ document, api, getLanguage: () => uiLanguage });
+  const p1TraceUi = HomeFluxP1TraceMonitor.create({ document, api, getLanguage: () => uiLanguage });
 
   const diagnosticSettingIds = [
     'diagnosticsPlanningEnabled', 'diagnosticsCpuEnabled',
@@ -4045,6 +4080,7 @@ async function onHomeyReady(Homey) {
     if (activeMainTab === 'planning-simulation' && name !== 'planning-simulation') clearPlanningSimulationResult();
     activeMainTab = name;
     inputMonitorUi.setVisible(name === 'diagnostics' && !document.hidden);
+    p1TraceUi.setVisible(name === 'diagnostics' && !document.hidden);
     document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
     const selectedTab = document.querySelector(`.tab[data-tab="${name}"]`);
     if (selectedTab) q('activeTabLabel').textContent = selectedTab.textContent.trim();
@@ -6331,10 +6367,11 @@ async function onHomeyReady(Homey) {
     });
   });
 
-  window.addEventListener('pagehide', () => inputMonitorUi.setVisible(false));
-  window.addEventListener('pageshow', () => inputMonitorUi.setVisible(activeMainTab === 'diagnostics' && !document.hidden));
+  window.addEventListener('pagehide', () => { inputMonitorUi.setVisible(false); p1TraceUi.setVisible(false); });
+  window.addEventListener('pageshow', () => { const active = activeMainTab === 'diagnostics' && !document.hidden; inputMonitorUi.setVisible(active); p1TraceUi.setVisible(active); });
   document.addEventListener('visibilitychange', () => {
     inputMonitorUi.setVisible(activeMainTab === 'diagnostics' && !document.hidden);
+    p1TraceUi.setVisible(activeMainTab === 'diagnostics' && !document.hidden);
     if (document.hidden) return;
     if (q('panel-hybrid-ems').classList.contains('active')) refreshHybridStatus();
     else refreshStatus();

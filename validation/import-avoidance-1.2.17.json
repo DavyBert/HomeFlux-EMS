@@ -12,11 +12,8 @@
     "Eight real startup/context/fast-loop/publication traces with physical meter feedback avoid high-tariff import, including loads above Peak Guard"
   ],
   "comparisons": 360,
-  "baselinePriorityViolationsFixed": 96,
-  "violationsByChoice": {
-    "maximum/latest/0": 48,
-    "maximum/early/0": 48
-  },
+  "baselinePriorityViolationsFixed": 0,
+  "violationsByChoice": {},
   "examples": [
     {
       "phase": "day",

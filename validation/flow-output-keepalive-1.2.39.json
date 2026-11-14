@@ -22,9 +22,9 @@
   "benchmark": {
     "hostOnly": true,
     "calls": 10000,
-    "cpuMs": 9.73,
-    "wallMs": 4.051226000000042,
-    "receiptSerializedBytes": 784,
+    "cpuMs": 3.487,
+    "wallMs": 3.457544999999982,
+    "receiptSerializedBytes": 822,
     "additionalTimers": 0,
     "additionalListeners": 0,
     "periodicSettingWrites": 0

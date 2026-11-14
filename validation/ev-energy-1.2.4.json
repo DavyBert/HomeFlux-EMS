@@ -1,5 +1,5 @@
 {
-  "passed": 34,
+  "passed": 35,
   "cases": [
     "Only PV, only grid, mixed PV/grid: total conservation and no additional Savings kWh or money",
     "Two EVs 3+4 kW share a 5-kW direct PV pool once",
@@ -33,6 +33,7 @@
     "Actual missing dynamic price is explicitly unpriced in central daydata",
     "Mode-command estimates or unreliable phase/current feedback can be explicitly excluded without changing EV control",
     "Consumption changes only recomputed range, never stored energy",
+    "Grid kilometres use independent consumption settings for EV 1–4; invalid consumption never fabricates range",
     "100 Insights widgets/reads reuse the SAME central historical aggregate and oldest-date cache",
     "Local-day coverage uses 23/25 elapsed hours at both DST transitions"
   ],

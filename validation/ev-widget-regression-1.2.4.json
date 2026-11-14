@@ -9,9 +9,9 @@
       10,
       8
     ],
-    "elapsedMs": 349.3677459999999,
-    "cpuMs": 386.61,
-    "retainedHeapDeltaBytes": 153368,
+    "elapsedMs": 1012.2952790000004,
+    "cpuMs": 1307.037,
+    "retainedHeapDeltaBytes": 301664,
     "extraContexts": 1,
     "extraFlexibleWrites": 0,
     "counts": {

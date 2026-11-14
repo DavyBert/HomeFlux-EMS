@@ -1,5 +1,5 @@
 {
-  "passed": 43,
+  "passed": 49,
   "cases": [
     "en: independent visibility true/true",
     "en: independent visibility true/false",
@@ -9,6 +9,12 @@
     "nl: independent visibility true/false",
     "nl: independent visibility false/true",
     "nl: independent visibility false/false",
+    "nl: solar and grid range translation",
+    "en: solar and grid range translation",
+    "fr: solar and grid range translation",
+    "de: solar and grid range translation",
+    "es: solar and grid range translation",
+    "Individual EV source kilometres, period switch and unknown grid range are shown correctly",
     "en: one-line EV/state/connection header and active schedule in Insights; Emergency hides saved goal; no POST or timer",
     "nl: one-line EV/state/connection header and active schedule in Insights; Emergency hides saved goal; no POST or timer",
     "Single EV automatically selected, selector hidden",

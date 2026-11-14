@@ -95,10 +95,10 @@
       "name": "Live and averaged export both bypass idle; a peak transition is processed even before hard-floor reuse"
     },
     {
-      "name": "Standby keeps real battery output zero for both export and high import"
+      "name": "Standby ignores ordinary PV export but allows Peak Guard takeover and returns to zero"
     },
     {
-      "name": "All active engine modes retain baseline results across contracts, SoC and import/export; standby is explicitly zero",
+      "name": "All active engine modes retain baseline results across contracts, SoC and import/export; standby retains Peak Guard",
       "identicalActiveModeCombinations": 384
     }
   ]

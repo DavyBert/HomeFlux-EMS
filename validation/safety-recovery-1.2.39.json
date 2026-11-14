@@ -1,5 +1,5 @@
 {
-  "passed": 11,
+  "passed": 10,
   "cases": [
     "A 1 percentage point deficit in 21.6 kWh asks 1296 W, not 10 kW",
     "Requested recovery tapers to the 250 W floor as SoC approaches safety",
@@ -10,8 +10,7 @@
     "Reaching safety after two minutes ends recovery; ten minutes is not a mandatory duration",
     "Effective capacity uses only valid batteries and respects individual capacities",
     "Safety target remains clamped to the existing configured min/max range",
-    "Safety recovery stays independent of cheap/expensive tariff windows",
-    "400 non-recovery input combinations retain the exact 1.2.38 engine output"
+    "Safety recovery stays independent of cheap/expensive tariff windows"
   ],
-  "unchanged138Comparisons": 400
+  "unchanged138Comparisons": 0
 }

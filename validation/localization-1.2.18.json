@@ -5,9 +5,9 @@
     "es",
     "de"
   ],
-  "translatedStringsChecked": 8175,
-  "metadataObjectsChecked": 2953,
+  "translatedStringsChecked": 9711,
+  "metadataObjectsChecked": 3061,
   "placeholdersPreserved": true,
-  "originalFormSchemaPreserved": true,
-  "controllerSourcesUnchanged": true
+  "originalFormSchemaPreserved": false,
+  "controllerSourcesUnchanged": false
 }
