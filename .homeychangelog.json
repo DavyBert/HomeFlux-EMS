@@ -1,4 +1,11 @@
 {
+  "1.3.4": {
+    "nl": "Slimmere P1-analyse: minder overbodige controles en instellingenlezingen in de snelle EMS-regelkring.",
+    "en": "Smarter P1 analysis: fewer unnecessary checks and settings reads in the fast EMS control loop.",
+    "fr": "Analyse P1 plus intelligente : moins de contrôles et de lectures de paramètres inutiles dans la boucle de régulation rapide EMS.",
+    "de": "Intelligentere P1-Analyse: weniger unnötige Prüfungen und Einstellungsabfragen im schnellen EMS-Regelkreis.",
+    "es": "Análisis P1 más inteligente: menos comprobaciones y lecturas innecesarias de ajustes en el control rápido del EMS."
+  },
   "1.3.3": {
     "nl": "Minder herhaalde verwerking van dynamische prijscurves door hergebruik van bestaande plannerresultaten voor status, EMS-apparaatupdates en EV-planning. Het actuele prijssegment en de bronvaliditeit worden licht gecontroleerd zonder de dagrangschikking en prijsnormalisatie opnieuw uit te voeren.",
     "en": "Reduced repeated processing of dynamic price curves by reusing existing planner results for status, EMS device updates and EV planning. The current price segment and source validity are checked without repeating daily ranking and price normalization.",

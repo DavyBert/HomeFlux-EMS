@@ -57,9 +57,9 @@ function display(app, expected) {
       equal(widget.emsMode({ forcedMode: 'injection' }, Homey), value.title[lang], 'widget shows translated injection');
       equal(widget.emsMode({ forcedMode: 'auto' }, Homey), locale.widget.status.modeAuto, 'widget shows Auto after stop');
     }
-    equal(manifest.version, '1.3.3');
+    equal(manifest.version, '1.3.4');
     for (const file of ['package.json', '.homeycompose/app.json', 'package-lock.json'])
-      equal(JSON.parse(fs.readFileSync(path.join(root, file))).version, '1.3.3', file);
+      equal(JSON.parse(fs.readFileSync(path.join(root, file))).version, '1.3.4', file);
 
     stage = 'stage-0';
     // No implicit permission changes; a disabled selection succeeds as Auto,
