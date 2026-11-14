@@ -134,20 +134,20 @@ async function main(){
   // Retire the prior output to create an idle, observable manual step.
   a.lastPublishedHvacSetpoint=20;a.state.hvacRoomTemperatureC=21;Object.assign(H.unit(a,0),{setpoint:20,mode:'heat',powerOff:false});
   a.getExtraHvac(1).lastPublishedSetpoint=21;Object.assign(H.unit(a,1),{setpoint:21,mode:'heat',powerOff:false});
-  a.setSetting('hvac2AutomaticControlEnabled',false);now+=300000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);
+  a.setSetting('hvac2AutomaticControlEnabled',false);now+=310000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);
   assert(H.runtime(a).observation?.manual,JSON.stringify({r:H.runtime(a),d:a.latestHvacDecision,events:h.events}));assert.equal(H.runtime(a).observation.index,0);
  });
  await check('Manual plateaus build independent confidence, preserve prior watts, restore targets and retain trusted power on interference',async()=>{
   const h=await setup(1,{hvacDirectTariffEnabled:true,hvacCheapTargetC:20}),a=h.app;known(a,1,700);C.manualRequest(a,0);
   for(let round=1;round<=3;round++){
-   now+=300000;a.state.gridPowerW=400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);
+   now+=310000;a.state.gridPowerW=400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);
    a.state.hvacRoomTemperatureC=21;await cycle(h);const o=H.runtime(a).observation;assert(o?.manual);assert.equal(H.unit(a,0).heat,700);
    const start=now;
    for(let sec=1;sec<=300;sec++){now=start+sec*1000;a.state.gridPowerW=1400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;recordMinuteSample(a.evSessionDetection.houseHistory,1400,now);H.observe(a,now);if(sec%60===0)H.slowTick(a,now);}
    assert.equal(H.unit(a,0).heat,round===3?1000:700);assert.equal(H.unit(a,0).heatSamples,round);
    assert.equal(H.runtime(a).manualQueue.length,round===3?0:1);await cycle(h);assert.equal(a.lastPublishedHvacSetpoint,20);
   }
-  C.manualRequest(a,0);now+=300000;a.state.gridPowerW=400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);await cycle(h);assert(H.runtime(a).observation);
+  C.manualRequest(a,0);now+=310000;a.state.gridPowerW=400;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;baseline(a);await cycle(h);assert(H.runtime(a).observation);
   H.inputChanged(a,0,'fan',3);H.slowTick(a,now);assert.equal(H.runtime(a).observation,null);assert.equal(H.unit(a,0).heat,1000);assert(H.runtime(a).manualQueue.length);
  });
  await check('Automatic learning stays single-source; direct flags, queued manual work and real external changes prevent contaminated automatic results',async()=>{
@@ -164,7 +164,8 @@ async function main(){
   // Initially stopped devices: existing active baseline demand now also counts.
   a.state.hvacMode='off';a.lastPublishedHvacMode='';for(let i=1;i<3;i++){a.getExtraHvac(i).state.mode='off';a.getExtraHvac(i).lastPublishedMode='';}
   await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,1);assert.equal(h.events.find(e=>e.kind==='setpoint').setpoint,20.5);
-  a.state.gridPowerW=-5000;a.state.pvPowerW=6500;await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,1,'PV never increases the HVAC budget');
+  a.state.gridPowerW=-5000;a.state.pvPowerW=6500;await cycle(h);
+  assert(h.events.filter(e=>e.kind==='setpoint').every(e=>e.instance===1),'PV never increases the admitted HVAC budget; a follow-up step on the same HVAC is allowed within 10 seconds');
   // The new start gate uses the previous actual HVAC action, not an idle evaluation.
   now+=300000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;
   a.setSetting('hvacExtraGridBudgetW',3600);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);assert.deepEqual([...new Set(h.events.filter(e=>e.kind==='setpoint').map(e=>e.instance))],[1,2,3]);

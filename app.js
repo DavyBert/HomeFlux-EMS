@@ -4243,6 +4243,37 @@ class HomeFluxEmsApp extends Homey.App {
     return lastStartedAt <= 0 || now >= lastStartedAt + this.getPriorityEvaluationIntervalMs(settings);
   }
 
+  // An on-demand priority pass is only for a new *physical heat/cool demand*.
+  // A setpoint adjustment on an already-demanding HVAC is ordinary regulation,
+  // not another HVAC start; sufficient PV/SoC alone also creates no request.
+  isNewHvacPriorityStartRequest(index, decision, settings = null) {
+    if (!decision?.startEligible) return false;
+    // Direct-PV starts are not actionable until their existing stability
+    // window has elapsed; merely seeing surplus must not consume the request.
+    if (settings?.hvacCoordination?.DirectPvEnabled && decision.energySource === 'pv' && !decision.hvacDirect) return false;
+    if (!decision.permanent) return !this.isHvacManagedActiveFor(index);
+    if (!decision.increase || !['heat', 'cool'].includes(decision.direction)) return false;
+    const room = Number(decision.roomTemperatureC);
+    const target = Number(decision.desiredSetpointC);
+    if (decision.roomTemperatureC === null || decision.desiredSetpointC === null
+      || !Number.isFinite(room) || !Number.isFinite(target)) return false;
+    const heat = decision.direction === 'heat';
+    if (!(heat ? target > room + 0.1 : target < room - 0.1)) return false;
+
+    const unit = this.hvacPermanentRuntime?.units?.[index];
+    const published = index === 0 ? this.lastPublishedHvacSetpoint : this.getExtraHvac(index)?.lastPublishedSetpoint;
+    const oldTarget = unit?.setpoint ?? published ?? decision.currentSetpointC;
+    const oldMode = unit?.mode || (index === 0 ? this.lastPublishedHvacMode : this.getExtraHvac(index)?.lastPublishedMode)
+      || decision.currentMode;
+    const previousDemand = oldTarget !== null && oldTarget !== undefined
+      && Number.isFinite(Number(oldTarget))
+      && (oldMode === 'heat' ? Number(oldTarget) > room + 0.1
+        : oldMode === 'cool' && Number(oldTarget) < room - 0.1);
+    const previousPower = index === 0 ? this.lastPublishedHvacPower : this.getExtraHvac(index)?.lastPublishedPower;
+    return Boolean(unit?.powerOff || unit?.outdoorStopped || decision.currentMode === 'off'
+      || previousPower === false || !previousDemand);
+  }
+
   recordFlexiblePriorityStart(id, now = Date.now(), settings = this.getSettings()) {
     this.flexiblePriorityState.lastStartedAt = now;
     this.flexiblePriorityState.lastStartedId = String(id);
@@ -13163,7 +13194,7 @@ class HomeFluxEmsApp extends Homey.App {
       const reached=fresh&&Number.isFinite(room)&&Number.isFinite(goal)&&(direction==='heat'?room>=goal:direction==='cool'&&room<=goal);
       if(reached){
         decision.startEligible=false;decision.increase=false;
-        if(settings.hvacAllowPowerControl&&mode!=='off'&&now-Number(this.lastHvacControlAt||0)>=Math.max(1,Number(settings.hvacControlIntervalMinutes)||5)*60000){
+        if(settings.hvacAllowPowerControl&&mode!=='off'&&hvacPermanent.controlIntervalReady(this,instanceIndex,settings,now)){
           decision.powerCommand=false;decision.injectionOptionalStop=true;
         }
         decision.reason='HVAC-comfortdoel bereikt tijdens injectie';return decision;
@@ -13211,8 +13242,7 @@ class HomeFluxEmsApp extends Homey.App {
     // Stop must never be harder to satisfy than start. Imported/old settings
     // with an inverted pair otherwise create immediate start/stop oscillation.
     const stopW = Math.min(startW, Math.max(0, Number.isFinite(configuredStopW) ? configuredStopW : 200));
-    const intervalMs = Math.max(1, Number(settings.hvacControlIntervalMinutes) || 5) * 60000;
-    const intervalReady = this.lastHvacControlAt <= 0 || (now - this.lastHvacControlAt) >= intervalMs;
+    const intervalReady = hvacPermanent.controlIntervalReady(this,instanceIndex,settings,now);
     const hasPvBoost = !injection.limitLoads(this,settings) && Boolean(settings.hvacUsePvSurplus) && enoughBattery && virtualGridW <= -startW;
     const configuredFastImportW = Number(settings.hvacFastResetImportW);
     const fastImportW = Math.max(0, Number.isFinite(configuredFastImportW) ? configuredFastImportW : 1000);
@@ -13270,7 +13300,6 @@ class HomeFluxEmsApp extends Homey.App {
           if ((direction > 0 && next > baseline) || (direction < 0 && next < baseline)) next = baseline;
           decision.setpointCommand = Math.round(next * 2) / 2;
           if (Boolean(settings.hvacAllowFanControl)) decision.fanTarget = this.getHvacFanScale(settings).min;
-          this.lastHvacControlAt = now;
           decision.reason = targetReached
             ? `Comfortdoel bereikt · ${activeMode === 'heat' ? 'verwarmen' : 'koelen'} geleidelijk terug`
             : 'Geen PV/batterijdoorgang · HVAC-setpoint geleidelijk terug';
@@ -13358,7 +13387,7 @@ class HomeFluxEmsApp extends Homey.App {
       if (Math.abs(next - effectiveSetpoint) >= 0.1) decision.setpointCommand = Math.round(next * 2) / 2;
     }
 
-    if (Boolean(settings.hvacAllowFanControl)) {
+    if (Boolean(settings.hvacAllowFanControl) && intervalReady) {
       decision.fanTarget = this.getHvacFanTargetFromClimate(controlMode, room, outdoor, settings);
       const referenceFan = Number.isFinite(Number(fanSpeed)) ? Number(fanSpeed) : Number(this.lastPublishedHvacFanSpeed);
       if (decision.fanTarget !== null && Number.isFinite(referenceFan)) {
@@ -13368,7 +13397,6 @@ class HomeFluxEmsApp extends Homey.App {
       }
     }
 
-    if (decision.setpointCommand !== null || decision.powerCommand !== null || decision.modeCommand) this.lastHvacControlAt = now;
     const priorityLabel = String(settings.hvacPriority || 'comfort') === 'pv' ? 'PV-overschot minimaliseren' : 'Comfort eerst';
     if (!decision.reason) decision.reason = `${controlMode === 'cool' ? 'Koelen' : 'Verwarmen'} op ruimtetemperatuur · ${priorityLabel}`;
     return decision;
@@ -13518,11 +13546,22 @@ class HomeFluxEmsApp extends Homey.App {
           continue;
         }
         try {
+          // A calculated command is not an actual action. Snapshot successful
+          // Flow receipts and only restart this HVAC's timer when one changes.
+          const receipt = safeIndex===0 ? this : this.getExtraHvac(safeIndex);
+          const key = safeIndex===0 ? 'lastPublishedHvac' : 'lastPublished';
+          const before = ['Power','Mode','Setpoint','FanSpeed'].map(k=>receipt?.[key+k]);
           await this._publishHvacDecisionNowFor(safeIndex, next);
-          // A new/increased HVAC demand is the actual priority action. An
-          // idle check or an output rejected by the publication guards cannot
-          // delay the next independent HVAC request.
-          if (next.increase && !next.waiting && next.outputChanged === true
+          const after = ['Power','Mode','Setpoint','FanSpeed'].map(k=>receipt?.[key+k]);
+          next.actualControlChange=before.some((value,i)=>value!==after[i])
+            ||Boolean(next.hvacRestartFromFeedback&&next.powerCommand===true&&next.outputChanged===true&&!next.waiting);
+          if(!next.permanent&&next.actualControlChange) {
+            this.withHvacRuntime(safeIndex,()=>{this.lastHvacControlAt=Date.now();});
+            hvacPermanent.recordControlChange(this,safeIndex,Date.now());
+          }
+          // Only a published *new HVAC demand* resets the priority start slot.
+          // Setpoint tuning on an already active HVAC must not postpone a start.
+          if (next.priorityNewStart && next.increase && !next.waiting && next.outputChanged === true
             && (next.powerCommand === true || next.modeCommand
               || next.setpointCommand !== null && next.setpointCommand !== undefined)) {
             this.recordFlexiblePriorityStart(`hvac${safeIndex + 1}`);
@@ -14429,7 +14468,11 @@ class HomeFluxEmsApp extends Homey.App {
     const hvacCount = runHvac ? configuredHvacCount : 0;
     const hvacDecisions = Array.from({length:configuredHvacCount}, (_,i)=>i===0?this.latestHvacDecision:this.getExtraHvac(i)?.latestDecision || null);
     const hvacPreviews = Array(hvacCount).fill(null);
-    const priorityScheduled = this.isFlexiblePriorityEvaluationDue(Date.now(), storedSettings);
+    // A fast context pass without HVAC decisions must not consume the next
+    // scheduled HVAC priority slot before the slow HVAC pass can use it.
+    // Keep the boiler-only schedule intact when no HVAC is configured.
+    const priorityScheduled = (runHvac || configuredHvacCount === 0)
+      && this.isFlexiblePriorityEvaluationDue(Date.now(), storedSettings);
     const hvacPriorityOrder = this.getFlexibleLoadPriorityOrder(storedSettings);
     if(hvacPortfolio)hvacPortfolio.priorityOrder=hvacPriorityOrder;
 
@@ -14463,13 +14506,29 @@ class HomeFluxEmsApp extends Homey.App {
       nextBatteryCommandW: boilerNextBatteryCommandW,
     });
 
-    // A fresh HVAC request is admitted on the existing context pass as soon
-    // as the last actual priority start is old enough, even if a recent idle
-    // evaluation scheduled the next ordinary check several minutes away.
+    // A normal priority pass happens on its configured interval. Only a
+    // genuinely NEW HVAC start request may advance it, once per request.
+    // Retain the request identities across ordinary non-HVAC context passes.
     const startSlotReady = this.isFlexiblePriorityStartAllowed(Date.now(), storedSettings);
-    const pendingHvacStart = hvacPreviews.some((d, index) => Boolean(d?.startEligible)
-      && (d.permanent || !this.isHvacManagedActiveFor(index)));
-    const priorityDue = priorityScheduled || (runHvac && pendingHvacStart && startSlotReady);
+    const newHvacStarts = [];
+    if (runHvac) {
+      for (let index = 0; index < hvacCount; index += 1) {
+        const d = hvacPreviews[index];
+        if (this.isNewHvacPriorityStartRequest(index, d, hvacPortfolio.settings[index])) {
+          d.priorityNewStart = true;
+          newHvacStarts.push(`hvac${index + 1}`);
+        }
+      }
+    }
+    const previouslyRequested = this.flexiblePriorityState.pendingHvacStartIds || [];
+    const freshHvacStart = newHvacStarts.some(id => !previouslyRequested.includes(id));
+    if (runHvac) {
+      // A request seen during the previous start cooldown has not had its
+      // chance yet: allow it to request a check when that cooldown expires.
+      this.flexiblePriorityState.pendingHvacStartIds = startSlotReady ? newHvacStarts
+        : previouslyRequested.filter(id => newHvacStarts.includes(id));
+    }
+    const priorityDue = priorityScheduled || (runHvac && freshHvacStart && startSlotReady);
     let grantedId = '';
     if (priorityDue) {
       if (!evStartedThisCycle && startSlotReady) {
@@ -14482,13 +14541,17 @@ class HomeFluxEmsApp extends Homey.App {
           if (d?.startEligible && !d.permanent && !hvacCoordination.admission(this, hvacPortfolio, index, { ...d, direction: d.boostMode || hvacPermanent.activationMode(hvacPortfolio.settings[index], d.roomTemperatureC, d.outdoorTemperatureC) }).allowed) continue;
           if (Boolean(hvacPreviews[index]?.startEligible) && (hvacPreviews[index]?.permanent || !this.isHvacManagedActiveFor(index))) eligible.set(`hvac${index + 1}`, true);
         }
-        grantedId = hvacPriorityOrder.find(id => eligible.get(id)) || '';
+        // An exceptional pass belongs to the new start that requested it;
+        // normal scheduled passes retain the existing flexible-load order.
+        grantedId = (!priorityScheduled ? hvacPriorityOrder.find(id => newHvacStarts.includes(id) && eligible.get(id))
+          : hvacPriorityOrder.find(id => eligible.get(id))) || '';
       }
       this.finishFlexiblePriorityEvaluation(Date.now(), storedSettings);
     }
 
     if (runHvac) {
       hvacPortfolio.externalReservedW = grantedId === 'boiler' && !this.boilerState.outputOn && boilerDecision?.startEligible ? Math.max(0,Number(storedSettings.boilerPowerW)||1800) : 0;
+      hvacPortfolio.priorityEvaluationDue = priorityDue;
       hvacCoordination.plan(this, hvacPortfolio, hvacPreviews, grantedId, evStartedThisCycle, startSlotReady);
     }
 
@@ -14516,6 +14579,7 @@ class HomeFluxEmsApp extends Homey.App {
         const admitted=hvacPreviews[index];
         Object.assign(decision,{coordinated:true,legacyCoordinated:true,hvacAdmission:admitted.hvacAdmission,increase:true,direction:admitted.direction,suppressAutoLearning:Boolean(admitted.suppressAutoLearning),sampleGridW:hvacPortfolio.sampleGridW});
       }
+      if (decision && hvacPreviews[index]?.priorityNewStart) decision.priorityNewStart = true;
       hvacDecisions[index] = decision;
       if (index === 0) this.latestHvacDecision = decision;
       else {

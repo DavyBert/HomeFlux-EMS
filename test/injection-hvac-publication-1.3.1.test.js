@@ -64,7 +64,7 @@ async function run() {
   prime(h,0,{room:21.5,target:23,legacy:true});
   if(protection==='EssentialEnabled'||protection==='KeepOnEnabled')a.setSetting('hvacCoordination',a.getSettings().hvacCoordination.map((c,i)=>i?c:{...c,[protection]:true}));
   if(protection==='stale')a.inputUpdatedAt.hvac.roomTemperature=h.now()-300001;
-  if(protection==='interval')a.lastHvacControlAt=h.now();
+  if(protection==='interval')H.unit(a,0).controlChangedAt=h.now()-30000;
   if(protection==='no_power')a.setSetting('hvacAllowPowerControl',false);
   await I.start(a);await a.publishFlexibleLoads(a.latestResult,0,0);
   assert(!h.events.some(e=>e.kind==='power'&&e.state_value===0),protection);checks++;

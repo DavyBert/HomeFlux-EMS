@@ -84,7 +84,7 @@ async function main() {
     const h = await setup(1, direct(1, { hvacExtraGridBudgetW: 1200 })), a = h.app;
     active(a, 0, 1200, 19, 22); await cycle(h);
     assert.equal(a.latestHvacDecision.setpointCommand, 23); assert.equal(a.latestHvacDecision.hvacAdmission.siteReservedW, 0);
-    tick(h); a.setSetting('hvacDirection', 'cool'); a.setSetting('hvacCheapTargetC', 18);
+    tick(h, 310000); a.setSetting('hvacDirection', 'cool'); a.setSetting('hvacCheapTargetC', 18);
     Object.assign(H.unit(a, 0), { cool: 1000, coolReview: false });
     await cycle(h); assert.equal(a.latestHvacDecision.setpointCommand, 18);
     assert.equal(a.latestHvacDecision.hvacAdmission.siteReservedW, 0); assert.equal(H.runtime(a).budgetGuard.watts, 1200);
@@ -149,12 +149,12 @@ async function main() {
     await cycle(h); assert.equal(a.lastPublishedHvacSetpoint, 19.5); assert.equal(H.runtime(a).budgetGuard.watts, 360);
     const before = h.events.length; await cycle(h); assert.equal(h.events.length, before);
     tick(h); await cycle(h); assert.equal(a.lastPublishedHvacSetpoint, 19); assert.equal(H.runtime(a).budgetGuard.watts, 0);
-    tick(h); await cycle(h); assert.equal(starts(h).length, 0); assert.match(a.latestHvacDecision.reason, /vermogensbudget/);
+    tick(h, 310000); await cycle(h); assert.equal(starts(h).length, 0); assert.match(a.latestHvacDecision.reason, /vermogensbudget/);
   });
   await check('A new real OFF feedback can restart the requested HVAC once, while stale OFF feedback cannot repeat ON', async () => {
     const h = await setup(2, direct(2)), a = h.app; stopped(a, 2); await cycle(h);
     for (const index of [0, 1]) {
-      tick(h); inputs(a, index, { mode: 'off' });
+      tick(h, 310000); inputs(a, index, { mode: 'off' });
       (index === 0 ? a.inputUpdatedAt.hvac : a.getExtraHvac(index).updatedAt).mode = clock.now();
       const before = starts(h).length; await cycle(h); assert.equal(starts(h).length, before + 1);
       await cycle(h); assert.equal(starts(h).length, before + 1);
@@ -169,7 +169,7 @@ async function main() {
     Object.assign(a.state, { gridPowerW: -5000, pvPowerW: 6500 });
     await cycle(h); assert.equal(a.lastPublishedHvacSetpoint, 21); assert.match(a.latestHvacDecision.reason, /vermogensbudget/);
     assert.equal(H.runtime(a).budgetGuard.watts, 360);
-    inputs(a, 1, { roomTemperatureC: 24 }); tick(h); await cycle(h);
+    inputs(a, 1, { roomTemperatureC: 24 }); tick(h, 310000); await cycle(h);
     assert.equal(a.lastPublishedHvacSetpoint, 21.5); assert.equal(H.runtime(a).budgetGuard.watts, 360);
   });
   await check('Budget reduction remains possible for a physically active normal permanent device without a comfort session', async () => {

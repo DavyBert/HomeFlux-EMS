@@ -17,7 +17,10 @@ async function main(){
  d=calc(a);assert.equal(d.modeCommand,'heat');assert.equal(d.powerCommand,true);assert.equal(d.setpointCommand,21);await a.publishHvacDecisionFor(0,d);assert.equal(H.unit(a,0).comfortMode,'heat');
  a.state.hvacMode='heat';a.state.hvacRoomTemperatureC=16.1;d=calc(a);assert.equal(d.powerCommand,null);assert.equal(d.modeCommand,null);assert.equal(d.setpointCommand,null,'no repeated command at activation threshold');
  a.state.hvacRoomTemperatureC=21;d=calc(a);assert.equal(d.powerCommand,false);await a.publishHvacDecisionFor(0,d);assert.equal(H.unit(a,0).comfortMode,'');
- a.state.hvacMode='off';a.state.hvacRoomTemperatureC=15.9;assert.equal(calc(a).setpointCommand,null,'minimum interval retained');
+ a.state.hvacMode='off';a.state.hvacRoomTemperatureC=15.9;
+ assert.equal(calc(a).powerCommand,true,'a new comfort request may act inside the 10-second follow-up window');
+ now+=11000;a.inputUpdatedAt.grid=now;
+ assert.equal(calc(a).setpointCommand,null,'after 10 quiet seconds, the minimum interval is active');
  now+=360000;a.inputUpdatedAt.grid=now;d=calc(a);assert.equal(d.powerCommand,true);
  a.state.hvacRoomTemperatureC=22;assert.equal(H.beforePublish(a,0,d),false,'queued demand invalidated by changed room input');
  assert.equal(calc(a).powerCommand,null,'comfortable idle does not start');

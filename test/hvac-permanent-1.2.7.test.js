@@ -40,7 +40,8 @@ async function main(){
     const reportedMode=['auto','off',''][i%3];
     if(!i){a.state.hvacMode=reportedMode;a.inputSeen.hvac.mode=Boolean(reportedMode);a.lastPublishedHvacMode='';a.lastPublishedHvacSetpoint=null;}
     else {const r=a.getExtraHvac(i);r.state.mode=reportedMode;r.seen.mode=Boolean(reportedMode);r.lastPublishedMode='';r.lastPublishedSetpoint=null;}
-    Object.assign(H.unit(a,i),{mode:'',setpoint:null});H.runtime(a).nextAt=0;
+    // Each independent channel is reset to a fresh, idle installation.
+    Object.assign(H.unit(a,i),{mode:'',setpoint:null,controlChangedAt:0,outputAt:0});H.runtime(a).nextAt=0;
     const d=calc(a,i),expected=outside<6?tariffCop[cls].targetC:ordinary,before=events.length;
     near(d.desiredSetpointC,expected);near(d.setpointCommand,expected);assert.equal(d.modeCommand,null);assert.equal(d.copTargetActive,outside<6);
     await a.publishHvacDecisionFor(i,d);assert.equal(events.length,before+1);assert.deepEqual(events.at(-1),{setpoint:expected,instance:i+1});
@@ -52,8 +53,8 @@ async function main(){
  await check('Setpoint-only fixed direction preserves timers, budget, Peak Guard, outdoor limits and rejects known conflicting or automatic mode switches',async()=>{
   const h=await setup({hvacAllowModeControl:false,hvacDirectionTemperature:{source:'indoor',tariffCop:{cheap:{outsideBelowC:6,targetC:55}}}}),a=h.app;
   a.inputSeen.hvac.outdoorTemperature=true;a.state.hvacOutdoorTemperatureC=5;a.inputSeen.hvac.mode=false;a.lastPublishedHvacMode='';
-  Object.assign(H.unit(a,0),{mode:'',setpoint:null});H.runtime(a).nextAt=now+300000;assert.equal(calc(a).setpointCommand,null);
-  H.runtime(a).nextAt=0;a.setSetting('hvacExtraGridBudgetEnabled',true);a.setSetting('hvacExtraGridBudgetW',0);assert.equal(calc(a).setpointCommand,null);
+  Object.assign(H.unit(a,0),{mode:'',setpoint:null,controlChangedAt:now-30000});assert.equal(calc(a).setpointCommand,null);
+  H.unit(a,0).controlChangedAt=0;a.setSetting('hvacExtraGridBudgetEnabled',true);a.setSetting('hvacExtraGridBudgetW',0);assert.equal(calc(a).setpointCommand,null);
   // 500 W base + the 300 W unknown-load estimate must still be blocked
   // when the configured Peak Guard (including its margin) has no headroom.
   a.setSetting('hvacExtraGridBudgetEnabled',false);a.setSetting('peakShaveEnabled',true);a.setSetting('peakLimitW',700);assert.equal(calc(a).setpointCommand,null);
@@ -92,8 +93,8 @@ async function main(){
   const config={source:'indoor',heatingBelowC:16,coolingAboveC:25,tariffCop:{cheap:{outsideBelowC:6,targetC:19}}};
   const h=await setup({hvacDirectionTemperature:config}),a=h.app;a.inputSeen.hvac.outdoorTemperature=true;a.state.hvacOutdoorTemperatureC=5;
   H.runtime(a).nextAt=now+300000;let d=calc(a);near(d.setpointCommand,19);assert(!d.increase);await a.publishHvacDecisionFor(0,d);
-  a.state.hvacOutdoorTemperatureC=6;d=calc(a);assert.equal(d.setpointCommand,null);assert(d.waiting);
-  now+=300000;a.inputUpdatedAt.grid=now;d=calc(a);near(d.setpointCommand,23);a.state.hvacOutdoorTemperatureC=5;assert.equal(H.beforePublish(a,0,d),false);
+  a.state.hvacOutdoorTemperatureC=6;d=calc(a);near(d.setpointCommand,23); // free 10-second follow-up window
+  now+=310000;a.inputUpdatedAt.grid=now;d=calc(a);near(d.setpointCommand,23);a.state.hvacOutdoorTemperatureC=5;assert.equal(H.beforePublish(a,0,d),false);
   a.state.hvacOutdoorTemperatureC=6;d=calc(a);a.setSetting('hvacDirectionTemperature',{...config,tariffCop:{cheap:{outsideBelowC:6,targetC:18}}});assert.equal(H.beforePublish(a,0,d),false);
   a.state.hvacOutdoorTemperatureC=5;d=calc(a);near(d.setpointCommand,18);await a.publishHvacDecisionFor(0,d);
   const restarted=await boot(new Map(h.store));assert.deepEqual(restarted.app.getHvacInstanceSettings(0).hvacDirectionTemperature.tariffCop,{cheap:{outsideBelowC:6,targetC:18}});
@@ -132,15 +133,15 @@ async function main(){
   assert.equal(calc(a).setpointCommand,null,'neutral outdoor temperature cannot invent a first heating/cooling mode');
   a.state.hvacMode='heat';a.lastPublishedHvacMode='heat';
   a.inputSeen.hvac.outdoorTemperature=true;a.state.hvacOutdoorTemperatureC=26;
-  H.runtime(a).nextAt=now+300000;let d=calc(a);assert.equal(d.direction,'cool');assert.equal(d.modeCommand,null);assert(d.waiting);
-  H.runtime(a).nextAt=0;a.setSetting('hvacAllowModeControl',false);d=calc(a);assert.equal(d.modeCommand,null);assert(d.waiting);
+  H.unit(a,0).controlChangedAt=now-30000;let d=calc(a);assert.equal(d.direction,'cool');assert.equal(d.modeCommand,null);assert(d.waiting);
+  H.unit(a,0).controlChangedAt=0;a.setSetting('hvacAllowModeControl',false);d=calc(a);assert.equal(d.modeCommand,null);assert(d.waiting);
   a.setSetting('hvacAllowModeControl',true);d=calc(a);assert.equal(d.modeCommand,'cool');a.state.hvacOutdoorTemperatureC=15;
   assert.equal(H.beforePublish(a,0,d),false,'changed outdoor source invalidates queued cooling');
   a.state.hvacOutdoorTemperatureC=26;d=calc(a);await a.publishHvacDecisionFor(0,d);assert.equal(H.unit(a,0).mode,'cool');
-  now+=300000;a.inputUpdatedAt.grid=now;a.state.hvacMode='cool';a.state.hvacOutdoorTemperatureC=15;
+  now+=310000;a.inputUpdatedAt.grid=now;a.state.hvacMode='cool';a.state.hvacOutdoorTemperatureC=15;
   d=calc(a);assert.equal(d.direction,'heat');assert.equal(d.modeCommand,'heat');await a.publishHvacDecisionFor(0,d);assert.equal(H.unit(a,0).mode,'heat');
   a.setSetting('hvacPeriodicHeatEnabled',true);a.state.hvacOutdoorTemperatureC=30;a.state.hvacMode='heat';
-  now+=300000;a.inputUpdatedAt.grid=now;d=calc(a);assert(d.periodicHeating);assert.equal(d.direction,'heat');
+  now+=310000;a.inputUpdatedAt.grid=now;d=calc(a);assert(d.periodicHeating);assert.equal(d.direction,'heat');
   const restarted=await boot(new Map(h.store));assert.equal(restarted.app.getHvacInstanceSettings(0).hvacDirectionTemperature.source,'outdoor');
  });
  await check('Indoor source remains the default and non-permanent PV activation can explicitly use outdoor thresholds',async()=>{
@@ -253,14 +254,17 @@ async function main(){
    }
   }
  });
- await check('Matrix B/D: at most one heat increase or cooling decrease per global interval',async()=>{
+ await check('Matrix B/D: independent channels have their own intervals',async()=>{
   for(const mode of ['heat','cool']) {
    const h=await setup(),a=h.app;
    for(let i=0;i<5;i++){a.setSetting(a.getHvacSettingKey(i,'Direction'),mode);a.setSetting(a.getHvacSettingKey(i,'CheapTargetC'),mode==='heat'?23:19);
     if(!i){a.lastPublishedHvacSetpoint=mode==='heat'?20:23;a.lastPublishedHvacMode=mode;a.state.hvacMode=mode;}
     else {const r=a.getExtraHvac(i);r.lastPublishedSetpoint=mode==='heat'?20:23;r.lastPublishedMode=mode;r.state.mode=mode;}}
-   await a.publishHvacDecisionFor(0,calc(a,0));for(let i=1;i<5;i++)assert.equal(calc(a,i).setpointCommand,null);
-   now+=300000;a.inputUpdatedAt.grid=now;assert.equal(calc(a,1).setpointCommand,mode==='heat'?23:19);
+   await a.publishHvacDecisionFor(0,calc(a,0));
+   for(let i=1;i<5;i++)assert.equal(calc(a,i).setpointCommand,mode==='heat'?23:19);
+   a.setSetting('hvacCheapTargetC',mode==='heat'?24:18);
+   now+=11000;a.inputUpdatedAt.grid=now;assert.equal(calc(a,0).setpointCommand,null);
+   now+=299000;a.inputUpdatedAt.grid=now;assert.equal(calc(a,0).setpointCommand,mode==='heat'?24:18);
   }
  });
  await check('Tariff matrix and all four optimization combinations with correct PV fallback',async()=>{
@@ -309,7 +313,7 @@ async function main(){
   const h=await setup(),a=h.app,events=[];
   h.cards.get('hvac_setpoint_updated_for_configured').trigger=async(t,s)=>events.push({t,s});
   for(let i=0;i<10;i++)for(const target of [55,99]) {
-   now+=300000;a.inputUpdatedAt.grid=now;a.setSetting(a.getHvacSettingKey(i,'CheapTargetC'),target);
+   now+=310000;a.inputUpdatedAt.grid=now;a.setSetting(a.getHvacSettingKey(i,'CheapTargetC'),target);
    const d=calc(a,i);near(d.setpointCommand,target);await a.publishHvacDecisionFor(i,d);
    assert.equal(events.at(-1).s.hvac,i+1);near(events.at(-1).t.setpoint,target);
    const selection={id:String(i+1),kind:'hvac',name:`HVAC ${i+1}`};
@@ -343,7 +347,7 @@ async function main(){
   const saved=h.store.get('_hvacPermanent');near(saved.units[0].setpoint,23);
   h=await boot(h.store);a=h.app;near(H.unit(a,0).setpoint,23);assert(H.runtime(a).nextAt>now);assert.equal(H.runtime(a).observation,null);
   h=await setup();a=h.app;a.hvacSetpointTrigger.trigger=async()=>{throw new Error('synthetic failure');};
-  await assert.rejects(a.publishHvacDecisionFor(0,calc(a)),/synthetic failure/);assert.equal(H.unit(a,0).setpoint,null);assert(H.runtime(a).nextAt>now);
+  await assert.rejects(a.publishHvacDecisionFor(0,calc(a)),/synthetic failure/);assert.equal(H.unit(a,0).setpoint,null);assert.equal(H.runtime(a).nextAt,0,'failed output must not restart the timer');
  });
  await check('No duplicate published targets; stale queued settings do not publish obsolete goals',async()=>{
   const h=await setup(),a=h.app;await a.publishHvacDecisionFor(0,calc(a));assert.equal(calc(a).setpointCommand,null);
