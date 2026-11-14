@@ -413,7 +413,7 @@ class HomeFluxEmsApp extends Homey.App {
       lastPublishedWarmed: null,
       peakSupportRequestedAt: 0,
     };
-    this.flexiblePriorityState = { nextEvaluationAt: 0, lastStartedId: '', lastEvaluationAt: 0 };
+    this.flexiblePriorityState = { nextEvaluationAt: 0, lastStartedId: '', lastEvaluationAt: 0, lastStartedAt: 0 };
 
     this.inputRequestTimers = [];
     this.inputRequestInitialTimer = null;
@@ -2482,7 +2482,7 @@ class HomeFluxEmsApp extends Homey.App {
     let max = Math.min(hardMax, Number(profile.defaultMax));
     if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
     if (min > max) min = max = Math.max(hardMin, Math.min(hardMax, Number(currentValue ?? settings[settingKey]) || 0));
-    const defaultConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const defaultConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent ?? 95)));
     const result = {
       min,
       max,
@@ -2502,7 +2502,7 @@ class HomeFluxEmsApp extends Homey.App {
   getAutoTuneLimitFor(settingKey, currentValue = null, limits = null) {
     const settings = this.getSettings();
     const stored = (limits || this.getAutoTuneLimits())[settingKey];
-    const fallbackConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const fallbackConfidence = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent ?? 95)));
     const minConfidencePercent = Number.isFinite(Number(stored?.minConfidencePercent))
       ? Math.max(0, Math.min(100, Number(stored.minConfidencePercent)))
       : fallbackConfidence;
@@ -2562,7 +2562,7 @@ class HomeFluxEmsApp extends Homey.App {
     const requestedConfidence = Number(body.minConfidencePercent);
     const minConfidencePercent = Number.isFinite(requestedConfidence)
       ? Math.max(0, Math.min(100, requestedConfidence))
-      : Math.max(0, Math.min(100, Number(previous.minConfidencePercent) || Number(settings.autoTuneMinConfidencePercent) || 95));
+      : Math.max(0, Math.min(100, Number(previous.minConfidencePercent ?? settings.autoTuneMinConfidencePercent ?? 95)));
     const nextLimit = { min, max, minConfidencePercent, userDefined: true };
     if (settingKey === 'expectedEnergyNeedKwh') {
       const targetMin = Math.max(0, Math.min(100, Math.max(Number(settings.minSoc) || 0, Number(settings.safetySoc) || 0)));
@@ -2725,7 +2725,7 @@ class HomeFluxEmsApp extends Homey.App {
     const permissions = this.getAutoTunePermissions();
     const ignored = this.getAutoTuneIgnored();
     const limits = this.getAutoTuneLimits();
-    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent ?? 95)));
     const recommendations = [];
     const roundTo = (value, step = 1) => Math.round(Number(value) / step) * step;
     const percentile = (values, q = 0.5) => {
@@ -2757,8 +2757,11 @@ class HomeFluxEmsApp extends Homey.App {
       const confidencePercent = Math.round(Math.max(0, Math.min(1, Number(conf) || 0)) * 100);
       const allowedRange = this.getAutoTuneLimitFor(settingKey, cur, limits);
       const parameterMinConfidence = Number(allowedRange?.minConfidencePercent ?? minConfidencePercent);
+      const descriptor = this.getAutoTuneSettingDescriptor(settingKey);
       recommendations.push({
-        id: settingKey, settingKey, scope, titleNl, titleEn,
+        id: settingKey, settingKey, scope,
+        titleNl: descriptor?.titleNl || titleNl,
+        titleEn: descriptor?.titleEn || titleEn,
         current: cur, recommended: next, unit: unit || '',
         reasonNl, reasonEn, confidence: confidencePercent,
         samples: Math.max(0, Math.round(Number(samples) || 0)),
@@ -2957,7 +2960,7 @@ class HomeFluxEmsApp extends Homey.App {
         const descriptor=this.getAutoTuneSettingDescriptor(item.key);
         push(item.key,descriptor.titleNl,descriptor.titleEn,item.current,item.recommended,descriptor.unit,item.reason,translateDisplay(item.reason,'en'),item.confidence/100,item.measurementPeriod.days,'Planning');
         const row=recommendations.find(r=>r.settingKey===item.key);
-        if(row)Object.assign(row,{measurementPeriod:item.measurementPeriod,evidence:item.evidence,reviewOnly:true,canAutoManage:false,autoManaged:false,autoEligible:false});
+        if(row)Object.assign(row,{measurementPeriod:item.measurementPeriod,evidence:item.evidence});
       }
     }
     // Keep the separate sunny-day release setting's established behaviour.
@@ -3039,9 +3042,8 @@ class HomeFluxEmsApp extends Homey.App {
     const ignored = this.getAutoTuneIgnored();
     const limits = this.getAutoTuneLimits();
     const settings = this.getSettings();
-    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const minConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent ?? 95)));
     const recommendations = this.getAutoTuneRecommendations();
-    const recommendationKeys = new Set(recommendations.map(item => item.settingKey));
     const planningDays = Array.isArray(runtime.planning?.days) ? runtime.planning.days.slice(-14) : [];
     const currentDay = runtime.planning?.currentDay || null;
     const demandDays = planningDays.filter(day => Number(day?.sampleHours) >= 18 && Number(day?.estimatedDemandKwh) > 0);
@@ -3051,17 +3053,19 @@ class HomeFluxEmsApp extends Homey.App {
       return Number.isFinite(numeric) ? numeric : null;
     };
     return {
-      recommendations,
+      // A granted permission belongs in Managed, even when advice is still active.
+      // Revoking that permission makes a still-relevant suggestion visible again.
+      recommendations: recommendations.filter(item => !permissions[item.settingKey]),
       strategyConflicts: this.autoTuneStrategyAdvice || [],
       permissions,
       limits,
       minConfidencePercent,
-      managed: Object.keys(permissions).filter(key => permissions[key] && !recommendationKeys.has(key)).map(key => {
+      managed: Object.keys(permissions).filter(key => permissions[key]).map(key => {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
         if (!descriptor) return null;
         const allowedRange = this.getAutoTuneLimitFor(key, settings[key], limits);
-        const reviewOnly=['expectedEnergyNeedKwh','lowForecastSelfConsumptionMinKwh','batterySaveDischargeAboveSoc'].includes(key);
-        return { ...descriptor, current: settings[key], autoManaged: !reviewOnly, reviewOnly, canAutoManage:!reviewOnly, allowedRange, minConfidencePercent: Number(allowedRange?.minConfidencePercent ?? minConfidencePercent) };
+        return { ...descriptor, current: settings[key], autoManaged: true, canAutoManage: true,
+          allowedRange, minConfidencePercent: Number(allowedRange?.minConfidencePercent ?? minConfidencePercent) };
       }).filter(Boolean),
       ignored: Object.keys(ignored).filter(key => ignored[key]).map(key => {
         const descriptor = this.getAutoTuneSettingDescriptor(key);
@@ -3150,7 +3154,7 @@ class HomeFluxEmsApp extends Homey.App {
     const lastApplied = this.getAutoTuneLastApplied();
     const now = Date.now();
     const settings = this.getSettings();
-    const defaultMinConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent) || 95));
+    const defaultMinConfidencePercent = Math.max(0, Math.min(100, Number(settings.autoTuneMinConfidencePercent ?? 95)));
     let lastAppliedChanged = false;
     let applied = 0;
     let bandHandled = false;
@@ -4232,9 +4236,21 @@ class HomeFluxEmsApp extends Homey.App {
     return now >= Number(this.flexiblePriorityState?.nextEvaluationAt || 0);
   }
 
-  finishFlexiblePriorityEvaluation(now = Date.now(), settings = this.getSettings(), startedId = '') {
+  // An idle priority evaluation must never restart the wait for a new HVAC.
+  // Only an acknowledged thermal start/increase reserves the next start slot.
+  isFlexiblePriorityStartAllowed(now = Date.now(), settings = this.getSettings()) {
+    const lastStartedAt = Number(this.flexiblePriorityState?.lastStartedAt || 0);
+    return lastStartedAt <= 0 || now >= lastStartedAt + this.getPriorityEvaluationIntervalMs(settings);
+  }
+
+  recordFlexiblePriorityStart(id, now = Date.now(), settings = this.getSettings()) {
+    this.flexiblePriorityState.lastStartedAt = now;
+    this.flexiblePriorityState.lastStartedId = String(id);
+    this.flexiblePriorityState.nextEvaluationAt = now + this.getPriorityEvaluationIntervalMs(settings);
+  }
+
+  finishFlexiblePriorityEvaluation(now = Date.now(), settings = this.getSettings()) {
     this.flexiblePriorityState.lastEvaluationAt = now;
-    this.flexiblePriorityState.lastStartedId = String(startedId || '');
     this.flexiblePriorityState.nextEvaluationAt = now + this.getPriorityEvaluationIntervalMs(settings);
   }
 
@@ -13503,6 +13519,14 @@ class HomeFluxEmsApp extends Homey.App {
         }
         try {
           await this._publishHvacDecisionNowFor(safeIndex, next);
+          // A new/increased HVAC demand is the actual priority action. An
+          // idle check or an output rejected by the publication guards cannot
+          // delay the next independent HVAC request.
+          if (next.increase && !next.waiting && next.outputChanged === true
+            && (next.powerCommand === true || next.modeCommand
+              || next.setpointCommand !== null && next.setpointCommand !== undefined)) {
+            this.recordFlexiblePriorityStart(`hvac${safeIndex + 1}`);
+          }
           if(!next.permanent&&next.injectionOptionalStop
             &&(safeIndex===0?this.lastPublishedHvacPower:this.getExtraHvac(safeIndex)?.lastPublishedPower)===false){
             this.withHvacRuntime(safeIndex,()=>{this.hvacBaselineSetpoint=null;this.hvacBaselineMode=null;this.hvacBoostMode=null;this.hvacManagedPowerOn=false;});
@@ -14030,6 +14054,7 @@ class HomeFluxEmsApp extends Homey.App {
     hvacPermanent.cancel(this);
     if (this.boilerTrigger) await this.boilerTrigger.trigger(this.localizeDisplayTokens({ on }));
     this.boilerState.lastPublishedOutput = on;
+    if (on) this.recordFlexiblePriorityStart('boiler');
   }
 
   isHvacManagedActiveFor(index) {
@@ -14394,6 +14419,9 @@ class HomeFluxEmsApp extends Homey.App {
     const phaseFlexSettings=phaseGuard.flexiblePeakSettings(this,storedSettings,Date.now());
     const { evDecisions, adjustedGridW, totalActualEvPowerW, totalDesiredEvPowerW, evStartedThisCycle }
       = await this.publishEvPortfolio(result, nextBatteryCommandW, currentBatteryCommandW, options);
+    // EV starts already block thermal admission on this pass. Preserve the
+    // priority spacing on the next pass as well, without touching EV metering.
+    if (evStartedThisCycle) this.recordFlexiblePriorityStart('ev', Date.now(), storedSettings);
     const runHvac = result?._runHvacContextPass !== false;
     if (runHvac) hvacPermanent.slowTick(this);
     const configuredHvacCount = this.getHvacCount(storedSettings);
@@ -14401,7 +14429,7 @@ class HomeFluxEmsApp extends Homey.App {
     const hvacCount = runHvac ? configuredHvacCount : 0;
     const hvacDecisions = Array.from({length:configuredHvacCount}, (_,i)=>i===0?this.latestHvacDecision:this.getExtraHvac(i)?.latestDecision || null);
     const hvacPreviews = Array(hvacCount).fill(null);
-    const priorityDue = this.isFlexiblePriorityEvaluationDue(Date.now(), storedSettings);
+    const priorityScheduled = this.isFlexiblePriorityEvaluationDue(Date.now(), storedSettings);
     const hvacPriorityOrder = this.getFlexibleLoadPriorityOrder(storedSettings);
     if(hvacPortfolio)hvacPortfolio.priorityOrder=hvacPriorityOrder;
 
@@ -14435,9 +14463,16 @@ class HomeFluxEmsApp extends Homey.App {
       nextBatteryCommandW: boilerNextBatteryCommandW,
     });
 
+    // A fresh HVAC request is admitted on the existing context pass as soon
+    // as the last actual priority start is old enough, even if a recent idle
+    // evaluation scheduled the next ordinary check several minutes away.
+    const startSlotReady = this.isFlexiblePriorityStartAllowed(Date.now(), storedSettings);
+    const pendingHvacStart = hvacPreviews.some((d, index) => Boolean(d?.startEligible)
+      && (d.permanent || !this.isHvacManagedActiveFor(index)));
+    const priorityDue = priorityScheduled || (runHvac && pendingHvacStart && startSlotReady);
     let grantedId = '';
     if (priorityDue) {
-      if (!evStartedThisCycle) {
+      if (!evStartedThisCycle && startSlotReady) {
         const eligible = new Map();
         if (Boolean(boilerDecision?.startEligible) && !Boolean(this.boilerState.outputOn)) eligible.set('boiler', true);
         const comfortWaiting = hvacPreviews.some(d => d?.permanent && d.startEligible && !d.hvacExtraDemand);
@@ -14449,12 +14484,12 @@ class HomeFluxEmsApp extends Homey.App {
         }
         grantedId = hvacPriorityOrder.find(id => eligible.get(id)) || '';
       }
-      this.finishFlexiblePriorityEvaluation(Date.now(), storedSettings, grantedId || (evStartedThisCycle ? 'ev' : ''));
+      this.finishFlexiblePriorityEvaluation(Date.now(), storedSettings);
     }
 
     if (runHvac) {
       hvacPortfolio.externalReservedW = grantedId === 'boiler' && !this.boilerState.outputOn && boilerDecision?.startEligible ? Math.max(0,Number(storedSettings.boilerPowerW)||1800) : 0;
-      hvacCoordination.plan(this, hvacPortfolio, hvacPreviews, grantedId, evStartedThisCycle);
+      hvacCoordination.plan(this, hvacPortfolio, hvacPreviews, grantedId, evStartedThisCycle, startSlotReady);
     }
 
     for (let index = 0; index < hvacCount; index += 1) {
@@ -17360,6 +17395,7 @@ class HomeFluxEmsApp extends Homey.App {
       lastEvaluationAt: Number(priorityRuntime.lastEvaluationAt) || 0,
       nextEvaluationAt: Number(priorityRuntime.nextEvaluationAt) || 0,
       lastStartedId: String(priorityRuntime.lastStartedId || ''),
+      lastStartedAt: Number(priorityRuntime.lastStartedAt) || 0,
     };
 
     return this.localizeDisplay({

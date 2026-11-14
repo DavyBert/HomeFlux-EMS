@@ -10,7 +10,7 @@ for(const [extra,type] of [[{solarTargetSoc:80,goalSoc:80},'configured_goal_reac
  if(type!=='insufficient_pv'){const r=rec(d,'lowForecastSelfConsumptionMinKwh');assert(!r||r.recommended<=12,'restricted/fulfilled/unreliable days cannot justify an increase');}checks++;
 }
 {
- const r=rec(days(),'lowForecastSelfConsumptionMinKwh');assert.equal(r.recommended,13);assert.equal(r.current,12);assert.equal(r.measurementPeriod.days,10);assert.equal(r.confidence,95);assert.equal(r.reviewOnly,true);assert(r.reason&&r.evidence.length===10);checks++;
+ const r=rec(days(),'lowForecastSelfConsumptionMinKwh');assert.equal(r.recommended,13);assert.equal(r.current,12);assert.equal(r.measurementPeriod.days,10);assert.equal(r.confidence,95);assert.equal(r.reviewOnly,undefined);assert(r.reason&&r.evidence.length===10);checks++;
  assert.equal(rec(days().slice(0,6),'lowForecastSelfConsumptionMinKwh'),undefined);checks++;
  assert.equal(rec(days().map(d=>({...d,evidenceVersion:undefined})),'lowForecastSelfConsumptionMinKwh'),undefined);checks++;
  assert.equal(rec(days().map(d=>({...d,season:'summer'})),'lowForecastSelfConsumptionMinKwh'),undefined);checks++;
@@ -18,7 +18,7 @@ for(const [extra,type] of [[{solarTargetSoc:80,goalSoc:80},'configured_goal_reac
  assert.equal(rec(days().map(d=>({...d,pvProductionKwh:2})),'lowForecastSelfConsumptionMinKwh'),undefined,'forecast failure alone must not inflate low-PV threshold');checks++;
 }
 {
- const r=rec(days(),'expectedEnergyNeedKwh');assert.equal(r.recommended,13);assert.equal(r.reviewOnly,true);assert(r.reason.includes('eenmaal'));checks++;
+ const r=rec(days(),'expectedEnergyNeedKwh');assert.equal(r.recommended,13);assert.equal(r.reviewOnly,undefined);assert(r.reason.includes('eenmaal'));checks++;
  const app={inputSeen:{batterySoc:[true]},inputUpdatedAt:{batterySoc:[Date.now()]},state:{batterySoc:[30],gridPowerW:500,pvPowerW:0},planningCache:{value:{plan:{sunnyMonthsMinSocActive:true,sunnyMonthsMinSoc:20}}}};
  const b=A.energyEvidence(app,s,days(),today);assert.equal(b.technicalAndSeasonalFloorSoc,20);assert.equal(b.extraReserveKwh,0);assert.equal(b.uncoveredDemandKwh,3.5);assert.equal(b.dischargeEfficiency,null);assert.equal(b.futurePvCreditKwh,null);assert.equal(b.futureGridChargeCreditKwh,0);assert(Math.abs(b.availableNominalBatteryKwh-2.16)<1e-8);assert(Math.abs(b.nominalShortfallKwh-1.34)<1e-8);checks++;
 }

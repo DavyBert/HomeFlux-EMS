@@ -46,16 +46,43 @@ async function main(){
   for(let n=0;n<3;n++)assert(attempt(a,{sample:i=>({pv:3000+(i%2)*350,battery:i%2?1400:-2400}),noise:80}));
   assert(Math.abs(H.unit(a,0).heat-900)<=40);assert.equal(H.status(a,0).heatSamples,3);assert.equal(H.unit(a,0).heatReview,false);
  });
- await check('Unknown/stale/future physical battery data refuse learning; commands and Hybrid setpoints never substitute',()=>{
-  const {a}=fixture({batteryCount:4});a.state.lastTotalCommandW=0;a.hybridEmsRuntime={delegated:true,externalSetpointW:1000,externalSetpointAt:now};
-  assert(!attempt(a,{feedback:false}));assert.equal(H.status(a,0).heatReason,L.reasons.battery);
-  for(const at of [now-16000,now+1]){a.hvacLearningBattery={powerW:0,at};assert.equal(L.meter(a,now).reason,L.reasons.battery);}
-  assert(!attempt(a,{sample:i=>({battery:i*100,feedback:false})}));
+ await check('Fresh external reports take priority and stale reports fall back to the current Hybrid setpoint',()=>{
+  const {a}=fixture({batteryCount:4});a.hybridEmsRuntime={delegated:true,takeover:false,externalSetpointW:1000,externalSetpointAt:now};
+  assert.equal(L.meter(a,now).battery,1000);
+  assert.equal(L.meter(a,now).batterySource,'external_setpoint');
+  L.batteryFeedback(a,1500,now);assert.equal(L.meter(a,now).battery,1500);
+  for(const at of [now-16000,now+1]){
+   a.hvacLearningBattery={powerW:777,at};
+   assert.equal(L.meter(a,now).battery,1000);
+   assert.equal(L.meter(a,now).batterySource,'external_setpoint');
+  }
+  a.hybridEmsRuntime.externalSetpointW=-900;
+  assert.equal(L.meter(a,now).battery,-900);
+  assert.equal(L.meter(a,now).watts,-400);
  });
- await check('Lost battery telemetry during an otherwise valid event rejects the observation',()=>{
-  const {a}=fixture({batteryCount:4});reference(a,{battery:800});const start=now;H.begin(a,0,{direction:'heat'},now);
-  for(let i=1;i<=30;i++){now=start+i*10000;point(a,1400,{battery:i*90,feedback:i<10});}
-  H.finish(a,now);assert.equal(H.unit(a,0).heatSamples||0,0);assert.equal(H.status(a,0).heatReason,L.reasons.battery);
+ await check('Changing HomeFlux battery commands during baseline and HVAC learning are corrected per P1 sample',()=>{
+  const {a}=fixture({batteryCount:4});
+  for(let trial=0;trial<3;trial++){
+   assert(attempt(a,{sample:i=>{
+    const battery=i%4===0?-1800:i%4===1?1600:i%4===2?0:600;
+    a.state.lastTotalCommandW=battery;
+    return {battery,pv:3000+(i%2)*350,feedback:false};
+   }}));
+  }
+  assert.equal(H.unit(a,0).heat,900);
+  assert.equal(H.status(a,0).heatSamples,3);
+  assert.equal(H.status(a,0).heatBatterySource,'commanded');
+ });
+ await check('Loss of physical feedback does not cancel learning when command data is available',()=>{
+  const {a}=fixture({batteryCount:4});a.state.lastTotalCommandW=800;
+  reference(a,{battery:800});const start=now;H.begin(a,0,{direction:'heat'},now);
+  for(let i=1;i<=30;i++){
+   now=start+i*10000;
+   const battery=i*90;a.state.lastTotalCommandW=battery;
+   point(a,1400,{battery,feedback:i<10});
+  }
+  H.finish(a,now);assert.equal(H.unit(a,0).heatProvisionalW,900);
+  assert.equal(H.status(a,0).heatSamples,1);
  });
  await check('Strong PV changes without fresh correction reject; future, negative and old PV inputs are not measurements',()=>{
   const {a}=fixture();assert(attempt(a,{event:i=>{if(i>8)a.inputSeen.pv=false;},sample:i=>({pv:i*350})}));assert.equal(H.unit(a,0).heatSamples||0,0);assert.equal(H.status(a,0).heatReason,L.reasons.pv);
@@ -121,7 +148,7 @@ async function main(){
  });
  await check('Manual relearning with four measured batteries can acquire a reference while keeping previous trusted watts',()=>{
   const {a,settings}=fixture({batteryCount:4});H.unit(a,0).heat=1000;settings[0].hvacCoordination.DirectTariffEnabled=true;
-  H.runtime(a).manualQueue=[{index:0,requestedAt:now}];assert.equal(H.canBegin(a,0,now),null);assert.equal(H.status(a,0).waitingReason,L.reasons.battery);assert(attempt(a,{battery:1400,manual:true,power:950}));
+  H.runtime(a).manualQueue=[{index:0,requestedAt:now}];assert.equal(H.canBegin(a,0,now),null);assert.equal(H.status(a,0).waitingReason,L.reasons.reference);assert(attempt(a,{battery:1400,manual:true,power:950}));
   assert.equal(H.unit(a,0).heat,1000);assert.equal(H.unit(a,0).heatProvisionalW,950);assert.equal(H.status(a,0).heatSamples,1);
  });
  await check('API HVAC input changes invalidate attribution without changing comfort-cycle ownership',async()=>{

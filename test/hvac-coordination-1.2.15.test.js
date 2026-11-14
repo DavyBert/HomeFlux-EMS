@@ -165,7 +165,9 @@ async function main(){
   a.state.hvacMode='off';a.lastPublishedHvacMode='';for(let i=1;i<3;i++){a.getExtraHvac(i).state.mode='off';a.getExtraHvac(i).lastPublishedMode='';}
   await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,1);assert.equal(h.events.find(e=>e.kind==='setpoint').setpoint,20.5);
   a.state.gridPowerW=-5000;a.state.pvPowerW=6500;await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,1,'PV never increases the HVAC budget');
-  a.setSetting('hvacExtraGridBudgetW',3600);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);assert.equal(h.events.filter(e=>e.kind==='setpoint').length,3);
+  // The new start gate uses the previous actual HVAC action, not an idle evaluation.
+  now+=300000;a.inputUpdatedAt.grid=now;a.inputUpdatedAt.pv=now;
+  a.setSetting('hvacExtraGridBudgetW',3600);a.flexiblePriorityState.nextEvaluationAt=0;await cycle(h);assert.deepEqual([...new Set(h.events.filter(e=>e.kind==='setpoint').map(e=>e.instance))],[1,2,3]);
   assert.equal(H.runtime(a).observation,null);
  });
  await check('Direct legacy PV waits for stability and budget reductions reuse the existing restoration controller',async()=>{

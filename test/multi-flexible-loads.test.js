@@ -114,7 +114,8 @@ function makeApp() {
   // EVs never enter the thermal priority list; disabled HVAC entries are removed.
   assert.deepEqual(app.getFlexibleLoadPriorityOrder(settings), ['hvac3', 'boiler', 'hvac1']);
   assert.equal(app.getPriorityEvaluationIntervalMs(settings), 5 * 60 * 1000);
-  app.finishFlexiblePriorityEvaluation(1000, settings, 'boiler');
+  app.finishFlexiblePriorityEvaluation(1000, settings);
+  app.recordFlexiblePriorityStart('boiler', 1000, settings);
   assert.equal(app.flexiblePriorityState.nextEvaluationAt, 301000);
   assert.equal(app.flexiblePriorityState.lastStartedId, 'boiler');
 

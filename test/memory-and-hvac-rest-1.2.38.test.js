@@ -24,17 +24,17 @@ function point(a,watts){a.state.gridPowerW=watts;a.inputUpdatedAt.grid=a.inputUp
 function reference(a){const start=now;L.prepare(a,0,now);for(let n=0;n<=24;n++){now=start+n*10000;point(a,500);}}
 function begin(a){reference(a);H.begin(a,0,{direction:'heat',currentMode:'off',currentSetpointC:18,roomTemperatureC:18},now);assert(H.runtime(a).observation);}
 async function run(){
- await check('Battery Save without physical battery feedback learns from settled, published zero outputs',()=>{
-  const {a}=fixture();assert.equal(L.meter(a,now).reason,L.reasons.rest);
+ await check('Battery Save learns without optional physical feedback using HomeFlux output',()=>{
+  const {a}=fixture();assert.equal(L.meter(a,now).batterySource,'commanded');
   for(let trial=0;trial<3;trial++){
    begin(a);const start=now;
-   assert.equal(H.runtime(a).observation.batterySource,'managed_rest');
+   assert.equal(H.runtime(a).observation.batterySource,'commanded');
    for(let n=1;n<=30;n++){now=start+n*10000;point(a,1400);}
    H.finish(a,now);
   }
-  assert.equal(H.unit(a,0).heat,900);assert.equal(H.status(a,0).heatBatterySource,'managed_rest');
+  assert.equal(H.unit(a,0).heat,900);assert.equal(H.status(a,0).heatBatterySource,'commanded');
  });
- await check('Standby supports rest, while charge, self-consumption, Hybrid, unpublished and cancelling battery vectors do not',()=>{
+ await check('HomeFlux output and Hybrid reports are usable even with active batteries and changing modes',()=>{
   for(const mutate of [
    a=>a.settingsCache.hybridEmsEnabled=true,
    a=>a.settingsCache.controlEnabled=false,
@@ -50,19 +50,34 @@ async function run(){
    a=>a.batteryEfficiencyTransitionTimer={},
    a=>a.hvacLearningBattery={powerW:500,at:now-16000},
    a=>a.hvacLearningBattery={powerW:0,at:now+1},
-  ]){const {a}=fixture();mutate(a);assert.equal(L.meter(a,now).reason,L.reasons.battery);}
-  const {a}=fixture();a.latestResult.baseMode='standby';assert.equal(L.meter(a,now).reason,L.reasons.rest);now+=60000;a.inputUpdatedAt.grid=a.inputUpdatedAt.pv=now;assert.equal(L.meter(a,now).batterySource,'managed_rest');
+  ]){const {a}=fixture();mutate(a);assert.equal(L.meter(a,now).batterySource,'commanded');}
+  const {a}=fixture();a.state.lastTotalCommandW=-900;
+  assert.equal(L.meter(a,now).battery,-900);
+  a.hybridEmsRuntime={delegated:true,takeover:false,externalSetpointW:700};
+  assert.equal(L.meter(a,now).battery,700);
+  a.hybridEmsRuntime.externalSetpointW=-300;
+  assert.equal(L.meter(a,now).battery,-300);
+  a.hybridEmsRuntime.takeover=true;
+  assert.equal(L.meter(a,now).battery,-900);
  });
- await check('Battery activity during a rest-based measurement discards the observation and preserves trusted watts',()=>{
+ await check('Battery command changes during an observation do not invalidate already trusted watts',()=>{
   const {a}=fixture();H.unit(a,0).heat=1100;H.recheck(a,0,'heat');begin(a);
-  a.latestResult.candidateCommands=[-400,0];now+=70000;point(a,1400);H.slowTick(a,now);
-  assert.equal(H.runtime(a).observation,null);assert.equal(H.unit(a,0).heat,1100);assert.equal(H.status(a,0).heatReason,L.reasons.battery);
+  const start=now;
+  for(let n=1;n<=30;n++){
+   now=start+n*10000;
+   const battery=n%2?600:-400;a.state.lastTotalCommandW=battery;
+   point(a,1400-battery);
+  }
+  H.finish(a,now);
+  assert.equal(H.unit(a,0).heat,1100);
+  assert.equal(H.unit(a,0).heatProvisionalW,900);
  });
- await check('Fresh actual feedback wins, and measured correction can still learn with active batteries',()=>{
+ await check('Fresh physical feedback wins and an external power change does not invalidate learning',()=>{
   const {a}=fixture();a.latestResult.baseMode='charge';L.batteryFeedback(a,-1000,now);const m=L.meter(a,now);
   assert.equal(m.batterySource,'measured');assert.equal(m.watts,-500);assert.equal(m.battery,-1000);
   a.latestResult.baseMode='solar_capture';delete a.hvacLearningBattery;begin(a);L.batteryFeedback(a,400,now+1000);
-  assert.equal(H.runtime(a).observation.invalidReason,L.reasons.battery);
+  assert.equal(H.runtime(a).observation.invalidReason,undefined);
+  assert.equal(L.meter(a,now+1000).battery,400);
  });
  await check('Missing/stale PV and grid do not become valid simply because batteries are resting',()=>{
   const {a}=fixture();L.meter(a,now);now+=60000;

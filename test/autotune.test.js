@@ -427,7 +427,8 @@ function evidenceDays(rows, overrides={}) {
   assert.equal(store._autoTunePermissions.commandDeadbandW, true);
   assert.equal(store.commandDeadbandW, 25, 'permission alone must not apply below confidence threshold');
   assert.deepEqual(store._autoTuneLimits.commandDeadbandW, { min:25, max:250, minConfidencePercent:95, userDefined:false });
-  assert.ok(result.recommendations.some(item => item.settingKey === 'commandDeadbandW' && item.autoManaged));
+  assert.ok(result.managed.some(item => item.settingKey === 'commandDeadbandW' && item.autoManaged));
+  assert.ok(!result.recommendations.some(item => item.settingKey === 'commandDeadbandW'));
 
   // With enough independent observations, the default 95% threshold becomes
   // eligible without the user lowering it. The parameter-specific safety fence still applies.
