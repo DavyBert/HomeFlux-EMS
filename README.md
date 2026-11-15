@@ -12,6 +12,18 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.6
+
+**NL** — Visual Look-widget: volledige EV-historiek komt mee in hetzelfde statuspakket als de woningsavings, voor alle periodes en ingestelde EV’s. Zonnevoordeel, netkosten en laadenergie worden rechtstreeks ingelezen, zonder aparte EV-opvraging.
+
+**EN** — Visual Look widget: complete EV history is included in the same status snapshot as house Savings, for all periods and configured EVs. Solar savings, grid costs and charging energy are read directly without a separate EV request.
+
+**FR** — Widget Visual Look : l’historique complet des VE est inclus dans le même statut que les économies de la maison, pour toutes les périodes et tous les VE configurés. Valeurs solaires, coûts réseau et énergie sont lus directement, sans requête VE séparée.
+
+**DE** — Visual-Look-Widget: Der vollständige EV-Verlauf wird für alle Zeiträume und eingerichteten Fahrzeuge im selben Statuspaket wie die Hauseinsparungen geliefert. Solarvorteil, Netzkosten und Ladeenergie werden ohne separate EV-Abfrage direkt eingelesen.
+
+**ES** — Widget Visual Look: el historial completo de los VE llega en la misma instantánea de estado que el ahorro del hogar, para todos los periodos y vehículos configurados. El ahorro solar, los costes de red y la energía se leen directamente sin otra solicitud de VE.
+
 ## Release notes — 1.5.5
 
 **NL** — Dynamische uur- en kwartierprijzen: netladen voor het ochtend- en avonddoel kan worden uitgesteld naar aantoonbaar goedkopere uren.

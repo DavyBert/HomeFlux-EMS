@@ -3,8 +3,9 @@
 const { localDateTimeUtcMs, inferIntervalMinutes } = require('../../lib/homey-energy');
 const inputWarnings = require('../../lib/input-warnings');
 const { buildWidgetTouTimeline, widgetTouSignature } = require('../../lib/widget-tou-timeline');
-const { shiftKey } = require('../../lib/savings-history');
-const { calibrateEnergy } = require('../../lib/savings');
+const { shiftKey, createHistoryCache } = require('../../lib/savings-history');
+const { calibrateEnergy, addDays } = require('../../lib/savings');
+const { rollingRange, readCategory } = require('../../lib/savings-flow');
 
 // Share the last display calculation across widget instances. This cache is
 // read only and is never used by the EMS or the P1 control loop.
@@ -67,11 +68,35 @@ function getWidgetPriceCurves(app, sources, settings, now) {
 // No new P1 listener, settings field, scheduler, or controller work is introduced.
 const visualSavingsSnapshots = new WeakMap();
 const VISUAL_SAVINGS_PERIODS = Object.freeze({ day: 1, week: 7, month: 30, year: 365, total: 1827 });
-function getVisualSavingsSnapshot(app, now) {
+function getVisualEvSavingsPeriod(app, settings, today, days, count) {
+  const records = {};
+  if (count === 0) return records;
+  // One shared daily-ledger aggregate per period, for all configured EVs.
+  // No selected-period query, live charger connection or separate EV request.
+  const range = rollingRange(today, days, 'days');
+  app.savingsHistoryCache ||= createHistoryCache();
+  const aggregate = app.savingsHistoryCache.sum(app.savings?.history || {}, range, today);
+  if (app.savings?.today && today >= range.startKey && today < range.endKey)
+    addDays(aggregate, calibrateEnergy(app.savings.today));
+  for (const ev of ['all', ...Array.from({ length: count }, (_, i) => String(i + 1))]) {
+    const solar = readCategory(aggregate, 'ev_savings', { ev, settings });
+    const grid = readCategory(aggregate, 'ev_grid', { ev, settings });
+    records[ev] = { ...solar, pvKwh: solar.kwh, gridKwh: grid.kwh,
+      gridCost: grid.value_available ? grid.value : null,
+      grid_value_available: grid.value_available };
+  }
+  return records;
+}
+
+function getVisualSavingsSnapshot(app, now, settings) {
   const today = typeof app.getSavingsDateKey === 'function' ? app.getSavingsDateKey(now) : new Date(now).toISOString().slice(0, 10);
+  const count = Math.max(0, Math.min(4, typeof app.getEvCount === 'function' ? app.getEvCount(settings) : Number(settings.evCount) || 0));
+  const signature = JSON.stringify([count, settings.evConsumptionKwhPer100Km, settings.ev2ConsumptionKwhPer100Km,
+    settings.ev3ConsumptionKwhPer100Km, settings.ev4ConsumptionKwhPer100Km]);
   const cached = visualSavingsSnapshots.get(app);
-  if (cached && cached.date === today && now - cached.at >= 0 && now - cached.at < 60000) return cached.value;
-  const periods = {};
+  if (cached && cached.date === today && cached.signature === signature
+    && now - cached.at >= 0 && now - cached.at < 60000) return cached.value;
+  const periods = {}, evPeriods = {}, evErrors = {};
   // getSavingsStatus uses the existing RAM history cache; never re-read a
   // persisted ledger from the Homey settings API and never compute on P1.
   for (const [name, days] of Object.entries(VISUAL_SAVINGS_PERIODS)) {
@@ -88,6 +113,12 @@ function getVisualSavingsSnapshot(app, now) {
       batteryCharging: row.batteryCharging,
       importedEnergyToday: row.importedEnergyToday,
     };
+    try {
+      evPeriods[name] = getVisualEvSavingsPeriod(app, settings, today, days, count);
+    } catch (error) {
+      // Keep the independently valid house snapshot and normal EMS status.
+      evErrors[name] = String(error?.message || error);
+    }
   }
   // Closed *previous calendar day* from the SAME already-loaded Savings ledger.
   // Category totals are a historical demand proxy, not 24-hour P1 house samples.
@@ -105,8 +136,9 @@ function getVisualSavingsSnapshot(app, now) {
         source: 'savings-categories', approximate: true };
     }
   }
-  const value = { updatedAt: now, periods, yesterdayHouseDemand };
-  visualSavingsSnapshots.set(app, { at: now, date: today, value });
+  const value = { updatedAt: now, periods, evPeriods, yesterdayHouseDemand,
+    ...(Object.keys(evErrors).length ? { evErrors } : {}) };
+  visualSavingsSnapshots.set(app, { at: now, date: today, signature, value });
   return value;
 }
 
@@ -141,7 +173,7 @@ module.exports = {
     const now = Date.now();
     if (query?.visualSavings === '1' || query?.visualSavings === 1 || query?.visualSavings === true) {
       try {
-        status.visualSavings = getVisualSavingsSnapshot(app, now);
+        status.visualSavings = getVisualSavingsSnapshot(app, now, settings);
       } catch (error) {
         // This is optional presentation data. A ledger failure must never
         // prevent /status or HomeFlux's core battery controls from responding.

@@ -2603,7 +2603,7 @@ function updateLiveLabels(status){
  if(externalLabel)externalLabel.hidden=!delegated;
  $('hero')?.classList.toggle('external-ems-active',delegated);
  setVisualText('footerLabel','HomeFlux EMS · read-only live status');
- setVisualText('footerVersion','v'+String(status.version||'1.5.4')+' · live');
+ setVisualText('footerVersion','v'+String(status.version||'1.5.6')+' · live');
  if($('savingsSourceTag').textContent==='DEMO')$('savingsSourceTag').textContent='HOMEY LIVE';
  $('houseSavingsSubtitle').textContent='Besparing volgens HomeFlux';
  $('evSavingsSubtitle').textContent='PV-laadvoordeel volgens HomeFlux';
@@ -2743,7 +2743,7 @@ function updateLiveStatus(status, history){
   if(status.visualSavings?.periods) {
     const revision=status.visualSavings.updatedAt;
     if(revision!==lastVisualSavingsSnapshotAt){
-      appendImportedLedger({ savings: status.visualSavings.periods });
+      appendImportedLedger({ savings: status.visualSavings.periods, evSavings: status.visualSavings.evPeriods });
       lastVisualSavingsSnapshotAt=revision;
     }
     savingsApiFailed=false;
@@ -2765,12 +2765,16 @@ function updateLiveStatus(status, history){
 function updateLiveSavings(message){
  if(!message||message.period!==savingsPeriod||message.ev!==savingsEv)return;
  const p=message.period,ev=message.ev;
+ // Status is authoritative for the full ledger, just as for house Savings.
+ // A late optional EV reply must not replace its current period/vehicle record.
+ if(Object.hasOwn(rawStatusObject?.visualSavings?.evPeriods?.[p] || {},ev))return;
  if(message.house)savingsApiFailed=false;
  if(message.house)appendImportedLedger({savings:{[p]:message.house}});
  if(message.solar)appendImportedLedger({evSavings:{[p]:{[ev]:{...message.solar,category:'ev_savings'}}}});
  if(message.grid)appendImportedLedger({category:'ev_grid',period:p,ev,...message.grid});
- // Savings data are cached here only. The next regular /status tick
- // runs the 60-second calculation; a savings response never initiates it.
+ // Update the selected amounts as soon as their response arrives. This only
+ // renders cached ledger values; charts/tariffs retain their one-minute gate.
+ if(message.house||message.solar||message.grid||message.noEv)renderSavings();
  if(message.noEv){
    $('savingsSourceTag').textContent=message.house?'WONINGSAVINGS LIVE':'GEEN LEDGER';
    $('savingsFoot').textContent='De woningwaarden zijn afkomstig uit de HomeFlux Savings-ledger. Er zijn geen EV’s geconfigureerd.';
@@ -2802,6 +2806,7 @@ function updateLiveHouseHistory(rows){
  // or a height measurement. The next minute tick will consume the samples.
 }
 function liveSelectionChanged(){
+ if(Object.hasOwn(rawStatusObject?.visualSavings?.evPeriods || {},savingsPeriod))return;
  sendParent('homeflux.visual.savingsRequest',{period:savingsPeriod,ev:savingsEv});
  requestAnimationFrame(reportLiveHeight);
 }

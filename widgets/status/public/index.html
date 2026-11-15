@@ -1498,7 +1498,7 @@
       if (visualLook) {
         document.body.classList.add('visual-look');
         visualView.classList.remove('hidden');
-        visualView.src = 'visual.html';
+        visualView.src = 'visual.html?rev=1.5.6-ev-ledger';
       }
       let latestStatus = null;
       let refreshTimer = null, displayTimer = null;
@@ -1637,6 +1637,9 @@
       async function requestVisualSavings(period = requestedPeriod, ev = requestedEv, force = false) {
         if (!visualLook || !Object.hasOwn(savingsDays, period) || !['all','1','2','3','4'].includes(ev)) return;
         requestedPeriod = period; requestedEv = ev;
+        // The regular status already carries every house/EV period.
+        // Let the iframe consume that snapshot directly, without another relay.
+        if (Object.hasOwn(latestStatus?.visualSavings?.evPeriods || {}, period)) return;
         const key = period + '|' + ev, now = Date.now(), stored = savingsCache.get(key);
         const configuredEvCount = Number(latestStatus?.settings?.evCount);
         const hasNoEv = Number.isFinite(configuredEvCount) && configuredEvCount === 0;

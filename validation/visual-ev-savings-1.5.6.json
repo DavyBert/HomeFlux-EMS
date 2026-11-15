@@ -1,0 +1,82 @@
+{
+  "version": "1.5.6",
+  "runtime": "Node.js 22.23.5",
+  "scope": "Use the existing house Savings status transport for the full EV ledger.",
+  "implementation": [
+    "visualSavings contains both house periods and EV periods for day/week/month/year/five years and all/configured EV selections.",
+    "The iframe imports both from the same regular status snapshot.",
+    "Period and EV selectors read that already delivered ledger locally, without an EV selection relay or separate EV request.",
+    "The iframe URL includes a revision to invalidate the previously cached visual page.",
+    "App and lib controller source files remain byte-identical to the earlier 1.5.6."
+  ],
+  "verification": {
+    "suites_passed": 27,
+    "suites_failed": 0,
+    "suites": [
+      "visual-ev-savings-1.5.6.test.js",
+      "visual-minute-refresh-isolation-1.5.4.test.js",
+      "visual-performance-1.5.4.test.js",
+      "visual-profile-startup-recovery-1.5.4.test.js",
+      "visual-widget-refresh-1.5.4.test.js",
+      "visual-widget-profiles-1.5.4.test.js",
+      "visual-savings-all-history-noev-1.5.4.test.js",
+      "visual-savings-rolling-1.5.4.test.js",
+      "visual-house-history-1.5.4.test.js",
+      "visual-look-1.5.3.test.js",
+      "visual-next-soc-goal-1.5.4.test.js",
+      "visual-next-tariff-no-flicker-1.5.4.test.js",
+      "visual-dynamic-timeline-1.5.4.test.js",
+      "visual-tariff-palette-soc-history-1.5.4.test.js",
+      "visual-ev-status-transport-1.5.6.test.js",
+      "visual-tou-weekend-timeline-1.5.4.test.js",
+      "ev-savings-export-1.2.4.test.js",
+      "ev-savings-flow-1.2.6.test.js",
+      "ev-widget-rolling-periods-1.3.1.test.js",
+      "ev-widget-ui-1.2.4.test.js",
+      "widget-decision-1.2.14.test.js",
+      "ev-widget-regression-1.2.4.test.js",
+      "dynamic-charge-deferral-1.5.5.test.js",
+      "dynamic-deferral-app-integration-1.5.5.test.js",
+      "safety-recovery-1.2.39.test.js",
+      "app-control.test.js",
+      "morning-day-planning-1.5.5.test.js"
+    ],
+    "full_widget_dom_test": {
+      "execution": "Complete outer widget and inner iframe scripts with real DOM events, mocked Homey I/O, and the actual widget API.",
+      "condition": "Only the ordinary status path is available: separate EV requests and EV-selection relays are disabled.",
+      "before": {
+        "houseSavings": "€ 355,02",
+        "evSavings": "—",
+        "evCost": "—"
+      },
+      "after": {
+        "houseSavings": "€ 355,02",
+        "evSavings": "€ 3,58",
+        "evCost": "€ 94,41",
+        "pvKwh": 12.8,
+        "gridKwh": 343.9,
+        "separateEvRequests": 0,
+        "uncaughtErrors": 0
+      },
+      "extra_checks": [
+        "Week/month/year/five-year buttons",
+        "Individual EV and all EV selections",
+        "Late optional EV responses cannot overwrite the authoritative snapshot"
+      ]
+    },
+    "changed_files": [
+      ".homeychangelog.json",
+      "README.md",
+      "test/visual-ev-savings-1.5.6.test.js",
+      "test/visual-ev-status-transport-1.5.6.test.js",
+      "widgets/status/api.js",
+      "widgets/status/public/index.html",
+      "widgets/status/public/visual.html"
+    ],
+    "controller_files_unchanged": true
+  },
+  "limitations": [
+    "Homey I/O is mocked; no physical Homey or user mobile dashboard session was available.",
+    "The transport condition above is a regression scenario, not a captured trace from the user’s Homey."
+  ]
+}

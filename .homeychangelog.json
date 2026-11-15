@@ -1,4 +1,11 @@
 {
+  "1.5.6": {
+    "nl": "Visual Look-widget: volledige EV-historiek komt mee in hetzelfde statuspakket als de woningsavings, voor alle periodes en ingestelde EV’s. Zonnevoordeel, netkosten en laadenergie worden rechtstreeks ingelezen, zonder aparte EV-opvraging.",
+    "en": "Visual Look widget: complete EV history is included in the same status snapshot as house Savings, for all periods and configured EVs. Solar savings, grid costs and charging energy are read directly without a separate EV request.",
+    "fr": "Widget Visual Look : l’historique complet des VE est inclus dans le même statut que les économies de la maison, pour toutes les périodes et tous les VE configurés. Valeurs solaires, coûts réseau et énergie sont lus directement, sans requête VE séparée.",
+    "de": "Visual-Look-Widget: Der vollständige EV-Verlauf wird für alle Zeiträume und eingerichteten Fahrzeuge im selben Statuspaket wie die Hauseinsparungen geliefert. Solarvorteil, Netzkosten und Ladeenergie werden ohne separate EV-Abfrage direkt eingelesen.",
+    "es": "Widget Visual Look: el historial completo de los VE llega en la misma instantánea de estado que el ahorro del hogar, para todos los periodos y vehículos configurados. El ahorro solar, los costes de red y la energía se leen directamente sin otra solicitud de VE."
+  },
   "1.5.5": {
     "nl": "Dynamische uur- en kwartierprijzen: uitstel van normaal geprijsd netladen voorbij het ochtend- of avonddoel wanneer aantoonbaar goedkoper laden volgt.\nEen tussenliggend duur blok krijgt eerst voldoende batterijreserve; Safety SoC en laadlimieten blijven beschermd.\nAlle contracttypes: de dagplanning start op het ingestelde ochtenddoelmoment, ook zonder ontvangen PV-productie.\nDe resterende minuten van het actuele goedkope uur of kwartier blijven meetellen voor de laadspreiding.",
     "en": "Dynamic hourly and quarter-hour prices: defer normal-priced grid charging past the morning or evening target when cheaper charging follows.\nReserve battery energy for any expensive period in between; Safety SoC and power limits remain protected.\nAll contract types: daytime planning starts at the configured morning target time, even without received PV production.\nThe remaining minutes of the current cheap hour or quarter-hour stay available for charge spreading.",
