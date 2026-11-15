@@ -392,9 +392,8 @@ function prepareBatteryAllocationFixture(app, settings) {
   assert.equal(app.state.nightPlanningDecisionSource, '20h_no_pv_data');
 }
 
-// v0.3.80: a previous night's plan survives the morning clock boundary until
-// actual PV production starts. A clock deadline may never silently activate a
-// second daytime planner underneath the still-active night plan.
+// v1.5.5: the morning goal replaces an expired night even without PV.
+// Only one phase remains authoritative and the old night marker is cleared.
 {
   const app = bareApp();
   app.state.nightPlanningActive = true;
@@ -403,9 +402,10 @@ function prepareBatteryAllocationFixture(app, settings) {
   app.getLocalDateKey = () => '2026-08-23';
   app.getLocalMinuteOfDay = () => 8 * 60;
   app.getSettings = () => ({ chargeDeadline: '07:00' });
-  assert.equal(app.resetExpiredNightPlanning(1000), false);
-  assert.equal(app.state.nightPlanningActive, true);
-  assert.equal(app.isNightPlanningPhase(1000), true);
+  app.requestContextEvaluate = () => {};
+  assert.equal(app.resetExpiredNightPlanning(1000), true);
+  assert.equal(app.state.nightPlanningActive, false);
+  assert.equal(app.isNightPlanningPhase(1000), false);
   assert.equal(app.getPlanningForecastDay(1000), 'today');
 }
 

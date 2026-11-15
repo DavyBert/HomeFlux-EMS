@@ -70,14 +70,14 @@ async function main() {
       assert(p.rows.every(r => r.endAt <= at('2026-10-25', '07:00')));
       return { targetSoc: p.targetSoc, nextCharge: a.getWidgetNextChargeStatus() };
     });
-    await check('Morning restart and explicit dark-night continuation stay on today', async () => {
+    await check('Morning restart targets today; an expired dark night can no longer hold yesterday’s phase', async () => {
       const h = await cold({ time: '05:30' }), a = h.app;
       assert.equal(a.getPlanningForecastDay(), 'today');
       assert.equal(a.getPlanningStatus().planningChargeDeadlineAt, at('2026-10-24', '07:00'));
       now = at('2026-10-24', '18:12');
       Object.assign(a.state, { nightPlanningActive: true, nightPlanningStartedDate: '2026-10-23' });
-      assert.equal(a.getPlanningForecastDay(), 'today', 'an observed ongoing dark night is not rolled by this restart fallback');
-      return { morningTargetDay: 'today', observedDarkNightTargetDay: 'today' };
+      assert.equal(a.getPlanningForecastDay(), 'tomorrow', 'after the morning goal an expired night cannot pin the evening forecast to today');
+      return { morningTargetDay: 'today', eveningTargetDay: 'tomorrow' };
     });
     await check('Actual PV start returns to existing day forecast and sunset debounce', async () => {
       const h = await cold(), a = h.app;

@@ -25,7 +25,7 @@ const { extractMathExpression } = require('./lib/price-formula');
 const { EvDeadlinePlanner, prepareEvPriceCurve } = require('./lib/ev-deadline-planner');
 const chargeStrategy = require('./lib/charge-strategy');
 const { BatteryNightPlanner } = require('./lib/battery-night-planner');
-const { getBatteryNightPlanningInputs, batteryNightTariff, prepareChargeStrategy } = require('./lib/ems-engine');
+const { getBatteryNightPlanningInputs, prepareDynamicChargeDeferral, batteryNightTariff, prepareChargeStrategy } = require('./lib/ems-engine');
 
 const Homey = require('homey');
 const { performance } = require('perf_hooks');
@@ -7791,15 +7791,36 @@ class HomeFluxEmsApp extends Homey.App {
     this.pvStopTimer = null;
   }
 
-  resetExpiredNightPlanning(at = Date.now()) {
-    if (!this.state.nightPlanningActive) return false;
-    // v0.3.80: a night plan deliberately survives midnight and the former
-    // charge-deadline boundary. It is replaced only when real PV production
-    // starts (or when a later PV-end decision starts the next night plan).
-    // This prevents the daytime forecast from running underneath a stale night
-    // phase and guarantees that exactly one planning phase is authoritative.
-    void at;
-    return false;
+  getPlanningClock(at = Date.now(), settings = null) {
+    settings = settings || this.settingsCache || this.getSettings();
+    const bucket = Math.floor(Number(at) / 60000);
+    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
+    const cached = this.planningClock;
+    if (cached && cached.bucket === bucket && cached.timezone === timezone
+      && cached.dayTarget === settings.solarTargetTime && cached.nightTarget === settings.nightTargetTime) return cached;
+    this.planningClock = { bucket, timezone, today: this.getLocalDateKey(new Date(at)), minute: this.getLocalMinuteOfDay(at),
+      morning: this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60),
+      evening: this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60),
+      dayTarget: settings.solarTargetTime, nightTarget: settings.nightTargetTime };
+    return this.planningClock;
+  }
+
+  resetExpiredNightPlanning(at = Date.now(), settings = null) {
+    if (!this.state.nightPlanningActive && !this.nightForecastMedian) return false;
+    const clock = this.getPlanningClock(at, settings);
+    // A sunset observed today belongs to tomorrow's morning goal. An older
+    // night ends at this morning's goal even when PV has never been received.
+    if (this.state.nightPlanningActive) {
+      if (String(this.state.nightPlanningStartedDate || '') >= clock.today || clock.minute < clock.morning) return false;
+    } else if (clock.minute < clock.morning || clock.minute >= clock.evening) return false;
+    this.state.nightPlanningActive = false;
+    this.state.nightPlanningStartedDate = '';
+    this.state.nightPlanningDecisionSource = '';
+    this.nightForecastMedian = null;
+    this.invalidatePlanningCache(true);
+    this.forceChargePlanPublication = true;
+    this.requestContextEvaluate(true, 'morning_target_day_planning');
+    return true;
   }
 
   updateSunChanceForecast(today, tomorrow, at = Date.now()) {
@@ -7818,40 +7839,30 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getPlanningForecastDay(at = Date.now(), today = '', settingsSnapshot = null) {
-    if (!today) today = this.getLocalDateKey(new Date(at));
-    // An observed night keeps its original target day, including dark mornings
-    // after the charging deadline. Midnight only changes tomorrow -> today.
-    if (this.state.nightPlanningActive) return String(this.state.nightPlanningStartedDate || '') === today ? 'tomorrow' : 'today';
+    const settings = settingsSnapshot || this.settingsCache || this.getSettings();
+    const clock = this.getPlanningClock(at, settings);
+    if (!today) today = clock.today;
+    // Midnight preserves the night forecast; the morning goal then releases
+    // an older night even without a PV start. A new sunset still targets tomorrow.
+    if (this.state.nightPlanningActive && (String(this.state.nightPlanningStartedDate || '') >= today
+      || clock.minute < clock.morning)) return String(this.state.nightPlanningStartedDate || '') === today ? 'tomorrow' : 'today';
     if (String(this.state.pvProducingDate || '') === today && this.state.pvSeenProducingToday) return 'today';
 
-    // After a restart no PV start/end may have been observed. The existing
-    // phase selector already calls this a night. After the daytime target and
-    // an elapsed morning target, that inferred night must refer to TOMORROW,
-    // rather than an expired 07:00 today. A real PV sample still owns the day
-    // transition; this does not invent an observed sunset or bypass its timer.
-    const settings = settingsSnapshot || this.getSettings(), bucket = Math.floor(Number(at) / 60000);
-    const timezone = this.homey.clock.getTimezone() || settings.timezone || 'UTC';
-    const cached = this.inferredNightForecastDay;
-    if (cached && cached.bucket === bucket && cached.today === today && cached.timezone === timezone
-      && cached.dayTarget === settings.solarTargetTime && cached.nightTarget === settings.nightTargetTime) return cached.day;
-    const minute = this.getLocalMinuteOfDay(at);
-    const dayTarget = this.parseBatteryPauseTime(settings.solarTargetTime, 17 * 60);
-    const nightTarget = this.parseBatteryPauseTime(settings.nightTargetTime, 7 * 60);
-    const day = minute >= dayTarget && minute >= nightTarget ? 'tomorrow' : 'today';
-    this.inferredNightForecastDay = { bucket, today, timezone, dayTarget: settings.solarTargetTime,
-      nightTarget: settings.nightTargetTime, day };
-    return day;
+    // With no observed sunset after restart, evening planning refers to the
+    // next morning. Reuse the minute-level clock shared with the phase selector.
+    return clock.minute >= clock.evening && clock.minute >= clock.morning ? 'tomorrow' : 'today';
   }
 
-  isNightPlanningPhase(at = Date.now(), today = '') {
-    if (this.state.nightPlanningActive) return true;
-    if (!today) today = this.getLocalDateKey(new Date(at));
+  isNightPlanningPhase(at = Date.now(), today = '', settings = null) {
+    const clock = this.getPlanningClock(at, settings);
+    if (!today) today = clock.today;
+    if (this.state.nightPlanningActive && (String(this.state.nightPlanningStartedDate || '') >= today
+      || clock.minute < clock.morning)) return true;
     const pvStartedToday = String(this.state.pvProducingDate || '') === today
       && Boolean(this.state.pvSeenProducingToday);
-    // The solar-day phase starts on observed PV, not at a clock boundary. Until
-    // then the continuing night plan remains authoritative, including after the
-    // configured charging deadline on dark winter mornings.
-    return !pvStartedToday;
+    // Observed PV can start the day earlier. Without it, every contract starts
+    // daytime planning at its configured morning goal, including after restart.
+    return !pvStartedToday && (clock.minute < clock.morning || clock.minute >= clock.evening);
   }
 
   getNightForecastRuntime(at = Date.now()) {
@@ -7989,8 +8000,8 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   checkNightPlanningFallback(at = Date.now()) {
-    this.resetExpiredNightPlanning(at);
-    if (this.getLocalMinuteOfDay(at) < 20 * 60) return false;
+    const morningStarted = this.resetExpiredNightPlanning(at);
+    if (this.getLocalMinuteOfDay(at) < 20 * 60) return morningStarted;
     // Once a real PV end candidate has armed the 10-minute debounce, that
     // timer remains authoritative even if the last PV input becomes stale.
     if (!this.state.nightPlanningActive && this.pvStopTimer) return false;
@@ -9807,10 +9818,11 @@ class HomeFluxEmsApp extends Homey.App {
   }
 
   getEvaluationState(settings = this.getSettings(), now = Date.now(), pvDeltaW = this.getRecentPvDelta(now), evObservation = null) {
+    this.resetExpiredNightPlanning(now, settings);
     const count = this.getBatteryCount(settings);
     const today = this.getLocalDateKey(new Date(now));
     const planningForecastDay = this.getPlanningForecastDay(now, today, settings);
-    const nightPlanningActive = this.isNightPlanningPhase(now, today);
+    const nightPlanningActive = this.isNightPlanningPhase(now, today, settings);
     let nightForecast = null;
     if (nightPlanningActive) {
       const targetDate = planningForecastDay === 'tomorrow' ? shiftDateKey(today, 1) : today;
@@ -14865,6 +14877,7 @@ class HomeFluxEmsApp extends Homey.App {
   refreshControlContext(storedSettings, evaluationState, now = Date.now()) {
     const runtimeSettings = this.getRuntimeSettings(storedSettings);
     this.controlContext = prepareControlContext(evaluationState, runtimeSettings, new Date(now));
+    runtimeSettings.dynamicChargeDeferral = prepareDynamicChargeDeferral(evaluationState, runtimeSettings, new Date(now), this.controlContext.targetDetails);
     const strategyChoice = chargeStrategy.select(runtimeSettings, now, evaluationState.nightPlanningActive);
     const inputs = strategyChoice.mode === 'maximum' && strategyChoice.position !== 'center' ? null
       : getBatteryNightPlanningInputs(evaluationState, runtimeSettings, new Date(now), this.controlContext.targetDetails);

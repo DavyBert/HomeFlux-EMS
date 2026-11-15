@@ -12,6 +12,23 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.5
+
+**NL** — Dynamische uur- en kwartierprijzen: netladen voor het ochtend- en avonddoel kan worden uitgesteld naar aantoonbaar goedkopere uren.
+Bij dure tussenliggende uren blijft batterijreserve voorzien. Alle contracttypes starten de dagplanning op het ingestelde ochtenddoelmoment, ook zonder ontvangen PV-productie. De veiligheidsregeling blijft behouden. De resterende minuten van het actuele goedkope uur of kwartier blijven meetellen voor de laadspreiding.
+
+**EN** — Dynamic hourly and 15-minute tariffs: grid charging for morning and evening targets may be deferred to demonstrably cheaper hours.
+Battery reserve is provided for intervening expensive periods. All contract types start daytime planning at the configured morning target time, even without received PV production. Safety controls remain unchanged. The remaining minutes of the current cheap hour or quarter-hour stay available for charge spreading.
+
+**FR** — Tarifs dynamiques horaires et au quart d’heure : la recharge réseau peut être reportée après les objectifs matin et soir si les heures suivantes sont moins chères.
+Une réserve batterie est prévue pour les périodes chères intermédiaires. Tous les contrats démarrent la planification de jour à l’heure cible du matin, même sans production photovoltaïque reçue. Les sécurités sont conservées. Les minutes restantes de l’heure ou du quart d’heure bon marché en cours restent disponibles pour répartir la recharge.
+
+**DE** — Dynamische Stunden- und Viertelstundenpreise: Netzladen für Morgen- und Abendziele kann auf nachweislich günstigere Zeitfenster verschoben werden.
+Für teure Zwischenzeiten wird Batteriereserve vorgesehen. Alle Vertragsarten starten die Tagesplanung zur eingestellten Morgenzielzeit, auch ohne empfangene PV-Produktion. Schutzfunktionen bleiben erhalten. Die verbleibenden Minuten der aktuellen günstigen Stunde oder Viertelstunde werden weiter für die Ladeverteilung berücksichtigt.
+
+**ES** — Tarifas dinámicas por hora y cuarto de hora: la carga de red para los objetivos de mañana y tarde puede aplazarse a horas más baratas.
+Se prevé una reserva de batería para los periodos caros intermedios. Todos los contratos inician la planificación diurna a la hora objetivo de la mañana, incluso sin datos de producción fotovoltaica. Se mantienen los controles de seguridad. Los minutos restantes de la hora o cuarto de hora barato actual siguen contando para distribuir la carga.
+
 ## Release notes — 1.5.4
 
 **NL** — Nieuwe Visual Look in de EMS Status-widget: live energieoverzicht met SOC-prognose, tarieven, WAF en Savings.

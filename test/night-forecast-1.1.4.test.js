@@ -73,16 +73,18 @@ async function run() {
       assert.equal(selected(h).forecastRemainingKwh,6);
       assert.deepEqual(h.errors,[]);
     }
-    // First real PV uses the existing 5 W boundary. The original remaining-
-    // today input, not the median or daily maximum, immediately drives the plan.
+    // The morning goal starts daytime planning without PV. A subsequent real
+    // PV start keeps using raw remaining-today and the existing 5 W boundary.
     {
       const h = await night('2026-10-13T07:10:00Z'), a = h.app;
       a.state.nightPlanningStartedDate = '2026-10-12';
       for (const value of [8,14,2]) await send(h,value,'today');
-      assert.equal(selected(h).forecastRemainingKwh,8);
-      assert(a.isNightPlanningPhase(h.now()),'a deadline alone cannot end the median before PV starts');
-      await h.pv(4); assert.equal(selected(h).forecastRemainingKwh,8);
-      await h.pv(5); await h.flush();
+      assert.equal(selected(h).forecastRemainingKwh,2);
+      assert(!a.isNightPlanningPhase(h.now()),'the morning goal ends the night without PV');
+      assert.equal(a.nightForecastMedian,null);
+      await h.pv(4); assert.equal(selected(h).forecastRemainingKwh,2);
+      // PV after the morning transition is no second phase change; explicitly refresh the cached plan.
+      await h.pv(5); await a.refreshChargePlanning(); await h.flush();
       assert.equal(a.nightForecastMedian,null);
       assert.equal(a.isNightPlanningPhase(h.now()),false);
       assert.equal(selected(h).forecastRemainingKwh,2);

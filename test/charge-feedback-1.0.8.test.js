@@ -153,7 +153,7 @@ async function runChargeRegression() {
    h=>{h.app.state.batterySoc[0]=null;},
    h=>{h.app.state.forecastRemainingKwh=4;},
    h=>{h.app.state.forecastTomorrowKwh=4;},
-   h=>{h.app.state.nightPlanningActive=true;},
+   h=>{h.app.state.nightPlanningActive=true;h.app.state.nightPlanningStartedDate=h.app.getLocalDateKey(new Date(now));},
    h=>{h.app.controlContextDirty=true;},
    h=>{h.app.controlRuntimeSettings={...h.settings,maxTotalChargeW:500};},
    h=>{h.app.state.targetSocOverride=80;},

@@ -93,7 +93,7 @@ function budget(h) {
     assert.deepEqual(events, ['evaluate', 'waf', 'plan']);
     return { calculationOrder: [...events] };
   });
-  await check('07:00 before PV start: day WAF uses raw remaining-today, not the continuing night median', async () => {
+  await check('07:00 before PV start: battery and WAF both switch to raw remaining-today', async () => {
     const h = await make('06:59', { day: false, slowControlIntervalSeconds: 300 });
     const a = h.app;
     a.nightForecastMedian = { targetDate: '2026-10-26', samples: [60], value: 60 };
@@ -104,10 +104,10 @@ function budget(h) {
     const b = budget(h);
     assert.equal(b.targetAt, at('17:00')); assert.equal(b.phase, 'day');
     assert.equal(b.solarKwh, 12); near(b.householdKwh, 7);
-    assert.equal(a.isNightPlanningPhase(h.now()), true, 'actual battery phase is preserved');
-    assert.equal(a.nightForecastMedian.value, 60);
-    assert.equal(a.getEvaluationState(a.getSettings(), h.now()).forecastRemainingKwh, 60);
-    assert.equal(count('plan'), beforePlans, 'morning WAF boundary does not require a new battery plan');
+    assert.equal(a.isNightPlanningPhase(h.now()), false, 'morning goal starts the battery day phase without PV');
+    assert.equal(a.nightForecastMedian, null);
+    assert.equal(a.getEvaluationState(a.getSettings(), h.now()).forecastRemainingKwh, 12);
+    assert(count('plan') > beforePlans, 'the battery day transition refreshes its plan');
     await advance(h, at('07:05')); assert.equal(budget(h).solarKwh, 12);
     return { targetAt: b.targetAt, solarKwh: b.solarKwh, householdKwh: b.householdKwh };
   });

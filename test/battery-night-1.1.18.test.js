@@ -19,7 +19,9 @@ function prices(kind = 'gerrit', interval = Q) {
     const price = kind === 'continuous'
       ? (p.dateKey === '2026-10-23' && m >= 1380 || p.dateKey === '2026-10-24' && m < 180 ? .20 : .40)
       : p.dateKey === '2026-10-23' ? (m >= 1365 ? .30 : .45)
-        : m < 420 ? .20 : m >= 720 && m < 795 ? .10 : .40;
+        // This legacy test checks the original *pre-deadline* cost selector.
+        // The separate 1.5.5 tests cover cheaper post-07:00 deferral.
+        : m < 420 ? .20 : .40;
     rows.push({ startMs: t, dateKey: p.dateKey, minute: m, price });
   }
   return rows;
@@ -209,9 +211,9 @@ async function main() {
     await check('Hourly prices use the same deadline and do not change public classes', async () => {
       const h = await setup({ rows: prices('gerrit', HOUR), extra: { contractType: 'dynamic_hour' } }), a = h.app;
       await tick(h, at('2026-10-24', '00:00')); await h.start();
-      assert.equal(a.latestResult.tariff.className, 'normal'); assert.equal(a.latestResult.tariff.batteryNight.className, 'cheap');
+      assert.equal(a.latestResult.tariff.className, 'cheap'); assert.equal(a.latestResult.tariff.batteryNight.className, 'cheap');
       assert(a.latestResult.plannedChargeW > 0); assert.equal(a.controlRuntimeSettings.batteryNightPlan.deadlineAt, at('2026-10-24', '07:00'));
-      assert.deepEqual(h.errors, []); return { publicClass: 'normal', batteryClass: 'cheap' };
+      assert.deepEqual(h.errors, []); return { publicClass: 'cheap', batteryClass: 'cheap' };
     });
     await check('Normal-price permission keeps its own SoC cap', async () => {
       const h = await setup({ begin: at('2026-10-23', '18:00'), extra: { dynamicNormalChargeEnabled: true, dynamicNormalChargeMaxSoc: 45 } }), a = h.app;
