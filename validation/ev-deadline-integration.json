@@ -22,9 +22,9 @@
     "deadlineMet": true,
     "planBuilds": 1,
     "planReuses": 1023,
-    "portfolioCalculations": 1060,
-    "cpuMs": 8896.77,
-    "wallMs": 8196.459825
+    "portfolioCalculations": 1062,
+    "cpuMs": 4395.046,
+    "wallMs": 4519.944407999999
   },
   {
     "name": "Gerrit SoC: same production decisions",
@@ -49,9 +49,9 @@
     "deadlineMet": true,
     "planBuilds": 1,
     "planReuses": 1021,
-    "portfolioCalculations": 1060,
-    "cpuMs": 13058.784,
-    "wallMs": 12215.014526
+    "portfolioCalculations": 1062,
+    "cpuMs": 5657.956,
+    "wallMs": 5665.728676000001
   },
   {
     "name": "Midnight and 1-second inputs reuse EV plan",

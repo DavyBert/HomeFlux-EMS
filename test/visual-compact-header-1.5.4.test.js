@@ -1,0 +1,25 @@
+"use strict";
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname,'..');
+const visual = fs.readFileSync(path.join(root,'widgets/status/public/visual.html'),'utf8');
+const index = fs.readFileSync(path.join(root,'widgets/status/public/index.html'),'utf8');
+const spec = require('../widgets/status/widget.compose.json');
+assert.equal(require('../app.json').version,'1.5.4');
+assert(!visual.includes('<header class="header">'),'Visual Look banner must not render');
+assert(!visual.includes('id="liveBadge"'),'old LIVE badge must not render');
+assert(!visual.includes("$('liveBadge')"),'old badge must not be accessed');
+assert(!visual.includes('ENERGY MANAGEMENT</p>'),'brand subheading must not render');
+assert.match(visual, /hero-fold-title[^>]*>.*id="simClock".*id="heroExternalEms" hidden>Externe EMS/);
+assert(visual.includes('const delegated = status?.hybridEms?.delegated === true && status?.hybridEms?.takeover !== true;'));
+assert(visual.includes('externalLabel.hidden=!delegated'));
+assert(visual.includes("$('hero')?.classList.toggle('external-ems-active',delegated)"));
+assert(visual.includes('.hero.folded.external-ems-active .hero-fold-decision{display:none}'));
+assert(index.includes("const visualLook = enabled(settings, 'visualLook', false)"));
+assert.equal(spec.name.nl,'EMS Status');
+assert(!('visualstatus' in require('../app.json').widgets));
+const changelog = require('../.homeychangelog.json');
+for(const language of ['nl','en','de','fr','es'])
+ assert(changelog['1.5.4'][language].includes('Externe EMS'));
+console.log('PASS compact Visual Look header removed; conditional external EMS label and classic widget preserved');

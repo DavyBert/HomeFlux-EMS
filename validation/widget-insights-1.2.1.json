@@ -28,9 +28,9 @@
   },
   "microbenchmark": {
     "iterations": 10000,
-    "elapsedMs": 49.80409400000008,
-    "cpuMs": 116.602,
-    "allocatedHeapDeltaBytes": 6405240,
+    "elapsedMs": 32.005456000000095,
+    "cpuMs": 72.441,
+    "allocatedHeapDeltaBytes": -10316496,
     "retainedHeapDeltaBytes": null,
     "note": "Node container microbenchmark; heap delta includes temporary allocations/GC, not retained Homey memory or device CPU percentage."
   }

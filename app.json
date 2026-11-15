@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.homeflux.ems",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "homeyCommunityTopicId": 158982,
   "compatibility": ">=12.3.0",
   "sdk": 3,
@@ -224,6 +224,18 @@
     "stopInjection": {
       "method": "POST",
       "path": "/injection/stop"
+    },
+    "getVisualWidgetProfiles": {
+      "method": "GET",
+      "path": "/visual-widget-profiles"
+    },
+    "setVisualWidgetProfile": {
+      "method": "PUT",
+      "path": "/visual-widget-profiles"
+    },
+    "requestVisualWidgetRefresh": {
+      "method": "POST",
+      "path": "/visual-widget-refresh"
     }
   },
   "images": {
@@ -14808,23 +14820,86 @@
     },
     "status": {
       "name": {
-        "en": "EMS status",
-        "nl": "EMS-status",
-        "fr": "EMS statut",
-        "es": "EMS estado",
-        "de": "EMS-Status"
+        "nl": "EMS Status",
+        "en": "EMS Status",
+        "fr": "EMS Status",
+        "es": "EMS Status",
+        "de": "EMS Status"
       },
       "height": 320,
       "settings": [
         {
+          "id": "visualLook",
+          "type": "checkbox",
+          "title": {
+            "nl": "Visual Look aan / uit",
+            "en": "Visual Look on / off",
+            "fr": "Visual Look activé / non",
+            "es": "Visual Look sí / no",
+            "de": "Visual Look an / aus"
+          },
+          "value": false,
+          "hint": {
+            "nl": "Profielen en kleuren pas je aan in HomeFlux EMS → EMS-widget.",
+            "en": "Edit profiles and colors in HomeFlux EMS → EMS widget.",
+            "fr": "Modifiez les profils et couleurs dans HomeFlux EMS → Widget EMS.",
+            "es": "Editar perfiles y colores en HomeFlux EMS → Widget EMS.",
+            "de": "Profile und Farben in HomeFlux EMS → EMS-Widget bearbeiten."
+          }
+        },
+        {
+          "id": "visualProfile",
+          "type": "dropdown",
+          "title": {
+            "nl": "Visual Look · Profiel",
+            "en": "Visual Look · Profile",
+            "fr": "Visual Look · Profil",
+            "es": "Visual Look · Perfil",
+            "de": "Visual Look · Profil"
+          },
+          "value": "medium",
+          "values": [
+            {
+              "id": "compact",
+              "title": {
+                "nl": "Compact",
+                "en": "Compact",
+                "fr": "Compact",
+                "es": "Compacto",
+                "de": "Kompakt"
+              }
+            },
+            {
+              "id": "medium",
+              "title": {
+                "nl": "Medium",
+                "en": "Medium",
+                "fr": "Moyen",
+                "es": "Medio",
+                "de": "Mittel"
+              }
+            },
+            {
+              "id": "full",
+              "title": {
+                "nl": "Full",
+                "en": "Full",
+                "fr": "Complet",
+                "es": "Completo",
+                "de": "Voll"
+              }
+            }
+          ]
+        },
+        {
           "id": "showDecision",
           "type": "checkbox",
           "title": {
-            "en": "Current decision",
-            "nl": "Huidige beslissing",
-            "fr": "Décision actuelle",
-            "es": "Decisión actual",
-            "de": "Aktuelle Entscheidung"
+            "nl": "━━ TEKSTUELE WIDGET ━━ · Beslissing",
+            "en": "━━ TEXT WIDGET ━━ · Decision",
+            "fr": "━━ WIDGET TEXTE ━━ · Décision",
+            "es": "━━ WIDGET TEXTUAL ━━ · Decisión",
+            "de": "━━ TEXT-WIDGET ━━ · Entscheidung"
           },
           "value": true
         },
@@ -14832,8 +14907,8 @@
           "id": "showEnergyBudget",
           "type": "checkbox",
           "title": {
-            "en": "Show WAF energy indicator",
             "nl": "WAF-energie-indicator tonen",
+            "en": "Show WAF energy indicator",
             "fr": "Afficher l'indicateur d'énergie WAF",
             "es": "Mostrar indicador de energía WAF",
             "de": "WAF-Energieanzeiger anzeigen"
@@ -14844,8 +14919,8 @@
           "id": "showCriticalAlerts",
           "type": "checkbox",
           "title": {
-            "en": "Show critical EMS alerts",
             "nl": "Kritieke EMS-waarschuwingen tonen",
+            "en": "Show critical EMS alerts",
             "fr": "Afficher les alertes critiques EMS",
             "es": "Mostrar alertas críticas EMS",
             "de": "Kritische EMS Warnungen anzeigen"
@@ -14856,8 +14931,8 @@
           "id": "statusColors",
           "type": "checkbox",
           "title": {
-            "en": "Colors in widget",
             "nl": "Kleuren in widget",
+            "en": "Colors in widget",
             "fr": "Couleurs dans le widget",
             "es": "Colores en widget",
             "de": "Farben im Widget"
@@ -14868,8 +14943,8 @@
           "id": "showReasons",
           "type": "checkbox",
           "title": {
-            "en": "Reasons for decisions",
             "nl": "Redenen van beslissingen",
+            "en": "Reasons for decisions",
             "fr": "Motifs des décisions",
             "es": "Razones para las decisiones",
             "de": "Gründe für Entscheidungen"
@@ -14880,8 +14955,8 @@
           "id": "showTariff",
           "type": "checkbox",
           "title": {
-            "en": "Current tariff",
             "nl": "Huidig tarief",
+            "en": "Current tariff",
             "fr": "Tarif actuel",
             "es": "Tarifa actual",
             "de": "Aktueller Tarif"
@@ -14892,8 +14967,8 @@
           "id": "showNextTariff",
           "type": "checkbox",
           "title": {
-            "en": "Next tariff",
             "nl": "Volgend tarief",
+            "en": "Next tariff",
             "fr": "Prochain tarif",
             "es": "Próxima tarifa",
             "de": "Nächster Tarif"
@@ -14904,8 +14979,8 @@
           "id": "showPriceStatus",
           "type": "checkbox",
           "title": {
-            "en": "Price data freshness",
             "nl": "Actualiteit prijsgegevens",
+            "en": "Price data freshness",
             "fr": "Données de prix fraîcheur",
             "es": "Frescura de los datos de precios",
             "de": "Preisdaten Frische"
@@ -14916,8 +14991,8 @@
           "id": "showPrimaryPrice",
           "type": "checkbox",
           "title": {
-            "en": "Show Price 1",
             "nl": "Prijs 1 tonen",
+            "en": "Show Price 1",
             "fr": "Afficher le prix 1",
             "es": "Mostrar precio 1",
             "de": "Ausstellungspreis 1"
@@ -14928,8 +15003,8 @@
           "id": "showSecondaryPrice",
           "type": "checkbox",
           "title": {
+            "nl": "Prijs 2 tonen",
             "en": "Show Price 2 when available",
-            "nl": "Prijs 2 tonen indien beschikbaar",
             "fr": "Afficher le prix 2 lorsque le produit est disponible",
             "es": "Mostrar precio 2 cuando esté disponible",
             "de": "Preis 2 anzeigen, wenn verfügbar"
@@ -14940,8 +15015,8 @@
           "id": "showTertiaryPrice",
           "type": "checkbox",
           "title": {
+            "nl": "Prijs 3 tonen",
             "en": "Show Price 3 when available",
-            "nl": "Prijs 3 tonen indien beschikbaar",
             "fr": "Afficher le prix 3 lorsque le produit est disponible",
             "es": "Mostrar precio 3 cuando esté disponible",
             "de": "Preis 3 anzeigen, wenn verfügbar"
@@ -14952,8 +15027,8 @@
           "id": "showPriceCurves",
           "type": "checkbox",
           "title": {
-            "en": "Show available price curves",
             "nl": "Beschikbare prijscurves tonen",
+            "en": "Show available price curves",
             "fr": "Afficher les courbes de prix disponibles",
             "es": "Mostrar curvas de precio disponibles",
             "de": "Verfügbare Preiskurven anzeigen"
@@ -14964,8 +15039,8 @@
           "id": "showEmsMode",
           "type": "checkbox",
           "title": {
-            "en": "EMS mode",
             "nl": "EMS-modus",
+            "en": "EMS mode",
             "fr": "Mode EMS",
             "es": "Modo EMS",
             "de": "EMS-Modus"
@@ -14976,8 +15051,8 @@
           "id": "showControlOwner",
           "type": "checkbox",
           "title": {
-            "en": "Battery control owner",
             "nl": "Wie stuurt de batterij",
+            "en": "Battery control owner",
             "fr": "Propriétaire de la commande de batterie",
             "es": "Propietario de control de batería",
             "de": "Eigentümer der Batteriesteuerung"
@@ -14988,8 +15063,8 @@
           "id": "showOutput",
           "type": "checkbox",
           "title": {
-            "en": "EMS output value",
             "nl": "EMS-uitgestuurde waarde",
+            "en": "EMS output value",
             "fr": "EMS valeur de sortie",
             "es": "Valor de salida EMS",
             "de": "EMS Ausgabewert"
@@ -15000,8 +15075,8 @@
           "id": "showBatterySoc",
           "type": "checkbox",
           "title": {
-            "en": "Battery state of charge",
             "nl": "Batterij-SoC",
+            "en": "Battery state of charge",
             "fr": "État de charge de la batterie",
             "es": "Estado de carga de la batería",
             "de": "Ladezustand der Batterie"
@@ -15012,8 +15087,8 @@
           "id": "showBatteryTarget",
           "type": "checkbox",
           "title": {
-            "en": "Battery target",
             "nl": "Batterijdoel",
+            "en": "Battery target",
             "fr": "Cible de la batterie",
             "es": "Objetivo de la batería",
             "de": "Batterieziel"
@@ -15024,8 +15099,8 @@
           "id": "showBatteryBounds",
           "type": "checkbox",
           "title": {
-            "en": "Active SoC bounds",
             "nl": "Actieve SoC-grenzen",
+            "en": "Active SoC bounds",
             "fr": "Limites actives SoC",
             "es": "Límites activos SoC",
             "de": "Aktive SoC-Grenzen"
@@ -15036,8 +15111,8 @@
           "id": "showBatteryTiming",
           "type": "checkbox",
           "title": {
-            "en": "Full to target / discharge time",
             "nl": "Vol tot doel / ontlaadtijd",
+            "en": "Full to target / discharge time",
             "fr": "Temps plein à la cible/décharge",
             "es": "Lleno al objetivo / tiempo de descarga",
             "de": "Volle Ziel-/Entladezeit"
@@ -15048,8 +15123,8 @@
           "id": "showNextCharge",
           "type": "checkbox",
           "title": {
-            "en": "Next charging window",
             "nl": "Volgend laadvenster",
+            "en": "Next charging window",
             "fr": "Prochaine plage de recharge",
             "es": "Próxima ventana de carga",
             "de": "Nächstes Ladefenster"
@@ -15060,8 +15135,8 @@
           "id": "showPlanningPhase",
           "type": "checkbox",
           "title": {
-            "en": "Active day/night plan and target time",
             "nl": "Actueel dag-/nachtplan en doelmoment",
+            "en": "Active day/night plan and target time",
             "fr": "Plan de jour/nuit actif et heure cible",
             "es": "Día/noche activo plan y tiempo de destino",
             "de": "Aktiver Tag/Nacht-Plan und Zielzeit"
@@ -15072,8 +15147,8 @@
           "id": "showPlanningForecast",
           "type": "checkbox",
           "title": {
-            "en": "PV forecast used in current plan",
             "nl": "PV-forecast gebruikt in actueel plan",
+            "en": "PV forecast used in current plan",
             "fr": "PV prévision utilisée dans le plan actuel",
             "es": "Pronóstico PV utilizado en el plan actual",
             "de": "PV Prognose im aktuellen Plan verwendet"
@@ -15084,8 +15159,8 @@
           "id": "showPlanningNeed",
           "type": "checkbox",
           "title": {
-            "en": "Energy still needed to planning target",
             "nl": "Nog nodig tot planningsdoel",
+            "en": "Energy still needed to planning target",
             "fr": "Énergie encore nécessaire pour la planification de l'objectif",
             "es": "La energía sigue siendo necesaria para planificar el objetivo",
             "de": "Energie wird noch benötigt, um das Ziel zu planen"
@@ -15096,8 +15171,8 @@
           "id": "showPlanningGrid",
           "type": "checkbox",
           "title": {
-            "en": "Energy planned from grid",
             "nl": "Geplande energie uit het net",
+            "en": "Energy planned from grid",
             "fr": "Énergie prévue à partir du réseau",
             "es": "Energía planeada desde la cuadrícula",
             "de": "Aus dem Netz geplante Energie"
@@ -15108,8 +15183,8 @@
           "id": "showPlanningSolar",
           "type": "checkbox",
           "title": {
-            "en": "PV energy still expected by plan",
             "nl": "Nog verwachte PV-energie in plan",
+            "en": "PV energy still expected by plan",
             "fr": "PV énergie encore attendue par le plan",
             "es": "PV energía todavía esperada por el plan",
             "de": "PV Energie weiterhin planmäßig erwartet"
@@ -15120,8 +15195,8 @@
           "id": "showPeakGuard",
           "type": "checkbox",
           "title": {
-            "en": "Peak Guard status",
             "nl": "Peak Guard-status",
+            "en": "Peak Guard status",
             "fr": "Peak Guard statut",
             "es": "Peak Guard estado",
             "de": "Peak Guard-Status"
@@ -15132,8 +15207,8 @@
           "id": "showEvs",
           "type": "checkbox",
           "title": {
-            "en": "Configured EVs",
             "nl": "Geconfigureerde EV's",
+            "en": "Configured EVs",
             "fr": "Véhicules électriques configurés",
             "es": "EVs configurados",
             "de": "Konfigurierte EVs"
@@ -15144,8 +15219,8 @@
           "id": "showEvDetails",
           "type": "checkbox",
           "title": {
-            "en": "EV connection and charging value",
             "nl": "EV-aansluiting en laadwaarde",
+            "en": "EV connection and charging value",
             "fr": "EV valeur de raccordement et de charge",
             "es": "EV valor de conexión y carga",
             "de": "EV Anschluss- und Ladewert"
@@ -15156,8 +15231,8 @@
           "id": "showEvPlanning",
           "type": "checkbox",
           "title": {
-            "en": "EV next decision and wait state",
             "nl": "EV komende beslissing en wachtstatus",
+            "en": "EV next decision and wait state",
             "fr": "EV prochaine décision et état d'attente",
             "es": "EV siguiente decisión y estado de espera",
             "de": "EV Nächste Entscheidung und Wartezustand"
@@ -15168,8 +15243,8 @@
           "id": "showHvacs",
           "type": "checkbox",
           "title": {
-            "en": "Configured HVACs",
             "nl": "Geconfigureerde HVAC's",
+            "en": "Configured HVACs",
             "fr": "CVC configurés",
             "es": "HVACs configurados",
             "de": "Konfigurierte HVAC"
@@ -15180,8 +15255,8 @@
           "id": "showHvacTemperatures",
           "type": "checkbox",
           "title": {
-            "en": "HVAC room and target temperature",
             "nl": "HVAC ruimte- en doeltemperatuur",
+            "en": "HVAC room and target temperature",
             "fr": "HVAC température ambiante et cible",
             "es": "HVAC temperatura ambiente y objetivo",
             "de": "HVAC Raum und Zieltemperatur"
@@ -15192,8 +15267,8 @@
           "id": "showBoiler",
           "type": "checkbox",
           "title": {
-            "en": "Boiler status",
             "nl": "Boilerstatus",
+            "en": "Boiler status",
             "fr": "État de la chauffe-eau",
             "es": "Estado de explotación",
             "de": "Status des Kessels"
@@ -15204,8 +15279,8 @@
           "id": "showBoilerWait",
           "type": "checkbox",
           "title": {
-            "en": "Boiler solar wait days",
             "nl": "Boiler wachtdagen op zon",
+            "en": "Boiler solar wait days",
             "fr": "Jours d'attente solaire des chauffe-eau",
             "es": "Boiler días de espera solar",
             "de": "Kesselsolar-Wartetage"
@@ -15216,8 +15291,8 @@
           "id": "showHvacSummary",
           "type": "checkbox",
           "title": {
-            "en": "HVAC Summary",
             "nl": "HVAC-overzicht",
+            "en": "HVAC Summary",
             "fr": "HVAC Résumé",
             "es": "Resumen HVAC",
             "de": "HVAC Zusammenfassung"
@@ -15229,6 +15304,22 @@
         "getStatus": {
           "method": "GET",
           "path": "/status"
+        },
+        "getSavings": {
+          "method": "GET",
+          "path": "/savings"
+        },
+        "getEvSavings": {
+          "method": "GET",
+          "path": "/ev-savings"
+        },
+        "getHouseLoadHistory": {
+          "method": "GET",
+          "path": "/house-load-history"
+        },
+        "getVisualWidgetProfile": {
+          "method": "GET",
+          "path": "/visual-profile"
         }
       },
       "id": "status"

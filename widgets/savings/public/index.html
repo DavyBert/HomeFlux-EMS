@@ -195,6 +195,7 @@
           progressFallback: 'Avoided energy cost',
           items: [
             { label: tr(Homey, 'widget.savings.directGrid', 'Direct grid use'), value: Number(data.directGrid?.value) || 0, kwh: Number(data.directGrid?.kwh) || 0, portion: Number(data.directGrid?.kwh) || 0, color: '#2f8db5' },
+            { label: tr(Homey, 'widget.savings.unattributedGrid', 'Grid import · source unknown'), value: Number(data.unattributedGrid?.value) || 0, kwh: Number(data.unattributedGrid?.kwh) || 0, portion: Number(data.unattributedGrid?.kwh) || 0, color: '#5e9dcb' },
             ...chargingItems,
             { label: tr(Homey, 'widget.savings.directPvFree', 'Direct PV · free'), value: 0, kwh: Number(data.directPv?.kwh) || 0, portion: Number(data.directPv?.kwh) || 0, color: '#287b1d' },
             { label: tr(Homey, 'widget.savings.pvToBatteryFree', 'PV in battery · free'), value: 0, kwh: Number(data.batteryCharging?.pvKwh) || 0, portion: Number(data.batteryCharging?.pvKwh) || 0, color: '#78bd57', alwaysShow: true },

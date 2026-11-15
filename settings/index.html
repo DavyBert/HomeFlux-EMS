@@ -17,6 +17,7 @@
 <script src="ev-headroom.js" type="text/javascript"></script>
 <script src="input-monitor.js" type="text/javascript"></script>
 <script src="p1-trace-monitor.js" type="text/javascript"></script>
+<script src="visual-widget-profiles-ui.js" type="text/javascript"></script>
 <style>
     :root {
       color-scheme: dark;
@@ -943,6 +944,79 @@ h3 { margin-bottom:6px; font-size:17px; }
 #panel-hvac .hvac-permanent-block :is(input:not([type=checkbox]):not([type=hidden]),select){background:var(--hvac-permanent-input)!important;color:var(--hvac-permanent-text)!important;border-color:var(--hvac-permanent-input-border)!important}
 #panel-hvac .hvac-permanent-block input::placeholder{color:var(--hvac-permanent-muted)!important;opacity:1}
 #panel-hvac .hvac-pv-section{margin:0 0 10px}
+
+/* EMS Visual Look profile editor: entirely presentation-only */
+.widget-profile-tab-active .savebar{display:none!important}
+ .vw-day-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:10px 0}
+ .vw-day-group{border:1px solid var(--hf-border);border-radius:12px;min-width:0;padding:10px;background:rgba(255,255,255,.025)}
+ .vw-day-group legend{font-size:12px;font-weight:770;padding:0 5px}
+ .vw-day-checks{display:flex;flex-direction:column;gap:9px}
+ .vw-day-fold{margin:10px 0 24px;font-weight:700}
+.vw-brightness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:13px 0 18px}
+.vw-brightness-field{border:1px solid var(--hf-border);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.vw-brightness-title{font-size:12px;font-weight:750}
+.vw-brightness-enable{white-space:normal}
+.vw-brightness-controls{display:flex;align-items:center;gap:10px}
+.vw-brightness-controls input[type=range]{flex:1;min-width:0;accent-color:#50c6ae}
+.vw-brightness-controls input[type=range]:disabled{opacity:.35}
+.vw-brightness-value{min-width:42px;text-align:right;font-size:12px;font-weight:800}
+.vw-color-overrides{margin:13px 0}.vw-color-overrides>summary{cursor:pointer;font-weight:700;font-size:12px}
+.vw-editor-card{max-width:1100px}
+.vw-profile-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}
+.vw-profile-tabs button{min-width:105px;flex:1;max-width:180px}
+.vw-profile-tabs button.active{border-color:#76cbb4;background:#204c50;color:#e7fff8;box-shadow:inset 0 0 0 1px #4fc6a4}
+.vw-editor-heading{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.vw-editor-heading h3{margin:0}
+.vw-editor-heading p{margin:0}
+.vw-profile-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:24px}
+.vw-profile-row{background:rgba(255,255,255,.03);border:1px solid var(--hf-border);border-radius:12px;padding:9px 10px}
+.vw-profile-row-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.vw-row-number{display:inline-flex;align-items:center;justify-content:center;border-radius:7px;min-width:26px;height:28px;background:#1b4355;color:#b9ebfb;font-size:12px;font-weight:800}
+.vw-row-title{font-weight:750;flex:1;min-width:135px;font-size:13px}
+.vw-row-moves{display:flex;gap:4px}
+.vw-row-moves button{min-width:29px;min-height:30px;border:1px solid var(--hf-border-strong);border-radius:7px;background:#233849;color:#e2f3fc;cursor:pointer}
+.vw-row-moves button:disabled{opacity:.3;cursor:default}
+.vw-check{display:inline-flex;gap:5px;align-items:center;white-space:nowrap;font-size:12px;color:var(--hf-muted);cursor:pointer}
+.vw-check input{accent-color:#43c7a5}
+/* Homey mobile can omit the native checkbox glyph for transparency choices.
+   Keep the real input focusable and clickable but render the check independently. */
+#vwBrightnessControls .vw-brightness-enable,
+#vwBrightnessControls .vw-graph-transparency{position:relative;display:flex;align-items:center;gap:9px;min-height:36px;white-space:normal;line-height:1.35}
+#vwBrightnessControls :is(.vw-brightness-enable,.vw-graph-transparency) > input[type=checkbox]{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);width:22px;height:22px;
+  margin:0;opacity:0;z-index:1;cursor:pointer;flex:none
+}
+#vwBrightnessControls .vw-native-check-indicator{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px;
+  width:22px;height:22px;border:2px solid #9bb9c9;border-radius:5px;
+  box-sizing:border-box;background:#182b3b;pointer-events:none;color:#08212a;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)
+}
+#vwBrightnessControls input[type=checkbox]:checked + .vw-native-check-indicator{
+  background:#54deb3;border-color:#b2ffe6
+}
+#vwBrightnessControls input[type=checkbox]:checked + .vw-native-check-indicator::after{
+  content:'✓';font-size:16px;line-height:1;font-weight:900
+}
+#vwBrightnessControls input[type=checkbox]:focus-visible + .vw-native-check-indicator{
+  outline:2px solid #e5faff;outline-offset:3px
+}
+.vw-section-colors{margin:10px 0 2px;border-top:1px solid var(--hf-border);padding-top:10px}
+.vw-section-colors>summary{cursor:pointer;color:var(--hf-muted);font-size:12px;font-weight:650}
+.vw-section-color-grid,.vw-global-colors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.vw-tariff-palette-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px;margin:10px 0 20px}
+.vw-tariff-palette{display:grid;gap:9px}
+.vw-color-field{min-width:0;display:flex;flex-direction:column;gap:7px;border:1px solid var(--hf-border);padding:10px;border-radius:10px;background:rgba(255,255,255,.025)}
+.vw-color-field>label{font-size:12px;font-weight:720;color:var(--hf-text)}
+.vw-color-inputs{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.vw-color-inputs select{min-width:130px;max-width:220px;flex:2}
+.vw-color-inputs input[type=color]{width:42px;height:35px;min-width:42px;border-radius:6px;border:1px solid var(--hf-border);padding:1px;background:transparent;cursor:pointer}
+.vw-color-inputs input[type=text]{min-width:92px;max-width:145px;flex:1;text-transform:uppercase}
+.vw-color-field input,.vw-color-field select{font-size:12px}
+.vw-color-field input.invalid{border-color:#f4a68c;outline:1px solid #f4a68c}
+.vw-editor-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0}
+.vw-editor-footer button{min-height:37px}
+@media(max-width:620px){.vw-brightness-grid,.vw-section-color-grid,.vw-global-colors{grid-template-columns:1fr}.vw-row-title{min-width:100px}.vw-row-moves{margin-left:auto}.vw-check{font-size:11px}}
 </style>
 <link rel="stylesheet" href="settings-help.css"/>
 </head>
@@ -956,6 +1030,7 @@ h3 { margin-bottom:6px; font-size:17px; }
 <div class="tab-list" id="mainTabList">
 <button class="tab active" data-tab="ems" type="button">EMS</button>
 <button class="tab" data-tab="config" type="button">Configuratie</button>
+<button class="tab" data-tab="ems-widget" type="button">EMS-widget</button>
 <button class="tab" data-tab="injection" type="button">Injectie</button>
 <button class="tab" data-tab="hybrid-ems" type="button">Hybrid EMS</button>
 <button class="tab" data-tab="contract" type="button">Energiecontract</button>
@@ -974,6 +1049,48 @@ h3 { margin-bottom:6px; font-size:17px; }
 <button class="tab" data-tab="support" type="button">Support</button>
 </div>
 </div>
+<section class="panel" id="panel-ems-widget">
+ <div class="card vw-editor-card">
+  <h2>EMS-widget · Visual Look</h2>
+  <p class="muted">Bewerk hier de drie standaardindelingen. Voeg daarna de <strong>EMS-statuswidget</strong> toe, schakel <strong>Visual Look</strong> in en selecteer <strong>Compact</strong>, <strong>Medium</strong> of <strong>Full</strong>. Het dashboard haalt de indeling apart op; deze profielen maken geen deel uit van de EMS-regelinstellingen.</p>
+  <div class="vw-profile-tabs" id="vwProfileTabs" role="group" aria-label="Widgetprofiel">
+   <button class="homey-button-secondary" type="button" data-vw-profile="compact">Compact</button>
+   <button class="homey-button-secondary" type="button" data-vw-profile="medium">Medium</button>
+   <button class="homey-button-secondary" type="button" data-vw-profile="full">Full</button>
+  </div>
+  <div id="vwEditorContents" hidden>
+   <div class="vw-editor-heading"><h3 id="vwProfileName">Medium</h3><p class="muted">Verplaats onderdelen met de pijlen. “Tonen” en “Inklappen” bepalen de startweergave van het profiel.</p></div>
+   <div class="vw-profile-rows" id="vwSectionList" aria-label="Volgorde en weergave"></div>
+   <h3>Dagoverzicht · zichtbare onderdelen</h3>
+   <p class="muted">Alle voormalige kernwaarden, tarief- en laadplangegevens staan nu in één Dagoverzicht. Kies per profiel welke onderdelen zichtbaar blijven; de EMS-regeling verandert niet.</p>
+   <div class="vw-day-groups" id="vwDayItems" aria-label="Onderdelen Dagoverzicht"></div>
+   <label class="vw-check vw-day-fold"><input type="checkbox" id="vwDayTimelineFolded"/> Tariefverloop standaard ingeklapt</label>
+   <div class="vw-day-scale" style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:12px 0 16px">
+    <label for="vwDayInfoScale" style="font-weight:650">Schaling kaarten Dagoverzicht</label>
+    <input type="range" id="vwDayInfoScale" min="50" max="150" step="5" value="100" style="flex:1 1 145px;max-width:260px" aria-describedby="vwDayScaleHelp" />
+    <output id="vwDayScaleValue" for="vwDayInfoScale" style="min-width:44px;font-weight:750">100%</output>
+   </div>
+   <p class="muted" id="vwDayScaleHelp">Schaalt alle labels, cijfers, toelichtingen en symbolen van Batterij, Tarief, Netruimte, Netimport, PV-prognose, SoC volgend doel en de drie laadplanwaarden. 50–150%, standaard 100%. De grafiek zelf blijft ongewijzigd.</p>
+   <h3>Tariefkleuren · widget</h3>
+   <p class="muted">Kies per Homey-thema de kleuren voor goedkoop, normaal en duur. Deze kleuren bepalen ook de tarieftijdlijn, WAF/Netruimte, toekomstige tariefwissels en geplande netlaadvensters. Standaard blijven de bestaande HomeFlux-kleuren behouden. Alleen <strong>Profiel opslaan</strong> past de wijziging toe; de EMS-tariefregels veranderen niet.</p>
+   <div class="vw-tariff-palette-grid" id="vwTariffColors"></div>
+   <h3>Uiterlijk · achtergrond en kaarten</h3>
+   <p class="muted">Per licht/donker thema kan je de helderheid van widget en kaarten afzonderlijk instellen van <strong>0% zwart</strong> tot <strong>100% wit</strong>. De gekozen kleurtint blijft behouden tussen die uitersten. Zonder vinkje blijven de bestaande HomeFlux- of eigen kleuren ongewijzigd. De grafiek is normaal iets donkerder dan de kaart; kies per thema <strong>Transparante grafiekachtergrond</strong> om enkel de grafiekondergrond doorzichtig te maken.</p>
+   <div class="vw-brightness-grid" id="vwBrightnessControls"></div>
+   <details class="vw-color-overrides"><summary>Eigen kleur per thema (optioneel)</summary>
+    <p class="muted">Een actieve helderheidsinstelling gebruikt deze HEX-kleur als kleurtint; zwart en wit blijven de uitersten. Zonder helderheidsinstelling wordt de oorspronkelijke gekozen kleur gebruikt.</p>
+    <div class="vw-global-colors" id="vwGlobalColors"></div>
+   </details>
+   <div class="vw-editor-footer">
+    <button class="homey-button-primary" id="vwSaveProfile" type="button">Profiel opslaan</button>
+    <button class="homey-button-secondary" id="vwResetProfile" type="button">Herstel standaard</button>
+    <span id="vwProfileState" class="muted" role="status" aria-live="polite"></span>
+   </div>
+   <p class="muted">Wijzigingen worden onder één afzonderlijke widgetprofiel-sleutel opgeslagen. Ze veranderen geen EMS-sturing, tarieven of batterijplanning. Na het opslaan wordt een widgetrefresh aangevraagd.</p>
+  </div>
+  <div id="vwEditorLoading" class="muted">Widgetprofielen laden…</div>
+ </div>
+</section>
 <section class="panel active" id="panel-ems">
 <fieldset class="homey-form-fieldset">
 <legend class="homey-form-legend">Batterijen</legend>
@@ -2917,6 +3034,7 @@ async function onHomeyReady(Homey) {
     resolve();
   }));
   const api = (method, path, body = {}) => new Promise((resolve, reject) => Homey.api(method, path, body, (err, value) => err ? reject(err) : resolve(value)));
+  const visualProfileEditor = window.HomeFluxVisualWidgetProfiles.init({ api });
 
   // v0.3.41: normal startup uses one read-only API snapshot backed by the app's
   // RAM settings cache. Keep the old parallel bridge reader only as a defensive
@@ -3661,6 +3779,7 @@ async function onHomeyReady(Homey) {
   let helpCatalogRendered = false;
   let activeMainTab = 'ems';
   let activeSavingsPeriod = 'day';
+  let lastSavingsRefreshAt = 0;
   let savingsHistoryLoaded = false;
   let savingsHistoryOptions = { months: [], years: [] };
   const savingsWord = (nl, en) => uiLanguage === 'nl' ? nl : en;
@@ -3771,6 +3890,8 @@ async function onHomeyReady(Homey) {
   }
 
   async function refreshSavings() {
+    // Also drives the optional minute refresh while the Savings tab is open.
+    lastSavingsRefreshAt = Date.now();
     try {
       const days = Math.max(1, Math.min(1827, Math.trunc(Number(q('savingsRollingDays').value) || 30)));
       const selected = activeSavingsPeriod === 'calendar_month' ? q('savingsMonthSelect').value : activeSavingsPeriod === 'calendar_year' ? q('savingsYearSelect').value : '';
@@ -3786,6 +3907,7 @@ async function onHomeyReady(Homey) {
       const chargePalette = ['#b68bd1','#9d7bc2','#76558e','#684b7c','#5a406d','#4c365e'];
       const costItems = [
         { label:uiLanguage === 'nl' ? 'Rechtstreeks netverbruik' : 'Direct grid use', value:data.directGrid?.value, kwh:data.directGrid?.kwh, portion:data.directGrid?.kwh, color:'#2f8db5' },
+        { label:uiLanguage === 'nl' ? 'Netimport · bron onbekend' : 'Grid import · source unknown', value:data.unattributedGrid?.value, kwh:data.unattributedGrid?.kwh, portion:data.unattributedGrid?.kwh, color:'#5e9dcb' },
         ...(data.batteryCharging?.byTariff || []).map((item,index) => ({
           label:`${uiLanguage === 'nl' ? 'Netladen' : 'Grid charging'} · ${item.label || ''}`,
           value:item.cost,
@@ -4079,6 +4201,7 @@ async function onHomeyReady(Homey) {
   function switchTab(name) {
     if (activeMainTab === 'planning-simulation' && name !== 'planning-simulation') clearPlanningSimulationResult();
     activeMainTab = name;
+    document.body.classList.toggle('widget-profile-tab-active',name==='ems-widget');
     inputMonitorUi.setVisible(name === 'diagnostics' && !document.hidden);
     p1TraceUi.setVisible(name === 'diagnostics' && !document.hidden);
     document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
@@ -4087,6 +4210,7 @@ async function onHomeyReady(Homey) {
     setMainTabsExpanded(false);
     q('tabToggle').focus({ preventScroll: true });
     document.querySelectorAll('.panel').forEach(el => el.classList.toggle('active', el.id === `panel-${name}`));
+    if (name === 'ems-widget') visualProfileEditor.load().catch(error => console.warn('Visual widget profiles unavailable',error));
     if (name === 'help') ensureHelpCatalogRendered();
     if (name === 'hybrid-ems') refreshHybridStatus();
     if (name === 'status' || name === 'ev' || name === 'hvac' || name === 'boiler' || name === 'priority' || (name === 'contract' && q('contractType').value.startsWith('dynamic'))) refreshStatus();
@@ -5331,6 +5455,9 @@ async function onHomeyReady(Homey) {
         return;
       }
       await Promise.all(jobs);
+      // General EMS settings saves never push Visual Look profile settings or
+      // bypass the widget's 60-second derived-view calculation. Live /status
+      // still reflects actual EMS changes at its normal update cadence.
       q('saveState').textContent = uiLanguage === 'nl'
         ? `Opgeslagen · ${changedCount} wijziging${changedCount === 1 ? '' : 'en'}`
         : `Saved · ${changedCount} change${changedCount === 1 ? '' : 's'}`;
@@ -6386,6 +6513,10 @@ async function onHomeyReady(Homey) {
     const hybridTabOpen = q('panel-hybrid-ems').classList.contains('active');
     const moduleTabOpen = q('panel-injection').classList.contains('active') || q('panel-ev').classList.contains('active') || q('panel-hvac').classList.contains('active') || q('panel-boiler').classList.contains('active') || q('panel-priority').classList.contains('active');
     if (hybridTabOpen) refreshHybridStatus();
+    // Savings has live P1 integration, but this settings panel previously only
+    // refreshed on tab entry. Reuse the EXISTING settings timer, without new
+    // listeners or control-loop work, and only while the tab is visible.
+    if (q('panel-savings').classList.contains('active') && Date.now() - lastSavingsRefreshAt >= 60000) refreshSavings();
     const phaseMonitoringOpen=q('panel-ems').classList.contains('active')&&q('gridConnectionPhases').value==='3'&&q('phaseGuardEnabled').checked;
     if (chargeTestPolling || moduleTabOpen || phaseMonitoringOpen || q('panel-status').classList.contains('active') || (q('panel-contract').classList.contains('active') && q('contractType').value.startsWith('dynamic'))) refreshStatus();
     }, 2000);

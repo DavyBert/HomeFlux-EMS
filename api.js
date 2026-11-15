@@ -16,6 +16,26 @@ module.exports = {
     return homey.app.getHybridEmsStatus();
   },
 
+  // Profile storage is deliberately separate from getSettings()/DEFAULTS.
+  async getVisualWidgetProfiles({ homey }) {
+    const store=require('./lib/visual-widget-profiles');
+    return {profiles:store.read(homey),defaults:store.defaults()};
+  },
+  async setVisualWidgetProfile({ homey, body }) {
+    const saved = require('./lib/visual-widget-profiles').save(homey,String(body?.name||''),body?.profile);
+    // Profile storage must succeed independently of an optional open dashboard.
+    // Realtime is presentation-only and does not enter any EMS control path.
+    try { await homey.api.realtime('homeflux.visual.refresh', {reason:'profile',name:saved.name}); }
+    catch (error) { console.warn('HomeFlux Visual Look refresh notification failed:', error); }
+    return saved;
+  },
+  async requestVisualWidgetRefresh({ homey }) {
+    // Compatibility endpoint for older settings pages. Only an explicit
+    // setVisualWidgetProfile() save is allowed to broadcast a widget refresh.
+    // Never invalidate derived views for a general EMS settings save.
+    return {requested:false,reason:'profile_only'};
+  },
+
   async getSettingsSnapshot({ homey }) {
     return homey.app.getSettingsSnapshot();
   },
@@ -119,7 +139,7 @@ module.exports = {
 // Translate only presentation fields at the API boundary. Stored settings and
 // internal controller decisions retain their original values and identifiers.
 for (const [name, operation] of Object.entries(module.exports)) {
-  if (['getP1Trace', 'startP1Trace', 'stopP1Trace', 'clearP1Trace', 'getInputMonitor', 'startInputMonitor', 'stopInputMonitor', 'clearInputMonitor'].includes(name) || name === 'getSettingsSnapshot' || name === 'getDiagnostics' || name === 'resetDiagnostics') continue;
+  if (['getP1Trace', 'startP1Trace', 'stopP1Trace', 'clearP1Trace', 'getInputMonitor', 'startInputMonitor', 'stopInputMonitor', 'clearInputMonitor'].includes(name) || name === 'getVisualWidgetProfiles' || name === 'setVisualWidgetProfile' || name === 'getSettingsSnapshot' || name === 'getDiagnostics' || name === 'resetDiagnostics') continue;
   module.exports[name] = async function localizedOperation(args) {
     try {
       const result = await operation(args);

@@ -1,0 +1,63 @@
+'use strict';
+const assert=require('node:assert/strict');
+const Module=require('module');
+const old=Module._load;
+Module._load=function(req,parent,main){
+ if(req==='homey') return {App:class{}};
+ if(req==='homey-api') return {HomeyAPI:{}};
+ return old.call(this,req,parent,main);
+};
+let HomeFlux;
+try{HomeFlux=require('../app')}finally{Module._load=old}
+const {emptyDay,emptyInventory}=require('../lib/savings');
+const api=require('../widgets/status/api');
+const T=Date.parse('2026-11-15T12:00:00+01:00');
+const store=new Map();
+const settings={contractType:'fixed',fixedImportPrice:.40,fixedFeedInPrice:.10,timezone:'Europe/Brussels',batteryCount:4};
+const app=Object.create(HomeFlux.prototype);
+app.settingsCache={currencySymbol:'€'};
+app.homey={clock:{getTimezone:()=> 'Europe/Brussels'},settings:{get:k=>store.get(k),set:(k,v)=>store.set(k,v)}};
+app.savings={today:emptyDay('2026-11-15'),history:{},inventory:emptyInventory(),total:0,lastSampleAt:T-60000};
+app.getSavingsDateKey=()=>'2026-11-15';
+app.getSettings=()=>settings;
+app.getEvCount=()=>0;
+app.getGridFreshness=()=>({fresh:true,value:1200});
+app.getSavingsTariffSnapshot=()=>({id:'fixed',label:'Vast',importPrice:.40,feedInPrice:.1,feedInSource:'fixed'});
+app.state={gridPowerW:1200,pvPowerW:800,lastTotalCommandW:300};
+app.inputSeen={grid:true,pv:true};
+app.inputUpdatedAt={pv:T-3000};
+const totals=()=>app.savings.today.directGridKwh;
+app.recordSavingsSample(T);
+assert.equal(app.savings.today.houseLoadHistory.length,1);
+assert.equal(app.savings.today.houseLoadHistory[0][1],2300);
+let firstTotal=totals();
+app.recordSavingsSample(T+30000);
+assert.equal(app.savings.today.houseLoadHistory.length,1);
+assert.ok(totals()>firstTotal);
+app.recordSavingsSample(T+120000);
+assert.equal(app.savings.today.houseLoadHistory.length,2);
+assert.equal(app.savings.today.houseLoadHistory[1][1],2300);
+(async()=>{
+ const result=await api.getHouseLoadHistory({homey:{app}});
+ assert.equal(result.rows.length,2);
+ assert.equal(result.intervalSeconds,120);
+ assert.equal(result.source,'p1_pv_battery_command');
+ app.persistSavingsState=HomeFlux.prototype.persistSavingsState;
+ app.syncEmsDevices=()=>Promise.resolve();
+ app.persistSavingsState(T+120000,true);
+ assert.equal(store.get('_savingsToday').houseLoadHistory.length,2);
+ const restarted=Object.create(HomeFlux.prototype);
+ restarted.homey=app.homey;
+ restarted.getSavingsDateKey=app.getSavingsDateKey;
+ restarted.savings={today:null,history:{},inventory:emptyInventory(),total:0,lastSampleAt:T};
+ restarted.restoreSavingsState();
+ assert.equal(restarted.getVisualHouseLoadHistory().rows.length,2);
+ // No fresh PV reading: do not fabricate a site-load observation.
+ const count=app.savings.today.houseLoadHistory.length;
+ app.inputSeen.pv=false;
+ app.recordSavingsSample(T+270000);
+ assert.equal(app.savings.today.houseLoadHistory.length,count);
+ // Storage is the existing _savingsToday value; there is no new settings entry.
+ assert.deepEqual([...store.keys()].filter(x=>x.startsWith('_visual')),[]);
+ console.log('Visual House: valid P1+PV sampling, 2-minute throttle, no fabricated PV, saved/restored and endpoint PASS');
+})().catch(error=>{console.error(error);process.exitCode=1});

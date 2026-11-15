@@ -1,0 +1,80 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const mod=require('../lib/visual-widget-profiles');
+const app=require('../app.json');
+const store=new Map();
+const homey={settings:{get(key){return store.has(key)?structuredClone(store.get(key)):null;},set(key,val){store.set(key,structuredClone(val));}}};
+const base=mod.defaults();
+assert.equal(Object.keys(base).length,3);
+for(const n of mod.PROFILES){
+ const p=mod.get(homey,n);
+ assert.equal(p.order.length,mod.IDS.length);
+ assert.equal(new Set(p.order).size,mod.IDS.length);
+ assert.equal(p.name,n);
+ assert.equal(p.configured,true);
+ assert(Array.isArray(p.folded));
+ assert(p.themes.dark && p.themes.light);
+}
+assert(base.compact.hidden.length>base.medium.hidden.length);
+assert(base.medium.hidden.length>base.full.hidden.length);
+let input=mod.get(homey,'medium');
+input.order.unshift(input.order.pop());
+input.order.push(input.order[0]); // duplicate should normalize
+input.hidden=['energyDayPanel','energyDayPanel','garbage'];
+input.folded=['energyDayPanel','infoExplorer','evSavingsSplit','garbage'];
+input.themes.dark.background='#aabbcc';
+input.themes.dark.cardBackground='#9aa8bb';
+input.themes.dark.sections.energyDayPanel='#445566';
+input.dayHidden=['dayChart','dayChart','dayTariff','invalid'];
+input.dayTimelineFolded=false;
+input.themes.light.sections.energyDayPanel='#123456';
+const saved=mod.save(homey,'medium',input);
+assert.equal(saved.themes.dark.background,'#AABBCC');
+assert.equal(saved.order.length,mod.IDS.length);
+assert.equal(new Set(saved.order).size,mod.IDS.length);
+assert.deepEqual(saved.hidden,['energyDayPanel']);
+assert.deepEqual(saved.folded,['energyDayPanel','infoExplorer','evSavingsSplit']);
+assert.deepEqual(saved.dayHidden,['dayChart','dayTariff']);
+assert.equal(saved.dayTimelineFolded,false);
+assert.equal(mod.get(homey,'medium').themes.light.sections.energyDayPanel,'#123456');
+assert.equal(mod.get(homey,'compact').hidden.length,base.compact.hidden.length);
+assert.deepEqual([...store.keys()],[mod.STORAGE_KEY]);
+assert(mod.STORAGE_KEY.startsWith('_'));
+// Mutations of returned objects must never mutate persisted state or defaults.
+const read=mod.get(homey,'medium');read.order[0]='NOT_REAL';
+assert.notEqual(mod.get(homey,'medium').order[0],'NOT_REAL');
+assert.throws(()=>mod.save(homey,'medium',null));
+assert.throws(()=>mod.save(homey,'bogus',{}));
+assert.throws(()=>mod.save(homey,'medium',{a:'x'.repeat(15000)}));
+const original=mod.get(homey,'medium');
+mod.save(homey,'medium',{...original,themes:{dark:{sections:{hero:'red',evSection:'#001122'}},light:{sections:{}}}});
+assert.equal(mod.get(homey,'medium').themes.dark.sections.hero,undefined);
+assert.equal(mod.get(homey,'medium').themes.dark.sections.evSection,'#001122');
+// Compare authored Homey compose source and assembled app manifest.
+for(const widget of ['status']){
+ const source=JSON.parse(fs.readFileSync(path.join(__dirname,'..','widgets',widget,'widget.compose.json')));
+ assert.deepEqual(app.widgets[widget].settings,source.settings);
+ assert.deepEqual(app.widgets[widget].api,source.api);
+ assert.equal(source.settings.filter(s=>s.id==='visualProfile').length,1);
+ assert(!source.settings.some(s=>s.id.startsWith('visual') && !['visualLook','visualProfile'].includes(s.id)));
+ assert.deepEqual(source.settings.find(s=>s.id==='visualProfile').values.map(v=>v.id),mod.PROFILES);
+}
+assert.deepEqual(Object.keys(app.widgets).sort(), ['ev','savings','status']);
+assert.deepEqual(Object.values(app.widgets.status.name),Array(5).fill('EMS Status'));
+assert(!fs.existsSync(path.join(__dirname,'..','widgets','visualstatus')));
+for(const key of ['getVisualWidgetProfiles','setVisualWidgetProfile','requestVisualWidgetRefresh'])assert(app.api[key]);
+const classic=fs.readFileSync(path.join(__dirname,'..','widgets/status/public/index.html'),'utf8');
+assert(classic.includes('refreshVisualWidgetProfile'));
+assert(classic.includes("Homey.on?.('homeflux.visual.refresh', visualRefreshRequested)"));
+assert(!classic.includes("settings['visualDecisionOrder']"));
+const appJs=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
+assert(appJs.includes("if (key === '_emsVisualWidgetProfilesV1') return"));
+const settingsUi=fs.readFileSync(path.join(__dirname,'..','settings/index.html'),'utf8');
+assert(settingsUi.includes('data-tab="ems-widget"'));
+assert(settingsUi.includes('id="vwSectionList"'));
+assert(settingsUi.includes('visual-widget-profiles-ui.js'));
+assert(settingsUi.includes('id="vwDayItems"'));
+assert(!settingsUi.includes("api('POST','/visual-widget-refresh'"), 'general Save must not push widget profile');
+console.log('PASS visual profiles: separate persisted key, 3 presets, validation, color normalization, no duplicate positions, manifest/API and UI');

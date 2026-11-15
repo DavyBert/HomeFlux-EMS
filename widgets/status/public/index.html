@@ -104,10 +104,17 @@
   0% { max-height: 0; visibility: hidden; margin-top: 0; }
   83.33333333333333%, 100% { max-height: 16em; visibility: visible; margin-top: .3em; }
 }
+    .visual-view.hidden { display: none; }
+    .visual-view { display: block; width: 100%; height: 440px; border: 0; background: transparent; }
+    /* The Homey webview may refuse/limit a requested height. Keep the content
+       scrollable as a fallback rather than clipping it behind overflow:hidden. */
+    body.visual-look { overflow-x: hidden; overflow-y: auto; background: transparent; color: #f0f9ff; }
+    body.visual-look #widget { padding: 0; }
+    body.visual-look #content { display: none !important; }
   </style>
 </head>
 <body>
-  <div id="widget"><div id="content" class="stack"></div><div id="error" class="error hidden"></div></div>
+  <div id="widget"><div id="content" class="stack"></div><div id="error" class="error hidden"></div><iframe id="visualView" class="visual-view hidden" title="HomeFlux EMS Command Center" scrolling="auto"></iframe></div>
   <script type="text/javascript">
     function tr(Homey, key, fallback) {
       try {
@@ -1255,54 +1262,531 @@
 
     async function onHomeyReady(Homey) {
       const settings = Homey.getSettings() || {};
+      const visualLook = enabled(settings, 'visualLook', false); // Single widget: Visual on, classic text off.
+      const visualView = document.getElementById('visualView');
+      // Display profile is fetched ONCE when the widget opens via a dedicated
+      // read-only API, not through getSettings or the EMS/P1 controller cache.
+      const selectedVisualProfile=['compact','medium','full'].includes(settings.visualProfile)
+        ? settings.visualProfile : 'medium';
+      const defaultProfile={name:selectedVisualProfile,configured:true,
+        order:['hero','energyDayPanel','savingsSection','evSection','hvacSection','loadSection','infoExplorer'],
+        hidden:selectedVisualProfile==='compact'
+          ? ['evSection','hvacSection','loadSection','infoExplorer']
+          : selectedVisualProfile==='medium'?['infoExplorer']:[],
+        folded:selectedVisualProfile==='compact'
+          ? ['energyDayPanel','houseSavingsSplit','evSavingsSplit','infoExplorer']
+          : selectedVisualProfile==='medium'
+            ? ['evSection','hvacSection','loadSection','infoExplorer']
+            : ['infoExplorer'],
+        dayHidden:[],dayTimelineFolded:true,dayInfoScale:100,
+        themes:{dark:{background:null,cardBackground:null,backgroundBrightness:null,cardBrightness:null,graphTransparent:false,tariffColors:{},sections:{}},
+          light:{background:null,cardBackground:null,backgroundBrightness:null,cardBrightness:null,graphTransparent:false,tariffColors:{},sections:{}}}};
+      let visualProfile=defaultProfile,visualProfileLastFetched=0,visualProfilePending=null;
+      // The Homey widget API can be briefly unavailable after an app restart.
+      // Do not cache a failed profile read as a successfully loaded default.
+      // Recovery is attempted via the EXISTING 10-second status cycle only.
+      let visualProfileRetryAfter=0;
+      let appliedVisualProfileSignature=null;
+      // Respect Homey's dashboard theme, even when it differs from the operating-system theme.
+      // Homey exposes .homey-dark-mode and theme-aware --homey-background-color.
+      function activeHomeyMode() {
+        const html = document.documentElement, body = document.body;
+        if (html.classList.contains('homey-dark-mode') || body.classList.contains('homey-dark-mode')) return 'dark';
+        const explicitMode = html.dataset.theme || body.dataset.theme || html.dataset.colorScheme || body.dataset.colorScheme;
+        if (explicitMode === 'dark' || explicitMode === 'light') return explicitMode;
+        // In dashboards without the class, resolve Homey's semantic background as a color.
+        const probe = document.createElement('span');
+        probe.style.cssText = 'position:absolute;pointer-events:none;visibility:hidden;background-color:var(--homey-background-color,transparent)';
+        body.appendChild(probe);
+        const bg = window.getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        const channels = bg.match(/^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/);
+        if (channels && !/^rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(bg)) {
+          const brightness = (.2126 * Number(channels[1]) + .7152 * Number(channels[2]) + .0722 * Number(channels[3]));
+          return brightness < 140 ? 'dark' : 'light';
+        }
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      // Keep the outer Homey frame as readable as the nested Command Center.
+      // Bright custom colors are converted to a dark shade of their selected hue.
+      function readableVisualBackground(hex) {
+        if (!hex) return 'transparent';
+        const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i+2), 16));
+        const max = Math.max(...rgb);
+        const factor = max > 105 ? 105 / max : 1;
+        return '#' + rgb.map(n => Math.round(n * factor).toString(16).padStart(2, '0')).join('');
+      }
+      let appliedVisualMode = null;
+      let widgetConfigurationReady = false;
+      function activeVisualTheme(){
+        return visualProfile?.themes?.[activeHomeyMode()] || {};
+      }
+      function sendVisualAppearance(force = false) {
+        if (!visualLook) return;
+        const mode = activeHomeyMode();
+        if (!force && appliedVisualMode === mode) return;
+        appliedVisualMode = mode;
+        const theme=activeVisualTheme();
+        const background=theme.background||null;
+        const cardBackground=theme.cardBackground||null;
+        document.body.style.setProperty('--visual-outer-color','transparent');
+        sendVisual('homeflux.visual.appearance',{background,cardBackground,mode,
+          backgroundBrightness:theme.backgroundBrightness??null,cardBrightness:theme.cardBrightness??null,
+          graphTransparent:theme.graphTransparent===true});
+        if (widgetConfigurationReady) sendVisualWidgetConfiguration();
+      }
+      const visualMedia = visualLook ? window.matchMedia?.('(prefers-color-scheme: dark)') : null;
+      const onVisualMediaChange = () => sendVisualAppearance();
+      const visualThemeObserver = visualLook && typeof MutationObserver === 'function'
+        ? new MutationObserver(onVisualMediaChange) : null;
+      if (visualLook) {
+        visualThemeObserver?.observe(document.documentElement, {attributes:true,attributeFilter:['class','style','data-theme','data-color-scheme']});
+        visualThemeObserver?.observe(document.body, {attributes:true,attributeFilter:['class','style','data-theme','data-color-scheme']});
+        if (visualMedia?.addEventListener) visualMedia.addEventListener('change',onVisualMediaChange);
+        else visualMedia?.addListener?.(onVisualMediaChange);
+        // Apply the initial color before the iframe is loaded, preventing a theme flash.
+        sendVisualAppearance(true);
+      }
+
+      // Only the profile name lives in Homey's widget configuration. The three
+      // editable presentation profiles are stored under a PRIVATE key and do
+      // not enter the large EMS getSettings() snapshot.
+      function sendVisualWidgetConfiguration(){
+        if(!visualLook||!widgetConfigurationReady)return;
+        const theme=activeVisualTheme();
+        sendVisual('homeflux.visual.widgetConfig',{
+          order:visualProfile.order,hidden:visualProfile.hidden,folded:visualProfile.folded,
+          dayHidden:visualProfile.dayHidden||[],dayTimelineFolded:visualProfile.dayTimelineFolded!==false,
+          dayInfoScale:visualProfile.dayInfoScale??100,
+          colors:theme.sections||{},tariffColors:theme.tariffColors||{},configured:true,
+        });
+      }
+      async function requestPersistedVisualProfile(){
+        // A stalled webview API call during Homey startup must not block profile
+        // restoration indefinitely. This timeout exists only while loading a
+        // profile; it is not a background refresh timer.
+        let timeoutId;
+        try {
+          return await Promise.race([
+            Homey.api('GET','/visual-profile?name='+encodeURIComponent(selectedVisualProfile),{}),
+            new Promise((_,reject)=>{
+              timeoutId=setTimeout(()=>reject(new Error('Timeout bij ophalen Visual Look-profiel')),8000);
+            }),
+          ]);
+        }finally{clearTimeout(timeoutId);}
+      }
+      async function refreshVisualWidgetProfile(force=false){
+        if(!visualLook)return;
+        if(visualProfilePending){
+          if(!force)return visualProfilePending;
+          // On a completed profile Save, an earlier in-flight read might have
+          // returned the old profile. Wait for it, then fetch the saved one.
+          await visualProfilePending;
+        }
+        if(!force && widgetConfigurationReady && !visualProfileRetryAfter && Date.now()-visualProfileLastFetched<30000)return true;
+        if(!force && Date.now()<visualProfileRetryAfter)return false;
+        visualProfilePending=(async()=>{
+          let applyProfile=false;
+          try{
+            const incoming=await requestPersistedVisualProfile();
+            if(!incoming||!Array.isArray(incoming.order)||!incoming.themes)throw new Error('Ongeldig Visual Look-profiel');
+            const signature=JSON.stringify(incoming);
+            applyProfile=!widgetConfigurationReady||signature!==appliedVisualProfileSignature;
+            visualProfile=incoming;
+            appliedVisualProfileSignature=signature;
+            widgetConfigurationReady=true;
+            visualProfileLastFetched=Date.now();
+            visualProfileRetryAfter=0;
+          }catch(err){
+            // A temporary failure after an update must not permanently replace
+            // saved colors with defaults. Preserve any previously loaded
+            // profile and retry after a short backoff on the normal status tick.
+            visualProfileRetryAfter=Date.now()+15000;
+            console.warn('HomeFlux Visual Look profile temporarily unavailable; retrying on status refresh',err);
+            return false;
+          }
+          // Reopening an unchanged widget must not push settings or rebuild
+          // its layout; only first load or an actually saved changed profile.
+          if(applyProfile)sendVisualAppearance(true); // Also sends the layout once.
+          return true;
+        })().finally(()=>{visualProfilePending=null;});
+        return visualProfilePending;
+      }
+      if(visualLook)refreshVisualWidgetProfile(true).catch(console.error);
+
+      let visualHeight = 440;
+      // Resolve the first real content height before calling Homey.ready().
+      // A cached 440px initial height can otherwise leave Homey clipping a tall
+      // Visual Look on the first display, despite a later setHeight() request.
+      let resolveFirstVisualHeight = null;
+      const firstVisualHeight = visualLook ? new Promise(resolve => { resolveFirstVisualHeight = resolve; }) : null;
+      let latestHistory = [];
+      let persistedHouseHistory = [];
+      let lastHouseHistoryAt = 0, houseHistoryPending = false;
+      function combinedHouseHistory() {
+        const rows = [...persistedHouseHistory, ...latestHistory].sort((a,b)=>a.at-b.at);
+        const combined = [];
+        for (const item of rows) {
+          if (!combined.length || item.at - combined[combined.length - 1].at > 30000) combined.push(item);
+          else if (item.at > combined[combined.length - 1].at) combined[combined.length - 1] = item;
+        }
+        return combined;
+      }
+      // A new day-history snapshot is prepared at most once a minute. Normal
+      // live /status updates do not copy and sort up to 720 old samples each
+      // time; a new iframe may receive the most recent cached snapshot.
+      let visualHistoryCalculatedAt=0, visualHistoryCached=null;
+      function visualHistorySnapshot(includeCached=false){
+        const now=Date.now();
+        if(!visualHistoryCalculatedAt || now-visualHistoryCalculatedAt>=60000){
+          visualHistoryCached=combinedHouseHistory();
+          visualHistoryCalculatedAt=now;
+          return visualHistoryCached;
+        }
+        return includeCached?visualHistoryCached:undefined;
+      }
+      async function refreshHouseHistory(force = false) {
+        if (!visualLook || houseHistoryPending || (!force && Date.now()-lastHouseHistoryAt < 120000)) return;
+        houseHistoryPending = true;
+        try {
+          const result = await Homey.api('GET','/house-load-history',{});
+          if (!result || !Array.isArray(result.rows)) return;
+          const today = new Date().toDateString();
+          persistedHouseHistory = result.rows.filter(row => {
+            const at = Number(row?.at), powerW = Number(row?.powerW);
+            return Number.isFinite(at) && at > 0 && new Date(at).toDateString() === today
+              && Number.isFinite(powerW) && powerW >= 0 && powerW <= 100000;
+          }).slice(-720);
+          lastHouseHistoryAt = Date.now();
+          const rows=visualHistorySnapshot();
+          if(rows)sendVisual('homeflux.visual.houseHistory',{rows});
+        } catch (error) { console.warn('HomeFlux Visual Look day history unavailable',error); }
+        finally { houseHistoryPending = false; }
+      }
+      let lastHistoryAt = 0;
+      let requestedPeriod = 'day', requestedEv = 'all';
+      let savingsCache = new Map(), savingsHouseCache = new Map(), savingsPending = new Set();
+      let lastSavingsVisualToken = '';
+      function deliverSavingsVisual(data,token) {
+        if (token && token === lastSavingsVisualToken) return;
+        lastSavingsVisualToken = token || '';
+        sendVisual('homeflux.visual.savings',data);
+      }
+      function boundedSavingsRequest(promise,timeoutMs=9000) {
+        let timer;
+        return Promise.race([promise,new Promise((_,reject)=>{
+          timer=setTimeout(()=>reject(new Error('Savings source timed out')),timeoutMs);
+        })]).finally(()=>clearTimeout(timer));
+      }
+      let savingsFailedAt = new Map();
+      const savingsDays = {day:1,week:7,month:30,year:365,total:1827};
+      const savingsTtl = period => period === 'day' ? 60000 : 300000;
+      const isVisualHouseLedger = value => value && typeof value === 'object'
+        && value.periodSavings !== null && value.periodSavings !== undefined
+        && Number.isFinite(Number(value.periodSavings));
+      function receiveStatusSavings(status) {
+        const snapshot = status?.visualSavings;
+        if (!snapshot || !Number.isFinite(Number(snapshot.updatedAt)) || !snapshot.periods) return;
+        for (const [period, row] of Object.entries(snapshot.periods)) {
+          if (!Object.hasOwn(savingsDays, period) || !isVisualHouseLedger(row)) continue;
+          const old = savingsHouseCache.get(period);
+          if (!old || snapshot.updatedAt >= old.at) {
+            savingsHouseCache.set(period, { at: snapshot.updatedAt, data: row });
+          }
+        }
+      }
+      if (visualLook) {
+        document.body.classList.add('visual-look');
+        visualView.classList.remove('hidden');
+        visualView.src = 'visual.html';
+      }
       let latestStatus = null;
       let refreshTimer = null, displayTimer = null;
       let hasRendered = false;
       let refreshBusy = false, refreshAgain = false;
       let lastHeight = 0;
-      // Hint visibility can change between status refreshes. Resize only when
-      // the rendered content changes size; this never reads EMS data.
+      let appliedHeight = 0, pendingHeight = null, pendingForce = false, heightUpdateRunning = false;
+      // Only one setHeight request may be in flight. Rapid open/close actions
+      // coalesce into the most recent required height, never a stale one.
+      function queueHeight(height, force = false) {
+        if (!hasRendered || typeof Homey.setHeight !== 'function') return;
+        pendingHeight = height;
+        pendingForce = pendingForce || force;
+        if (heightUpdateRunning) return;
+        heightUpdateRunning = true;
+        (async () => {
+          try {
+            while (pendingHeight !== null) {
+              const next = pendingHeight, mustApply = pendingForce;
+              pendingHeight = null; pendingForce = false;
+              if (next === appliedHeight && !mustApply) continue;
+              await Homey.setHeight(next);
+              appliedHeight = next;
+            }
+          } catch (error) { console.error('HomeFlux widget height adjustment failed', error); }
+          finally {
+            heightUpdateRunning = false;
+            if (pendingHeight !== null) queueHeight(pendingHeight, pendingForce);
+          }
+        })();
+      }
+      // The first Homey.ready should receive the measured visual content
+      // height. The timeout is a UI-only fallback for an unavailable iframe.
+      async function waitForVisualHeight() {
+        if (!firstVisualHeight || !resolveFirstVisualHeight) return;
+        let timer;
+        try {
+          await Promise.race([firstVisualHeight, new Promise(resolve => {
+            timer = setTimeout(resolve, 1500);
+          })]);
+        } finally { clearTimeout(timer); }
+      }
+      // Hint visibility, changing modules and details can all change height.
       const contentResizeObserver = typeof ResizeObserver === 'function'
         ? new ResizeObserver(() => {
           if (hasRendered && !document.hidden) resize().catch(console.error);
         }) : null;
 
-      async function resize() {
+      async function resize(force = false) {
         await new Promise(resolve => requestAnimationFrame(resolve));
-        const height = Math.max(90, Math.ceil(document.getElementById('widget').scrollHeight));
-        if (height !== lastHeight) {
+        const widget = document.getElementById('widget');
+        const bounds = typeof widget.getBoundingClientRect === 'function' ? widget.getBoundingClientRect() : null;
+        const height = Math.max(90, Math.ceil(widget.scrollHeight || 0), Math.ceil(bounds?.height || 0));
+        if (height !== lastHeight || force) {
           lastHeight = height;
-          if (hasRendered && typeof Homey.setHeight === 'function') await Homey.setHeight(height);
-          return height;
+          queueHeight(height, force);
         }
-        return lastHeight;
+        return height;
       }
 
+      // The two HTML files are hosted by the same Homey app, so the outer
+      // widget can measure the real Command Center content directly. This
+      // avoids the delayed iframe-height/host-height feedback loop that can
+      // leave an expanded widget taller than its now-collapsed contents.
+      let observedVisualRoot = null, visualRootObserver = null, visualMeasureQueued = false;
+      function readVisualContentHeight() {
+        if (!visualLook) return null;
+        try {
+          const doc = visualView.contentDocument;
+          if (!doc?.body?.classList.contains('has-live-data')) return null;
+          const root = doc.querySelector('main.wrap');
+          if (!root) return null;
+          const bounds = root.getBoundingClientRect();
+          const css = doc.defaultView.getComputedStyle(doc.body);
+          const padding = (parseFloat(css.paddingTop) || 0) + (parseFloat(css.paddingBottom) || 0);
+          const height = Math.ceil(Math.max(bounds.height, root.scrollHeight, root.offsetHeight) + padding + 8);
+          return Number.isFinite(height) && height >= 100 && height <= 16000 ? height : null;
+        } catch (_) {
+          // The postMessage height path remains usable if Homey isolates frames.
+          return null;
+        }
+      }
+      function applyVisualContentHeight(height) {
+        const next = Math.ceil(Number(height));
+        if (!Number.isFinite(next) || next < 100 || next > 16000) return;
+        if (visualHeight !== next) {
+          visualHeight = next;
+          visualView.style.height = next + 'px';
+          if (hasRendered) resize().catch(console.error);
+        }
+        resolveFirstVisualHeight?.(next);
+        resolveFirstVisualHeight = null;
+      }
+      function syncVisualContentHeight() {
+        visualMeasureQueued = false;
+        const height = readVisualContentHeight();
+        if (height !== null) applyVisualContentHeight(height);
+      }
+      function scheduleVisualContentHeight() {
+        if (!visualLook || visualMeasureQueued) return;
+        visualMeasureQueued = true;
+        requestAnimationFrame(syncVisualContentHeight);
+      }
+      function observeVisualContent() {
+        if (!visualLook || typeof ResizeObserver !== 'function') return;
+        try {
+          const root = visualView.contentDocument?.querySelector('main.wrap');
+          if (!root || observedVisualRoot === root) return;
+          visualRootObserver?.disconnect();
+          visualRootObserver = new ResizeObserver(scheduleVisualContentHeight);
+          visualRootObserver.observe(root);
+          observedVisualRoot = root;
+          scheduleVisualContentHeight();
+        } catch (_) {
+          // No dependency on parent-side DOM access: messages still work.
+        }
+      }
+      function sendVisual(type, data = {}) {
+        if (!visualLook || !visualView.contentWindow) return;
+        visualView.contentWindow.postMessage({ type, ...data }, '*');
+      }
+      function collectHouseSample(status) {
+        const now = Date.now();
+        // Do not turn an unavailable physical site-load reading (null) into
+        // a false zero. Its source is already calculated by the EMS; no new
+        // P1, PV or battery listeners are introduced by Visual Look.
+        const raw = status?.evGridControl?.physicalSiteLoadW;
+        if (raw === null || raw === undefined || raw === '' || typeof raw === 'boolean') return;
+        const value = Number(raw);
+        if (now - lastHistoryAt < 60_000 || !Number.isFinite(value) || value < 0 || value > 100_000) return;
+        lastHistoryAt = now;
+        latestHistory.push({ at: now, powerW: value });
+        const start = new Date(now); start.setHours(0, 0, 0, 0);
+        latestHistory = latestHistory.filter(x => x.at >= start.getTime()).slice(-1000);
+      }
+      async function requestVisualSavings(period = requestedPeriod, ev = requestedEv, force = false) {
+        if (!visualLook || !Object.hasOwn(savingsDays, period) || !['all','1','2','3','4'].includes(ev)) return;
+        requestedPeriod = period; requestedEv = ev;
+        const key = period + '|' + ev, now = Date.now(), stored = savingsCache.get(key);
+        const configuredEvCount = Number(latestStatus?.settings?.evCount);
+        const hasNoEv = Number.isFinite(configuredEvCount) && configuredEvCount === 0;
+        const lastHouse = savingsHouseCache.get(period);
+        const usableHouse = !force && lastHouse && now - lastHouse.at < savingsTtl(period)
+          && isVisualHouseLedger(lastHouse.data) ? lastHouse.data : null;
+        // Delivery is independent of EV data. A house snapshot already attached
+        // to /status is immediately usable for EVERY tab, including 5 years.
+        if (usableHouse) {
+          deliverSavingsVisual({ period, ev, house:usableHouse, solar:null, grid:null,
+            pending:!hasNoEv, noEv:hasNoEv }, 'house|'+key+'|'+lastHouse.at);
+          if (hasNoEv) return;
+        }
+        if (!force && stored && now - stored.at < stored.ttl) {
+          deliverSavingsVisual(stored.data,'complete|'+key+'|'+stored.at);
+          return;
+        }
+        if (savingsPending.has(key)) return;
+        if (!force && now < (savingsFailedAt.get(key) || 0) && usableHouse) return;
+        savingsPending.add(key);
+        try {
+          const days = savingsDays[period];
+          const query = '?period=' + (days === 1 ? 'day' : 'rolling') + '&days=' + days;
+          const evQuery = '?days=' + days + '&ev=' + encodeURIComponent(ev) + '&category=';
+          // The house ledger is mandatory; EV is an entirely optional addon.
+          const house = usableHouse || await boundedSavingsRequest(Homey.api('GET','/savings'+query,{}));
+          if (!isVisualHouseLedger(house)) throw new Error('House Savings API returned an invalid period result');
+          savingsHouseCache.set(period,{at:Date.now(),data:house});
+          if (savingsHouseCache.size>5)savingsHouseCache.delete(savingsHouseCache.keys().next().value);
+          // One final response is enough when no EV charger is configured.
+          // In particular, do not ask the ledger for 1827-day EV history.
+          if (hasNoEv) {
+            const result={period,ev,house,solar:null,grid:null,noEv:true};
+            savingsCache.set(key,{at:Date.now(),ttl:savingsTtl(period),data:result});
+            savingsFailedAt.delete(key);
+            deliverSavingsVisual(result,'noev|'+key+'|'+Date.now());
+            return;
+          }
+          deliverSavingsVisual({period,ev,house,solar:null,grid:null,pending:true},
+            'house|'+key+'|'+Date.now());
+          // Optional EV queries cannot stop / delay presentation of the home.
+          const tasks = await Promise.allSettled([
+            boundedSavingsRequest(Homey.api('GET','/ev-savings'+evQuery+'ev_savings',{})),
+            boundedSavingsRequest(Homey.api('GET','/ev-savings'+evQuery+'ev_grid',{})),
+          ]);
+          const valid = index => tasks[index].status==='fulfilled' && tasks[index].value
+            && typeof tasks[index].value.ev_data_available==='boolean' ? tasks[index].value : null;
+          const solar=valid(0),grid=valid(1);
+          const result={period,ev,house,solar,grid,partial:!solar||!grid};
+          if (solar && grid) {
+            savingsCache.set(key,{at:Date.now(),ttl:savingsTtl(period),data:result});
+            savingsFailedAt.delete(key);
+          } else savingsFailedAt.set(key,Date.now()+30000);
+          deliverSavingsVisual(result,'complete|'+key+'|'+Date.now());
+        } catch (error) {
+          savingsFailedAt.set(key,Date.now()+30000);
+          // Be explicit when the separate /savings endpoint failed: historical
+          // data may still have been supplied through /status.
+          const detail=String(error?.message||error);
+          console.error('HomeFlux Visual Look historical Savings request failed', {period,detail});
+          if (!usableHouse) sendVisual('homeflux.visual.savingsError',{period,ev,detail});
+        } finally {savingsPending.delete(key);}
+      }
+
+      function visualMessage(event) {
+        if (!visualLook || event.source !== visualView.contentWindow || !event.data) return;
+        const msg = event.data;
+        if (msg.type === 'homeflux.visual.ready') {
+          lastSavingsVisualToken = '';
+          observeVisualContent();
+          sendVisualAppearance(true);
+          sendVisualWidgetConfiguration();
+          if (latestStatus) sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot(true)});
+          requestVisualSavings().catch(console.error);
+          refreshHouseHistory(true).catch(console.error);
+        } else if (msg.type === 'homeflux.visual.height') {
+          // Prefer a direct measurement. The message is a safe fallback when
+          // the Homey webview does not expose its nested document to us.
+          applyVisualContentHeight(readVisualContentHeight() ?? msg.height);
+        } else if (msg.type === 'homeflux.visual.savingsRequest') {
+          requestVisualSavings(String(msg.period||''),String(msg.ev||'all')).catch(console.error);
+        } else if (msg.type === 'homeflux.visual.error') {
+          console.error('HomeFlux Visual Look render error:',msg.reason);
+        }
+      }
+      if (visualLook) {
+        window.addEventListener('message',visualMessage);
+        visualView.addEventListener('load', () => {
+          observeVisualContent();
+          sendVisualAppearance(true);
+          sendVisualWidgetConfiguration();
+          if (latestStatus) sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot(true)});
+        });
+      }
       let wafGuardEvent = null;
+      let lastStatusStartedAt=0,lastStatusSuccessStartedAt=0;
+      let evChangedRefreshTimer=null,lastEvChangedAt=0;
       async function refresh(first = false) {
         if (refreshBusy) { refreshAgain = true; return; }
         refreshBusy = true;
+        const requestedAt=Date.now();
+        lastStatusStartedAt=requestedAt;
         try {
-          const status = await Homey.api('GET', '/status', {});
+          const status = await Homey.api('GET', visualLook ? '/status?visualSavings=1' : '/status', {});
+          lastStatusSuccessStartedAt=requestedAt;
           latestStatus = status || {};
+          if (visualLook) {
+            // Recover the persisted presentation after a cold start where
+            // /visual-profile was not ready yet. This is not a profile save:
+            // no EMS settings push and no derived-view invalidation.
+            if ((!widgetConfigurationReady || visualProfileRetryAfter>0) && !visualProfilePending && Date.now() >= visualProfileRetryAfter)
+              refreshVisualWidgetProfile().catch(console.error);
+            // Recheck Homey's active mode using the already-running status
+            // cycle, as its theme variables can settle after the widget loads.
+            // Same mode => no message, no extra calculation.
+            if (widgetConfigurationReady) sendVisualAppearance();
+            receiveStatusSavings(latestStatus);
+          }
           applyWafGuardEvent();
-          renderStatus(latestStatus, settings, Homey);
-          const previousAlert = alertIdentity;
-          updateDecisionDisplay(latestStatus, settings, Homey);
-          syncDisplayClock(previousAlert !== alertIdentity);
+          if (visualLook) {
+            visualView.classList.remove('hidden');
+            collectHouseSample(latestStatus);
+            sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot()});
+            // Today: 1 minute; historic: 5 minutes. House data never awaits EV responses.
+            requestVisualSavings().catch(console.error);
+            refreshHouseHistory().catch(console.error);
+          } else {
+            renderStatus(latestStatus, settings, Homey);
+            const previousAlert = alertIdentity;
+            updateDecisionDisplay(latestStatus, settings, Homey);
+            syncDisplayClock(previousAlert !== alertIdentity);
+          }
           document.getElementById('error').classList.add('hidden');
           document.getElementById('content').classList.remove('hidden');
+          if (first && visualLook) await waitForVisualHeight();
           const height = await resize();
-          if (first) await Homey.ready({ height });
+          if (first) { await Homey.ready({ height }); appliedHeight = height; }
           hasRendered = true;
+          // A second measurement catches iframe content changing while ready()
+          // is being delivered to the Homey dashboard.
+          if (first && visualLook) resize().catch(console.error);
         } catch (error) {
           if (!hasRendered) {
+            if (visualLook) visualView.classList.add('hidden');
             document.getElementById('content').classList.add('hidden');
             const target = document.getElementById('error');
             target.classList.remove('hidden');
             target.textContent = tr(Homey, 'widget.status.error', 'EMS status is temporarily unavailable.');
             const height = await resize();
-            if (first) await Homey.ready({ height });
+            if (first) { await Homey.ready({ height }); appliedHeight = height; hasRendered = true; }
           }
           console.error('HomeFlux EMS status widget failed', error);
         } finally {
@@ -1317,25 +1801,65 @@
           latestStatus.wafPresentation = wafGuardEvent;
         }
       }
+      // Coalesce bursts of EV events (including the slow EMS heartbeat) with
+      // an already-running 10-second status request. Genuine changes are still
+      // fetched promptly; WAF safety events retain their instant update path.
+      function requestEvStatusRefresh(){
+        lastEvChangedAt=Date.now();
+        if(document.hidden||evChangedRefreshTimer!==null)return;
+        evChangedRefreshTimer=setTimeout(()=>{
+          evChangedRefreshTimer=null;
+          if(document.hidden)return;
+          const eventAt=lastEvChangedAt;
+          // If a successful status request was started after the event, the
+          // event's data has already been included in that ordinary request.
+          if(lastStatusSuccessStartedAt>eventAt)return;
+          if(refreshBusy){
+            // A pending request started before this event may carry older
+            // values: make one follow-up, rather than start concurrent calls.
+            if(lastStatusStartedAt<=eventAt)refreshAgain=true;
+            return;
+          }
+          refresh(false);
+        },200);
+      }
       const evPlanChanged=event=>{
         if (event?.wafPeakGuard) {
           wafGuardEvent = event.wafPeakGuard;
           if (latestStatus) {
             latestStatus.wafPresentation = wafGuardEvent;
-            if (!document.hidden) updateDecisionDisplay(latestStatus, settings, Homey);
+            if (!document.hidden) {
+              if (visualLook) sendVisual('homeflux.visual.waf',{presentation:latestStatus.wafPresentation});
+              else updateDecisionDisplay(latestStatus, settings, Homey);
+            }
           }
           return;
         }
-        if(!document.hidden)refresh(false);
+        requestEvStatusRefresh();
       };
       Homey.on?.('homeflux.ev.changed',evPlanChanged);
+      const visualRefreshRequested = event => {
+        // Only an explicit 'Profiel opslaan' for this widget profile can push
+        // new Visual Look preferences or invalidate its one-minute calculation.
+        // Ignore the legacy generic settings event and unrelated profiles.
+        if (!visualLook || event?.reason !== 'profile' || event.name !== selectedVisualProfile) return;
+        return (async () => {
+          // Apply the persisted profile before rebuilding any derived views;
+          // otherwise a status request could render with the previous profile.
+          await refreshVisualWidgetProfile(true);
+          sendVisual('homeflux.visual.recalculate');
+          // A hidden widget reloads the latest status on its next visible turn.
+          if (!document.hidden) await refresh(false);
+        })().catch(error => console.warn('HomeFlux Visual Look profile refresh failed', error));
+      };
+      if (visualLook) Homey.on?.('homeflux.visual.refresh', visualRefreshRequested);
       await refresh(true);
       function syncDisplayClock(reset = false) {
         if (reset || document.hidden || !alertIdentity) {
           clearInterval(displayTimer); displayTimer = null;
         }
         // No presentation clock is needed without an enabled critical alert.
-        if (!document.hidden && alertIdentity && displayTimer === null) {
+        if (!visualLook && !document.hidden && alertIdentity && displayTimer === null) {
           displayTimer = setInterval(() => {
             if (!document.hidden && latestStatus) updateDecisionDisplay(latestStatus, settings, Homey);
           }, 5000);
@@ -1343,6 +1867,8 @@
       }
       function stopTimers() {
         clearInterval(refreshTimer); clearInterval(displayTimer);
+        clearTimeout(evChangedRefreshTimer);
+        evChangedRefreshTimer=null;
         refreshTimer = displayTimer = null;
         contentResizeObserver?.disconnect();
       }
@@ -1351,23 +1877,57 @@
         if (document.hidden) return;
         contentResizeObserver?.observe(document.getElementById('widget'));
         refreshTimer = setInterval(() => {
-          if (!document.hidden) refresh(false);
+          // A slow in-flight response already covers the periodic tick.
+          // Do not queue a duplicate just because it crossed 10 seconds.
+          if (!document.hidden && !refreshBusy) refresh(false);
         }, 10000);
         syncDisplayClock(true);
       }
-      function visibilityChanged() {
-        if (latestStatus) updateDecisionDisplay(latestStatus, settings, Homey);
-        startTimers();
+      function remeasureVisual(force = false) {
+        if (document.hidden) return;
+        if (visualLook) {
+          observeVisualContent();
+          scheduleVisualContentHeight();
+          sendVisual('homeflux.visual.measure');
+        }
+        if (hasRendered) resize(force).catch(console.error);
       }
+      function visibilityChanged() {
+        if (latestStatus && !visualLook) updateDecisionDisplay(latestStatus, settings, Homey);
+        startTimers();
+        if (!document.hidden && visualLook) {
+          refreshVisualWidgetProfile(true).catch(console.error);
+          refresh(false);
+        }
+        remeasureVisual(true);
+      }
+      function pageShown() {
+        startTimers(); remeasureVisual(true);
+        // Reopen may have missed an event while the dashboard was suspended.
+        // Force once on visibility; never poll profiles from the 10s timer.
+        if (visualLook) {
+          refreshVisualWidgetProfile(true).catch(console.error);
+          refresh(false);
+        }
+      }
+      function viewportResized() { remeasureVisual(); }
       document.addEventListener('visibilitychange', visibilityChanged);
       window.addEventListener('pagehide', stopTimers);
-      window.addEventListener('pageshow', startTimers);
+      window.addEventListener('pageshow', pageShown);
+      window.addEventListener('resize', viewportResized);
       window.addEventListener('unload', () => {
         stopTimers();
+        if (visualLook) window.removeEventListener('message',visualMessage);
+        visualRootObserver?.disconnect();
+        visualThemeObserver?.disconnect();
+        if (visualMedia?.removeEventListener) visualMedia.removeEventListener('change',onVisualMediaChange);
+        else visualMedia?.removeListener?.(onVisualMediaChange);
         Homey.off?.('homeflux.ev.changed',evPlanChanged);
+        if (visualLook) Homey.off?.('homeflux.visual.refresh',visualRefreshRequested);
         document.removeEventListener('visibilitychange', visibilityChanged);
         window.removeEventListener('pagehide', stopTimers);
-        window.removeEventListener('pageshow', startTimers);
+        window.removeEventListener('pageshow', pageShown);
+        window.removeEventListener('resize', viewportResized);
       }, { once: true });
       startTimers();
     }

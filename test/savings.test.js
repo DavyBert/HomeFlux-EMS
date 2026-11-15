@@ -149,8 +149,9 @@ const oneKwhAtFiveMinutesW = 12000;
   day.importedEnergyKwh = 0;
   day.importedEnergyKnown = true;
   const calibrated = calibrateImportedEnergy(day);
-  close(calibrated.directGridKwh, 0);
-  close(calibrated.directGridCost, 0);
+  // A stale/default 0-kWh Flow input may not erase metered P1 energy.
+  close(calibrated.directGridKwh, 0.2);
+  close(calibrated.directGridCost, 0.06);
 }
 
 {

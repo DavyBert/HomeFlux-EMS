@@ -12,6 +12,23 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.4
+
+**NL** — Nieuwe Visual Look in de EMS Status-widget: live energieoverzicht met SOC-prognose, tarieven, WAF en Savings.
+Instelbare kleuren en transparantie per thema, met indicatie ‘Externe EMS’.
+
+**EN** — New Visual Look in the EMS Status widget: live energy overview with SoC forecast, tariffs, WAF and Savings.
+Custom colors and transparency for both themes, with an “Externe EMS” indicator.
+
+**FR** — Nouveau Visual Look dans le widget EMS Status : bilan en direct, prévision SoC, tarifs et économies.
+Couleurs et transparence par thème, avec indication « Externe EMS ».
+
+**DE** — Neuer Visual Look im EMS Status Widget: Live-Energieübersicht, SoC-Prognose, Tarife und Einsparungen.
+Farben und Transparenz je Design anpassbar, mit „Externe EMS“-Hinweis.
+
+**ES** — Nuevo Visual Look en el widget EMS Status: energía en directo, previsión de SoC, tarifas y ahorros.
+Colores y transparencia por tema, con indicador «Externe EMS».
+
 ## Release notes — 1.5.3
 
 **NL** — Dynamische tarieven: de volgende tariefwisseling gebruikt de echte, datumgebonden prijzen van morgen. De actuele en volgende tarieven worden consistent weergegeven; zonder morgenprijzen wordt geen onjuiste volgende prijs getoond.
@@ -71,3 +88,11 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 **DE** — AutoTune: Alle Empfehlungen bieten jetzt automatische Verwaltung, sofortiges Anwenden oder keine weitere Prüfung. Verwaltete Parameter bleiben sichtbar und können wieder auf manuell gestellt werden.
 
 **ES** — AutoTune: todas las recomendaciones permiten gestión automática, aplicar ahora o dejar de comprobar. Los parámetros gestionados permanecen visibles y pueden volver al modo manual.
+
+
+### EMS-widget · Visual Look-profielen (1.5.4)
+
+De EMS-statuswidget heeft een keuze **Visual Look aan/uit** en **Profiel: Compact, Medium of Full**. Bewerk de drie profielen via **HomeFlux EMS → Instellingen → EMS-widget**: positie (pijlen), tonen/verbergen, standaard inklappen, achtergrond, kaarten en optionele onderdeelkleuren, apart voor licht/donker. Standaardkleuren, een kleurkiezer en eigen HEX zijn beschikbaar. Klik **Profiel opslaan**; open daarna het dashboard opnieuw.
+
+De drie profielen worden gezamenlijk opgeslagen onder de afzonderlijke private Homey-sleutel `_emsVisualWidgetProfilesV1`. Dit is **niet** onderdeel van `getSettings()` en triggert geen EMS-regel- of planningsupdate. Alle dashboardwidgets die hetzelfde profiel selecteren, gebruiken dezelfde configuratie. Klassieke tekstwidgetinstellingen blijven beschikbaar en ongewijzigd; de oudere afzonderlijke Visual Look-widget blijft voor bestaande dashboards bestaan. Bestaande per-widget opgeslagen Visual Look-indelingen worden niet automatisch overgenomen.
+

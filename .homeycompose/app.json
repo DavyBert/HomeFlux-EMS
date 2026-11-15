@@ -1,6 +1,6 @@
 {
   "id": "com.homeflux.ems",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "homeyCommunityTopicId": 158982,
   "compatibility": ">=12.3.0",
   "sdk": 3,
@@ -223,6 +223,18 @@
     "stopInjection": {
       "method": "POST",
       "path": "/injection/stop"
+    },
+    "getVisualWidgetProfiles": {
+      "method": "GET",
+      "path": "/visual-widget-profiles"
+    },
+    "setVisualWidgetProfile": {
+      "method": "PUT",
+      "path": "/visual-widget-profiles"
+    },
+    "requestVisualWidgetRefresh": {
+      "method": "POST",
+      "path": "/visual-widget-refresh"
     }
   },
   "images": {

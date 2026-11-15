@@ -523,6 +523,8 @@ class HomeFluxEmsApp extends Homey.App {
       if (this.shuttingDown) return;
       try {
         if (key === '_injectionLatch') return;
+        if (key === '_visualWidgetLayoutsV1') return; // Widget ordering is presentation-only.
+        if (key === '_emsVisualWidgetProfilesV1') return; // Shared visual presets: never touch EMS cache or planning.
         if (key === '_evSessionContinuity' || key === '_hvacPermanent' || key === '_batteryResponseTest' || key === '_autoTuneDailyMinimumSoc' || key === '_autoTuneLearning') return;
         // These keys persist EV state already changed by its handler or
         // energy accounting. Goal changes request their own context; energy
@@ -961,7 +963,16 @@ class HomeFluxEmsApp extends Homey.App {
     for (const [date, day] of Object.entries(history)) normalizedHistory[date] = savingsHistory.compactDay(day, date);
 
     const todayKey = this.getSavingsDateKey();
-    const storedToday = normalizeDay(this.homey.settings.get('_savingsToday'), todayKey);
+    const rawStoredToday = this.homey.settings.get('_savingsToday');
+    const storedToday = normalizeDay(rawStoredToday, todayKey);
+    // Read-only chart samples share the existing Savings persistence key.
+    // Never infer a missing history or restore samples from another date.
+    if (storedToday.date === todayKey && Array.isArray(rawStoredToday?.houseLoadHistory)) {
+      storedToday.houseLoadHistory = rawStoredToday.houseLoadHistory.filter(row => Array.isArray(row)
+        && Number.isFinite(Number(row[0])) && Number.isFinite(Number(row[1]))
+        && Number(row[1]) >= 0 && Number(row[1]) <= 100000).slice(-720)
+        .map(row => [Math.round(Number(row[0])), Math.round(Number(row[1]))]);
+    }
     let rolloverSavingsAdjustment = 0;
     if (storedToday.date && storedToday.date !== todayKey) {
       const calibratedStoredToday = calibrateEnergy(storedToday);
@@ -1018,13 +1029,13 @@ class HomeFluxEmsApp extends Homey.App {
       const pvPowerW = parseFiniteInputNumber(this.state.pvPowerW);
       const pvUpdatedAt = Number(this.inputUpdatedAt?.pv) || 0;
       const pvFresh = pvPowerW === 0 || (pvUpdatedAt > 0 && (now - pvUpdatedAt) <= 5 * 60 * 1000);
-      const siteKnown = Boolean(this.inputSeen?.grid && this.inputSeen?.pv)
-        && gridFreshness.fresh && pvPowerW !== null && pvFresh;
+      const gridKnown = gridFreshness.fresh;
+      const siteKnown = Boolean(this.inputSeen?.pv) && gridKnown && pvPowerW !== null && pvFresh;
       // Charger telemetry remains usable when site telemetry cannot establish
       // its source. The SAME interval records EV energy as unknown, while the
       // existing site Savings buckets stay untouched for that interval.
       const evCount = this.getEvCount(settings);
-      if (!siteKnown && evCount === 0) return;
+      if (!gridKnown && evCount === 0) return;
   
       const tariff = this.getSavingsTariffSnapshot(settings);
       let evPriceKnown = true;
@@ -1066,6 +1077,7 @@ class HomeFluxEmsApp extends Homey.App {
           inventory: this.savings.inventory,
           seconds: (end - start) / 1000,
           siteKnown,
+          gridKnown,
           evs: evCount > 0 ? this.getEvSavingsReadings(start, end, settings) : undefined,
           evPriceKnown,
           gridW: gridFreshness.value,
@@ -1078,6 +1090,22 @@ class HomeFluxEmsApp extends Homey.App {
         });
         const delta = totalSavings(this.savings.today) - before;
         if (Number.isFinite(delta)) this.savings.total += delta;
+      }
+      // Every two minutes, retain a real P1/PV/battery-command reconstruction
+      // for the Visual Look day graph. This rides the EXISTING Savings/P1 path,
+      // is persisted by _savingsToday at its normal five-minute cadence, and
+      // never changes control decisions, tariff selection or ledger totals.
+      if (siteKnown && this.savings.today.date === currentDate) {
+        const rows = this.savings.today.houseLoadHistory ||= [];
+        const last = rows[rows.length - 1];
+        if (!last || now - Number(last[0]) >= 120000) {
+          const homeW = calculatePhysicalSiteLoadW({ gridPowerW: gridFreshness.value,
+            pvPowerW, batteryPowerW: Number(this.state.lastTotalCommandW) || 0 });
+          if (Number.isFinite(homeW) && homeW >= 0 && homeW <= 100000) {
+            rows.push([Math.round(now), Math.round(homeW)]);
+            if (rows.length > 720) rows.splice(0, rows.length - 720);
+          }
+        }
       }
     } finally {
       if (this.savings.today.date !== currentDate) this.archiveSavingsDay(currentDate);
@@ -1182,6 +1210,15 @@ class HomeFluxEmsApp extends Homey.App {
     } catch (_) { /* dashboard transport is optional */ }
   }
 
+  getVisualHouseLoadHistory() {
+    const now = Date.now();
+    const date = this.getSavingsDateKey(now);
+    const today = this.savings?.today;
+    return { date, rows: today?.date === date && Array.isArray(today.houseLoadHistory)
+      ? today.houseLoadHistory.slice(-720).map(row => ({ at: Number(row[0]), powerW: Number(row[1]) })) : [],
+      source: 'p1_pv_battery_command', intervalSeconds: 120 };
+  }
+
   getSavingsStatus({ period = 'day', days = 30, selected = '' } = {}) {
     this.recordSavingsSample(Date.now());
     const normalizedPeriod = ['day', 'week', 'month', 'year', 'rolling', 'previous_month', 'calendar_month', 'calendar_year'].includes(String(period)) ? String(period) : 'day';
@@ -1196,11 +1233,12 @@ class HomeFluxEmsApp extends Homey.App {
     // Purchase prices are signed. During negative-price intervals importing
     // energy is a credit, so the real import bill may legitimately be negative.
     const grossImportCost = (Number(aggregate.directGridCost) || 0)
-      + (Number(aggregate.gridChargeCost) || 0);
+      + (Number(aggregate.gridChargeCost) || 0)
+      + (Number(aggregate.unattributedGridCost) || 0);
     const signedPvExportValue = pvExportValue(aggregate);
     // Cost view is net of PV feed-in: positive feed-in compensation lowers the
     // bill; a negative export price raises it because the user pays to inject.
-    const actualCost = grossImportCost - signedPvExportValue;
+    const actualCost = grossImportCost - signedPvExportValue - (Number(aggregate.unattributedExportValue) || 0);
     const avoidedCost = avoidedEnergyValue(aggregate);
     const periodSavings = totalSavings(aggregate);
     // Avoided-cost percentage stays based on the gross import bill plus positive
@@ -1215,6 +1253,8 @@ class HomeFluxEmsApp extends Homey.App {
     const totalPvExportKwh = pvExportKwh(aggregate);
     const chartKwh = Math.max(0, Number(aggregate.directGridKwh) || 0)
       + Math.max(0, Number(aggregate.gridChargeKwh) || 0)
+      + Math.max(0, Number(aggregate.unattributedGridKwh) || 0)
+      + Math.max(0, Number(aggregate.unattributedExportKwh) || 0)
       + Math.max(0, Number(aggregate.directPvKwh) || 0)
       + Math.max(0, Number(aggregate.pvChargeKwh) || 0)
       + totalPvExportKwh;
@@ -1236,6 +1276,9 @@ class HomeFluxEmsApp extends Homey.App {
       avoidedCostsPercentage,
       chartKwh,
       directGrid: { kwh: aggregate.directGridKwh, value: aggregate.directGridCost },
+      // Real grid-meter readings with an unknown PV/battery attribution.
+      unattributedGrid: { kwh: aggregate.unattributedGridKwh, value: aggregate.unattributedGridCost },
+      unattributedExport: { kwh: aggregate.unattributedExportKwh, value: aggregate.unattributedExportValue },
       directPv: { kwh: aggregate.directPvKwh, value: aggregate.directPvValue },
       directPvExport: { kwh: aggregate.directPvExportKwh, value: aggregate.directPvExportValue },
       pvBattery: { kwh: aggregate.pvBatteryKwh, value: aggregate.pvBatteryValue },
