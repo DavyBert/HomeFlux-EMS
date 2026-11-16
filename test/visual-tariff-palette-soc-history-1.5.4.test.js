@@ -61,7 +61,7 @@ observed.recordSocObservation(at+350000,300); // invalid never saved
 assert.equal(JSON.parse(data.get('homeflux-visual-soc-observations-v1')).length,2);
 const restarted=start(vm.createContext({window:{localStorage},Date,Number,Math,Array,JSON,DAY_MS,HOUR_MS,dayStartOf}));
 assert.equal(restarted.observedSocPoints(at+310000).length,2,'real observed SOC restored after widget reload');
-assert(visual.includes('const firstSoc=atFirst;'), 'first goal shown from actual predicted curve');
+assert(visual.includes('h,soc:lookupSoc(h),estimated:true'), 'first goal shown from actual predicted curve');
 assert(visual.includes('socObserved'), 'observed history is rendered separately');
 assert(visual.includes('START ${clockText(first.h*60)}'), 'first real reading is visibly labeled');
 assert(!visual.includes('soc0+(plannerGoal-soc0)*progress')||visual.includes('firstSoc=atFirst'));

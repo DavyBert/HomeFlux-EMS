@@ -971,7 +971,8 @@ class HomeFluxEmsApp extends Homey.App {
       storedToday.houseLoadHistory = rawStoredToday.houseLoadHistory.filter(row => Array.isArray(row)
         && Number.isFinite(Number(row[0])) && Number.isFinite(Number(row[1]))
         && Number(row[1]) >= 0 && Number(row[1]) <= 100000).slice(-720)
-        .map(row => [Math.round(Number(row[0])), Math.round(Number(row[1]))]);
+        .map(row => row.length >= 4 ? [Number(row[0]), Number(row[1]), Number(row[2]), Number(row[3])]
+          : [Math.round(Number(row[0])), Math.round(Number(row[1]))]);
     }
     let rolloverSavingsAdjustment = 0;
     if (storedToday.date && storedToday.date !== todayKey) {
@@ -1091,22 +1092,6 @@ class HomeFluxEmsApp extends Homey.App {
         const delta = totalSavings(this.savings.today) - before;
         if (Number.isFinite(delta)) this.savings.total += delta;
       }
-      // Every two minutes, retain a real P1/PV/battery-command reconstruction
-      // for the Visual Look day graph. This rides the EXISTING Savings/P1 path,
-      // is persisted by _savingsToday at its normal five-minute cadence, and
-      // never changes control decisions, tariff selection or ledger totals.
-      if (siteKnown && this.savings.today.date === currentDate) {
-        const rows = this.savings.today.houseLoadHistory ||= [];
-        const last = rows[rows.length - 1];
-        if (!last || now - Number(last[0]) >= 120000) {
-          const homeW = calculatePhysicalSiteLoadW({ gridPowerW: gridFreshness.value,
-            pvPowerW, batteryPowerW: Number(this.state.lastTotalCommandW) || 0 });
-          if (Number.isFinite(homeW) && homeW >= 0 && homeW <= 100000) {
-            rows.push([Math.round(now), Math.round(homeW)]);
-            if (rows.length > 720) rows.splice(0, rows.length - 720);
-          }
-        }
-      }
     } finally {
       if (this.savings.today.date !== currentDate) this.archiveSavingsDay(currentDate);
     }
@@ -1210,13 +1195,35 @@ class HomeFluxEmsApp extends Homey.App {
     } catch (_) { /* dashboard transport is optional */ }
   }
 
-  getVisualHouseLoadHistory() {
-    const now = Date.now();
-    const date = this.getSavingsDateKey(now);
+  recordVisualHouseLoadSample(now) {
+    // Consume the already calculated observation, even with zero configured EVs.
+    // Freshness is checked here without altering EV detection or Savings.
+    const pv = this.state.pvPowerW;
+    const fresh = this.inputSeen?.pv && Number.isFinite(pv)
+      && (pv === 0 || (this.inputUpdatedAt?.pv > 0 && now - this.inputUpdatedAt.pv <= 300000));
+    const power = fresh ? this.evSessionDetection?.physicalSiteLoadW : null;
+    this.visualHouseSampler ||= require('./lib/visual-house-history').createSampler();
+    const rows = this.visualHouseSampler.sample(now, power);
+    for (const row of rows) {
+      // Savings' existing day rollover has already run on this P1 input.
+      if (this.savings?.today?.date !== this.getSavingsDateKey(row[0])) continue;
+      const history = this.savings.today.houseLoadHistory ||= [];
+      if (!history.length || history[history.length - 1][0] < row[0]) history.push(row);
+      if (history.length > 720) history.splice(0, history.length - 720);
+    }
+  }
+
+  getVisualHouseLoadHistory({ date: knownDate, after = 0 } = {}) {
+    const date = this.getSavingsDateKey(Date.now());
     const today = this.savings?.today;
-    return { date, rows: today?.date === date && Array.isArray(today.houseLoadHistory)
-      ? today.houseLoadHistory.slice(-720).map(row => ({ at: Number(row[0]), powerW: Number(row[1]) })) : [],
-      source: 'p1_pv_battery_command', intervalSeconds: 120 };
+    const rows = today?.date === date && Array.isArray(today.houseLoadHistory) ? today.houseLoadHistory : [];
+    // Binary search: ordinary status requests neither scan nor copy the day.
+    const cursor = knownDate === date ? Math.max(0, Number(after) || 0) : 0;
+    let lo = 0, hi = rows.length;
+    while (lo < hi) { const mid = (lo + hi) >>> 1; if (Number(rows[mid][0]) <= cursor) lo = mid + 1; else hi = mid; }
+    return { date, rows: rows.slice(lo).map(row => ({ at: Number(row[0]), powerW: Number(row[1]),
+      ...(row.length >= 4 ? { endAt: Number(row[2]), coveredMs: Number(row[3]) } : {}) })),
+      source: 'shared_physical_site_load', intervalSeconds: 300 };
   }
 
   getSavingsStatus({ period = 'day', days = 30, selected = '' } = {}) {
@@ -6934,6 +6941,7 @@ class HomeFluxEmsApp extends Homey.App {
         stage('hvac_observer', () => hvacPermanent.observe(this, now));
         stage('ev_battery_reference', () => this.recordEvBatteryHouseReference(now, inputSettings));
         const evLoadProtectionChanged = stage('ev_load_detection', () => this.updateEvPortfolioLoadDetection(value, now, inputSettings));
+        this.recordVisualHouseLoadSample(now);
         stage('adaptive_feedback', () => this.updateAdaptiveSetpointDetection(value, inputSettings, now));
         stage('flexible_safety', () => this.checkFlexibleSafetyFromGrid(now, inputSettings));
         // The Hybrid watchdog is only entered when the external EMS owns control.

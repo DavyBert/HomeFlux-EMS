@@ -22,5 +22,5 @@ assert.equal(choose([{h:16,soc:NaN},day],15).h,17,'discard invalid SOC predictio
 assert(html.includes('const nextGoal=firstUpcomingSocGoal(prediction?.goals,profile.nowH);'));
 assert(!html.includes('prediction?.goals?.[1]??prediction?.goals?.[0]'));
 assert(html.includes("$('socAtMidnight').textContent=nextGoal?nl(nextGoal.soc,0)+'%':'—'"));
-assert(html.includes("$('socProjectionType').textContent=nextGoal?futureClock(nextGoal.h)+' · schatting'"));
+assert(html.includes("$('socProjectionType').textContent=nextGoal?'Tegen '+futureClock(nextGoal.h)"));
 console.log('PASS Visual Look: SoC volgend doel follows first upcoming goal and matching projected SoC');

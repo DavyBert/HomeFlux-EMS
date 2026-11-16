@@ -45,10 +45,10 @@ function between(s,start,end){
   'hidden widget must not perform an unnecessary status request');
 
  const savings=between(inner,'function updateLiveSavings(message){','function updateLiveSavingsError(message){');
- const house=between(inner,'function updateLiveHouseHistory(rows){','function liveSelectionChanged(){');
+ const house=between(inner,'function updateLiveHouseHistory(rows,initial=false){','function liveSelectionChanged(){');
  const status=between(inner,'function updateLiveStatus(status, history){','function updateLiveSavings(message){');
  assert(!savings.includes('calculateLiveViews('),'Savings response must never initiate derived calculation');
- assert(!house.includes('calculateLiveViews('),'house history response must never initiate derived calculation');
+ assert(house.includes('initial&&!initialHouseHistoryRendered&&rawStatusObject'),'only the one initial history reply may draw immediately');
  assert(status.includes('calculateLiveViews();'),'normal status refresh must still run the minute gate');
  const calcCode=between(inner,'const LIVE_CALC_INTERVAL_MS=60000;','function updateLiveStatus(status, history){');
  let clock=100000;

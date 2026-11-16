@@ -1420,50 +1420,41 @@
       // Visual Look on the first display, despite a later setHeight() request.
       let resolveFirstVisualHeight = null;
       const firstVisualHeight = visualLook ? new Promise(resolve => { resolveFirstVisualHeight = resolve; }) : null;
-      let latestHistory = [];
-      let persistedHouseHistory = [];
-      let lastHouseHistoryAt = 0, houseHistoryPending = false;
-      function combinedHouseHistory() {
-        const rows = [...persistedHouseHistory, ...latestHistory].sort((a,b)=>a.at-b.at);
-        const combined = [];
-        for (const item of rows) {
-          if (!combined.length || item.at - combined[combined.length - 1].at > 30000) combined.push(item);
-          else if (item.at > combined[combined.length - 1].at) combined[combined.length - 1] = item;
+      let persistedHouseHistory = [], historyDate = '', historyAfter = 0;
+      let houseHistoryStarted = false, houseHistoryDone = false, houseHistoryPending = false;
+      let visualHistoryCached = null, visualHistoryDirty = false, latestVisualPlan = null;
+      function mergeHouseHistory(result) {
+        if (!result || !Array.isArray(result.rows) || typeof result.date !== 'string') return;
+        // A delayed initial response cannot replace a newer day's status delta.
+        if (historyDate && result.date < historyDate) return;
+        if (result.date !== historyDate) {
+          historyDate = result.date; historyAfter = 0; persistedHouseHistory = []; visualHistoryDirty = true;
         }
-        return combined;
+        for (const row of result.rows) {
+          const at = Number(row?.at), powerW = Number(row?.powerW);
+          if (!(at > historyAfter) || !Number.isFinite(powerW) || powerW < 0 || powerW > 100000) continue;
+          persistedHouseHistory.push(row); historyAfter = at; visualHistoryDirty = true;
+        }
+        if (persistedHouseHistory.length > 720) persistedHouseHistory.splice(0,persistedHouseHistory.length-720);
       }
-      // A new day-history snapshot is prepared at most once a minute. Normal
-      // live /status updates do not copy and sort up to 720 old samples each
-      // time; a new iframe may receive the most recent cached snapshot.
-      let visualHistoryCalculatedAt=0, visualHistoryCached=null;
-      function visualHistorySnapshot(includeCached=false){
-        const now=Date.now();
-        if(!visualHistoryCalculatedAt || now-visualHistoryCalculatedAt>=60000){
-          visualHistoryCached=combinedHouseHistory();
-          visualHistoryCalculatedAt=now;
+      function visualHistorySnapshot(includeCached=false) {
+        if (visualHistoryDirty) {
+          visualHistoryCached = persistedHouseHistory.slice(); visualHistoryDirty = false;
           return visualHistoryCached;
         }
-        return includeCached?visualHistoryCached:undefined;
+        return includeCached ? visualHistoryCached : undefined;
       }
-      async function refreshHouseHistory(force = false) {
-        if (!visualLook || houseHistoryPending || (!force && Date.now()-lastHouseHistoryAt < 120000)) return;
-        houseHistoryPending = true;
+      async function refreshHouseHistory() {
+        if (!visualLook || houseHistoryStarted) return;
+        houseHistoryStarted = true; houseHistoryPending = true;
         try {
           const result = await Homey.api('GET','/house-load-history',{});
-          if (!result || !Array.isArray(result.rows)) return;
-          const today = new Date().toDateString();
-          persistedHouseHistory = result.rows.filter(row => {
-            const at = Number(row?.at), powerW = Number(row?.powerW);
-            return Number.isFinite(at) && at > 0 && new Date(at).toDateString() === today
-              && Number.isFinite(powerW) && powerW >= 0 && powerW <= 100000;
-          }).slice(-720);
-          lastHouseHistoryAt = Date.now();
-          const rows=visualHistorySnapshot();
-          if(rows)sendVisual('homeflux.visual.houseHistory',{rows});
+          mergeHouseHistory(result);
+          const rows = visualHistorySnapshot(true);
+          if (rows) sendVisual('homeflux.visual.houseHistory',{rows,initial:true});
         } catch (error) { console.warn('HomeFlux Visual Look day history unavailable',error); }
-        finally { houseHistoryPending = false; }
+        finally { houseHistoryPending = false; houseHistoryDone = true; }
       }
-      let lastHistoryAt = 0;
       let requestedPeriod = 'day', requestedEv = 'all';
       let savingsCache = new Map(), savingsHouseCache = new Map(), savingsPending = new Set();
       let lastSavingsVisualToken = '';
@@ -1616,23 +1607,15 @@
           // No dependency on parent-side DOM access: messages still work.
         }
       }
+      let sentVisualPlanRevision=null;
       function sendVisual(type, data = {}) {
         if (!visualLook || !visualView.contentWindow) return;
+        if(type==='homeflux.visual.status'&&data.status?.visualSocPlan){
+          const plan=data.status.visualSocPlan;
+          if(sentVisualPlanRevision===plan.revision){data={...data,status:{...data.status}};delete data.status.visualSocPlan;}
+          else sentVisualPlanRevision=plan.revision;
+        }
         visualView.contentWindow.postMessage({ type, ...data }, '*');
-      }
-      function collectHouseSample(status) {
-        const now = Date.now();
-        // Do not turn an unavailable physical site-load reading (null) into
-        // a false zero. Its source is already calculated by the EMS; no new
-        // P1, PV or battery listeners are introduced by Visual Look.
-        const raw = status?.evGridControl?.physicalSiteLoadW;
-        if (raw === null || raw === undefined || raw === '' || typeof raw === 'boolean') return;
-        const value = Number(raw);
-        if (now - lastHistoryAt < 60_000 || !Number.isFinite(value) || value < 0 || value > 100_000) return;
-        lastHistoryAt = now;
-        latestHistory.push({ at: now, powerW: value });
-        const start = new Date(now); start.setHours(0, 0, 0, 0);
-        latestHistory = latestHistory.filter(x => x.at >= start.getTime()).slice(-1000);
       }
       async function requestVisualSavings(period = requestedPeriod, ev = requestedEv, force = false) {
         if (!visualLook || !Object.hasOwn(savingsDays, period) || !['all','1','2','3','4'].includes(ev)) return;
@@ -1708,13 +1691,14 @@
         if (!visualLook || event.source !== visualView.contentWindow || !event.data) return;
         const msg = event.data;
         if (msg.type === 'homeflux.visual.ready') {
+          sentVisualPlanRevision=null;
           lastSavingsVisualToken = '';
           observeVisualContent();
           sendVisualAppearance(true);
           sendVisualWidgetConfiguration();
           if (latestStatus) sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot(true)});
           requestVisualSavings().catch(console.error);
-          refreshHouseHistory(true).catch(console.error);
+          refreshHouseHistory().catch(console.error);
         } else if (msg.type === 'homeflux.visual.height') {
           // Prefer a direct measurement. The message is a safe fallback when
           // the Homey webview does not expose its nested document to us.
@@ -1728,12 +1712,14 @@
       if (visualLook) {
         window.addEventListener('message',visualMessage);
         visualView.addEventListener('load', () => {
+          sentVisualPlanRevision=null;
           observeVisualContent();
           sendVisualAppearance(true);
           sendVisualWidgetConfiguration();
           if (latestStatus) sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot(true)});
         });
       }
+      if (visualLook) refreshHouseHistory().catch(console.error);
       let wafGuardEvent = null;
       let lastStatusStartedAt=0,lastStatusSuccessStartedAt=0;
       let evChangedRefreshTimer=null,lastEvChangedAt=0;
@@ -1743,9 +1729,16 @@
         const requestedAt=Date.now();
         lastStatusStartedAt=requestedAt;
         try {
-          const status = await Homey.api('GET', visualLook ? '/status?visualSavings=1' : '/status', {});
+          const visualQuery = visualLook ? '/status?visualSavings=1&planRevision='+encodeURIComponent(latestVisualPlan?.revision || 0)
+            +(houseHistoryDone ? '&historyDate='+encodeURIComponent(historyDate)+'&historyAfter='+historyAfter : '') : '/status';
+          const status = await Homey.api('GET', visualQuery, {});
           lastStatusSuccessStartedAt=requestedAt;
+          if (visualLook) {
+            if (status?.visualSocPlan) latestVisualPlan = status.visualSocPlan;
+            if (status?.visualHouseHistory) mergeHouseHistory(status.visualHouseHistory);
+          }
           latestStatus = status || {};
+          if (visualLook && latestVisualPlan) latestStatus.visualSocPlan = latestVisualPlan;
           if (visualLook) {
             // Recover the persisted presentation after a cold start where
             // /visual-profile was not ready yet. This is not a profile save:
@@ -1761,11 +1754,10 @@
           applyWafGuardEvent();
           if (visualLook) {
             visualView.classList.remove('hidden');
-            collectHouseSample(latestStatus);
             sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot()});
             // Today: 1 minute; historic: 5 minutes. House data never awaits EV responses.
             requestVisualSavings().catch(console.error);
-            refreshHouseHistory().catch(console.error);
+
           } else {
             renderStatus(latestStatus, settings, Homey);
             const previousAlert = alertIdentity;

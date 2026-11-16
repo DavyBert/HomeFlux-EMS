@@ -2,6 +2,7 @@
 
 const { localDateTimeUtcMs, inferIntervalMinutes } = require('../../lib/homey-energy');
 const inputWarnings = require('../../lib/input-warnings');
+const { batteryPowerLimits } = require('../../lib/ems-engine');
 const { buildWidgetTouTimeline, widgetTouSignature } = require('../../lib/widget-tou-timeline');
 const { shiftKey, createHistoryCache } = require('../../lib/savings-history');
 const { calibrateEnergy, addDays } = require('../../lib/savings');
@@ -142,6 +143,24 @@ function getVisualSavingsSnapshot(app, now, settings) {
   return value;
 }
 
+// One compact snapshot per actual cached plan; never invoke the planner here.
+const visualPlans = new WeakMap();
+function getVisualSocPlanSnapshot(app) {
+  const plan = app.planningCache?.value?.plan;
+  const previous = visualPlans.get(app);
+  const calculatedAt = app.planningCache?.lastCalculatedAt;
+  if (previous && previous.plan === plan && previous.rows === plan?.rows && previous.calculatedAt === calculatedAt)
+    return previous.snapshot;
+  const revision = Math.max(Date.now(), (previous?.snapshot.revision || 0) + 1);
+  const snapshot = { revision, rows: (plan?.rows || []).filter(row => row?.plannedNetCharge).map(row => ({
+    startAt: Number(row.plannedStartAt ?? row.startAt), endAt: Number(row.plannedEndAt ?? row.endAt),
+    plannedChargeW: Number(row.plannedChargeW) || 0, plannedEnergyKwh: Number(row.plannedEnergyKwh) || 0,
+    targetSoc: plan.targetSoc, plannedNetCharge: true,
+  })) };
+  visualPlans.set(app, { plan, rows: plan?.rows, calculatedAt, snapshot });
+  return snapshot;
+}
+
 module.exports = {
   async getVisualWidgetProfile({ homey, query }) {
     return require('../../lib/visual-widget-profiles').get(homey,String(query?.name||'medium'));
@@ -187,6 +206,16 @@ module.exports = {
     const contract = String(settings.contractType || '');
     const visualRequest = query?.visualSavings === '1' || query?.visualSavings === 1 || query?.visualSavings === true;
     if (visualRequest) {
+      const plan = getVisualSocPlanSnapshot(app);
+      const knownSocs=status.inputs?.batterySoc;
+      const batteryLimits = Array.from({length:Math.max(0,Math.min(8,Number(settings.batteryCount)||0))}, (_,i)=>i)
+        .filter(i=>!Array.isArray(knownSocs)||(knownSocs[i]!==null&&knownSocs[i]!==undefined
+          &&Number.isFinite(Number(knownSocs[i]))&&Number(knownSocs[i])>=0&&Number(knownSocs[i])<=100))
+        .map(i=>batteryPowerLimits(settings,i));
+      status.visualSocPlanRevision = plan.revision;
+      if (Number(query?.planRevision) !== plan.revision) status.visualSocPlan = plan;
+      if (query?.historyAfter !== undefined && typeof app.getVisualHouseLoadHistory === 'function')
+        status.visualHouseHistory = app.getVisualHouseLoadHistory({ date: query.historyDate, after: query.historyAfter });
       // Presentation-only planner context, reusing the already-read settings.
       // These fields are intentionally not part of the classic status widget.
       status.visualPlanner = {
@@ -198,9 +227,24 @@ module.exports = {
         // Read-only policy context, only in Visual Look's optional status.
         // Never used by the controller, planning or the classic widget.
         forcedMode: String(settings.forcedMode || 'auto'),
-        maxTotalDischargeW: Number(settings.maxTotalDischargeW ?? 2500),
+        maxTotalChargeW: Math.min(Number(settings.maxTotalChargeW ?? 6000),
+          batteryLimits.reduce((sum,item)=>sum+item.maxCharge,0)),
+        batteryNightPlan: settings.batteryNightPlan === true,
+        chargeStrategy: settings.chargeStrategy,
+        expectedEnergyNeedKwh: settings.expectedEnergyNeedKwh,
+        peakReserveMonths: Array.from({length:12}, (_,i) => Boolean(settings['peakReserveMonth'+(i+1)])),
+        sunnyOverrideDate: String(app.lowForecastSunnyOverrideDate || ''),
+        maxTotalDischargeW: Math.min(Number(settings.maxTotalDischargeW ?? 2500),batteryLimits.reduce((sum,item)=>sum+item.maxDischarge,0)),
         nightHysteresisEnabled: settings.nightHysteresisEnabled !== false,
       };
+    }
+    if (visualRequest && contract === 'fixed') {
+      // An actual fixed contract has a known constant future rate.
+      const startAt=Math.floor(now / 86400000) * 86400000;
+      status.tariffTimeline=[{startAt,endAt:startAt+3*86400000,className:'normal',
+        label:String(status.tariff?.label || 'Vast tarief'),price:Number(settings.fixedImportPrice),
+        nightChargeAllowed:true,dayChargeAllowed:true}];
+      status.tariffTimelineSource='configured-fixed';
     }
     if (visualRequest && contract === 'tou') {
       try {

@@ -1,0 +1,1516 @@
+--- 1.5.6/.homeychangelog.json
++++ 1.5.7/.homeychangelog.json
+@@ -1,4 +1,11 @@
+ {
++  "1.5.7": {
++    "en": "Independent energy-based SoC forecast with future charging windows and a clear distinction between existing EMS plans and widget estimates.\nCompact aligned daily overview and charging values, with contract-specific tariff legends.\nShared P1 house-load history with time-weighted five-minute samples and incremental updates.\nCached forecast inputs and compact planning snapshots reduce repeated widget processing.",
++    "nl": "Zelfstandige SoC-prognose op basis van energiestromen, met toekomstige laadvensters en onderscheid tussen bestaande EMS-plannen en widgetschattingen.\nCompact uitgelijnd dagoverzicht en laadplan, met contractafhankelijke tarieflegenda.\nGedeelde P1-huisverbruikshistoriek met tijdgewogen vijfminutenmetingen en incrementele updates.\nHergebruik van prognosegegevens en compacte planningssnapshots vermindert herhaalde widgetverwerking.",
++    "fr": "Prévision SoC indépendante fondée sur les flux d’énergie, avec fenêtres de charge futures et distinction entre plans EMS existants et estimations du widget.\nVue journalière et valeurs de charge compactes et alignées, avec légende tarifaire adaptée au contrat.\nHistorique partagé de consommation P1, moyennes pondérées sur cinq minutes et mises à jour incrémentales.\nRéutilisation des données de prévision et instantanés de planification compacts pour réduire les traitements répétés.",
++    "de": "Eigenständige SoC-Prognose aus Energieflüssen mit zukünftigen Ladefenstern und klarer Unterscheidung zwischen EMS-Plänen und Widget-Schätzungen.\nKompakte, ausgerichtete Tagesübersicht und Ladewerte mit vertragsabhängiger Tariflegende.\nGemeinsamer P1-Hausverbrauchsverlauf mit zeitgewichteten Fünf-Minuten-Mittelwerten und inkrementellen Updates.\nZwischengespeicherte Prognosedaten und kompakte Planungsschnappschüsse reduzieren wiederholte Widget-Verarbeitung.",
++    "es": "Previsión SoC independiente basada en flujos de energía, con futuras ventanas de carga y distinción entre planes EMS y estimaciones del widget.\nResumen diario y valores de carga compactos y alineados, con leyenda de tarifas según el contrato.\nHistorial compartido de consumo P1 con medias ponderadas de cinco minutos y actualizaciones incrementales.\nReutilización de datos de previsión e instantáneas de planificación compactas para reducir el procesamiento repetido."
++  },
+   "1.5.6": {
+     "nl": "Visual Look-widget: volledige EV-historiek komt mee in hetzelfde statuspakket als de woningsavings, voor alle periodes en ingestelde EV’s. Zonnevoordeel, netkosten en laadenergie worden rechtstreeks ingelezen, zonder aparte EV-opvraging.",
+     "en": "Visual Look widget: complete EV history is included in the same status snapshot as house Savings, for all periods and configured EVs. Solar savings, grid costs and charging energy are read directly without a separate EV request.",
+--- 1.5.6/.homeycompose/app.json
++++ 1.5.7/.homeycompose/app.json
+@@ -1,6 +1,6 @@
+ {
+   "id": "com.homeflux.ems",
+-  "version": "1.5.6",
++  "version": "1.5.7",
+   "homeyCommunityTopicId": 158982,
+   "compatibility": ">=12.3.0",
+   "sdk": 3,
+--- 1.5.6/README.md
++++ 1.5.7/README.md
+@@ -11,6 +11,33 @@
+ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow cards remain supported.
+ 
+ [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
++
++## Release notes — 1.5.7
++
++**NL** — Zelfstandige SoC-prognose op basis van energiestromen, met toekomstige laadvensters en onderscheid tussen bestaande EMS-plannen en widgetschattingen.
++Compact uitgelijnd dagoverzicht en laadplan, met contractafhankelijke tarieflegenda.
++Gedeelde P1-huisverbruikshistoriek met tijdgewogen vijfminutenmetingen en incrementele updates.
++Hergebruik van prognosegegevens en compacte planningssnapshots vermindert herhaalde widgetverwerking.
++
++**EN** — Independent energy-based SoC forecast with future charging windows and a clear distinction between existing EMS plans and widget estimates.
++Compact aligned daily overview and charging values, with contract-specific tariff legends.
++Shared P1 house-load history with time-weighted five-minute samples and incremental updates.
++Cached forecast inputs and compact planning snapshots reduce repeated widget processing.
++
++**FR** — Prévision SoC indépendante fondée sur les flux d’énergie, avec fenêtres de charge futures et distinction entre plans EMS existants et estimations du widget.
++Vue journalière et valeurs de charge compactes et alignées, avec légende tarifaire adaptée au contrat.
++Historique partagé de consommation P1, moyennes pondérées sur cinq minutes et mises à jour incrémentales.
++Réutilisation des données de prévision et instantanés de planification compacts pour réduire les traitements répétés.
++
++**DE** — Eigenständige SoC-Prognose aus Energieflüssen mit zukünftigen Ladefenstern und klarer Unterscheidung zwischen EMS-Plänen und Widget-Schätzungen.
++Kompakte, ausgerichtete Tagesübersicht und Ladewerte mit vertragsabhängiger Tariflegende.
++Gemeinsamer P1-Hausverbrauchsverlauf mit zeitgewichteten Fünf-Minuten-Mittelwerten und inkrementellen Updates.
++Zwischengespeicherte Prognosedaten und kompakte Planungsschnappschüsse reduzieren wiederholte Widget-Verarbeitung.
++
++**ES** — Previsión SoC independiente basada en flujos de energía, con futuras ventanas de carga y distinción entre planes EMS y estimaciones del widget.
++Resumen diario y valores de carga compactos y alineados, con leyenda de tarifas según el contrato.
++Historial compartido de consumo P1 con medias ponderadas de cinco minutos y actualizaciones incrementales.
++Reutilización de datos de previsión e instantáneas de planificación compactas para reducir el procesamiento repetido.
+ 
+ ## Release notes — 1.5.6
+ 
+--- 1.5.6/app.js
++++ 1.5.7/app.js
+@@ -971,7 +971,8 @@
+       storedToday.houseLoadHistory = rawStoredToday.houseLoadHistory.filter(row => Array.isArray(row)
+         && Number.isFinite(Number(row[0])) && Number.isFinite(Number(row[1]))
+         && Number(row[1]) >= 0 && Number(row[1]) <= 100000).slice(-720)
+-        .map(row => [Math.round(Number(row[0])), Math.round(Number(row[1]))]);
++        .map(row => row.length >= 4 ? [Number(row[0]), Number(row[1]), Number(row[2]), Number(row[3])]
++          : [Math.round(Number(row[0])), Math.round(Number(row[1]))]);
+     }
+     let rolloverSavingsAdjustment = 0;
+     if (storedToday.date && storedToday.date !== todayKey) {
+@@ -1091,22 +1092,6 @@
+         const delta = totalSavings(this.savings.today) - before;
+         if (Number.isFinite(delta)) this.savings.total += delta;
+       }
+-      // Every two minutes, retain a real P1/PV/battery-command reconstruction
+-      // for the Visual Look day graph. This rides the EXISTING Savings/P1 path,
+-      // is persisted by _savingsToday at its normal five-minute cadence, and
+-      // never changes control decisions, tariff selection or ledger totals.
+-      if (siteKnown && this.savings.today.date === currentDate) {
+-        const rows = this.savings.today.houseLoadHistory ||= [];
+-        const last = rows[rows.length - 1];
+-        if (!last || now - Number(last[0]) >= 120000) {
+-          const homeW = calculatePhysicalSiteLoadW({ gridPowerW: gridFreshness.value,
+-            pvPowerW, batteryPowerW: Number(this.state.lastTotalCommandW) || 0 });
+-          if (Number.isFinite(homeW) && homeW >= 0 && homeW <= 100000) {
+-            rows.push([Math.round(now), Math.round(homeW)]);
+-            if (rows.length > 720) rows.splice(0, rows.length - 720);
+-          }
+-        }
+-      }
+     } finally {
+       if (this.savings.today.date !== currentDate) this.archiveSavingsDay(currentDate);
+     }
+@@ -1210,13 +1195,35 @@
+     } catch (_) { /* dashboard transport is optional */ }
+   }
+ 
+-  getVisualHouseLoadHistory() {
+-    const now = Date.now();
+-    const date = this.getSavingsDateKey(now);
++  recordVisualHouseLoadSample(now) {
++    // Consume the already calculated observation, even with zero configured EVs.
++    // Freshness is checked here without altering EV detection or Savings.
++    const pv = this.state.pvPowerW;
++    const fresh = this.inputSeen?.pv && Number.isFinite(pv)
++      && (pv === 0 || (this.inputUpdatedAt?.pv > 0 && now - this.inputUpdatedAt.pv <= 300000));
++    const power = fresh ? this.evSessionDetection?.physicalSiteLoadW : null;
++    this.visualHouseSampler ||= require('./lib/visual-house-history').createSampler();
++    const rows = this.visualHouseSampler.sample(now, power);
++    for (const row of rows) {
++      // Savings' existing day rollover has already run on this P1 input.
++      if (this.savings?.today?.date !== this.getSavingsDateKey(row[0])) continue;
++      const history = this.savings.today.houseLoadHistory ||= [];
++      if (!history.length || history[history.length - 1][0] < row[0]) history.push(row);
++      if (history.length > 720) history.splice(0, history.length - 720);
++    }
++  }
++
++  getVisualHouseLoadHistory({ date: knownDate, after = 0 } = {}) {
++    const date = this.getSavingsDateKey(Date.now());
+     const today = this.savings?.today;
+-    return { date, rows: today?.date === date && Array.isArray(today.houseLoadHistory)
+-      ? today.houseLoadHistory.slice(-720).map(row => ({ at: Number(row[0]), powerW: Number(row[1]) })) : [],
+-      source: 'p1_pv_battery_command', intervalSeconds: 120 };
++    const rows = today?.date === date && Array.isArray(today.houseLoadHistory) ? today.houseLoadHistory : [];
++    // Binary search: ordinary status requests neither scan nor copy the day.
++    const cursor = knownDate === date ? Math.max(0, Number(after) || 0) : 0;
++    let lo = 0, hi = rows.length;
++    while (lo < hi) { const mid = (lo + hi) >>> 1; if (Number(rows[mid][0]) <= cursor) lo = mid + 1; else hi = mid; }
++    return { date, rows: rows.slice(lo).map(row => ({ at: Number(row[0]), powerW: Number(row[1]),
++      ...(row.length >= 4 ? { endAt: Number(row[2]), coveredMs: Number(row[3]) } : {}) })),
++      source: 'shared_physical_site_load', intervalSeconds: 300 };
+   }
+ 
+   getSavingsStatus({ period = 'day', days = 30, selected = '' } = {}) {
+@@ -6934,6 +6941,7 @@
+         stage('hvac_observer', () => hvacPermanent.observe(this, now));
+         stage('ev_battery_reference', () => this.recordEvBatteryHouseReference(now, inputSettings));
+         const evLoadProtectionChanged = stage('ev_load_detection', () => this.updateEvPortfolioLoadDetection(value, now, inputSettings));
++        this.recordVisualHouseLoadSample(now);
+         stage('adaptive_feedback', () => this.updateAdaptiveSetpointDetection(value, inputSettings, now));
+         stage('flexible_safety', () => this.checkFlexibleSafetyFromGrid(now, inputSettings));
+         // The Hybrid watchdog is only entered when the external EMS owns control.
+--- 1.5.6/app.json
++++ 1.5.7/app.json
+@@ -1,7 +1,7 @@
+ {
+   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
+   "id": "com.homeflux.ems",
+-  "version": "1.5.6",
++  "version": "1.5.7",
+   "homeyCommunityTopicId": 158982,
+   "compatibility": ">=12.3.0",
+   "sdk": 3,
+--- 1.5.6/lib/visual-widget-profiles.js
++++ 1.5.7/lib/visual-widget-profiles.js
+@@ -11,7 +11,7 @@
+ // the daily overview, with a separate on/off setting in each display profile.
+ const DAY_ITEMS = Object.freeze([
+   'daySoc','dayTariff','dayWaf','dayChart','dayHouse','dayPv','dayBattery',
+-  'dayTariffTimeline','dayNextCharge','dayGridPlanned','dayEnergyNeed','dayTargetSoc',
++  'dayTariffTimeline','dayNextCharge','dayPlanSoc','dayGridPlanned','dayEnergyNeed','dayTargetSoc',
+ ]);
+ const PROFILES = Object.freeze(['compact','medium','full']);
+ function theme() { return {background:null,cardBackground:null,backgroundBrightness:null,cardBrightness:null,graphTransparent:false,tariffColors:{cheap:null,normal:null,expensive:null},sections:{}}; }
+@@ -54,7 +54,7 @@
+   const legacyMap={
+     metricsSection:['daySoc','dayTariff','dayWaf'],
+     tariffSection:['dayTariffTimeline','dayNextCharge'],
+-    planStatsSection:['dayGridPlanned','dayEnergyNeed','dayTargetSoc'],
++    planStatsSection:['dayPlanSoc','dayGridPlanned','dayEnergyNeed','dayTargetSoc'],
+   };
+   const migratedDayHidden=oldHidden.flatMap(id=>legacyMap[id]||[]);
+   const dayHidden=uniqueIds(Array.isArray(val.dayHidden)?val.dayHidden:migratedDayHidden,DAY_ITEMS);
+--- 1.5.6/package-lock.json
++++ 1.5.7/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "com.homeflux.ems",
+-  "version": "1.5.6",
++  "version": "1.5.7",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "com.homeflux.ems",
+-      "version": "1.5.6",
++      "version": "1.5.7",
+       "license": "GPL-3.0-only",
+       "dependencies": {
+         "homey-api": "3.21.2"
+--- 1.5.6/package.json
++++ 1.5.7/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "com.homeflux.ems",
+-  "version": "1.5.6",
++  "version": "1.5.7",
+   "description": "HomeFlux EMS coordinates batteries, solar and flexible loads around your energy contract and grid limits.",
+   "main": "app.js",
+   "private": true,
+--- 1.5.6/settings/visual-widget-profiles-ui.js
++++ 1.5.7/settings/visual-widget-profiles-ui.js
+@@ -17,7 +17,7 @@
+     ['Tarief en laadplanning',[
+       ['dayTariffTimeline','Tariefverloop'],['dayNextCharge','Volgend laadvenster'],
+       ['dayGridPlanned','Gepland netladen'],['dayEnergyNeed','Nog nodig tot doel'],
+-      ['dayTargetSoc','SoC ⇒ doel-SoC'],
++      ['dayPlanSoc','SOC nu (laadplan)'],['dayTargetSoc','Doel-SOC'],
+     ]],
+   ];
+   const NAMES = {compact:'Compact',medium:'Medium',full:'Full'};
+--- 1.5.6/test/visual-house-history-1.5.4.test.js
++++ 1.5.7/test/visual-house-history-1.5.4.test.js
+@@ -27,37 +27,39 @@
+ app.inputSeen={grid:true,pv:true};
+ app.inputUpdatedAt={pv:T-3000};
+ const totals=()=>app.savings.today.directGridKwh;
++app.evSessionDetection={physicalSiteLoadW:2300};
+ app.recordSavingsSample(T);
++app.recordVisualHouseLoadSample(T);
++assert.equal(app.savings.today.houseLoadHistory,undefined);
++let firstTotal=totals();
++app.recordSavingsSample(T+30000);
++assert.ok(totals()>firstTotal,'Savings continues independently');
++for(let at=T+10000;at<=T+300000;at+=10000){app.inputUpdatedAt.pv=at;app.recordVisualHouseLoadSample(at)}
+ assert.equal(app.savings.today.houseLoadHistory.length,1);
+ assert.equal(app.savings.today.houseLoadHistory[0][1],2300);
+-let firstTotal=totals();
+-app.recordSavingsSample(T+30000);
+-assert.equal(app.savings.today.houseLoadHistory.length,1);
+-assert.ok(totals()>firstTotal);
+-app.recordSavingsSample(T+120000);
+-assert.equal(app.savings.today.houseLoadHistory.length,2);
+-assert.equal(app.savings.today.houseLoadHistory[1][1],2300);
++assert.equal(app.savings.today.houseLoadHistory[0][3],300000);
+ (async()=>{
+  const result=await api.getHouseLoadHistory({homey:{app}});
+- assert.equal(result.rows.length,2);
+- assert.equal(result.intervalSeconds,120);
+- assert.equal(result.source,'p1_pv_battery_command');
++ assert.equal(result.rows.length,1);
++ assert.equal(result.intervalSeconds,300);
++ assert.equal(result.source,'shared_physical_site_load');
+  app.persistSavingsState=HomeFlux.prototype.persistSavingsState;
+  app.syncEmsDevices=()=>Promise.resolve();
+- app.persistSavingsState(T+120000,true);
+- assert.equal(store.get('_savingsToday').houseLoadHistory.length,2);
++ app.persistSavingsState(T+300000,true);
++ assert.equal(store.get('_savingsToday').houseLoadHistory.length,1);
+  const restarted=Object.create(HomeFlux.prototype);
+  restarted.homey=app.homey;
+  restarted.getSavingsDateKey=app.getSavingsDateKey;
+  restarted.savings={today:null,history:{},inventory:emptyInventory(),total:0,lastSampleAt:T};
+  restarted.restoreSavingsState();
+- assert.equal(restarted.getVisualHouseLoadHistory().rows.length,2);
++ assert.equal(restarted.getVisualHouseLoadHistory().rows.length,1);
++ assert.equal(restarted.getVisualHouseLoadHistory().rows[0].coveredMs,300000);
+  // No fresh PV reading: do not fabricate a site-load observation.
+  const count=app.savings.today.houseLoadHistory.length;
+  app.inputSeen.pv=false;
+- app.recordSavingsSample(T+270000);
++ app.recordVisualHouseLoadSample(T+330000);
+  assert.equal(app.savings.today.houseLoadHistory.length,count);
+  // Storage is the existing _savingsToday value; there is no new settings entry.
+  assert.deepEqual([...store.keys()].filter(x=>x.startsWith('_visual')),[]);
+- console.log('Visual House: valid P1+PV sampling, 2-minute throttle, no fabricated PV, saved/restored and endpoint PASS');
++ console.log('Visual House: shared P1+PV observations, time-weighted 5-minute averages, no fabricated PV, saved/restored and endpoint PASS');
+ })().catch(error=>{console.error(error);process.exitCode=1});
+--- 1.5.6/test/visual-look-1.5.3.test.js
++++ 1.5.7/test/visual-look-1.5.3.test.js
+@@ -24,7 +24,8 @@
+ assert(statusHtml.includes('if (visualLook) {'));
+ assert(statusHtml.includes('renderStatus(latestStatus, settings, Homey)'));
+ assert(statusHtml.includes("'/status'"));
+-assert(statusHtml.includes("collectHouseSample(latestStatus)"));
++assert(!statusHtml.includes("collectHouseSample(latestStatus)"));
++assert(statusHtml.includes("mergeHouseHistory(status.visualHouseHistory)"));
+ assert(statusHtml.includes("period === 'day' ? 60000 : 300000"),'Live day Savings must refresh within 1 minute; historical periods may retain 5 minute cache');
+ assert(statusHtml.includes('event.source !== visualView.contentWindow'),'Child messages must be authenticated');
+ assert(visualHtml.includes('homeflux.visual.status'));
+--- 1.5.6/test/visual-minute-refresh-isolation-1.5.4.test.js
++++ 1.5.7/test/visual-minute-refresh-isolation-1.5.4.test.js
+@@ -45,10 +45,10 @@
+   'hidden widget must not perform an unnecessary status request');
+ 
+  const savings=between(inner,'function updateLiveSavings(message){','function updateLiveSavingsError(message){');
+- const house=between(inner,'function updateLiveHouseHistory(rows){','function liveSelectionChanged(){');
++ const house=between(inner,'function updateLiveHouseHistory(rows,initial=false){','function liveSelectionChanged(){');
+  const status=between(inner,'function updateLiveStatus(status, history){','function updateLiveSavings(message){');
+  assert(!savings.includes('calculateLiveViews('),'Savings response must never initiate derived calculation');
+- assert(!house.includes('calculateLiveViews('),'house history response must never initiate derived calculation');
++ assert(house.includes('initial&&!initialHouseHistoryRendered&&rawStatusObject'),'only the one initial history reply may draw immediately');
+  assert(status.includes('calculateLiveViews();'),'normal status refresh must still run the minute gate');
+  const calcCode=between(inner,'const LIVE_CALC_INTERVAL_MS=60000;','function updateLiveStatus(status, history){');
+  let clock=100000;
+--- 1.5.6/test/visual-next-soc-goal-1.5.4.test.js
++++ 1.5.7/test/visual-next-soc-goal-1.5.4.test.js
+@@ -22,5 +22,5 @@
+ assert(html.includes('const nextGoal=firstUpcomingSocGoal(prediction?.goals,profile.nowH);'));
+ assert(!html.includes('prediction?.goals?.[1]??prediction?.goals?.[0]'));
+ assert(html.includes("$('socAtMidnight').textContent=nextGoal?nl(nextGoal.soc,0)+'%':'—'"));
+-assert(html.includes("$('socProjectionType').textContent=nextGoal?futureClock(nextGoal.h)+' · schatting'"));
++assert(html.includes("$('socProjectionType').textContent=nextGoal?'Tegen '+futureClock(nextGoal.h)"));
+ console.log('PASS Visual Look: SoC volgend doel follows first upcoming goal and matching projected SoC');
+--- 1.5.6/test/visual-tariff-palette-soc-history-1.5.4.test.js
++++ 1.5.7/test/visual-tariff-palette-soc-history-1.5.4.test.js
+@@ -61,7 +61,7 @@
+ assert.equal(JSON.parse(data.get('homeflux-visual-soc-observations-v1')).length,2);
+ const restarted=start(vm.createContext({window:{localStorage},Date,Number,Math,Array,JSON,DAY_MS,HOUR_MS,dayStartOf}));
+ assert.equal(restarted.observedSocPoints(at+310000).length,2,'real observed SOC restored after widget reload');
+-assert(visual.includes('const firstSoc=atFirst;'), 'first goal shown from actual predicted curve');
++assert(visual.includes('h,soc:lookupSoc(h),estimated:true'), 'first goal shown from actual predicted curve');
+ assert(visual.includes('socObserved'), 'observed history is rendered separately');
+ assert(visual.includes('START ${clockText(first.h*60)}'), 'first real reading is visibly labeled');
+ assert(!visual.includes('soc0+(plannerGoal-soc0)*progress')||visual.includes('firstSoc=atFirst'));
+--- 1.5.6/widgets/status/api.js
++++ 1.5.7/widgets/status/api.js
+@@ -2,6 +2,7 @@
+ 
+ const { localDateTimeUtcMs, inferIntervalMinutes } = require('../../lib/homey-energy');
+ const inputWarnings = require('../../lib/input-warnings');
++const { batteryPowerLimits } = require('../../lib/ems-engine');
+ const { buildWidgetTouTimeline, widgetTouSignature } = require('../../lib/widget-tou-timeline');
+ const { shiftKey, createHistoryCache } = require('../../lib/savings-history');
+ const { calibrateEnergy, addDays } = require('../../lib/savings');
+@@ -142,6 +143,24 @@
+   return value;
+ }
+ 
++// One compact snapshot per actual cached plan; never invoke the planner here.
++const visualPlans = new WeakMap();
++function getVisualSocPlanSnapshot(app) {
++  const plan = app.planningCache?.value?.plan;
++  const previous = visualPlans.get(app);
++  const calculatedAt = app.planningCache?.lastCalculatedAt;
++  if (previous && previous.plan === plan && previous.rows === plan?.rows && previous.calculatedAt === calculatedAt)
++    return previous.snapshot;
++  const revision = Math.max(Date.now(), (previous?.snapshot.revision || 0) + 1);
++  const snapshot = { revision, rows: (plan?.rows || []).filter(row => row?.plannedNetCharge).map(row => ({
++    startAt: Number(row.plannedStartAt ?? row.startAt), endAt: Number(row.plannedEndAt ?? row.endAt),
++    plannedChargeW: Number(row.plannedChargeW) || 0, plannedEnergyKwh: Number(row.plannedEnergyKwh) || 0,
++    targetSoc: plan.targetSoc, plannedNetCharge: true,
++  })) };
++  visualPlans.set(app, { plan, rows: plan?.rows, calculatedAt, snapshot });
++  return snapshot;
++}
++
+ module.exports = {
+   async getVisualWidgetProfile({ homey, query }) {
+     return require('../../lib/visual-widget-profiles').get(homey,String(query?.name||'medium'));
+@@ -187,6 +206,16 @@
+     const contract = String(settings.contractType || '');
+     const visualRequest = query?.visualSavings === '1' || query?.visualSavings === 1 || query?.visualSavings === true;
+     if (visualRequest) {
++      const plan = getVisualSocPlanSnapshot(app);
++      const knownSocs=status.inputs?.batterySoc;
++      const batteryLimits = Array.from({length:Math.max(0,Math.min(8,Number(settings.batteryCount)||0))}, (_,i)=>i)
++        .filter(i=>!Array.isArray(knownSocs)||(knownSocs[i]!==null&&knownSocs[i]!==undefined
++          &&Number.isFinite(Number(knownSocs[i]))&&Number(knownSocs[i])>=0&&Number(knownSocs[i])<=100))
++        .map(i=>batteryPowerLimits(settings,i));
++      status.visualSocPlanRevision = plan.revision;
++      if (Number(query?.planRevision) !== plan.revision) status.visualSocPlan = plan;
++      if (query?.historyAfter !== undefined && typeof app.getVisualHouseLoadHistory === 'function')
++        status.visualHouseHistory = app.getVisualHouseLoadHistory({ date: query.historyDate, after: query.historyAfter });
+       // Presentation-only planner context, reusing the already-read settings.
+       // These fields are intentionally not part of the classic status widget.
+       status.visualPlanner = {
+@@ -198,9 +227,24 @@
+         // Read-only policy context, only in Visual Look's optional status.
+         // Never used by the controller, planning or the classic widget.
+         forcedMode: String(settings.forcedMode || 'auto'),
+-        maxTotalDischargeW: Number(settings.maxTotalDischargeW ?? 2500),
++        maxTotalChargeW: Math.min(Number(settings.maxTotalChargeW ?? 6000),
++          batteryLimits.reduce((sum,item)=>sum+item.maxCharge,0)),
++        batteryNightPlan: settings.batteryNightPlan === true,
++        chargeStrategy: settings.chargeStrategy,
++        expectedEnergyNeedKwh: settings.expectedEnergyNeedKwh,
++        peakReserveMonths: Array.from({length:12}, (_,i) => Boolean(settings['peakReserveMonth'+(i+1)])),
++        sunnyOverrideDate: String(app.lowForecastSunnyOverrideDate || ''),
++        maxTotalDischargeW: Math.min(Number(settings.maxTotalDischargeW ?? 2500),batteryLimits.reduce((sum,item)=>sum+item.maxDischarge,0)),
+         nightHysteresisEnabled: settings.nightHysteresisEnabled !== false,
+       };
++    }
++    if (visualRequest && contract === 'fixed') {
++      // An actual fixed contract has a known constant future rate.
++      const startAt=Math.floor(now / 86400000) * 86400000;
++      status.tariffTimeline=[{startAt,endAt:startAt+3*86400000,className:'normal',
++        label:String(status.tariff?.label || 'Vast tarief'),price:Number(settings.fixedImportPrice),
++        nightChargeAllowed:true,dayChargeAllowed:true}];
++      status.tariffTimelineSource='configured-fixed';
+     }
+     if (visualRequest && contract === 'tou') {
+       try {
+--- 1.5.6/widgets/status/public/index.html
++++ 1.5.7/widgets/status/public/index.html
+@@ -1420,50 +1420,41 @@
+       // Visual Look on the first display, despite a later setHeight() request.
+       let resolveFirstVisualHeight = null;
+       const firstVisualHeight = visualLook ? new Promise(resolve => { resolveFirstVisualHeight = resolve; }) : null;
+-      let latestHistory = [];
+-      let persistedHouseHistory = [];
+-      let lastHouseHistoryAt = 0, houseHistoryPending = false;
+-      function combinedHouseHistory() {
+-        const rows = [...persistedHouseHistory, ...latestHistory].sort((a,b)=>a.at-b.at);
+-        const combined = [];
+-        for (const item of rows) {
+-          if (!combined.length || item.at - combined[combined.length - 1].at > 30000) combined.push(item);
+-          else if (item.at > combined[combined.length - 1].at) combined[combined.length - 1] = item;
+-        }
+-        return combined;
+-      }
+-      // A new day-history snapshot is prepared at most once a minute. Normal
+-      // live /status updates do not copy and sort up to 720 old samples each
+-      // time; a new iframe may receive the most recent cached snapshot.
+-      let visualHistoryCalculatedAt=0, visualHistoryCached=null;
+-      function visualHistorySnapshot(includeCached=false){
+-        const now=Date.now();
+-        if(!visualHistoryCalculatedAt || now-visualHistoryCalculatedAt>=60000){
+-          visualHistoryCached=combinedHouseHistory();
+-          visualHistoryCalculatedAt=now;
++      let persistedHouseHistory = [], historyDate = '', historyAfter = 0;
++      let houseHistoryStarted = false, houseHistoryDone = false, houseHistoryPending = false;
++      let visualHistoryCached = null, visualHistoryDirty = false, latestVisualPlan = null;
++      function mergeHouseHistory(result) {
++        if (!result || !Array.isArray(result.rows) || typeof result.date !== 'string') return;
++        // A delayed initial response cannot replace a newer day's status delta.
++        if (historyDate && result.date < historyDate) return;
++        if (result.date !== historyDate) {
++          historyDate = result.date; historyAfter = 0; persistedHouseHistory = []; visualHistoryDirty = true;
++        }
++        for (const row of result.rows) {
++          const at = Number(row?.at), powerW = Number(row?.powerW);
++          if (!(at > historyAfter) || !Number.isFinite(powerW) || powerW < 0 || powerW > 100000) continue;
++          persistedHouseHistory.push(row); historyAfter = at; visualHistoryDirty = true;
++        }
++        if (persistedHouseHistory.length > 720) persistedHouseHistory.splice(0,persistedHouseHistory.length-720);
++      }
++      function visualHistorySnapshot(includeCached=false) {
++        if (visualHistoryDirty) {
++          visualHistoryCached = persistedHouseHistory.slice(); visualHistoryDirty = false;
+           return visualHistoryCached;
+         }
+-        return includeCached?visualHistoryCached:undefined;
+-      }
+-      async function refreshHouseHistory(force = false) {
+-        if (!visualLook || houseHistoryPending || (!force && Date.now()-lastHouseHistoryAt < 120000)) return;
+-        houseHistoryPending = true;
++        return includeCached ? visualHistoryCached : undefined;
++      }
++      async function refreshHouseHistory() {
++        if (!visualLook || houseHistoryStarted) return;
++        houseHistoryStarted = true; houseHistoryPending = true;
+         try {
+           const result = await Homey.api('GET','/house-load-history',{});
+-          if (!result || !Array.isArray(result.rows)) return;
+-          const today = new Date().toDateString();
+-          persistedHouseHistory = result.rows.filter(row => {
+-            const at = Number(row?.at), powerW = Number(row?.powerW);
+-            return Number.isFinite(at) && at > 0 && new Date(at).toDateString() === today
+-              && Number.isFinite(powerW) && powerW >= 0 && powerW <= 100000;
+-          }).slice(-720);
+-          lastHouseHistoryAt = Date.now();
+-          const rows=visualHistorySnapshot();
+-          if(rows)sendVisual('homeflux.visual.houseHistory',{rows});
++          mergeHouseHistory(result);
++          const rows = visualHistorySnapshot(true);
++          if (rows) sendVisual('homeflux.visual.houseHistory',{rows,initial:true});
+         } catch (error) { console.warn('HomeFlux Visual Look day history unavailable',error); }
+-        finally { houseHistoryPending = false; }
+-      }
+-      let lastHistoryAt = 0;
++        finally { houseHistoryPending = false; houseHistoryDone = true; }
++      }
+       let requestedPeriod = 'day', requestedEv = 'all';
+       let savingsCache = new Map(), savingsHouseCache = new Map(), savingsPending = new Set();
+       let lastSavingsVisualToken = '';
+@@ -1616,23 +1607,15 @@
+           // No dependency on parent-side DOM access: messages still work.
+         }
+       }
++      let sentVisualPlanRevision=null;
+       function sendVisual(type, data = {}) {
+         if (!visualLook || !visualView.contentWindow) return;
++        if(type==='homeflux.visual.status'&&data.status?.visualSocPlan){
++          const plan=data.status.visualSocPlan;
++          if(sentVisualPlanRevision===plan.revision){data={...data,status:{...data.status}};delete data.status.visualSocPlan;}
++          else sentVisualPlanRevision=plan.revision;
++        }
+         visualView.contentWindow.postMessage({ type, ...data }, '*');
+-      }
+-      function collectHouseSample(status) {
+-        const now = Date.now();
+-        // Do not turn an unavailable physical site-load reading (null) into
+-        // a false zero. Its source is already calculated by the EMS; no new
+-        // P1, PV or battery listeners are introduced by Visual Look.
+-        const raw = status?.evGridControl?.physicalSiteLoadW;
+-        if (raw === null || raw === undefined || raw === '' || typeof raw === 'boolean') return;
+-        const value = Number(raw);
+-        if (now - lastHistoryAt < 60_000 || !Number.isFinite(value) || value < 0 || value > 100_000) return;
+-        lastHistoryAt = now;
+-        latestHistory.push({ at: now, powerW: value });
+-        const start = new Date(now); start.setHours(0, 0, 0, 0);
+-        latestHistory = latestHistory.filter(x => x.at >= start.getTime()).slice(-1000);
+       }
+       async function requestVisualSavings(period = requestedPeriod, ev = requestedEv, force = false) {
+         if (!visualLook || !Object.hasOwn(savingsDays, period) || !['all','1','2','3','4'].includes(ev)) return;
+@@ -1708,13 +1691,14 @@
+         if (!visualLook || event.source !== visualView.contentWindow || !event.data) return;
+         const msg = event.data;
+         if (msg.type === 'homeflux.visual.ready') {
++          sentVisualPlanRevision=null;
+           lastSavingsVisualToken = '';
+           observeVisualContent();
+           sendVisualAppearance(true);
+           sendVisualWidgetConfiguration();
+           if (latestStatus) sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot(true)});
+           requestVisualSavings().catch(console.error);
+-          refreshHouseHistory(true).catch(console.error);
++          refreshHouseHistory().catch(console.error);
+         } else if (msg.type === 'homeflux.visual.height') {
+           // Prefer a direct measurement. The message is a safe fallback when
+           // the Homey webview does not expose its nested document to us.
+@@ -1728,12 +1712,14 @@
+       if (visualLook) {
+         window.addEventListener('message',visualMessage);
+         visualView.addEventListener('load', () => {
++          sentVisualPlanRevision=null;
+           observeVisualContent();
+           sendVisualAppearance(true);
+           sendVisualWidgetConfiguration();
+           if (latestStatus) sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot(true)});
+         });
+       }
++      if (visualLook) refreshHouseHistory().catch(console.error);
+       let wafGuardEvent = null;
+       let lastStatusStartedAt=0,lastStatusSuccessStartedAt=0;
+       let evChangedRefreshTimer=null,lastEvChangedAt=0;
+@@ -1743,9 +1729,16 @@
+         const requestedAt=Date.now();
+         lastStatusStartedAt=requestedAt;
+         try {
+-          const status = await Homey.api('GET', visualLook ? '/status?visualSavings=1' : '/status', {});
++          const visualQuery = visualLook ? '/status?visualSavings=1&planRevision='+encodeURIComponent(latestVisualPlan?.revision || 0)
++            +(houseHistoryDone ? '&historyDate='+encodeURIComponent(historyDate)+'&historyAfter='+historyAfter : '') : '/status';
++          const status = await Homey.api('GET', visualQuery, {});
+           lastStatusSuccessStartedAt=requestedAt;
++          if (visualLook) {
++            if (status?.visualSocPlan) latestVisualPlan = status.visualSocPlan;
++            if (status?.visualHouseHistory) mergeHouseHistory(status.visualHouseHistory);
++          }
+           latestStatus = status || {};
++          if (visualLook && latestVisualPlan) latestStatus.visualSocPlan = latestVisualPlan;
+           if (visualLook) {
+             // Recover the persisted presentation after a cold start where
+             // /visual-profile was not ready yet. This is not a profile save:
+@@ -1761,11 +1754,10 @@
+           applyWafGuardEvent();
+           if (visualLook) {
+             visualView.classList.remove('hidden');
+-            collectHouseSample(latestStatus);
+             sendVisual('homeflux.visual.status',{status:{...latestStatus,visualStatusColorsEnabled:enabled(settings,'statusColors')},houseHistory:visualHistorySnapshot()});
+             // Today: 1 minute; historic: 5 minutes. House data never awaits EV responses.
+             requestVisualSavings().catch(console.error);
+-            refreshHouseHistory().catch(console.error);
++
+           } else {
+             renderStatus(latestStatus, settings, Homey);
+             const previousAlert = alertIdentity;
+--- 1.5.6/widgets/status/public/visual.html
++++ 1.5.7/widgets/status/public/visual.html
+@@ -513,6 +513,30 @@
+ .homey-live.visual-bright-chart #energyChart text[fill="#6aefbf"],
+ .homey-live.visual-bright-chart #energyChart text[fill="#a6ffdb"]{fill:#067149}
+ .homey-live.visual-bright-chart #energyChart text[fill="#88b2d4"]{fill:#334f65}
++/* Shared three-column rows: labels, values, details stay aligned at 320px. */
++.homey-live #energyDayPanel .energy-summary{display:flex;flex-direction:column;gap:4px}
++.homey-live #energyDayPanel .energy-stat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.55fr) minmax(0,1.05fr);align-items:center;gap:6px;padding:2px 0;border:0}
++.homey-live #energyDayPanel .energy-stat .stat-heading{min-width:0;margin:0;white-space:nowrap;overflow:hidden;font-size:var(--day-summary-label-font,10px)}
++.homey-live #energyDayPanel .energy-stat .stat-heading span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
++.homey-live #energyDayPanel .energy-stat strong{font-size:calc(15px * var(--day-info-scale,1));text-align:right;letter-spacing:-.3px;white-space:nowrap}
++.homey-live #energyDayPanel .energy-stat small{font-size:var(--day-summary-sub-font,9px);margin:0;min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
++.homey-live #energyDayPanel #pvToday,.homey-live #energyDayPanel #pvToday b,.homey-live #energyDayPanel #pvRemain{color:var(--amber)!important}
++.homey-live #energyDayPanel #planStatsGrid{display:flex!important;gap:5px!important;flex-wrap:nowrap}
++.homey-live #energyDayPanel #planStatsGrid .bottom-stat{flex:1 1 0;min-width:0;min-height:0;padding:4px 3px;display:flex;flex-direction:column;justify-content:center;gap:1px}
++.homey-live #energyDayPanel #planStatsGrid .bottom-stat .top{display:block;min-height:0;margin:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:clip;font-size:var(--day-plan-label-font,9px);line-height:1.15}
++.homey-live #energyDayPanel #planStatsGrid .bottom-stat svg{display:none}
++.homey-live #energyDayPanel #planStatsGrid .bottom-stat strong{display:block;min-height:0;margin:0;text-align:center;white-space:nowrap;font-size:calc(14px * var(--day-info-scale,1));line-height:1.1}
++.homey-live #energyDayPanel #planStatsGrid [hidden]{display:none!important}
++/* Each text field owns its column width; profile scale is a preferred size.
++   The existing fit pass can shrink it, never widen the field or wrap the text. */
++.homey-live #energyDayPanel :is(.day-metrics .metric-head,.day-metrics .metric strong,.day-metrics .metric small,.energy-stat .stat-heading span,.energy-stat strong,.energy-stat small,.bottom-stat .top,.bottom-stat strong){
++ min-width:0;max-width:100%;box-sizing:border-box;white-space:nowrap;overflow-wrap:normal;overflow:hidden;text-overflow:clip;
++}
++.homey-live #energyDayPanel .energy-stat .stat-heading{min-width:0;max-width:100%}
++.homey-live #energyDayPanel .energy-stat .stat-heading span{flex:1 1 0;display:block}
++.homey-live #energyDayPanel .energy-stat strong b{font-size:.64em}
++.soc-charge-legend{font-size:9px;text-align:right;color:var(--mint);margin:3px 0}
++.soc-charge-legend span{color:var(--amber);margin-left:8px}
+ </style>
+ </head>
+ <body>
+@@ -541,7 +565,7 @@
+     <div class="energy-summary" id="energyLegend" aria-label="Schakel grafiekreeksen aan of uit">
+       <div class="energy-stat"><div class="stat-heading"><button type="button" class="chart-toggle house" data-chart-toggle="house" aria-label="Huisverbruiklijn tonen of verbergen" title="Huisverbruiklijn tonen of verbergen" aria-pressed="true"><i></i></button><span id="houseTodayLabel">Verbruik tot nu</span></div><strong id="houseToday">— <b>kWh</b></strong><small id="houseTodayDetail">Gesimuleerde metingen</small></div>
+       <div class="energy-stat"><div class="stat-heading"><button type="button" class="chart-toggle pv" data-chart-toggle="pv" aria-label="Zonprognose tonen of verbergen" title="Zonprognose tonen of verbergen" aria-pressed="true"><i></i></button><span>PV-prognose</span></div><strong class="gold" id="pvToday">14,0 <b>kWh</b></strong><small id="pvRemain">Nog 4,3 kWh</small></div>
+-      <div class="energy-stat"><div class="stat-heading"><button type="button" class="chart-toggle battery" data-chart-toggle="battery" aria-label="SoC-prognose tonen of verbergen" title="SoC-prognose tonen of verbergen" aria-pressed="true"><i></i></button><span id="socForecastEndLabel">SoC volgend doel</span></div><strong class="green" id="socAtMidnight">—%</strong><small id="socProjectionType">Volgens plan · schatting</small></div>
++      <div class="energy-stat"><div class="stat-heading"><button type="button" class="chart-toggle battery" data-chart-toggle="battery" aria-label="SoC-prognose tonen of verbergen" title="SoC-prognose tonen of verbergen" aria-pressed="true"><i></i></button><span id="socForecastEndLabel">SOC doel</span></div><strong class="green" id="socAtMidnight">—%</strong><small id="socProjectionType">Volgens plan · schatting</small></div>
+     </div>
+   </section>
+   <section class="panel panel-pad savings-panel" id="savingsSection" aria-label="Savings woning en elektrische auto's">
+@@ -570,7 +594,7 @@
+   </section>
+   <section class="panel panel-pad cluster-section plan-stats-section" id="planStatsSection">
+     <div class="section-top"><div class="section-head"><span class="cluster-symbol">◎</span><h2>Laadplan en doelen</h2></div><span class="section-meta">LAADBEHOEFTE</span></div>
+-  <div class="bottom-row" id="planStatsGrid"><div class="bottom-stat"><div class="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M8 2v8m8-8v8M5 10h14v4a7 7 0 0 1-14 0z"/></svg> Uit net gepland</div><strong id="netPlanned">0 kWh</strong></div><div class="bottom-stat"><div class="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg> Nog nodig tot doel</div><strong id="needTarget">0 kWh</strong></div><div class="bottom-stat"><div class="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="6" y="5" width="12" height="17" rx="2"/><path d="M10 2h4"/></svg> SOC ⇒ doel-SoC</div><strong id="targetSoc">96,8% → 95%</strong></div></div>
++  <div class="bottom-row" id="planStatsGrid"><div class="bottom-stat"><div class="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M8 2v8m8-8v8M5 10h14v4a7 7 0 0 1-14 0z"/></svg> Gepland</div><strong id="netPlanned">0 kWh</strong></div><div class="bottom-stat"><div class="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg> Nodig</div><strong id="needTarget">0 kWh</strong></div><div class="bottom-stat"><div class="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="6" y="5" width="12" height="17" rx="2"/><path d="M10 2h4"/></svg> Doel-SOC</div><strong id="targetSoc">96,8% → 95%</strong></div></div>
+   </section>
+   <details class="panel details-master" id="infoExplorer">
+    <summary><span class="summary-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 4h14v16H5zM9 8h6m-6 4h6m-6 4h3"/></svg>Alle EMS-informatie</span></summary>
+@@ -643,9 +667,11 @@
+  }
+  return mergeTimelineSegments(rows);
+ }
+-function normalizeTimelineRawRows(rows,startAt){
+- const endAt=startAt+24*60*60*1000;
+- return (Array.isArray(rows)?rows:[]).map(row=>{
++let normalizedTariffCache=null;
++function normalizeTimelineRawRows(rows,startAt,hours=24){
++ const endAt=startAt+hours*60*60*1000;
++ if(!normalizedTariffCache||normalizedTariffCache.input!==rows){
++ const normalized=(Array.isArray(rows)?rows:[]).map(row=>{
+   const startValue=Number(row.startAt ?? row.startMs ?? row.at ?? 0);
+   const fallbackEnd=startValue + Number(row.intervalMinutes||0)*60000;
+   const endValue=Number(row.endAt ?? row.endMs ?? row.until ?? fallbackEnd);
+@@ -653,7 +679,7 @@
+    startAt:startValue,
+    endAt:endValue,
+    k:String(row.className||row.k||'normal'),
+-   label:String(row.label||row.name||row.k||'').toUpperCase(),
++   label:String(row.label||row.name||row.k||''),
+    price:Number(row.price),
+    rateId:row.rateId===undefined?null:String(row.rateId),
+    avoidGridImport:row.avoidGridImport===undefined?null:Boolean(row.avoidGridImport),
+@@ -664,8 +690,11 @@
+    nightChargeAllowed:row.nightChargeAllowed===undefined?null:Boolean(row.nightChargeAllowed),
+    dayChargeAllowed:row.dayChargeAllowed===undefined?null:Boolean(row.dayChargeAllowed),
+   };
+- }).filter(row=>Number.isFinite(row.startAt)&&Number.isFinite(row.endAt)&&row.endAt>startAt&&row.startAt<endAt)
++ }).filter(row=>Number.isFinite(row.startAt)&&Number.isFinite(row.endAt)&&row.endAt>row.startAt)
+    .sort((a,b)=>a.startAt-b.startAt);
++ normalizedTariffCache={input:rows,rows:normalized};
++ }
++ return normalizedTariffCache.rows.filter(row=>row.endAt>startAt&&row.startAt<endAt);
+ }
+ function buildRollingTimelineFromRows(rows,startAt){
+  const endAt=startAt+24*60*60*1000,raw=normalizeTimelineRawRows(rows,startAt);
+@@ -676,7 +705,7 @@
+   if(end<=start)continue;
+   if(start>cursor){result.push({startAt:cursor,endAt:start,k:'unknown',label:''});}
+   const item={startAt:start,endAt:end,k:row.k,
+-   label:row.k==='cheap'?'GOEDKOOP':row.k==='expensive'?'DUUR':row.k==='normal'?'NORMAAL':'',
++   label:row.label||(row.k==='cheap'?'GOEDKOOP':row.k==='expensive'?'DUUR':row.k==='normal'?'NORMAAL':''),
+    price:Number.isFinite(row.price)?row.price:null};
+   result.push({...item,segments:[{startAt:start,endAt:end,price:item.price,k:item.k}]});
+   cursor=end;
+@@ -834,10 +863,10 @@
+   // A one-off /status response does NOT provide these samples automatically.
+   return rows.slice(0,1000).map(row=>{
+     if(row===null||row===undefined)return null;
+-    let time,value;
+-    if(Array.isArray(row)){time=row[0];value=row[1]}
++    let time,value,endAt=null,coveredMs=null;
++    if(Array.isArray(row)){time=row[0];value=row[1];endAt=row[2];coveredMs=row[3]}
+     else if(typeof row==='object'){
+-      time=row.at??row.timestamp??row.time??row.hour;
++      time=row.at??row.timestamp??row.time??row.hour;endAt=row.endAt;coveredMs=row.coveredMs;
+       value=row.powerW??row.housePowerW??row.watts??row.valueW;
+       if(value===undefined&&(row.kW!==undefined||row.powerKw!==undefined))value=Number(row.kW??row.powerKw)*1000;
+     }else return null;
+@@ -849,7 +878,7 @@
+     const timeMs=typeof time==='number'?(time<1e11?time*1000:time):Date.parse(time);
+     if(!Number.isFinite(timeMs))return null;
+     const d=new Date(timeMs);
+-    return {localHour:d.getHours()+d.getMinutes()/60+d.getSeconds()/3600,powerW:num(value,null),date:d.toDateString()};
++    return {localHour:d.getHours()+d.getMinutes()/60+d.getSeconds()/3600,powerW:num(value,null),date:d.toDateString(),at:timeMs,endAt:num(endAt,null),coveredMs:num(coveredMs,null)};
+   }).filter(v=>v&&v.powerW!==null&&v.powerW>=0&&v.powerW<100000&&v.localHour>=0&&v.localHour<=24)
+     .sort((a,b)=>a.localHour-b.localHour);
+ }
+@@ -919,15 +948,20 @@
+     for(const v of s.historyRows||[]){
+       if(v.date!==null&&v.date!==today)continue;
+       if(v.localHour>limit+.03)continue;
+-      readings.push({h:v.localHour,kw:v.powerW/1000});
++      readings.push({h:v.localHour,kw:v.powerW/1000,at:v.at,endAt:v.endAt,coveredMs:v.coveredMs});
+     }
+-    if(num(s.houseNowKw,null)!==null)readings.push({h:limit,kw:s.houseNowKw});
+     readings.sort((a,b)=>a.h-b.h);
+   }
+   let total=0,covered=0;
+-  for(let i=1;i<readings.length;i++){
+-    const gap=readings[i].h-readings[i-1].h;
+-    if(gap>0&&gap<=.76){total+=(readings[i].kw+readings[i-1].kw)/2*gap;covered+=gap}
++  for(let i=0;i<readings.length;i++){
++    const v=readings[i],prev=readings[i-1];
++    if(v.coveredMs>0&&v.endAt>v.at){
++      const hours=Math.min(v.coveredMs,v.endAt-v.at)/HOUR_MS;
++      total+=v.kw*hours;covered+=hours;
++    }else if(prev&&!(prev.coveredMs>0)){
++      const gap=(v.at&&prev.at)?(v.at-prev.at)/HOUR_MS:v.h-prev.h;
++      if(gap>0&&gap<=.76){total+=(v.kw+prev.kw)/2*gap;covered+=gap}
++    }
+   }
+   return {readings,total,covered,usable:covered>.07};
+ }
+@@ -989,7 +1023,8 @@
+   const threshold=num(cfg.lowForecastSelfConsumptionMinKwh,5);
+   const solarTime=hourFromClock(s.dayTargetTime,17);
+   const relevantForecast=hour<solarTime?num(s.forecast,null):num(s.tomorrowForecast,null);
+-  const lowPv=relevantForecast===null||threshold===null?null:threshold>0&&relevantForecast<threshold;
++  const sunny=planner.sunnyOverrideDate&&planner.sunnyOverrideDate===new Date(s.timeReferenceAt).toLocaleDateString('en-CA')&&hour<24;
++  const lowPv=sunny?false:relevantForecast===null||threshold===null?null:threshold>0&&relevantForecast<threshold;
+   let avoid=false,lowSave=false,lowToTarget=false,highSave=false,highToTarget=false;
+   if(kind==='tou'){
+     // Per-rate flags are supplied by the *same tariff resolver* that builds
+@@ -1058,187 +1093,138 @@
+  return hasDischarge?end:null;
+ }
+ 
++// Read-only widget forecast: prepare the timeline once, then one backward
++// reserve pass and one forward energy pass. Never re-simulate per window.
++let socForecastCache = null;
+ function projectedSoc(profile){
+-  const capKwh=num(s.capacityKwh,null),soc0=num(s.soc,null);
+-  if(!(capKwh>0)||soc0===null)return null;
+-  let soc=cap(soc0,0,100);
+-  // s.minSoc from the public status can be the CURRENT saving/peak-reserve
+-  // discharge floor (e.g. 90%). That temporary policy must not be imposed on
+-  // a future expensive TOU slot explicitly configured to avoid grid import.
+-  // Per-future-interval floors are selected below instead.
+-  const safetySettings=rawStatusObject?.settings||{};
+-  const floor=source==='json'
+-    ?cap(Math.max(num(safetySettings.minSoc,0),num(safetySettings.safetySoc,num(s.minSoc,14))),0,100)
+-    :cap(num(s.minSoc,14),0,100);
+-  const nowH=profile.nowH,goals=forecastGoalTimes(profile);
+-  const todayStart=dayStartOf(s.timeReferenceAt);
+-  // Use the *actual* price selection for every upcoming 15/60-minute or TOU
+-  // interval, including the configured import-avoidance/saving policy. A gap
+-  // after the latest published price is deliberately NOT filled by repetition.
+-  const tariffRows=source==='json'
+-    ?normalizeTimelineRawRows(rawStatusObject?.tariffTimeline,todayStart+nowH*HOUR_MS)
+-      .filter(row=>['cheap','normal','expensive'].includes(row.k))
+-    :[];
+-  const extraGoal=forecastExtendedGoal(goals,profile,tariffRows);
+-  const horizon=extraGoal!==null?extraGoal:goals.horizon;
+-  const startIndex=Math.ceil(nowH/STEP_H);
+-  const pts=[{h:nowH,soc}];
+-  let totalGrid=0,gridMethod='geen',lastH=nowH;
+-  const rows=Array.isArray(s.planRows)?s.planRows.filter(r=>r&&r.plannedNetCharge!==false&&num(r.startAt,null)!==null&&num(r.endAt,null)!==null):[];
+-  const window=s.nextChargeDetail;
+-  const dayEnd=todayStart+DAY_MS;
+-  const summaryGrid=Math.max(0,num(s.planned,0));
+-  // Grid energy is scheduled ONLY within real future charging windows when present.
+-  // If /status exposes only the first window, approximate that part of the plan.
+-  let windows=[];
+-  if(rows.length){
+-    windows=rows.map(r=>({start:num(r.startAt,0),end:num(r.endAt,0),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),energyKwh:Math.max(0,num(r.plannedEnergyKwh,0))})).filter(r=>r.end>r.start);
+-    gridMethod='laadblokken';
+-  }else if(window&&num(window.startAt,null)!==null&&num(window.endAt,null)!==null&&Number(window.endAt)>Number(window.startAt)){
+-    windows=[{start:num(window.startAt,0),end:num(window.endAt,0),powerKw:Math.max(0,num(window.powerW,0)/1000),energyKwh:summaryGrid}];
+-    gridMethod='eerstvolgend laadvenster';
+-  }else if(source==='demo'&&s.id==='night'){
+-    windows=[{start:todayStart+HOUR_MS,end:todayStart+7*HOUR_MS,powerKw:2.6,energyKwh:summaryGrid}];
+-    gridMethod='demoplan 01–07';
++ const raw=rawStatusObject||{},cfg=raw.settings||{},planner=raw.visualPlanner||{};
++ const capKwh=num(s.capacityKwh,null),soc0=num(s.soc,null);
++ if(!(capKwh>0)||soc0===null)return null;
++ const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,
++  s.forecast,s.remaining,s.tomorrowForecast,profile.daily,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,
++  s.nightTargetTime,s.planningTargetAt,s.planReady,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline]);
++ if(socForecastCache?.signature===signature)return socForecastCache.value;
++ const floor=cap(Math.max(num(cfg.minSoc,0),num(cfg.safetySoc,num(s.minSoc,14))),0,100);
++ const ceiling=cap(num(s.maxSoc,100),floor,100), floorEnergy=capKwh*floor/100;
++ const nowH=profile.nowH,todayStart=dayStartOf(s.timeReferenceAt),goals=forecastGoalTimes(profile);
++ const tariffRows=source==='json'?normalizeTimelineRawRows(raw.tariffTimeline,todayStart+nowH*HOUR_MS,48):[];
++ const extraGoal=forecastExtendedGoal(goals,profile,tariffRows),horizon=extraGoal??goals.horizon;
++ const startMs=todayStart+nowH*HOUR_MS,endMs=todayStart+horizon*HOUR_MS;
++ const maxKw=Math.max(0,num(planner.maxTotalChargeW,6000)/1000);
++ const dischargeKw=Math.max(0,num(planner.maxTotalDischargeW,2500)/1000);
++ const goalHours=[goals.firstH,goals.secondH,extraGoal].filter((v,i,a)=>v!==null&&v>nowH&&v<=horizon&&a.indexOf(v)===i).sort((a,b)=>a-b);
++ const isMorning=h=>Math.abs(h%24-goals.morning)<.02;
++ const phaseTarget=h=>{
++  if(h===goals.firstH&&s.planReady&&num(s.target,null)!==null)return cap(s.target,floor,ceiling);
++  const pv=h<24?num(s.remaining,null):num(s.tomorrowForecast,null);
++  const expected=num(planner.expectedEnergyNeedKwh,profile.daily);
++  const calculated=pv===null||expected===null?floor:floor+Math.max(0,expected-pv)/capKwh*100;
++  return cap(calculated,floor,Math.max(floor,Math.min(ceiling,num(isMorning(h)?s.nightMaxSoc:s.dayMaxSoc,ceiling))));
++ };
++ let windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({
++  start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),
++  energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),target:num(r.targetSoc,s.target),confirmed:true}));
++ if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;
++  windows=[{start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),
++    energyKwh:Math.max(0,num(s.planned,0)),target:num(w.targetSoc,s.target),confirmed:true}];}
++ windows.sort((a,b)=>a.start-b.start);
++ const authoritativeUntil=s.planReady?Math.max(num(s.planningTargetAt,startMs),...windows.map(w=>w.end)):startMs;
++ const boundaries=new Set([startMs,endMs]);
++ for(let at=(Math.floor(startMs/(STEP_H*HOUR_MS))+1)*STEP_H*HOUR_MS;at<endMs;at+=STEP_H*HOUR_MS)boundaries.add(at);
++ for(const r of [...tariffRows,...windows.map(w=>({startAt:w.start,endAt:w.end}))]){
++  if(r.startAt>startMs&&r.startAt<endMs)boundaries.add(r.startAt);
++  if(r.endAt>startMs&&r.endAt<endMs)boundaries.add(r.endAt);
++ }
++ for(const h of goalHours)boundaries.add(todayStart+h*HOUR_MS);
++ const times=[...boundaries].sort((a,b)=>a-b),segments=[];
++ let ri=0,wi=0;
++ const dynamic=['dynamic','dynamic_hour','dynamic_quarter'].includes(cfg.contractType);
++ const forced=String(planner.forcedMode||'auto');
++ for(let i=1;i<times.length;i++){
++  const a=times[i-1],b=times[i],mid=(a+b)/2,h=(mid-todayStart)/HOUR_MS,dt=(b-a)/HOUR_MS;
++  while(ri<tariffRows.length&&tariffRows[ri].endAt<=a)ri++;
++  while(wi<windows.length&&windows[wi].end<=a)wi++;
++  const row=tariffRows[ri]?.startAt<=a&&tariffRows[ri].endAt>=b?tariffRows[ri]:null;
++  const w=windows[wi]?.start<=a&&windows[wi].end>=b?windows[wi]:null;
++  const p=forecastPowerAt(profile,h),pv=profile.daily===null?0:Math.max(0,p.pv-(p.house||0));
++  const shortfall=profile.daily===null?0:Math.max(0,(p.house||0)-p.pv);
++  const policy=source==='demo'?{discharge:true,floor}:forecastTariffPolicy(row,h,profile);
++  const nextGoal=goalHours.find(g=>g*HOUR_MS+todayStart>b-1)??horizon;
++  const night=isMorning(nextGoal);
++  const chargeAllowed=dynamic?row?.k==='cheap'||(row?.k==='normal'&&cfg.dynamicNormalChargeEnabled===true)
++    :cfg.contractType==='fixed'?true:row?.[night?'nightChargeAllowed':'dayChargeAllowed']===true;
++  const localDate=new Date(mid),strategyCfg=planner.chargeStrategy||{};
++  const season=strategyCfg.seasonal?(planner.peakReserveMonths?.[localDate.getMonth()]?'winter':'summer'):'year';
++  const strategy=strategyCfg[season]?.[night?'night':'day']||{};
++  const phaseCap=Math.min(ceiling,num(night?s.nightMaxSoc:s.dayMaxSoc,ceiling),
++    dynamic&&row?.k==='normal'?num(cfg.dynamicNormalChargeMaxSoc,50):100);
++  const pvInputKw=Math.min(maxKw,pv);
++  const gridHeadroom=cfg.peakShaveEnabled===true?Math.max(0,num(cfg.peakLimitW,0)/1000+(p.pv||0)-(p.house||0)):maxKw;
++  const gridKw=Math.min(Math.max(0,maxKw-pvInputKw),gridHeadroom);
++  const confirmed=w?Math.min(gridKw,w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw)*dt*.95:0;
++  segments.push({a,b,h,dt,row,pv:Math.min(maxKw,pv)*dt*.92,
++    loss:policy.discharge&&!w?Math.min(shortfall,dischargeKw)*dt/.93:0,
++    floor:capKwh*cap(num(policy.floor,floor),floor,ceiling)/100,
++    confirmed,confirmedTarget:capKwh*cap(num(w?.target,ceiling),floor,ceiling)/100,
++    eligible:forced==='auto'&&a>=authoritativeUntil&&chargeAllowed&&Boolean(row),
++    price:num(row?.price,0),limit:capKwh*Math.max(floor,phaseCap)/100,
++    capacity:gridKw*dt*.95,strategy,nextGoal,target:capKwh*phaseTarget(nextGoal)/100});
++ }
++ // A lower price just after a goal can defer the *unneeded* charge. Reverse
++ // reserve propagation still protects every intervening expensive interval.
++ const targets=new Map();
++ for(const h of goalHours){
++  let index=segments.findIndex(x=>x.b>=todayStart+h*HOUR_MS);
++  const before=segments.slice(0,index+1).filter(x=>x.eligible);
++  const best=before.length?Math.min(...before.map(x=>x.price)):Infinity;
++  const later=segments.findIndex((x,i)=>i>index&&x.a<todayStart+(h+6)*HOUR_MS&&x.eligible&&x.price<best);
++  if(dynamic&&later>=0)index=later;
++  if(index>=0)targets.set(index,Math.max(targets.get(index)||floorEnergy,capKwh*phaseTarget(h)/100));
++ }
++ let required=floorEnergy,nextPrice=Infinity;
++ for(let i=segments.length-1;i>=0;i--){
++  const x=segments[i];
++  required=Math.max(required,targets.get(i)||floorEnergy);
++  x.requiredAfter=required;
++  x.nextPrice=nextPrice;
++  if(x.eligible)nextPrice=Math.min(nextPrice,x.price);
++  if(targets.has(i))nextPrice=x.eligible?x.price:Infinity;
++  required=Math.max(floorEnergy,required+x.loss-x.pv-x.confirmed-(x.eligible?x.capacity:0));
++ }
++ let energy=capKwh*cap(soc0,0,100)/100,totalGrid=0;
++ const pts=[{h:nowH,soc:soc0}],predictedWindows=[];
++ for(const x of segments){
++  const before=energy;
++  const loss=Math.min(x.loss,Math.max(0,energy-x.floor));
++  energy=Math.min(capKwh*ceiling/100,energy+x.pv-loss);
++  const actual=Math.min(x.confirmed,Math.max(0,x.confirmedTarget-energy));
++  energy+=actual; totalGrid+=actual/.95;
++  let predicted=0;
++  if(x.eligible){
++   let need=Math.max(0,x.requiredAfter-energy);
++   // Buy in this slot when it is cheaper than every remaining eligible slot;
++   // otherwise wait, retaining the reverse-pass bridge reserve.
++   const early=x.strategy.position==='early'&&x.price<=x.nextPrice;
++   const center=x.strategy.position==='center'&&x.h>=(nowH+x.nextGoal)/2&&x.price<=x.nextPrice;
++   if(x.price<x.nextPrice||early||center)need=Math.max(need,x.target-energy);
++   if(x.strategy.mode==='maximum')need=Math.max(need,x.limit-energy);
++   else if(x.strategy.extraPercent>0)need*=1+Math.min(100,x.strategy.extraPercent)/100;
++   predicted=Math.min(x.capacity,need,Math.max(0,x.limit-energy));
++   energy+=predicted; totalGrid+=predicted/.95;
+   }
+-  // A /status summary can signal a future grid charge without identifying each row.
+-  // Do NOT invent charge timestamps; unallocated kWh remain outside the projection.
+-  const hasHouse=profile.daily!==null;
+-  const hasPv=num(s.forecast,null)!==null||num(s.remaining,null)!==null;
+-  const timing=s.batteryTiming||{};
+-  const timeDirection=timing.direction==='charge'||timing.direction==='discharge'?timing.direction:'idle';
+-  const timeHours=num(timing.hours,null),rawTimeTarget=num(timing.targetSoc,null);
+-  const timeTarget=rawTimeTarget===null?null:cap(rawTimeTarget,floor,100);
+-  const validTiming=source==='json'&&timeTarget!==null&&timeHours!==null
+-   &&timeHours>0&&timeHours<72&&num(timing.powerW,0)>25
+-   &&(timeDirection==='charge'?timeTarget>soc0+.02:timeDirection==='discharge'?timeTarget<soc0-.02:false);
+-  const timeEndH=validTiming?nowH+timeHours:null;
+-  // The real EMS supplies the desired target and deadline, but no future SoC
+-  // samples. Use the remaining PV forecast as a weighting curve towards that
+-  // *conditional planning goal*. It is explicitly not a promised battery SoC.
+-  const plannerGoal=num(s.target,null),rawDeadline=num(s.planningTargetAt,null);
+-  const goalEndH=rawDeadline!==null&&rawDeadline>todayStart&&rawDeadline<=dayEnd
+-   ?(rawDeadline-todayStart)/HOUR_MS:null;
+-  // A discharging battery is not simultaneously drawn climbing to its goal.
+-  const allowPlanRamp=source==='json'&&s.planReady===true&&hasPv&&num(s.remaining,0)>0.01
+-   &&plannerGoal!==null&&plannerGoal>soc0+.1&&goalEndH!==null&&goalEndH>nowH+.05
+-   &&!(validTiming&&timeDirection==='discharge');
+-  const goalWeight=allowPlanRamp?profile.pv.reduce((total,kw,i)=>{
+-   const from=Math.max(nowH,i*STEP_H),to=Math.min(goalEndH,(i+1)*STEP_H);
+-   return total+Math.max(0,to-from)*kw;
+-  },0):0;
+-  let solarWeightUsed=0;
+-  for(let i=startIndex;i<Math.ceil(horizon/STEP_H);i++){
+-    let a=i*STEP_H,b=Math.min(horizon,(i+1)*STEP_H),dt=b-a;
+-    if(a<nowH){a=nowH;dt=b-a}
+-    if(dt<=0)continue;
+-    const mid=(a+b)/2,dayPower=forecastPowerAt(profile,mid);
+-    const pvKw=hasPv?dayPower.pv:0,homeKw=hasHouse?dayPower.house:0;
+-    const startMs=todayStart+a*HOUR_MS,endMs=todayStart+b*HOUR_MS;
+-    let gridCharge=0;
+-    for(const w of windows){
+-      const overlap=Math.max(0,Math.min(endMs,w.end)-Math.max(startMs,w.start));
+-      if(overlap<=0)continue;
+-      const durationH=(w.end-w.start)/HOUR_MS;
+-      const indicatedKw=w.energyKwh>0&&durationH>0?w.energyKwh/durationH:w.powerKw;
+-      // Respect the command power limit; a summary spanning several windows
+-      // must never be squeezed into one shorter window.
+-      const powerKw=w.powerKw>0?Math.min(indicatedKw,w.powerKw):indicatedKw;
+-      gridCharge+=Math.max(0,powerKw)*overlap/HOUR_MS;
+-    }
+-    gridCharge=Math.max(0,gridCharge);
+-    totalGrid+=gridCharge;
+-    const excess=hasHouse?Math.max(0,pvKw-homeKw):0;
+-    const shortfall=hasHouse?Math.max(0,homeKw-pvKw):0;
+-    let pvCharge=Math.min(6,excess)*dt*.92;
+-    let discharge=0,dischargeFloor=floor;
+-    if(source==='json'&&hasHouse&&shortfall>0&&gridCharge<=0){
+-      // Each overlapping rate contributes only its own elapsed time. The
+-      // estimated energy is (yesterday-blended household kW minus PV kW)
+-      // multiplied by that time, with a light 93% discharge efficiency.
+-      const maxKw=Math.max(0,num(rawStatusObject?.visualPlanner?.maxTotalDischargeW,2500)/1000);
+-      const availableKw=Math.min(shortfall,maxKw);
+-      for(const row of tariffRows){
+-        const overlap=Math.max(0,Math.min(endMs,row.endAt)-Math.max(startMs,row.startAt));
+-        if(!overlap)continue;
+-        const segmentH=(Math.max(startMs,row.startAt)+Math.min(endMs,row.endAt))/2;
+-        const segmentHour=(segmentH-todayStart)/HOUR_MS;
+-        const policy=forecastTariffPolicy(row,segmentHour,profile);
+-        if(!policy.discharge)continue;
+-        const permittedFloor=cap(num(policy.floor,floor),floor,100);
+-        const room=Math.max(0,capKwh*(soc-permittedFloor)/100);
+-        const requested=availableKw*overlap/HOUR_MS/.93;
+-        const used=Math.min(requested,Math.max(0,room-discharge));
+-        if(used>0){discharge+=used;dischargeFloor=Math.max(dischargeFloor,permittedFloor);}
+-      }
+-    }else if(source==='demo'&&hasHouse&&shortfall>0){
+-      const localH=mid%24;
+-      if((localH>=7&&localH<11)||(localH>=17&&localH<22))
+-        discharge=Math.min(shortfall,3)*dt/.93;
+-      if(s.id==='saving'&&localH<17)discharge=0;
+-      if(s.id==='guard'&&mid<22)discharge+=.08*dt;
+-    }
+-    // Planned grid charging stops at its goal; surplus PV can still fill
+-    // additional available capacity up to the configured maximum.
+-    // Do not keep the MORNING 12% goal as a charging ceiling after 07:00.
+-    const phaseLimit=goals.kind==='morning'&&a>=goals.firstH
+-      ?num(s.dayMaxSoc,num(s.maxSoc,100))
+-      :num(s.target,num(s.dayMaxSoc,100));
+-    const gridRoomKwh=Math.max(0,capKwh*(cap(phaseLimit,floor,100)-soc)/100-pvCharge);
+-    const effectiveGridKwh=Math.min(gridCharge*.95,gridRoomKwh);
+-    const charge=pvCharge+effectiveGridKwh,delta=100*(charge-discharge)/capKwh;
+-    const normalStep=cap(soc+delta,dischargeFloor,100);
+-    if(allowPlanRamp&&goalWeight>0){
+-      const before=Math.max(nowH,a),through=Math.min(goalEndH,b);
+-      solarWeightUsed+=Math.max(0,through-before)*pvKw;
+-    }
+-    // Existing "vol tot doel" / "leeg tot doel" is derived by HomeFlux from
+-    // the ACTUAL active battery output. Follow its slope until that target,
+-    // then resume the low-certainty PV/household forecast afterwards.
+-    const timedOverlap=validTiming
+-      ?Math.max(0,Math.min(b,timeEndH)-Math.max(a,nowH)):0;
+-    if(timedOverlap>0){
+-      const timedUntil=Math.min(b,timeEndH);
+-      const fraction=cap((timedUntil-nowH)/timeHours,0,1);
+-      const timedSoc=cap(soc0+(timeTarget-soc0)*fraction,floor,100);
+-      const remainingFraction=1-timedOverlap/Math.max(dt,.00001);
+-      soc=cap(timedSoc+delta*remainingFraction,floor,100);
+-    }else soc=normalStep;
+-    // For a PV-backed daytime plan, place the *indicative goal trajectory*
+-    // on top of the unknown household-dispatch shape. The target remains a
+-    // forecast target, not a guaranteed measured SoC.
+-    if(allowPlanRamp&&goalWeight>0&&b<=goalEndH+.0001){
+-      const progress=cap(solarWeightUsed/goalWeight,0,1);
+-      soc=Math.max(soc,cap(soc0+(plannerGoal-soc0)*progress,floor,100));
+-    }
+-    pts.push({h:b,soc});lastH=b;
+-  }
+-  // The actual EMS exposes only one active target. Future goals are
+-  // calculated from the curve, PV forecast and the configured SoC ceiling.
+-  // They are not EMS commitments and must never be shown as such.
+-  const lookupSoc=h=>pts.reduce((best,p)=>Math.abs(p.h-h)<Math.abs(best.h-h)?p:best,pts[0]).soc;
+-  const atFirst=lookupSoc(goals.firstH);
+-  const activeGoal=num(s.target,null);
+-  const firstSoc=atFirst; // always show the SOC actually reached by THIS forecast curve
+-  const firstEmsTarget=activeGoal!==null&&s.planReady===true
+-    &&num(s.planningTargetAt,0)>todayStart+nowH*HOUR_MS?activeGoal:null;
+-  const followKind=goals.kind==='morning'?'day':'morning';
+-  const secondGoalH=goals.secondH??(goals.kind==='morning'?extraGoal:null);
+-  const followObserved=secondGoalH===null?null:lookupSoc(secondGoalH);
+-  // The projected curve already accounts for PV, estimated household demand
+-  // and known charge windows. Reuse it rather than running a second diverging
+-  // estimate or repeating the earlier morning target as a daytime target.
+-  const followSoc=followObserved===null?null:cap(followObserved,floor,100);
+-  const lines=[{h:goals.firstH,soc:firstSoc,estimated:true,emsTarget:firstEmsTarget,label:goals.kind==='morning'?'Ochtenddoel':'Dagdoel'}];
+-  if(secondGoalH!==null)lines.push({h:secondGoalH,soc:followSoc,estimated:true,
+-    label:followKind==='morning'?'Ochtend (schatting)':'Dag (schatting)'});
+-  if(extraGoal!==null&&goals.kind==='day')lines.push({h:extraGoal,soc:lookupSoc(extraGoal),estimated:true,label:'Dag (na ochtendpiek)'});
+-  const floorPt=pts.find((p,i)=>i>0&&p.soc<=floor+.15);
+-  return {pts,end:soc,horizon,goals:lines,extendedFrom:extraGoal===null?null:goals.secondH??goals.firstH,
+-   usesActualTariffs:source==='json'&&tariffRows.length>0,method:validTiming?(timeDirection==='charge'?'vol tot doel':'leeg tot doel'):
+-   allowPlanRamp&&goalWeight>0?'PV & planningsdoel':gridMethod,
+-   totalGrid,hasHouse,hasPv,floorAt:floorPt?.h??null,
+-   fromPlan:rows.length>0||windows.length>0||s.planReady===true};
++  if(predicted>.00001)predictedWindows.push({startAt:x.a,endAt:x.b,energyKwh:predicted/.95,confirmed:false});
++  // Never raise a below-floor SoC by clamping; only incoming energy can do so.
++  energy=Math.max(0,Math.min(capKwh*ceiling/100,energy));
++  pts.push({h:(x.b-todayStart)/HOUR_MS,soc:100*energy/capKwh,charging:actual>0?'ems':predicted>0?'forecast':null});
++ }
++ const lookupSoc=h=>pts.reduce((best,p)=>Math.abs(p.h-h)<Math.abs(best.h-h)?p:best,pts[0]).soc;
++ const lines=goalHours.map((h,i)=>({h,soc:lookupSoc(h),estimated:true,
++  emsTarget:i===0&&s.planReady?s.target:null,label:isMorning(h)?'Ochtend (schatting)':'Dag (schatting)'}));
++ const value={pts,end:100*energy/capKwh,horizon,goals:lines,extendedFrom:extraGoal===null?null:goals.secondH??goals.firstH,
++  usesActualTariffs:tariffRows.length>0,method:'energiebalans',totalGrid,hasHouse:profile.daily!==null,
++  hasPv:num(s.forecast,null)!==null||num(s.remaining,null)!==null,floorAt:pts.find((p,i)=>i>0&&p.soc<=floor+.15)?.h??null,
++  fromPlan:windows.length>0,windows,predictedWindows};
++ socForecastCache={signature,value};return value;
+ }
+ // Cumulative PV forecast for the *display only*. HomeFlux supplies daily and
+ // remaining kWh, not an hourly solar forecast or measured PV-generation curve.
+@@ -1336,7 +1322,7 @@
+   const demo=source==='demo';
+   $('chartSource').textContent=(demo?'DEMO':'STATUS')+' · TOT '+(prediction?futureClock(prediction.horizon):'24:00');
+   $('pvToday').innerHTML=s.forecast===null?'— <b>kWh</b>':`${nl(s.forecast,1)} <b>kWh</b>`;
+-  $('pvRemain').textContent=s.remaining===null?'Resterende PV onbekend':`Nog ${nl(s.remaining,1)} kWh`;
++  $('pvRemain').textContent=s.remaining===null?'Resterende PV onbekend':`Rest ${nl(s.remaining,1)} kWh`;
+   const dayLedger=houseRecord('day').v;
+   const gridImport=num(dayLedger?.importedEnergyToday?.measuredKwh,null);
+   const observedGridImport=gridImport!==null?Math.max(0,gridImport)
+@@ -1347,22 +1333,15 @@
+   // since midnight. Until then, a partial house integral is NOT presented as
+   // full-day consumption. The known P1 import remains a separate quantity.
+   const houseCoverageComplete=shownHouse&&history.covered>=Math.max(0,profile.nowH-.17);
+-  const mainLabel=demo?'Verbruik tot nu':houseCoverageComplete?'Huisverbruik tot nu'
+-   :hasGridLedger?'Netimport (P1)':shownHouse?'Huisverbruik (gemeten deel)':'Verbruik tot nu';
+-  $('houseTodayLabel').textContent=mainLabel;
+-  $('houseToday').innerHTML=houseCoverageComplete||(!hasGridLedger&&shownHouse)
+-    ?`${nl(history.total,2)} <b>kWh</b>`
+-    :hasGridLedger?`${nl(observedGridImport,2)} <b>kWh</b>`:'— <b>kWh</b>';
+-  $('houseTodayDetail').textContent=demo?'Gesimuleerde metingen':houseCoverageComplete
+-    ?`Huis ${nl(history.covered,1)} u · ${hasGridLedger?'P1-import '+nl(observedGridImport,2)+' kWh':'PV/P1-meting'}`
+-    :shownHouse
+-      ?`${hasGridLedger?'P1 dagteller · ':''}Huiscurve ${nl(history.covered,1)} u gemeten`
+-      :hasGridLedger?'P1 dagteller · huiscurve wordt opgebouwd':'Geen huisverbruikhistoriek beschikbaar';
++  $('houseTodayLabel').textContent=houseCoverageComplete?'Huisverbruik':'Huisverbruik (deel)';
++  $('houseToday').innerHTML=shownHouse?`${nl(history.total,2)} <b>kWh</b>`:'— <b>kWh</b>';
++  $('houseTodayDetail').textContent=hasGridLedger?'P1 import '+nl(observedGridImport,2)+' kWh':'';
+   // Match the chronologically first remaining goal on the plotted curve.
+   // A later morning or afternoon goal is graph context, not "SoC volgend doel".
+   const nextGoal=firstUpcomingSocGoal(prediction?.goals,profile.nowH);
+   $('socAtMidnight').textContent=nextGoal?nl(nextGoal.soc,0)+'%':'—';
+-  $('socProjectionType').textContent=nextGoal?futureClock(nextGoal.h)+' · schatting':'Capaciteit/SoC ontbreekt';
++  $('socProjectionType').textContent=nextGoal?'Tegen '+futureClock(nextGoal.h):'—';
++  $('socAtMidnight').title='Widgetprognose, geen bevestigde laadopdracht';
+   const svg=$('energyChart'),{W,H,L,R,T,B,X_LABEL_Y}=ENERGY_CHART;
+   svg.setAttribute('aria-description','Gele PV-balken zijn cumulatieve kWh-prognoses op basis van het aangeleverde dagtotaal, geen gemeten opbrengst. Historische SoC is uitsluitend uit daadwerkelijk ontvangen widgetstatussen, zonder verzonnen middernachtmeting. Indicatieve SoC-prognose. '+(profile.usesYesterday?'70% historische Savings-dagvraag van gisteren en 30% HomeFlux-vraaginschatting indien beschikbaar. ':'HomeFlux-vraaginschatting indien beschikbaar. ')+(prediction?.usesActualTariffs?'Ontlading volgens de bekende HomeFlux-tariefblokken en ingestelde batterijspaarregels.':'Toekomstig tarief onbekend: geen verzonnen piekuren.')+(prediction?.extendedFrom!==null?' Bij bekende ontlading na het ochtenddoel loopt de lijn indicatief tot het volgende dagdoel; zonder PV-prognose voor morgen wordt die opbrengst niet ingevuld.':''));
+   const endH=prediction?.horizon||24;
+@@ -1458,7 +1437,13 @@
+     }).join('');
+   }else if(num(s.soc,null)!==null){socPoint=`<circle cx="${sc(nowX)}" cy="${sc(ys(s.soc))}" r="5" fill="#3bffc1" stroke="#c4fff0" stroke-width="1.6"/>`}
+   const nowMarker=`<line x1="${sc(nowX)}" y1="${T}" x2="${sc(nowX)}" y2="${B}" stroke="#88f6ff" stroke-width="1.5" stroke-dasharray="4 4" opacity=".78"/><rect x="${sc(cap(nowX-15,L,R-30))}" y="12" width="30" height="16" rx="5" fill="#17678a"/><text x="${sc(cap(nowX,L+15,R-15))}" y="23.3" font-size="9" font-weight="800" text-anchor="middle" fill="#ccf6ff">NU</text>`;
+-  svg.innerHTML=`<defs><linearGradient id="pvBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe58f"/><stop offset=".5" stop-color="#ffc447"/><stop offset="1" stop-color="#d68b28"/></linearGradient><linearGradient id="batteryArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2affb3" stop-opacity=".25"/><stop offset="1" stop-color="#07c99a" stop-opacity=".012"/></linearGradient><filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="mintGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g>${ticks}${xticks}</g><text x="4" y="16" fill="#ffd16b" font-size="9" font-weight="800">PV kWh</text><text x="43" y="16" fill="#66dfff" font-size="9" font-weight="800">Huis kW</text><text x="386" y="16" fill="#6aefbf" font-size="9" font-weight="800">SoC</text><g data-layer="pv">${bars}</g><g data-layer="battery">${goalLine}${socArea}${socObserved}${socPath}${socPoint}</g><g data-layer="house">${housePaths}${houseMarker}</g>${nowMarker}`;
++  const chargeStrips=prediction?[...prediction.windows.map(w=>({startAt:w.start,endAt:w.end,confirmed:true})),...prediction.predictedWindows].map(w=>{
++    const left=Math.max(profile.nowH,(w.startAt-dayStartOf(s.timeReferenceAt))/HOUR_MS),right=Math.min(endH,(w.endAt-dayStartOf(s.timeReferenceAt))/HOUR_MS);
++    if(right<=left)return '';
++    return `<rect x="${xf(left)}" y="${B-4}" width="${Math.max(.5,xf(right)-xf(left))}" height="3" fill="${w.confirmed?'#3af3ad':'#ffc447'}" ${w.confirmed?'':'stroke="#ffc447" stroke-dasharray="2 2" fill-opacity=".25"'}><title>${w.confirmed?'Bestaand EMS-laadplan':'Widgetprognose, geen laadopdracht'} ${futureClock(left)}–${futureClock(right)}</title></rect>`;
++  }).join(''):'';
++  if($('socChargeLegend'))$('socChargeLegend').hidden=!chargeStrips;
++  svg.innerHTML=`<defs><linearGradient id="pvBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe58f"/><stop offset=".5" stop-color="#ffc447"/><stop offset="1" stop-color="#d68b28"/></linearGradient><linearGradient id="batteryArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2affb3" stop-opacity=".25"/><stop offset="1" stop-color="#07c99a" stop-opacity=".012"/></linearGradient><filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="mintGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g>${ticks}${xticks}</g><text x="4" y="16" fill="#ffd16b" font-size="9" font-weight="800">PV kWh</text><text x="43" y="16" fill="#66dfff" font-size="9" font-weight="800">Huis kW</text><text x="386" y="16" fill="#6aefbf" font-size="9" font-weight="800">SoC</text><g data-layer="pv">${bars}</g><g data-layer="battery">${goalLine}${socArea}${socObserved}${socPath}${socPoint}${chargeStrips}</g><g data-layer="house">${housePaths}${houseMarker}</g>${nowMarker}`;
+   applyChartLayers();
+   lastChartData={profile,history,prediction,observedSoc,pvCumulative,pvScaleKwh,houseScaleKw};
+ }
+@@ -1515,7 +1500,7 @@
+ // message. Only the derived chart, savings breakdown, Explorer and full tariff
+ // timeline are calculated on the once-per-minute presentation path below.
+ let lastHeroIcon=null,lastGuardBarState=null,liveFitLabelChanged=false;
+-const LIVE_FIT_LABEL_IDS=new Set(['boilerValue','guardValue','nextCharge']);
++const LIVE_FIT_LABEL_IDS=new Set(['boilerValue','guardValue','nextCharge','socValue','socSub','tariffValue','priceValue','wafValue','wafSub','wafModeTitle','planCurrentSoc','needTarget','netPlanned','targetSoc']);
+ function setVisualText(id,text){
+  const el=$(id),value=String(text);
+  if(el&&el.textContent!==value){
+@@ -1527,7 +1512,7 @@
+ setVisualText('socValue',s.soc==null?'—':nl(s.soc,1)+'%');const displayGoal=visibleSocGoal();setVisualText('socSub',displayGoal.value===null?'Doel onbekend':(displayGoal.estimated?'Verwacht doel ~':'Doel ')+nl(displayGoal.value,0)+'%');$('socFill').style.width=cap(num(s.soc,0),0,100)+'%';setVisualText('tariffValue',source==='json'?tariffNameForMetric(rawStatusObject):s.tariff||'—');setVisualText('priceValue',s.price==null?'Prijs onbekend':String(rawStatusObject?.settings?.currencySymbol||'€')+' '+nl(s.price,3)+'/kWh');$('tariffFill').style.width=({Superdal:100,Dal:65,Piek:30}[s.tariff]||30)+'%';if(!isJson||!document.body.classList.contains('homey-live')){setVisualText('wafValue',s.waf===null||s.waf===undefined?'—':s.waf>=7?'Uitstekend':s.waf>=1?'Goed':s.waf>=-4?'Nipt':'Aandacht');setVisualText('wafSub',s.waf==null?'Geen actuele WAF-waarde':(s.waf>=0?'+':'')+nl(s.waf,1)+' kWh');$('wafMetric').classList.toggle('danger',s.waf!=null&&s.waf<0);$('wafMetric').classList.toggle('blue',s.waf==null||s.waf>=0);}
+ if(!isJson)renderTariffTimelineForMoment(day);setVisualText('nextCharge',s.next);setVisualText('dayType',isJson?String(rawStatusObject?.tariff?.label||'LIVE EMS'):'VAST TARIEF');
+ if(!isJson)renderEnergyDay();
+-setVisualText('boilerValue',s.boiler);setVisualText('boilerSub',s.boilerReason);setVisualText('guardValue',s.guard);setVisualText('guardSub',s.guardReason);$('guardValue').classList.toggle('amber',guard);const guardBarState=guard?'warn':'ok';if(lastGuardBarState!==guardBarState){$('guardBar').innerHTML=Array.from({length:5},(_,i)=>`<span class="${guard?i<5?'warn':'':i<3?'ok':''}"></span>`).join('');lastGuardBarState=guardBarState;}setVisualText('netPlanned',s.planned==null?'—':nl(s.planned,1)+' kWh');setVisualText('needTarget',s.needed==null?'—':nl(s.needed,1)+' kWh');setVisualText('targetSoc',s.soc==null||displayGoal.value===null?'—':nl(s.soc,0)+'% → '+(displayGoal.estimated?'~':'')+nl(displayGoal.value,0)+'%');setVisualText('footerLabel',isJson?'EMS-gegevens · read-only':auto?'Live simulatie · geanimeerde gegevens':'Handmatige demo · geen Homey-verbinding');setVisualText('autoBtn',auto?'Ⅱ Auto':'▶ Auto');$('autoBtn').classList.toggle('active',auto);
++setVisualText('boilerValue',s.boiler);setVisualText('boilerSub',s.boilerReason);setVisualText('guardValue',s.guard);setVisualText('guardSub',s.guardReason);$('guardValue').classList.toggle('amber',guard);const guardBarState=guard?'warn':'ok';if(lastGuardBarState!==guardBarState){$('guardBar').innerHTML=Array.from({length:5},(_,i)=>`<span class="${guard?i<5?'warn':'':i<3?'ok':''}"></span>`).join('');lastGuardBarState=guardBarState;}setVisualText('netPlanned',s.planned==null?'—':nl(s.planned,1)+' kWh');setVisualText('needTarget',s.needed==null?'—':nl(s.needed,1)+' kWh');setVisualText('planCurrentSoc',s.soc==null?'—':nl(s.soc,0)+'%');setVisualText('targetSoc',displayGoal.value===null?'—':(displayGoal.estimated?'~':'')+nl(displayGoal.value,0)+'%');setVisualText('footerLabel',isJson?'EMS-gegevens · read-only':auto?'Live simulatie · geanimeerde gegevens':'Handmatige demo · geen Homey-verbinding');setVisualText('autoBtn',auto?'Ⅱ Auto':'▶ Auto');$('autoBtn').classList.toggle('active',auto);
+ for(const b of $('scenarioStrip').querySelectorAll('button'))b.classList.toggle('selected',source==='demo'&&b.dataset.index==current);renderEvs();renderHvacs();if(!isJson)renderExtras();}
+ function custom(){auto=false;source='demo';}
+ function attachListeners(){$('scenarioStrip').addEventListener('click',e=>{let b=e.target.closest('[data-index]');if(b)setScenario(Number(b.dataset.index),{keepAuto:false});});$('autoBtn').addEventListener('click',()=>{if(source==='json'){setScenario(0,{keepAuto:true});auto=true}else auto=!auto;secondsInScene=0;paint();});$('resetBtn').addEventListener('click',()=>{auto=true;setScenario(0);});$('jsonBtn').addEventListener('click',()=>{$('jsonError').textContent='';$('jsonModal').classList.add('open');$('jsonInput').focus();});$('jsonCancel').addEventListener('click',()=>$('jsonModal').classList.remove('open'));$('jsonModal').addEventListener('click',e=>{if(e.target===$('jsonModal'))$('jsonModal').classList.remove('open')});document.addEventListener('keydown',e=>{if(e.key==='Escape')$('jsonModal').classList.remove('open')});$('jsonApply').addEventListener('click',importStatus);
+@@ -1547,7 +1532,7 @@
+ result.batteryTiming={direction:String(data.batteryTiming?.direction||'idle'),
+  hours:num(data.batteryTiming?.hours,null),targetSoc:num(data.batteryTiming?.targetSoc,null),
+  powerW:num(data.batteryTiming?.powerW,null)};
+-result.planRows=Array.isArray(raw.planning?.rows)?raw.planning.rows:Array.isArray(data.planning?.rows)?data.planning.rows:Array.isArray(raw.plan?.rows)?raw.plan.rows:[];
++result.planRows=Array.isArray(data.visualSocPlan?.rows)?data.visualSocPlan.rows:Array.isArray(raw.planning?.rows)?raw.planning.rows:Array.isArray(data.planning?.rows)?data.planning.rows:Array.isArray(raw.plan?.rows)?raw.plan.rows:[];
+ result.nextChargeDetail=data.nextCharge&&typeof data.nextCharge==='object'?data.nextCharge:null;
+ result.planningTargetAt=num(data.planningSummary?.targetAt,null);
+ result.planPhase=String(data.planningSummary?.phase||'');
+@@ -2072,6 +2057,8 @@
+  const chart=$('chartSurface');
+  const chartBlock=document.createElement('div');chartBlock.id='dayChartBlock';
+  chart.before(chartBlock);chartBlock.append(chart);
++ const chargeLegend=document.createElement('div');chargeLegend.id='socChargeLegend';chargeLegend.className='soc-charge-legend';
++ chargeLegend.innerHTML='━ EMS-laadplan <span>┄ Widgetprognose</span>';chartBlock.append(chargeLegend);
+  const legend=$('energyLegend');
+  legend.after(tariff);
+  const chargePlan=document.createElement('div');
+@@ -2095,11 +2082,14 @@
+  // All three compact statistics used to have their own section. Each remains
+  // individually addressable in the private Visual Look profile config.
+  const legendStats=Array.from(legend.children),planStats=Array.from($('planStatsGrid').children);
++ const currentSoc=document.createElement('div');currentSoc.className='bottom-stat';
++ currentSoc.innerHTML='<div class="top">SOC nu</div><strong id="planCurrentSoc">—</strong>';
++ $('planStatsGrid').prepend(currentSoc,planStats[1],planStats[0]);
+  const itemNodes={
+   daySoc:socMetric,dayTariff:$('tariffMetric'),dayWaf:$('wafMetric'),
+   dayChart:chartBlock,dayHouse:legendStats[0],dayPv:legendStats[1],dayBattery:legendStats[2],
+   dayTariffTimeline:tariff,dayNextCharge:nextCharge,
+-  dayGridPlanned:planStats[0],dayEnergyNeed:planStats[1],dayTargetSoc:planStats[2],
++  dayPlanSoc:currentSoc,dayGridPlanned:planStats[0],dayEnergyNeed:planStats[1],dayTargetSoc:planStats[2],
+  };
+  for(const [id,node] of Object.entries(itemNodes)){if(node)node.dataset.dayItem=id}
+ }
+@@ -2360,16 +2350,43 @@
+ // for newly rendered elements, changed text or a genuine viewport/layout change.
+ const fittedTextValues=new WeakMap();
+ let lastFittedWidth=-1,forceTextFit=true;
++const fittedDayTextValues=new WeakMap();
++const FIT_DAY_TEXT_SELECTOR='#energyDayPanel .day-metrics .metric-head, #energyDayPanel .day-metrics .metric strong, #energyDayPanel .day-metrics .metric small, #energyDayPanel .energy-stat .stat-heading span, #energyDayPanel .energy-stat strong, #energyDayPanel .energy-stat small, #energyDayPanel .bottom-stat .top, #energyDayPanel .bottom-stat strong';
++function fitDayOverviewText(force=false){
++ for(const el of document.querySelectorAll(FIT_DAY_TEXT_SELECTOR)){
++  const text=el.textContent;
++  // No layout reads for unchanged text, except after resize/profile changes.
++  if(!force&&fittedDayTextValues.get(el)===text)continue;
++  if(!el.isConnected||!el.getClientRects().length)continue;
++  el.style.removeProperty('font-size');
++  const available=el.clientWidth;
++  if(available<1)continue;
++  const style=getComputedStyle(el);
++  let size=parseFloat(style.fontSize);
++  if(!(size>0))continue;
++  const icon=el.querySelector(':scope > svg');
++  const fixed=icon?icon.getBoundingClientRect().width+(parseFloat(style.columnGap)||0):0;
++  // Normally one proportional reduction. Bound corrections for fixed icons
++  // and rounding instead of walking through every intermediate font size.
++  for(let pass=0;pass<3;pass++){
++   const measured=el.scrollWidth;
++   if(measured<=available)break;
++   size=Math.max(1,Math.floor(size*Math.max(0,available-fixed-.5)/Math.max(1,measured-fixed)*10)/10);
++   el.style.fontSize=size+'px';
++  }
++  fittedDayTextValues.set(el,text);
++ }
++}
+ function fitVisualText(){
+  const width=window.innerWidth;
+  const force=forceTextFit||width!==lastFittedWidth;
+  lastFittedWidth=width;
+  forceTextFit=false;
++ fitDayOverviewText(force);
+  for(const [selector,max,min] of FIT_VISUAL_TEXT){
+   for(const el of document.querySelectorAll(selector)){
+    if(!el.isConnected)continue;
+-   // Daily overview labels/values use the per-profile CSS pixel sizes.
+-   // Never overwrite their font-size with a fixed inline fit result.
++   // Day fields were fitted above, using their profile size as the upper bound.
+    if(el.closest('#energyDayPanel .day-metrics, #energyDayPanel .energy-summary, #energyDayPanel .day-plan-stats'))continue;
+    const text=el.textContent;
+    if(!force&&fittedTextValues.get(el)===text)continue;
+@@ -2634,6 +2651,14 @@
+  const rawRows=Array.isArray(status?.tariffTimeline)?status.tariffTimeline:[];
+  return buildRollingTimelineFromRows(rawRows,startAt);
+ }
++function tariffLegendMarkup(rows,dynamic=false){
++ const seen=new Set(),labels={cheap:'Goedkoop',normal:'Normaal',expensive:'Duur'};
++ return rows.filter(r=>r.k!=='unknown').map(r=>{
++  const label=dynamic?labels[r.k]:r.label;
++  if(!label||seen.has(label))return '';seen.add(label);
++  return `<span><i class="legend-dot" style="background:${tariffAccentForClass(r.k)}"></i>${safe(label)}</span>`;
++ }).join('');
++}
+ function renderTariffLive(status){
+  const now=Date.now(),dynamic=dynamicContractStatus(status),rows=resolveTariffRowsFromStatus(status,now);
+  const legend=$('tariffSection')?.querySelector('.tariff-legend');
+@@ -2642,7 +2667,7 @@
+   renderTariffTimelineRows(rows,now);
+   if(legend){
+    legend.hidden=false;
+-   legend.innerHTML='<span><i class="legend-dot"></i>Goedkoop</span><span><i class="legend-dot dal"></i>Normaal</span><span><i class="legend-dot piek"></i>Duur</span><span>· lichter = goedkoper binnen klasse</span>';
++   legend.innerHTML=tariffLegendMarkup(rows,true);
+   }
+   $('dayType').textContent='DYNAMISCH · '+(String(status.settings?.contractType)==='dynamic_hour'?'UUR':String(status.settings?.contractType)==='dynamic_quarter'?'KWARTIER':'PRIJSCURVE');
+  }else{
+@@ -2651,7 +2676,7 @@
+    legend.hidden=false;
+    // Do not advertise fixed clock hours: even a standard TOU contract
+    // can include additional weekday/weekend intervals.
+-   legend.innerHTML='<span><i class="legend-dot"></i>Superdal</span><span><i class="legend-dot dal"></i>Dal</span><span><i class="legend-dot piek"></i>Piek</span>';
++   legend.innerHTML=tariffLegendMarkup(rows);
+   }
+  }
+  // Price classifications can change while their event/window times stay fixed.
+@@ -2728,6 +2753,7 @@
+  if(!status||typeof status!=='object'||Array.isArray(status))return;
+  try{
+   if(Array.isArray(history))pendingHouseHistory=history;
++  if(!status.visualSocPlan&&rawStatusObject?.visualSocPlan)status.visualSocPlan=rawStatusObject.visualSocPlan;
+   const mapped=readJsonStatus({status},{reuseHistory:true});
+   s=mapped.result;evs=mapped.mappedEvs;hvacs=mapped.mappedHvacs;
+   // Live graph and rolling 24h tariff view follow real wall clock time,
+@@ -2799,9 +2825,13 @@
+  const detail=String(message?.detail||'Geen antwoord').slice(0,160);
+  $('savingsFoot').textContent='Historische Savings-opvraging mislukt ('+savingsPeriod+'): '+detail+'. Controleer de Homey-appdiagnostiek.';
+ }
+-function updateLiveHouseHistory(rows){
+- if(!Array.isArray(rows)||!rawStatusObject)return;
++let initialHouseHistoryRendered=false;
++function updateLiveHouseHistory(rows,initial=false){
++ if(!Array.isArray(rows))return;
+  pendingHouseHistory=rows;
++ if(initial&&!initialHouseHistoryRendered&&rawStatusObject){
++  initialHouseHistoryRendered=true;liveCalculationInvalidated=true;calculateLiveViews();
++ }
+  // An optional history response must not trigger an early chart calculation
+  // or a height measurement. The next minute tick will consume the samples.
+ }
+@@ -2830,7 +2860,7 @@
+  savingsSection:'Savings & voordeel',evSection:'EV-laadbeheer',hvacSection:'HVAC',
+  loadSection:'Flexibele sturing',infoExplorer:'Alle EMS-informatie'};
+ const DAY_ITEM_IDS=['daySoc','dayTariff','dayWaf','dayChart','dayHouse','dayPv','dayBattery',
+- 'dayTariffTimeline','dayNextCharge','dayGridPlanned','dayEnergyNeed','dayTargetSoc'];
++ 'dayTariffTimeline','dayNextCharge','dayPlanSoc','dayGridPlanned','dayEnergyNeed','dayTargetSoc'];
+ let hiddenDayItems=new Set();
+ function applyDayItemVisibility(items,foldTimeline){
+  hiddenDayItems=new Set(Array.isArray(items)?items.filter(id=>DAY_ITEM_IDS.includes(id)):[]);
+@@ -2839,7 +2869,7 @@
+   if(node)node.hidden=hiddenDayItems.has(id);
+  }
+  $('metricsSection').hidden=['daySoc','dayTariff','dayWaf'].every(id=>hiddenDayItems.has(id));
+- const statsHidden=['dayGridPlanned','dayEnergyNeed','dayTargetSoc'].every(id=>hiddenDayItems.has(id));
++ const statsHidden=['dayPlanSoc','dayGridPlanned','dayEnergyNeed','dayTargetSoc'].every(id=>hiddenDayItems.has(id));
+  $('planStatsSection').hidden=statsHidden;
+  $('dayChargePlan').hidden=statsHidden&&hiddenDayItems.has('dayNextCharge');
+  $('dayChargeFallback').hidden=!hiddenDayItems.has('dayNextCharge')||statsHidden;
+@@ -2924,6 +2954,7 @@
+    '--day-plan-icon-size':px(12),'--day-plan-value-font':fontClamp(11,3.2,15),
+    '--day-plan-value-font-narrow':px(10)
+   };
++  dayPanel.style.setProperty('--day-info-scale',String(ratio));
+   for(const [key,value] of Object.entries(values))dayPanel.style.setProperty(key,value);
+   for(const el of dayPanel.querySelectorAll('.day-metrics .metric strong, .day-metrics .metric small, .energy-summary .energy-stat strong, .day-plan-stats .bottom-stat strong')){
+    el.style.removeProperty('font-size');el.style.removeProperty('white-space');el.style.removeProperty('overflow-wrap');
+@@ -2967,7 +2998,7 @@
+   }
+   if(event.data.type==='homeflux.visual.savings')updateLiveSavings(event.data);
+   if(event.data.type==='homeflux.visual.savingsError')updateLiveSavingsError(event.data);
+-  if(event.data.type==='homeflux.visual.houseHistory')updateLiveHouseHistory(event.data.rows);
++  if(event.data.type==='homeflux.visual.houseHistory')updateLiveHouseHistory(event.data.rows,event.data.initial===true);
+   if(event.data.type==='homeflux.visual.measure')requestAnimationFrame(reportLiveHeight);
+  });
+  if(typeof ResizeObserver==='function')new ResizeObserver(reportLiveHeight).observe(document.querySelector('main.wrap'));
+--- /dev/null
++++ 1.5.7/lib/visual-house-history.js
+@@ -0,0 +1,38 @@
++'use strict';
++// Display-only time-weighted averages. O(1) per P1 observation, bounded RAM,
++// no timer, settings access or independent physical-load reconstruction.
++const INTERVAL = 300000, MAX_GAP = 60000, EMPTY = Object.freeze([]);
++function createSampler() {
++  let previous = null, bucket = null;
++  return { sample(at, powerW) {
++    let result = null;
++    const valid = Number.isFinite(at) && typeof powerW === 'number'
++      && Number.isFinite(powerW) && powerW >= 0 && powerW <= 100000;
++    if (!valid) { previous = null; return result || EMPTY; }
++    if (previous && at <= previous.at) return result || EMPTY;
++    const add = (start, end, watts) => {
++      const key = Math.floor(start / INTERVAL) * INTERVAL;
++      if (bucket && bucket.start !== key) finish();
++      bucket ||= { start: key, firstAt: start, area: 0, ms: 0 };
++      bucket.area += watts * (end - start); bucket.ms += end - start;
++    };
++    const finish = () => {
++      if (bucket?.ms > 0) (result ||= []).push([bucket.firstAt, Math.round(bucket.area / bucket.ms), bucket.start + INTERVAL, bucket.ms]);
++      bucket = null;
++    };
++    if (previous && at - previous.at <= MAX_GAP) {
++      let start = previous.at;
++      while (start < at) {
++        const end = Math.min(at, (Math.floor(start / INTERVAL) + 1) * INTERVAL);
++        const fraction = ((start + end) / 2 - previous.at) / (at - previous.at);
++        add(start, end, previous.powerW + (powerW - previous.powerW) * fraction);
++        if (end % INTERVAL === 0) finish();
++        start = end;
++      }
++    }
++    if (bucket && at >= bucket.start + INTERVAL) finish();
++    if(previous){previous.at=at;previous.powerW=powerW}else previous={at,powerW};
++    return result || EMPTY;
++  } };
++}
++module.exports = { createSampler, INTERVAL };
+--- /dev/null
++++ 1.5.7/test/widget-consolidation-1.5.7.test.js
+@@ -0,0 +1,145 @@
++'use strict';
++const assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),vm=require('vm'),Module=require('module');
++process.env.TZ='UTC';
++const {createSampler}=require('../lib/visual-house-history');
++const T=Date.parse('2026-11-16T00:00:00Z'), H=3600000;
++let checks=0;const ok=(v,msg)=>{assert.ok(v,msg);checks++};
++const sampler=createSampler();let rows=[];
++for(let i=0;i<=150;i++) rows.push(...sampler.sample(T+i*2000,1000+2000*i/150));
++ok(rows.length===1,'one finalized five-minute average');
++ok(rows[0][1]===2000&&rows[0][3]===300000,'time-weighted linear samples average to 2000 W');
++ok(Math.abs(rows[0][1]*rows[0][3]/3.6e9-1/6)<1e-10,'correct measured kWh');
++ok(sampler.sample(T+300000,9000).length===0,'duplicate P1 timestamps do not add energy');
++const gaps=createSampler();gaps.sample(T,1000);gaps.sample(T+30000,1000);gaps.sample(T+31000,null);
++gaps.sample(T+200000,1000);const incomplete=gaps.sample(T+300000,1000);
++ok(incomplete.length===1&&incomplete[0][3]===30000,'invalid telemetry and gaps are never filled');
++const midnight=createSampler();midnight.sample(T-10000,1000);const cross=midnight.sample(T+10000,1000);
++ok(cross.length===1&&cross[0][0]===T-10000&&cross[0][3]===10000,'midnight splits old/new intervals');
++const upgrade=createSampler();upgrade.sample(T+120001,1000);
++let upgraded=[];for(let at=T+130001;at<T+300000;at+=10000)upgraded.push(...upgrade.sample(at,1000));
++upgraded.push(...upgrade.sample(T+300000,1000));
++ok(upgraded[0][0]===T+120001&&upgraded[0][3]===179999,'upgrade interval starts after existing legacy point, without losing partial bucket');
++const load=Module._load;Module._load=function(r,p,m){if(r==='homey')return {App:class{}};if(r==='homey-api')return {HomeyAPI:{}};return load.call(this,r,p,m)};
++let App;try{App=require('../app')}finally{Module._load=load}
++const app=Object.create(App.prototype);
++app.getSavingsDateKey=at=>new Date(at).toISOString().slice(0,10);app.state={pvPowerW:0};app.inputSeen={pv:true};
++app.inputUpdatedAt={pv:T};app.evSessionDetection={physicalSiteLoadW:1800};app.savings={today:{date:'2026-11-16'}};
++// No EV configuration and no Battery Saving/dispatch state is required by this observer.
++for(let at=T;at<=T+300000;at+=10000)app.recordVisualHouseLoadSample(at);
++ok(app.savings.today.houseLoadHistory.length===1,'recording independent of EV or Battery Saving');
++app.state.pvPowerW=1000;app.inputUpdatedAt.pv=T-600000;
++for(let at=T+310000;at<=T+900000;at+=10000)app.recordVisualHouseLoadSample(at);
++ok(app.savings.today.houseLoadHistory.length===1,'stale nonzero PV cannot create house readings');
++const oldNow=Date.now;Date.now=()=>T+H;
++try{
++ let full=app.getVisualHouseLoadHistory();ok(full.rows.length===1&&full.intervalSeconds===300,'read-only full snapshot');
++ let delta=app.getVisualHouseLoadHistory({date:full.date,after:full.rows[0].at});ok(delta.rows.length===0,'unchanged status delta is empty');
++ app.savings.today.houseLoadHistory.push([T+300000,2000,T+600000,300000]);
++ delta=app.getVisualHouseLoadHistory({date:full.date,after:full.rows[0].at});ok(delta.rows.length===1,'only new five-minute point');
++ ok(app.getVisualHouseLoadHistory({date:'2026-11-15',after:T+H}).rows.length===2,'new day resets cursor');
++}finally{Date.now=oldNow}
++const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'widgets/status/public/visual.html'),'utf8');
++const outer=fs.readFileSync(path.join(root,'widgets/status/public/index.html'),'utf8');
++function between(s,a,b){return s.slice(s.indexOf(a),s.indexOf(b,s.indexOf(a)+a.length))}
++const num=(v,f=null)=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?f:Number(v);
++const ctx=vm.createContext({console,Date,source:'json',s:{},rawStatusObject:{},num,cap:(v,a,b)=>Math.max(a,Math.min(b,v)),HOUR_MS:H,DAY_MS:24*H,CHART_STEPS:96,STEP_H:.25});
++vm.runInContext(between(html,'let normalizedTariffCache=null;','function buildRollingTimelineFromRows(')+
++ between(html,'function readHouseSamples(','function hourFromClock(')+
++ between(html,'function hourFromClock(','// Cumulative PV forecast'),ctx);
++ctx.s={time:10,historyRows:ctx.readHouseSamples([[T,1000],[T+120000,1000],[T+300000,2000,T+600000,300000]]),timeReferenceAt:T};
++let hist=ctx.readHistory({nowH:1});ok(Math.abs(hist.total-(2/60+2*5/60))<1e-9,'mixed legacy/new durations are integrated independently');
++function setup(overrides={}){
++ ctx.s={time:60,timeReferenceAt:T+H,soc:15,capacityKwh:21.6,target:75,minSoc:12,maxSoc:100,
++  dayMaxSoc:90,nightMaxSoc:95,dayTargetTime:'17:00',nightTargetTime:'07:00',forecast:0,remaining:0,tomorrowForecast:0,
++  dailyHouseKwh:24,planReady:false,planRows:[],...overrides};
++ ctx.rawStatusObject={settings:{contractType:'dynamic_quarter',minSoc:12,safetySoc:14,lowForecastSelfConsumptionMinKwh:5},
++  visualPlanner:{maxTotalChargeW:6000,maxTotalDischargeW:6000,expectedEnergyNeedKwh:20,nightHysteresisEnabled:false},
++  tariffTimeline:Array.from({length:192},(_,i)=>({startAt:T+i*.25*H,endAt:T+(i+1)*.25*H,className:'expensive',price:.5}))};
++ return {nowH:ctx.s.time/60,pv:Array(96).fill(0),house:Array(96).fill(1),tomorrowPv:Array(96).fill(0),daily:24};
++}
++let profile=setup({soc:5});let curve=ctx.projectedSoc(profile);
++ok(curve.pts.every(p=>p.soc<=5),'below-floor SoC never jumps to safety or target');
++profile=setup({soc:60});ctx.rawStatusObject.settings.lowForecastDynamicExpensiveEnabled=true;
++curve=ctx.projectedSoc(profile);ok(curve.pts.every(p=>Math.abs(p.soc-60)<1e-9),'full Battery Saving prevents forecast discharge');
++ctx.rawStatusObject.settings.lowForecastDynamicExpensiveDischargeToTarget=true;ctx.s.target=40;
++curve=ctx.projectedSoc(profile);ok(curve.pts.at(-1).soc>=40&&curve.pts.at(-1).soc<60,'discharge-to-target preserves target floor');
++profile=setup({soc:50});ctx.rawStatusObject.settings.lowForecastDynamicExpensiveEnabled=true;
++ctx.rawStatusObject.visualPlanner.sunnyOverrideDate='2026-11-16';
++curve=ctx.projectedSoc(profile);ok(curve.pts.some(p=>p.h<24&&p.soc<50),'Sunny Override disables today low-PV saving');
++profile=setup({soc:15});
++for(const r of ctx.rawStatusObject.tariffTimeline){const h=(r.startAt-T)/H;if(h>=2&&h<4){r.className='cheap';r.price=.15}if(h>=8&&h<10){r.className='cheap';r.price=.10}}
++curve=ctx.projectedSoc(profile);
++ok(curve.predictedWindows.some(w=>w.startAt<T+7*H),'reserve charged before intervening expensive hours');
++ok(curve.predictedWindows.some(w=>w.startAt>=T+8*H),'remaining charge deferred to cheaper later window');
++ok(curve.pts.every(p=>p.soc>=14-1e-8),'future reserve respects safety floor when initially above it');
++const repeated=ctx.projectedSoc(profile);ok(repeated===curve,'same relevant inputs reuse forecast result');
++ctx.s.soc=30;ok(ctx.projectedSoc(profile)!==curve,'SOC change invalidates forecast cache');
++profile=setup({soc:20,planReady:true,planningTargetAt:T+7*H,target:30,planRows:[{startAt:T+2*H,endAt:T+3*H,plannedChargeW:1000,plannedEnergyKwh:1,targetSoc:30,plannedNetCharge:true}]});
++curve=ctx.projectedSoc(profile);ok(curve.windows.length===1&&curve.fromPlan,'existing EMS windows remain separately identified');
++ok(!curve.predictedWindows.some(w=>w.startAt<T+7*H),'no competing prediction inside existing EMS phase');
++profile=setup({soc:20,forecast:10,remaining:10});profile.pv=Array(96).fill(2);
++curve=ctx.projectedSoc(profile);ok(curve.pts.some(p=>p.soc>20),'SOC increases from real forecast PV surplus');
++// Evening deferral is independent from the morning fixture, for both source resolutions.
++for(const contract of ['dynamic_hour','dynamic_quarter']){
++ profile=setup({time:16*60,timeReferenceAt:T+16*H,soc:15,target:75});profile.nowH=16;
++ ctx.rawStatusObject.settings.contractType=contract;
++ for(const r of ctx.rawStatusObject.tariffTimeline){const h=(r.startAt-T)/H;
++  if(h>=16&&h<17){r.className='cheap';r.price=.15}
++  if(h>=18&&h<20){r.className='cheap';r.price=.10}
++ }
++ curve=ctx.projectedSoc(profile);
++ ok(curve.predictedWindows.some(w=>w.startAt<T+17*H),contract+' evening bridge reserve before expensive hour');
++ ok(curve.predictedWindows.some(w=>w.startAt>=T+18*H),contract+' additional window after evening goal');
++}
++profile=setup({soc:60,forecast:20,tomorrowForecast:20});
++ctx.rawStatusObject.tariffTimeline=ctx.rawStatusObject.tariffTimeline.map(r=>({...r,className:'normal'}));
++ctx.rawStatusObject.settings.highForecastDynamicPolicy={highForecastDynamicNormalBatterySave:true,highForecastDynamicNormalDischargeToTarget:false};
++curve=ctx.projectedSoc(profile);ok(curve.pts.every(p=>Math.abs(p.soc-60)<1e-8),'High-PV full saving prevents discharge');
++ctx.rawStatusObject.settings.highForecastDynamicPolicy.highForecastDynamicNormalBatterySave=false;
++ok(ctx.projectedSoc(profile).pts.some(p=>p.soc<59),'existing high-PV setting change invalidates forecast');
++profile=setup({time:65,timeReferenceAt:T+65*60000,soc:50});profile.nowH=65/60;
++curve=ctx.projectedSoc(profile);ok(Math.abs(curve.pts[1].h-1.25)<1e-8,'partial first interval is included');
++profile=setup({soc:15,target:95,forecast:100,remaining:100});profile.pv=Array(96).fill(20);
++ctx.rawStatusObject.tariffTimeline=ctx.rawStatusObject.tariffTimeline.map(r=>({...r,className:'cheap',price:.1}));
++curve=ctx.projectedSoc(profile);
++ok(curve.predictedWindows.length===0,'PV already consuming full battery charge limit leaves no extra grid headroom');
++for(let i=1;i<curve.pts.length;i++){
++ const a=curve.pts[i-1],b=curve.pts[i],maxRise=6*(b.h-a.h)*.95/21.6*100;
++ ok(b.soc-a.soc<=maxRise+1e-7,'combined PV/grid rise respects shared charge power');
++}
++// Widget transport: one initial endpoint call, then cursor deltas on /status.
++let calls=0;const parent=vm.createContext({visualLook:true,Homey:{api:async()=>{calls++;return {date:'2026-11-16',rows:[{at:T,powerW:1000}]}}},sendVisual:()=>{},console});
++vm.runInContext(between(outer,"      let persistedHouseHistory = [], historyDate = '', historyAfter = 0;","      let requestedPeriod = 'day'")+ '\nthis.read=refreshHouseHistory;this.merge=mergeHouseHistory;this.snap=visualHistorySnapshot;',parent);
++(async()=>{
++ await Promise.all([parent.read(),parent.read(),parent.read()]);ok(calls===1,'duplicate widget initialization makes one full history request');
++ parent.merge({date:'2026-11-16',rows:[{at:T,powerW:1000},{at:T+300000,powerW:2000}]});
++ ok(parent.snap(true).length===2,'incremental merge deduplicates points');
++ ok(parent.snap()===undefined,'unchanged status does not copy full history');
++ parent.merge({date:'2026-11-17',rows:[]});ok(parent.snap(true).length===0,'new day clears local history');
++ parent.merge({date:'2026-11-16',rows:[{at:T,powerW:1000}]});ok(parent.snap(true).length===0,'late previous-day response ignored');
++ let failures=0;
++ const failed=vm.createContext({visualLook:true,Homey:{api:async()=>{failures++;throw new Error('temporary source failure')}},sendVisual:()=>{},console:{warn:()=>{}}});
++ vm.runInContext(between(outer,"      let persistedHouseHistory = [], historyDate = '', historyAfter = 0;","      let requestedPeriod = 'day'")+'\nthis.read=refreshHouseHistory;',failed);
++ await failed.read();await failed.read();ok(failures===1,'failed full history read cannot loop on future status changes');
++ ok(!outer.includes('collectHouseSample(')&&!outer.includes('lastHouseHistoryAt'),'no competing local observations or history polling');
++ console.log(`PASS 1.5.7 consolidation: ${checks} history, forecast, reserve, cache and transport checks`);
++})().catch(e=>{console.error(e);process.exitCode=1});
++// Snapshot protocol is stateless per widget cursor; unchanged planning rows are
++// neither recalculated nor resent. Settings remain fresh on the same refresh.
++(async()=>{
++ const api=require('../widgets/status/api');
++ let cfg={contractType:'fixed',batteryCount:1,fixedImportPrice:.3,dayPlanningMaxSoc:80};
++ const fixture={planningCache:{lastCalculatedAt:T,value:{plan:{targetSoc:75,rows:[{startAt:T,endAt:T+H,plannedNetCharge:true,plannedChargeW:1000,plannedEnergyKwh:1}]}}},
++  getPublicStatus:()=>({tariff:{label:'Vaste prijs'},inputs:{batterySoc:[50]}}),getSettings:()=>cfg,getSavingsStatus:()=>({})};
++ const first=await api.getStatus({homey:{app:fixture},query:{visualSavings:'1'}});
++ const second=await api.getStatus({homey:{app:fixture},query:{visualSavings:'1',planRevision:first.visualSocPlanRevision}});
++ assert.equal(first.visualSocPlan.rows.length,1);assert.equal(second.visualSocPlan,undefined);
++ assert.equal(second.tariffTimeline[0].label,'Vaste prijs');
++ cfg={...cfg,dayPlanningMaxSoc:65};
++ const changed=await api.getStatus({homey:{app:fixture},query:{visualSavings:'1',planRevision:first.visualSocPlanRevision}});
++ assert.equal(changed.visualPlanner.dayPlanningMaxSoc,65);
++ fixture.planningCache.value.plan={targetSoc:70,rows:[]};
++ const updated=await api.getStatus({homey:{app:fixture},query:{visualSavings:'1',planRevision:first.visualSocPlanRevision}});
++ assert.ok(updated.visualSocPlanRevision>first.visualSocPlanRevision);assert.equal(updated.visualSocPlan.rows.length,0);
++ console.log('PASS 1.5.7 API: compact plan revision, cache invalidation, fresh settings and fixed-contract future tariff');
++})().catch(e=>{console.error(e);process.exitCode=1});
+--- /dev/null
++++ 1.5.7/test/widget-render-1.5.7.test.js
+@@ -0,0 +1,37 @@
++'use strict';
++const assert=require('node:assert/strict'),fs=require('fs'),path=require('path');
++const {JSDOM,VirtualConsole}=require('jsdom');
++const html=fs.readFileSync(path.join(__dirname,'../widgets/status/public/visual.html'),'utf8'),errors=[];
++const logs=new VirtualConsole();logs.on('jsdomError',e=>{if(e.type!=='css-parsing')errors.push(e.message)});logs.on('error',(...a)=>errors.push(a.join(' ')));
++const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://widget.test/',virtualConsole:logs});
++const w=dom.window,doc=w.document;
++const send=data=>w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data}));
++const now=Date.now(),midnight=new Date();midnight.setHours(0,0,0,0);const start=midnight.getTime();
++const status={avgSoc:72,effectiveCapacityKwh:21.6,targetSoc:78,planningChargeTargetSoc:78,
++ decisionText:'Batterij sparen',settings:{contractType:'tou',evCount:1,hvacCount:1,boilerCount:1,minSoc:12,safetySoc:14},
++ tariff:{className:'normal',label:'Dag & comfort',price:.3},inputs:{forecastDailyMaxKwh:8.2,forecastRemainingKwh:4.3,forecastTomorrowKwh:4},
++ visualPlanner:{solarTargetTime:'17:00',nightTargetTime:'07:00',dayPlanningMaxSoc:90,nightPlanningMaxSoc:95,maxSoc:100,maxTotalChargeW:6000,maxTotalDischargeW:6000},
++ energyBudget:{householdDailyKwh:20},planningSummary:{ready:true,targetAt:start+17*3600000,energyNeedKwh:1.2,gridPlannedKwh:.8},
++ nextCharge:{state:'planned',startAt:now+3600000,endAt:now+7200000,powerW:1000,targetSoc:78},
++ tariffTimeline:Array.from({length:96},(_,i)=>({startAt:start+i*900000,endAt:start+(i+1)*900000,className:i%3===0?'cheap':i%3===1?'normal':'expensive',label:i%3===0?'Nacht laag':i%3===1?'Dag & comfort':'Hoog',price:.2+i%3*.1,avoidGridImport:i%3===2,nightChargeAllowed:i%3===0,dayChargeAllowed:i%3===1})),
++ evs:[{name:'Auto 1',enabled:true,connected:true,outputAllowed:true,outputCurrentA:10,measuredPowerW:2300}],hvacs:[{name:'Keuken',enabled:true,outputMode:'heat',roomTemperatureC:20,setpointC:21}],boiler:{enabled:true,outputOn:true}};
++send({type:'homeflux.visual.widgetConfig',order:[],hidden:[],folded:[],dayTimelineFolded:false,dayInfoScale:100,configured:true});
++send({type:'homeflux.visual.status',status});
++send({type:'homeflux.visual.houseHistory',initial:true,rows:Array.from({length:Math.floor((now-start)/300000)},(_,i)=>({at:start+i*300000,endAt:start+(i+1)*300000,coveredMs:300000,powerW:1000}))});
++assert.equal(errors.length,0,errors.join('\n'));
++assert.ok(doc.querySelector('#energyChart path'),'real renderer draws energy/SOC paths');
++assert.equal(doc.querySelector('#planStatsGrid').children.length,4);
++assert.deepEqual([...doc.querySelectorAll('#planStatsGrid .top')].map(x=>x.textContent.trim()),['SOC nu','Nodig','Gepland','Doel-SOC']);
++assert.equal(doc.querySelector('#planCurrentSoc').textContent,'72%');
++assert.equal(doc.querySelector('#targetSoc').textContent,'78%');
++assert.deepEqual([...doc.querySelectorAll('.tariff-legend span')].map(x=>x.textContent).sort(),['Nacht laag','Dag & comfort','Hoog'].sort());
++assert.ok(doc.querySelector('#evSection').textContent.includes('Auto 1'),'EV display preserved');
++assert.ok(doc.querySelector('#hvacSection').textContent.includes('Keuken'),'HVAC display preserved');
++const keys=['dayPlanSoc','dayEnergyNeed','dayGridPlanned','dayTargetSoc'];
++for(let mask=0;mask<16;mask++){
++ const hidden=keys.filter((_,i)=>mask&(1<<i));
++ send({type:'homeflux.visual.widgetConfig',order:[],hidden:[],folded:[],dayHidden:hidden,configured:true,dayInfoScale:100});
++ keys.forEach((key,i)=>assert.equal(doc.querySelector(`[data-day-item="${key}"]`).hidden,Boolean(mask&(1<<i)),key));
++}
++assert.equal(errors.length,0,errors.join('\n'));
++dom.window.close();console.log('PASS 1.5.7 production DOM: graph, contract legend escaping, four columns, 16 visibility combinations, EV and HVAC display');

@@ -12,6 +12,33 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.7
+
+**NL** — Zelfstandige SoC-prognose op basis van energiestromen, met toekomstige laadvensters en onderscheid tussen bestaande EMS-plannen en widgetschattingen.
+Compact uitgelijnd dagoverzicht en laadplan, met contractafhankelijke tarieflegenda.
+Gedeelde P1-huisverbruikshistoriek met tijdgewogen vijfminutenmetingen en incrementele updates.
+Hergebruik van prognosegegevens en compacte planningssnapshots vermindert herhaalde widgetverwerking.
+
+**EN** — Independent energy-based SoC forecast with future charging windows and a clear distinction between existing EMS plans and widget estimates.
+Compact aligned daily overview and charging values, with contract-specific tariff legends.
+Shared P1 house-load history with time-weighted five-minute samples and incremental updates.
+Cached forecast inputs and compact planning snapshots reduce repeated widget processing.
+
+**FR** — Prévision SoC indépendante fondée sur les flux d’énergie, avec fenêtres de charge futures et distinction entre plans EMS existants et estimations du widget.
+Vue journalière et valeurs de charge compactes et alignées, avec légende tarifaire adaptée au contrat.
+Historique partagé de consommation P1, moyennes pondérées sur cinq minutes et mises à jour incrémentales.
+Réutilisation des données de prévision et instantanés de planification compacts pour réduire les traitements répétés.
+
+**DE** — Eigenständige SoC-Prognose aus Energieflüssen mit zukünftigen Ladefenstern und klarer Unterscheidung zwischen EMS-Plänen und Widget-Schätzungen.
+Kompakte, ausgerichtete Tagesübersicht und Ladewerte mit vertragsabhängiger Tariflegende.
+Gemeinsamer P1-Hausverbrauchsverlauf mit zeitgewichteten Fünf-Minuten-Mittelwerten und inkrementellen Updates.
+Zwischengespeicherte Prognosedaten und kompakte Planungsschnappschüsse reduzieren wiederholte Widget-Verarbeitung.
+
+**ES** — Previsión SoC independiente basada en flujos de energía, con futuras ventanas de carga y distinción entre planes EMS y estimaciones del widget.
+Resumen diario y valores de carga compactos y alineados, con leyenda de tarifas según el contrato.
+Historial compartido de consumo P1 con medias ponderadas de cinco minutos y actualizaciones incrementales.
+Reutilización de datos de previsión e instantáneas de planificación compactas para reducir el procesamiento repetido.
+
 ## Release notes — 1.5.6
 
 **NL** — Visual Look-widget: volledige EV-historiek komt mee in hetzelfde statuspakket als de woningsavings, voor alle periodes en ingestelde EV’s. Zonnevoordeel, netkosten en laadenergie worden rechtstreeks ingelezen, zonder aparte EV-opvraging.

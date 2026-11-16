@@ -17,7 +17,7 @@ window.HomeFluxVisualWidgetProfiles = (() => {
     ['Tarief en laadplanning',[
       ['dayTariffTimeline','Tariefverloop'],['dayNextCharge','Volgend laadvenster'],
       ['dayGridPlanned','Gepland netladen'],['dayEnergyNeed','Nog nodig tot doel'],
-      ['dayTargetSoc','SoC ⇒ doel-SoC'],
+      ['dayPlanSoc','SOC nu (laadplan)'],['dayTargetSoc','Doel-SOC'],
     ]],
   ];
   const NAMES = {compact:'Compact',medium:'Medium',full:'Full'};
