@@ -57,9 +57,9 @@ function setup(overrides={}){
   tariffTimeline:Array.from({length:192},(_,i)=>({startAt:T+i*.25*H,endAt:T+(i+1)*.25*H,className:'expensive',price:.5}))};
  return {nowH:ctx.s.time/60,pv:Array(96).fill(0),house:Array(96).fill(1),tomorrowPv:Array(96).fill(0),daily:24};
 }
-let profile=setup({soc:5});let curve=ctx.projectedSoc(profile);
+let profile=setup({soc:5});ctx.rawStatusObject.visualPlanner.forcedMode='standby';let curve=ctx.projectedSoc(profile);
 ok(curve.pts.every(p=>p.soc<=5),'below-floor SoC never jumps to safety or target');
-profile=setup({soc:60});ctx.rawStatusObject.settings.lowForecastDynamicExpensiveEnabled=true;
+profile=setup({soc:60,target:60});ctx.rawStatusObject.settings.lowForecastDynamicExpensiveEnabled=true;
 curve=ctx.projectedSoc(profile);ok(curve.pts.every(p=>Math.abs(p.soc-60)<1e-9),'full Battery Saving prevents forecast discharge');
 ctx.rawStatusObject.settings.lowForecastDynamicExpensiveDischargeToTarget=true;ctx.s.target=40;
 curve=ctx.projectedSoc(profile);ok(curve.pts.at(-1).soc>=40&&curve.pts.at(-1).soc<60,'discharge-to-target preserves target floor');
@@ -76,7 +76,7 @@ const repeated=ctx.projectedSoc(profile);ok(repeated===curve,'same relevant inpu
 ctx.s.soc=30;ok(ctx.projectedSoc(profile)!==curve,'SOC change invalidates forecast cache');
 profile=setup({soc:20,planReady:true,planningTargetAt:T+7*H,target:30,planRows:[{startAt:T+2*H,endAt:T+3*H,plannedChargeW:1000,plannedEnergyKwh:1,targetSoc:30,plannedNetCharge:true}]});
 curve=ctx.projectedSoc(profile);ok(curve.windows.length===1&&curve.fromPlan,'existing EMS windows remain separately identified');
-ok(!curve.predictedWindows.some(w=>w.startAt<T+7*H),'no competing prediction inside existing EMS phase');
+ok(curve.predictedWindows.some(w=>w.startAt<T+7*H),'future replanning can add charge inside the active phase without changing the snapshot');
 profile=setup({soc:20,forecast:10,remaining:10});profile.pv=Array(96).fill(2);
 curve=ctx.projectedSoc(profile);ok(curve.pts.some(p=>p.soc>20),'SOC increases from real forecast PV surplus');
 // Evening deferral is independent from the morning fixture, for both source resolutions.
@@ -91,14 +91,14 @@ for(const contract of ['dynamic_hour','dynamic_quarter']){
  ok(curve.predictedWindows.some(w=>w.startAt<T+17*H),contract+' evening bridge reserve before expensive hour');
  ok(curve.predictedWindows.some(w=>w.startAt>=T+18*H),contract+' additional window after evening goal');
 }
-profile=setup({soc:60,forecast:20,tomorrowForecast:20});
+profile=setup({soc:60,target:60,forecast:20,tomorrowForecast:20});
 ctx.rawStatusObject.tariffTimeline=ctx.rawStatusObject.tariffTimeline.map(r=>({...r,className:'normal'}));
 ctx.rawStatusObject.settings.highForecastDynamicPolicy={highForecastDynamicNormalBatterySave:true,highForecastDynamicNormalDischargeToTarget:false};
 curve=ctx.projectedSoc(profile);ok(curve.pts.every(p=>Math.abs(p.soc-60)<1e-8),'High-PV full saving prevents discharge');
 ctx.rawStatusObject.settings.highForecastDynamicPolicy.highForecastDynamicNormalBatterySave=false;
 ok(ctx.projectedSoc(profile).pts.some(p=>p.soc<59),'existing high-PV setting change invalidates forecast');
 profile=setup({time:65,timeReferenceAt:T+65*60000,soc:50});profile.nowH=65/60;
-curve=ctx.projectedSoc(profile);ok(Math.abs(curve.pts[1].h-1.25)<1e-8,'partial first interval is included');
+curve=ctx.projectedSoc(profile);ok(Math.abs(curve.pts[1].h-70/60)<1e-8,'partial first interval is included');
 profile=setup({soc:15,target:95,forecast:100,remaining:100});profile.pv=Array(96).fill(20);
 ctx.rawStatusObject.tariffTimeline=ctx.rawStatusObject.tariffTimeline.map(r=>({...r,className:'cheap',price:.1}));
 curve=ctx.projectedSoc(profile);

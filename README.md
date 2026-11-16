@@ -12,6 +12,28 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.8
+
+**NL** — De SOC-widgetprognose berekent toekomstige laadbehoefte opnieuw met de voorspelde SOC; een klein actueel laadplan begrenst de voorspelling niet meer.
+Dag- en nachtdoelen, beschikbare laadcapaciteit en de bestaande dynamische uitstelvoorwaarden worden in de prognose gevolgd.
+Verbeterde voorspelling rond 07:00/17:00, ontbrekende prijsgegevens en zomer- en wintertijd. De werkelijke EMS-regeling blijft ongewijzigd.
+
+**EN** — The SoC widget forecast recalculates future charging needs from the predicted SoC; a small current charging plan no longer caps the forecast.
+The projection follows day/night targets, available charging capacity and the existing dynamic charging deferral conditions.
+Improved forecasts around 07:00/17:00, missing price data and daylight-saving transitions. Actual EMS control remains unchanged.
+
+**FR** — La prévision SoC du widget recalcule les besoins futurs à partir du SoC prévu ; un petit plan actuel ne limite plus la prévision.
+La projection respecte les objectifs jour/nuit, la capacité de recharge disponible et les conditions existantes de report dynamique.
+Prévision améliorée autour de 07:00/17:00, des prix manquants et des changements d’heure. La régulation EMS réelle reste inchangée.
+
+**DE** — Die SoC-Widget-Prognose berechnet den künftigen Ladebedarf aus dem vorhergesagten SoC neu; ein kleiner aktueller Ladeplan begrenzt die Prognose nicht mehr.
+Die Vorschau berücksichtigt Tages- und Nachtziele, verfügbare Ladeleistung und die bestehenden Bedingungen für dynamischen Ladeaufschub.
+Verbesserte Prognose bei 07:00/17:00, fehlenden Preisen und Zeitumstellungen. Die tatsächliche EMS-Regelung bleibt unverändert.
+
+**ES** — La previsión SoC del widget recalcula la carga futura a partir del SoC previsto; un pequeño plan actual ya no limita la previsión.
+La proyección sigue los objetivos de día/noche, la capacidad de carga disponible y las condiciones existentes de aplazamiento dinámico.
+Previsión mejorada alrededor de las 07:00/17:00, con precios ausentes y cambios de hora. El control EMS real no cambia.
+
 ## Release notes — 1.5.7
 
 **NL** — Zelfstandige SoC-prognose op basis van energiestromen, met toekomstige laadvensters en onderscheid tussen bestaande EMS-plannen en widgetschattingen.

@@ -681,6 +681,7 @@ function normalizeTimelineRawRows(rows,startAt,hours=24){
    k:String(row.className||row.k||'normal'),
    label:String(row.label||row.name||row.k||''),
    price:Number(row.price),
+   priceKnown:row.price!==null&&row.price!==undefined&&row.price!==''&&Number.isFinite(Number(row.price)),
    rateId:row.rateId===undefined?null:String(row.rateId),
    avoidGridImport:row.avoidGridImport===undefined?null:Boolean(row.avoidGridImport),
    lowForecastBatterySave:row.lowForecastBatterySave===undefined?null:Boolean(row.lowForecastBatterySave),
@@ -975,7 +976,7 @@ function forecastGoalTimes(profile){
  let firstH=null,kind='day';
  const at=num(s.planningTargetAt,null);
  if(at!==null&&at>dayStart+nowH*HOUR_MS+60000&&at<dayStart+48*HOUR_MS){
-   firstH=(at-dayStart)/HOUR_MS;
+   firstH=forecastDisplayHour(at);
    kind=Math.abs(((firstH%24)+24)%24-morning)<Math.abs(((firstH%24)+24)%24-day)?'morning':'day';
  }
  if(firstH===null){
@@ -1008,7 +1009,7 @@ function futureClock(h){
 // remains responsible for real actions, overrides and safety/phase constraints.
 // This uses the selected 15/60-minute or TOU intervals; it never fabricates a
 // future tariff when a selected source has not provided that interval.
-function forecastTariffPolicy(row, hour, profile){
+function forecastTariffPolicy(row, hour, profile, phaseTarget=s.target){
   if(!row||!['cheap','normal','expensive'].includes(row.k))return {discharge:false};
   const raw=rawStatusObject||{}, cfg=raw.settings||{},planner=raw.visualPlanner||{};
   const kind=String(cfg.contractType||'');
@@ -1019,7 +1020,7 @@ function forecastTariffPolicy(row, hour, profile){
   }
   const safety=cap(num(cfg.safetySoc,num(s.minSoc,14)),0,100);
   const saveFloor=cap(Math.max(safety,num(cfg.batterySaveDischargeAboveSoc,100)),0,100);
-  const forecastGoal=cap(Math.max(safety,num(s.target,safety)),0,100);
+  const forecastGoal=cap(Math.max(safety,num(phaseTarget,safety)),0,100);
   const threshold=num(cfg.lowForecastSelfConsumptionMinKwh,5);
   const solarTime=hourFromClock(s.dayTargetTime,17);
   const relevantForecast=hour<solarTime?num(s.forecast,null):num(s.tomorrowForecast,null);
@@ -1084,147 +1085,670 @@ function forecastExtendedGoal(goals,profile,tariffRows){
  if(start===null||!(end>start&&end<=48))return null;
  const todayStart=dayStartOf(s.timeReferenceAt);
  const hasDischarge=tariffRows.some(row=>{
-   const from=Math.max(row.startAt,todayStart+start*HOUR_MS);
-   const until=Math.min(row.endAt,todayStart+end*HOUR_MS);
+   const from=Math.max(row.startAt,forecastAtHour(start));
+   const until=Math.min(row.endAt,forecastAtHour(end));
    if(until-from<60000)return false;
-   const midH=(from+until)/2/HOUR_MS-todayStart/HOUR_MS;
+   const midH=forecastDisplayHour((from+until)/2);
    return forecastTariffPolicy(row,midH,profile).discharge;
  });
  return hasDischarge?end:null;
 }
 
-// Read-only widget forecast: prepare the timeline once, then one backward
-// reserve pass and one forward energy pass. Never re-simulate per window.
-let socForecastCache = null;
+// Read-only presentation copies of the existing pure rules. Never imported by the EMS.
+const forecastRules=(()=>{
+const deferral=(()=>{
+'use strict';
+
+// 1.5.5: read-only, slow-context decision about postponing a *normal-price*
+// grid-charge target past 07:00/17:00. The live battery feedback does no
+// price ranking or scans. Only published, date-qualified tariff rows qualify.
+const HOUR_MS = 3600000;
+const PRICE_ADVANTAGE_EUR_KWH = 0.01;
+const FUTURE_HEADROOM = 0.85;
+const PEAK_CONSUMPTION_MARGIN = 1.15;
+const EPS = 1e-6;
+const finite = v => v !== null && v !== undefined && Number.isFinite(Number(v));
+
+function planDynamicChargeDeferral({ rows, now, targetAt, nextTargetAt, targetSoc,
+  soc, safetySoc, capacityKwh, powerW, expectedDailyKwh,
+  normalChargeEnabled = false, normalMaxSoc = 50 }) {
+  if (!(now < targetAt && targetAt < nextTargetAt) || !finite(soc) || !finite(targetSoc)
+    || !finite(safetySoc) || !(capacityKwh > 0) || !(powerW > 0)
+    || !Array.isArray(rows) || !rows.length || !(targetSoc > soc + 0.25)) return null;
+  const timeline = rows.filter(r => finite(r?.startMs) && finite(r?.endMs) && finite(r?.price)
+    && r.endMs > now && r.startMs < nextTargetAt)
+    .sort((a, b) => a.startMs - b.startMs);
+  const current = timeline.find(r => r.startMs <= now && r.endMs > now);
+  // A price being merely lower is insufficient: it also needs a tariff class
+  // that actually permits grid charging under the configured dynamic contract.
+  if (!current || current.className !== 'normal') return null;
+  const affordable = r => r.className === 'cheap'
+    || r.className === 'normal' && normalChargeEnabled && targetSoc <= normalMaxSoc + EPS;
+  let cheaper = null;
+  let coveredUntil = now;
+  for (const row of timeline) {
+    const start = Math.max(now, Number(row.startMs));
+    if (row.endMs <= coveredUntil) continue;
+    if (start > coveredUntil + 1000) break; // Never assume unreported tariff intervals.
+    if (start >= targetAt && affordable(row) && row.price <= current.price - PRICE_ADVANTAGE_EUR_KWH + EPS) {
+      cheaper = row;
+      break;
+    }
+    coveredUntil = Math.max(coveredUntil, Number(row.endMs));
+  }
+  if (!cheaper) return null;
+
+  // All expensive blocks between NOW and the postponed charge must be covered.
+  // This intentionally gives no credit for tomorrow's *uncertain* PV forecast.
+  let expensiveHours = 0;
+  for (const row of timeline) {
+    if (row.startMs >= cheaper.startMs) break;
+    if (row.className !== 'expensive') continue;
+    expensiveHours += Math.max(0, Math.min(row.endMs, cheaper.startMs) - Math.max(row.startMs, now)) / HOUR_MS;
+  }
+  const peakKwh = Math.max(0, Number(expectedDailyKwh) || 0) / 24 * expensiveHours * PEAK_CONSUMPTION_MARGIN;
+  const peakReserveSoc = Math.min(100, safetySoc + peakKwh / capacityKwh * 100);
+  // An expensive period BEFORE the old deadline requires its reserve before
+  // that period begins. The existing spread planner does not guarantee a
+  // partial target by an earlier intermediate peak; do not falsely defer.
+  if (timeline.some(r => r.className === 'expensive' && r.startMs < targetAt
+    && r.endMs > now) && soc + EPS < peakReserveSoc) return null;
+
+  // The remaining target cannot be postponed further than the documented
+  // chargeable capacity after the current goal. Prices after a gap are unknown.
+  let futureHours = 0;
+  coveredUntil = cheaper.startMs;
+  for (const row of timeline) {
+    if (row.endMs <= cheaper.startMs) continue;
+    const start = Math.max(cheaper.startMs, Number(row.startMs), coveredUntil);
+    if (start > coveredUntil + 1000) break;
+    const end = Math.min(nextTargetAt, Number(row.endMs));
+    if (end > start && affordable(row) && row.price <= current.price - PRICE_ADVANTAGE_EUR_KWH + EPS) {
+      futureHours += (end - start) / HOUR_MS;
+    }
+    coveredUntil = Math.max(coveredUntil, end);
+    if (coveredUntil >= nextTargetAt) break;
+  }
+  const futureCapacityKwh = futureHours * powerW / 1000 * FUTURE_HEADROOM;
+  if (futureCapacityKwh < 0.1) return null;
+  const totalNeedKwh = Math.max(0, (targetSoc - soc) * capacityKwh / 100);
+  // If later cheap charging cannot deliver the full amount, preload only the
+  // shortfall (plus expensive-period reserve) before the original deadline.
+  const requiredPreloadSoc = Math.max(safetySoc, peakReserveSoc,
+    // Planned expensive-period discharge is spent before the deferred cheap
+    // charge, so it must ALSO be included in the future energy balance.
+    soc + Math.max(0, totalNeedKwh + peakKwh - futureCapacityKwh) / capacityKwh * 100);
+  const preloadTargetSoc = Math.min(targetSoc, requiredPreloadSoc);
+  // No meaningful room to defer: retain the original charging target.
+  if (!(preloadTargetSoc < targetSoc - 0.5)) return null;
+
+  return {
+    active: true, startAt: now, deadlineAt: targetAt, nextTargetAt,
+    cheaperAt: cheaper.startMs, priceNow: current.price, cheaperPrice: cheaper.price,
+    preloadTargetSoc: Math.round(preloadTargetSoc * 100) / 100,
+    originalTargetSoc: targetSoc,
+    peakReserveSoc: Math.round(peakReserveSoc * 100) / 100,
+    peakDemandKwh: Math.round(peakKwh * 100) / 100,
+    futureCapacityKwh: Math.round(futureCapacityKwh * 100) / 100,
+    expensiveHours: Math.round(expensiveHours * 100) / 100,
+  };
+}
+
+
+return {planDynamicChargeDeferral};
+})();
+const night=(()=>{
+'use strict';
+
+// Battery-only charging windows. Public daily tariff classes and EV policy are
+// intentionally not changed. All sorting/selection happens in the slow context.
+const HOUR = 3600000;
+const EPS = 0.000001;
+const STABILITY_EUR = 0.02;
+const HEADROOM = 0.9;
+const remainingHours = (rows, now) => rows.reduce((sum, r) =>
+  sum + Math.max(0, r.endAt - Math.max(now, r.startAt)) / HOUR, 0);
+const averagePrice = (rows, now) => {
+  const hours = remainingHours(rows, now);
+  return hours > 0 ? rows.reduce((sum, r) => sum + r.price
+    * Math.max(0, r.endAt - Math.max(now, r.startAt)) / HOUR, 0) / hours : 0;
+};
+
+function indexed(rows) {
+  const suffixMs = new Array(rows.length + 1).fill(0);
+  for (let i = rows.length - 1; i >= 0; i--) suffixMs[i] = suffixMs[i + 1] + rows[i].endAt - rows[i].startAt;
+  return { rows, suffixMs };
+}
+
+// O(log n), no price scans, sorts, timezone work or planning in the P1 path.
+function available(index, now) {
+  const { rows, suffixMs } = index;
+  let low = 0, high = rows.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (rows[mid].endAt <= now) low = mid + 1;
+    else high = mid;
+  }
+  const row = rows[low];
+  const hours = row ? (suffixMs[low] - Math.max(0, now - row.startAt)) / HOUR : 0;
+  return { hours, row, active: Boolean(row && now >= row.startAt) };
+}
+
+function nightPolicy(plan, now) {
+  if (!plan) return null;
+  const expired = now >= plan.deadlineAt || now < plan.createdAt;
+  const cheap = available(plan.cheapIndex, now), normal = available(plan.normalIndex, now);
+  const current = cheap.active ? cheap : normal.active ? normal : null;
+  const className = cheap.active ? 'cheap' : normal.active ? 'normal' : null;
+  // Like existing battery plans, update minimum charging power per minute.
+  // Second-by-second clock drift must not defeat the stable-P1 feedback memo.
+  const rateAt = Math.max(plan.createdAt, Math.floor(now / 60000) * 60000);
+  const rateHours = className === 'cheap' ? available(plan.cheapIndex, rateAt).hours
+    : className === 'normal' ? available(plan.normalIndex, rateAt).hours : 0;
+  const nextStart = Math.min(...[cheap.row?.startAt, normal.row?.startAt, plan.deadlineAt].filter(t => t > now));
+  return {
+    eligibleNow: !expired && Boolean(current),
+    className,
+    remainingHours: expired ? 0 : rateHours,
+    nextAt: expired ? 0 : current ? Math.min(current.row.endAt, plan.deadlineAt) : nextStart,
+    deadlineAt: plan.deadlineAt,
+  };
+}
+
+function merge(rows) {
+  const out = [];
+  for (const row of rows) {
+    const last = out[out.length - 1];
+    if (last && last.endAt === row.startAt && last.className === row.className) {
+      const duration = row.endAt - row.startAt, oldDuration = last.endAt - last.startAt;
+      last.price = (last.price * oldDuration + row.price * duration) / (oldDuration + duration);
+      last.endAt = row.endAt;
+    } else out.push({ ...row });
+  }
+  return out;
+}
+
+class BatteryNightPlanner {
+  constructor() { this.window = null; this.plan = null; this.windowBuilds = 0; this.builds = 0; this.reuses = 0; }
+
+  evaluate(args) {
+    const { curve, now, deadlineAt, startAt, needKwh, targetSoc, powerW, cheapHours,
+      expensiveHours, normalEnabled, normalMaxSoc } = args;
+    if (!curve) { this.plan = null; return null; }
+    const key = JSON.stringify([startAt, deadlineAt, cheapHours,
+      expensiveHours, normalEnabled, normalMaxSoc]);
+    let changed = false;
+    if (!this.window || this.window.key !== key || this.window.curve !== curve) {
+      // A real early sunset may activate the night before solarTargetTime.
+      // The phase's calendar identity stays fixed; usable prices start NOW.
+      const rows = curve.intervals.filter(r => r.endAt > now && r.startAt < deadlineAt)
+        .map(r => ({ ...r, startAt: Math.max(r.startAt, now), endAt: Math.min(r.endAt, deadlineAt) }));
+      const surviving = this.window?.key === key ? this.window.rows.filter(r => r.endAt > now)
+        .map(r => ({ ...r, startAt: Math.max(now, r.startAt) })) : null;
+      // Prices outside this deadline and removed past intervals are irrelevant.
+      // Compare only on a real publication, never on ordinary P1/SoC progress.
+      if (surviving && JSON.stringify(surviving) === JSON.stringify(rows)) this.window.curve = curve;
+      else {
+        this.window = { key, curve, rows, ranked: rows.slice().sort((a, b) => a.price - b.price || a.startAt - b.startAt) };
+        this.windowBuilds++;
+        changed = true;
+      }
+    }
+    const old = this.plan;
+    const compatible = old && old.deadlineAt === deadlineAt && old.startAt === startAt && now >= old.createdAt
+      && old.cheapHours === cheapHours && old.expensiveHours === expensiveHours
+      && old.normalEnabled === normalEnabled && old.normalMaxSoc === normalMaxSoc;
+    const oldHours = compatible ? remainingHours(old.cheapRows, now) : 0;
+    const targetChanged = !compatible || Math.abs(targetSoc - old.targetAnchorSoc) >= 2 - EPS;
+    const powerChanged = !compatible || Math.abs(powerW - old.powerW) > Math.max(100, old.powerW * 0.1);
+    // Ordinary progress consumes energy and time together. It must not roll a
+    // fresh cheapHours quota forward or replace the chosen windows at midnight.
+    const enough = compatible && needKwh <= oldHours * powerW / 1000 * HEADROOM + 0.05;
+    if (!changed && compatible && !targetChanged && !powerChanged && (enough || needKwh <= EPS || old.unreachable && old.powerW === powerW)) {
+      this.reuses++;
+      return this.snapshot(old, args);
+    }
+
+    const live = this.window.ranked.filter(r => r.endAt > now);
+    const totalHours = remainingHours(live, now);
+    const requiredHours = powerW > 0 ? needKwh * 1000 / powerW : 0;
+    // Prefer 10% delivery headroom for forecast corrections. Use full available
+    // power rather than miss a feasible deadline when that headroom cannot fit.
+    const withHeadroom = requiredHours / HEADROOM;
+    const desiredHours = Math.max(Math.max(0.25, Math.min(12, cheapHours)),
+      withHeadroom <= totalHours + EPS ? withHeadroom : requiredHours);
+    const selected = new Set();
+    let hours = 0;
+    for (const row of live) {
+      if (hours >= desiredHours - EPS) break;
+      selected.add(row.startAt);
+      hours += Math.max(0, row.endAt - Math.max(now, row.startAt)) / HOUR;
+    }
+    const expensive = new Set(); let expensiveMinutes = 0;
+    for (let i = this.window.ranked.length - 1; i >= 0; i--) {
+      if (expensiveMinutes >= Math.max(0.25, Math.min(12, expensiveHours)) * 60) break;
+      const row = this.window.ranked[i];
+      if (row.endAt <= now) continue;
+      expensive.add(row.startAt); expensiveMinutes += (row.endAt - Math.max(now, row.startAt)) / 60000;
+    }
+    let cheapRows = this.window.rows.filter(r => selected.has(r.startAt));
+    // Near-equal scattered quarters should not create avoidable battery starts.
+    // Allow at most two cents total extra for one contiguous, feasible window.
+    if (needKwh > EPS && hours >= desiredHours - EPS) {
+      const cheapestCost = averagePrice(cheapRows, now) * needKwh;
+      const chronological = this.window.rows.filter(r => r.endAt > now);
+      let contiguous = null, bestCost = Infinity;
+      for (let i = 0; i < chronological.length; i++) {
+        let duration = 0;
+        for (let j = i; j < chronological.length; j++) {
+          if (j > i && chronological[j].startAt > chronological[j - 1].endAt) break;
+          duration += Math.max(0, chronological[j].endAt - Math.max(now, chronological[j].startAt)) / HOUR;
+          if (duration >= desiredHours - EPS) {
+            const candidate = chronological.slice(i, j + 1), price = averagePrice(candidate, now) * needKwh;
+            if (price <= cheapestCost + STABILITY_EUR && price < bestCost - EPS) {
+              contiguous = candidate; bestCost = price;
+            }
+            break;
+          }
+        }
+      }
+      if (contiguous) cheapRows = contiguous;
+    }
+    // A genuinely cheaper publication may move the plan; a tiny change may not
+    // interrupt an otherwise feasible session. Check actual surviving intervals.
+    if ((changed || powerChanged) && compatible && !targetChanged && enough) {
+      const mapped = old.cheapRows.filter(r => r.endAt > now).map(r => this.window.rows.find(n =>
+        n.startAt <= Math.max(now, r.startAt) && n.endAt >= r.endAt));
+      const retained = [...new Set(mapped.filter(Boolean))];
+      const oldCost = averagePrice(retained, now) * needKwh;
+      const newCost = averagePrice(cheapRows, now) * needKwh;
+      if (mapped.every(Boolean) && remainingHours(retained, now) * powerW / 1000 >= needKwh - EPS
+        && oldCost <= newCost + STABILITY_EUR) cheapRows = retained;
+    }
+    const cheapKeys = new Set(cheapRows.map(r => r.startAt));
+    const normalRows = normalEnabled ? this.window.rows.filter(r => r.endAt > now
+      && !cheapKeys.has(r.startAt) && !expensive.has(r.startAt)) : [];
+    const rows = merge(this.window.rows.filter(r => cheapKeys.has(r.startAt) || normalRows.includes(r))
+      .map(r => ({ ...r, className: cheapKeys.has(r.startAt) ? 'cheap' : 'normal' })));
+    const plan = { key, createdAt: now, startAt, deadlineAt, targetAnchorSoc: targetSoc,
+      cheapHours, expensiveHours, normalEnabled, normalMaxSoc, powerW, cheapRows,
+      cheapIndex: indexed(merge(cheapRows.map(r => ({ ...r, className: 'cheap' })))),
+      normalIndex: indexed(merge(normalRows.map(r => ({ ...r, className: 'normal' })))), rows,
+      unreachable: needKwh > remainingHours(cheapRows, now) * powerW / 1000 + EPS };
+    this.plan = plan;
+    this.builds++;
+    return this.snapshot(plan, args);
+  }
+
+  snapshot(plan, args) {
+    const capacityKwh = remainingHours(plan.cheapRows, args.now) * args.powerW / 1000;
+    return { ...plan, needKwh: args.needKwh, targetSoc: args.targetSoc, powerW: args.powerW,
+      missingKwh: Math.max(0, args.needKwh - capacityKwh), targetReachable: args.needKwh <= capacityKwh + EPS };
+  }
+}
+
+
+return {BatteryNightPlanner,nightPolicy};
+})();
+const chargeStrategy=(()=>{
+'use strict';
+
+// Called by the existing slow context only. Fast control reads the resulting
+// small schedule; it never ranks prices or determines a new charging window.
+const HOUR = 3600000, RESERVE = 15 * 60000;
+const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+function normalize(config = {}) {
+  const result = { seasonal: config?.seasonal === true };
+  for (const profile of ['year', 'summer', 'winter']) {
+    result[profile] = {};
+    for (const phase of ['day', 'night']) {
+      const value = config?.[profile]?.[phase];
+      result[profile][phase] = {
+        mode: value?.mode === 'maximum' ? 'maximum' : 'standard',
+        extraPercent: Math.max(0, Math.min(100, number(value?.extraPercent))),
+        planningMarginPercent: Math.max(0, Math.min(100, number(value?.planningMarginPercent))),
+        position: ['early', 'latest', 'center'].includes(value?.position) ? value.position : phase === 'night' ? 'center' : 'latest',
+      };
+    }
+  }
+  return result;
+}
+function select(settings, now, night) {
+  const config = normalize(settings.chargeStrategy);
+  const month = config.seasonal ? Number(new Intl.DateTimeFormat('en', { timeZone: settings.timezone || 'UTC', month: 'numeric' }).format(new Date(now))) : 0;
+  // Selected reserve months are winter; the other months are summer. This
+  // deliberately does not depend on enabling either minimum-SoC feature.
+  const profile = config.seasonal ? (settings[`peakReserveMonth${month}`] ? 'winter' : 'summer') : 'year';
+  const phase = night ? 'night' : 'day';
+  return { ...config[profile][phase], profile, phase };
+}
+function spansFor(rows) {
+  const spans = [];
+  for (const row of rows) {
+    const last = spans[spans.length - 1];
+    if (last && row.startAt <= last.endAt) last.endAt = Math.max(last.endAt, row.endAt);
+    else spans.push({ startAt: row.startAt, endAt: row.endAt });
+  }
+  return spans;
+}
+function take(spans, duration, reverse = false) {
+  const blocks = [];
+  for (const span of reverse ? spans.slice().reverse() : spans) {
+    const ms = Math.min(duration, span.endAt - span.startAt);
+    if (ms > 0) blocks.push(reverse ? { startAt: span.endAt - ms, endAt: span.endAt }
+      : { startAt: span.startAt, endAt: span.startAt + ms });
+    duration -= ms;
+    if (duration <= 0) break;
+  }
+  return blocks.sort((a, b) => a.startAt - b.startAt);
+}
+function build(inputs, previous = null) {
+  const { now, startAt, deadlineAt, needKwh, gridPowerW, choice, targetSoc } = inputs;
+  if (choice.mode === 'standard' && choice.extraPercent === 0) return null;
+  const plan = { createdAt: now, startAt, deadlineAt, phase: choice.phase, profile: choice.profile,
+    mode: choice.mode, extraPercent: choice.extraPercent, position: choice.position, targetSoc,
+    planningMarginPercent: choice.planningMarginPercent || 0,
+    needKwh, gridPowerW, batteryPowerW: inputs.batteryPowerW, pvPowerW: inputs.pvPowerW,
+    baselineW: inputs.baselineW, blocks: [], missingKwh: 0, reserveMissed: false };
+  if (choice.mode === 'standard') return plan;
+  const rows = (inputs.rows || []).filter(r => Number.isFinite(r.price) && r.endAt > now && r.startAt < deadlineAt)
+    .map(r => ({ startAt: Math.max(now, startAt, r.startAt), endAt: Math.min(deadlineAt, r.endAt), price: r.price,
+      anchorStartAt: Math.max(startAt, r.startAt), anchorEndAt: Math.min(deadlineAt, r.endAt) }))
+    .filter(r => r.endAt > r.startAt).sort((a, b) => a.startAt - b.startAt);
+  const spans = spansFor(rows);
+  const duration = gridPowerW > 0 ? Math.max(Math.max(0, needKwh) * HOUR * 1000 / gridPowerW, (inputs.requiredHours || 0) * HOUR) : Infinity;
+  plan.requiredHours = duration / HOUR;
+  const key = JSON.stringify([startAt, deadlineAt, choice]);
+  plan.key = key;
+  // Keep the existing immutable price fingerprint by reference, privately.
+  // Never copy a complete price curve into fast status publications.
+  Object.defineProperty(plan, 'priceKey', { value: inputs.priceKey });
+  if (needKwh <= 0 || !spans.length || gridPowerW <= 0) {
+    plan.missingKwh = Math.max(0, needKwh);
+    plan.reason = needKwh <= 0 ? 'target_reached' : !spans.length ? 'no_valid_prices_or_window' : 'no_grid_capacity';
+    return plan;
+  }
+  // Once charging has started, do not move a shrinking remainder to the right
+  // of the price centre on each context pass. PV can still finish/cancel it.
+  const continuing = previous?.key === key && previous.priceKey === inputs.priceKey && previous.blocks.some(b => b.startAt <= now && b.endAt >= now)
+    && Math.abs(previous.targetSoc - targetSoc) < 0.25;
+  if (choice.position === 'early' || continuing && choice.position !== 'latest') plan.blocks = take(spans, duration);
+  else if (choice.position === 'latest') {
+    const finishAt = spans[spans.length - 1].endAt - RESERVE;
+    plan.reserveEndAt = finishAt;
+    const reserved = spans.map(s => ({ startAt: s.startAt, endAt: Math.min(s.endAt, finishAt) })).filter(s => s.endAt > s.startAt);
+    const reservedMs = reserved.reduce((sum, s) => sum + s.endAt - s.startAt, 0);
+    plan.reserveMissed = duration > reservedMs + 1;
+    plan.blocks = take(plan.reserveMissed ? spans : reserved, duration, !plan.reserveMissed);
+  } else {
+    // Dynamic rows are the actual published intervals; TOU rows are actual
+    // tariff periods, never synthetic quarter prices. Equal adjacent rates
+    // form one period, so flat contracts centre in the entire window.
+    let cheapest = rows[0];
+    const periods = [];
+    for (const row of rows) {
+      const last = periods[periods.length - 1];
+      if (!inputs.dynamic && last?.price === row.price && last.endAt === row.startAt) { last.endAt = row.endAt; last.anchorEndAt = row.anchorEndAt; }
+      else periods.push({ ...row });
+    }
+    for (const row of periods) if (row.price < cheapest.price) cheapest = row;
+    if (!inputs.dynamic) cheapest = periods.find(r => r.price === cheapest.price);
+    const middle = (cheapest.anchorStartAt + cheapest.anchorEndAt) / 2;
+    const fitting = spans.filter(s => s.endAt - s.startAt >= duration);
+    // Prefer the span containing the cheapest quarter; if an input gap makes
+    // that impossible, use the nearest sufficiently long valid span.
+    const span = fitting.sort((a, b) => Math.abs(Math.max(a.startAt, Math.min(a.endAt, middle)) - middle)
+      - Math.abs(Math.max(b.startAt, Math.min(b.endAt, middle)) - middle))[0];
+    if (span) {
+      const begin = Math.max(span.startAt, Math.min(span.endAt - duration, middle - duration / 2));
+      plan.blocks = [{ startAt: begin, endAt: begin + duration }];
+    } else plan.blocks = take(spans, duration); // gaps: never invent missing prices
+  }
+  // Start no later than the last slow context preceding the calculated time.
+  // This only advances starts, preserves tariff/window boundaries, and covers
+  // the existing cadence without another timer or heartbeat planning.
+  const cadence = Math.max(15000, Math.min(300000, inputs.contextMs || 300000));
+  for (const block of plan.blocks) {
+    // Latest charging keeps its absolute end (window end minus 15 minutes),
+    // including during replanning. The existing app context timer wakes at
+    // the exact block boundary; rounding both ends would move this anchor.
+    if (choice.position === 'latest') continue;
+    const span = spans.find(s => s.startAt <= block.startAt && s.endAt >= block.endAt);
+    const aligned = now + Math.floor((block.startAt - now) / cadence) * cadence;
+    const shift = block.startAt - Math.max(span?.startAt || block.startAt, aligned);
+    block.startAt -= shift;
+    block.endAt -= shift;
+  }
+  if (choice.position === 'latest' && plan.blocks.at(-1)?.endAt > spans.at(-1).endAt - RESERVE + 1) plan.reserveMissed = true;
+  for (const block of plan.blocks) {
+    let cost = 0;
+    for (const row of rows) cost += Math.max(0, Math.min(block.endAt, row.endAt) - Math.max(block.startAt, row.startAt)) * row.price;
+    block.price = cost / (block.endAt - block.startAt);
+  }
+  const capacity = plan.blocks.reduce((sum, b) => sum + (b.endAt - b.startAt) / duration * needKwh, 0);
+  plan.missingKwh = Math.max(0, needKwh - capacity);
+  plan.reason = plan.missingKwh > 0.000001 ? 'insufficient_capacity' : plan.reserveMissed ? 'reserve_unreachable' : 'scheduled';
+  return plan;
+}
+// Constant-size policy lookup, no planning, forecasting, prices or allocations.
+function policy(plan, now, night) {
+  if (!plan || plan.phase !== (night ? 'night' : 'day') || now < plan.createdAt || now >= plan.deadlineAt) return null;
+  const { key, ...summary } = plan;
+  return { ...summary, active: plan.blocks.some(b => now >= b.startAt && now < b.endAt) };
+}
+
+return {normalize,select,build,policy};
+})();
+return {...deferral,...night,chargeStrategy};
+})();
+// Calendar boundaries use elapsed timestamps for energy and local clock hours
+// for the existing graph. This keeps 23/25-hour days physically correct.
+function forecastDisplayHour(at){
+ const d=new Date(at),base=new Date(s.timeReferenceAt);
+ const days=(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(base.getFullYear(),base.getMonth(),base.getDate()))/DAY_MS;
+ return days*24+d.getHours()+d.getMinutes()/60+d.getSeconds()/3600;
+}
+function forecastAtHour(h){const d=new Date(dayStartOf(s.timeReferenceAt));d.setDate(d.getDate()+Math.floor(h/24));d.setHours(Math.floor(h%24),Math.round((h%1)*60),0,0);return d.getTime()}
+function forecastPhase(at,planner){
+ const d=new Date(at),m=d.getHours()*60+d.getMinutes();
+ const morning=hourFromClock(s.nightTargetTime,7)*60,evening=hourFromClock(s.dayTargetTime,17)*60;
+ let night=m<morning||m>=evening;
+ if((s.planPhase==='night'||s.planPhase==='day')&&num(s.planningTargetAt,0)>s.timeReferenceAt
+  &&at>=s.timeReferenceAt&&at<s.planningTargetAt){
+  const target=new Date(s.planningTargetAt),start=new Date(target),next=new Date(target);night=s.planPhase==='night';
+  if(night){start.setDate(start.getDate()-1);start.setHours(Math.floor(evening/60),evening%60,0,0);next.setHours(Math.floor(evening/60),evening%60,0,0)}
+  else{start.setHours(Math.floor(morning/60),morning%60,0,0);next.setDate(next.getDate()+1);next.setHours(Math.floor(morning/60),morning%60,0,0)}
+  return {night,startAt:start.getTime(),targetAt:target.getTime(),nextTargetAt:next.getTime()};
+ }
+ const deadline=new Date(at),start=new Date(at);
+ if(night){if(m>=evening)deadline.setDate(deadline.getDate()+1);deadline.setHours(Math.floor(morning/60),morning%60,0,0);start.setTime(deadline);start.setDate(start.getDate()-1);start.setHours(Math.floor(evening/60),evening%60,0,0)}
+ else{deadline.setHours(Math.floor(evening/60),evening%60,0,0);start.setHours(Math.floor(morning/60),morning%60,0,0)}
+ const next=new Date(deadline);if(!night)next.setDate(next.getDate()+1);next.setHours(Math.floor((night?evening:morning)/60),(night?evening:morning)%60,0,0);
+ return {night,startAt:start.getTime(),targetAt:deadline.getTime(),nextTargetAt:next.getTime()};
+}
+function forecastTargetAt(at,phase,profile,cfg,planner,capacity,floor,ceiling){
+ const settings=planner.forecastSettings;
+ if(!settings)return cap(num(s.target,floor),floor,Math.min(ceiling,num(phase.night?s.nightMaxSoc:s.dayMaxSoc,ceiling)));
+ const h=forecastDisplayHour(at),day=Math.floor(h/24),local=h%24;
+ // Night planning after the evening goal uses the next solar day's full PV.
+ const solarDay=day+(phase.night&&local>=hourFromClock(s.dayTargetTime,17)?1:0);
+ const full=solarDay===0?num(s.forecast,null):solarDay===1?num(s.tomorrowForecast,null):null;
+ let pv=full;
+ if(!phase.night&&full!==null){
+  const powers=solarDay===0?profile.pv:profile.tomorrowPv;
+  pv=Array.isArray(powers)?powers.reduce((sum,w,i)=>sum+Math.max(0,(i+1)*STEP_H-Math.max(local,i*STEP_H))*Math.max(0,num(w,0)),0):null;
+ }
+ const minSoc=cap(num(cfg.minSoc,0),0,ceiling);
+ const expected=Math.max(0,num(settings.expectedEnergyNeedKwh,num(planner.expectedEnergyNeedKwh,20)));
+ const energyTarget=pv===null?floor:cap(minSoc+Math.max(0,expected-pv)/capacity*100,minSoc,ceiling);
+ const solarDate=new Date(at);if(solarDay>day)solarDate.setDate(solarDate.getDate()+1);
+ const selected=settings['peakReserveMonth'+(solarDate.getMonth()+1)]===true;
+ const reserve=selected?num(settings.peakReserveTargetSoc,minSoc+Math.max(0,num(settings.peakReserveKwh,0))/capacity*100)
+  :settings.sunnyMonthsMinSocEnabled===true?num(settings.sunnyMonthsMinSoc,floor):floor;
+ const reserveActive=!phase.night||settings.peakReserveNightEnabled===true;
+ return cap(Math.max(floor,energyTarget,reserveActive?reserve:floor),floor,
+  Math.max(floor,Math.min(ceiling,num(phase.night?s.nightMaxSoc:s.dayMaxSoc,ceiling))));
+}
+
+function forecastProtectedReserve(at,phase,profile,cfg,planner,capacity,floor,ceiling){
+ const c=planner.forecastSettings;
+ if(!c||phase.night&&c.peakReserveNightEnabled!==true)return floor;
+ const h=forecastDisplayHour(at),day=Math.floor(h/24),local=h%24;
+ const solarDay=day+(phase.night&&local>=hourFromClock(s.dayTargetTime,17)?1:0);
+ const d=new Date(at);if(solarDay>day)d.setDate(d.getDate()+1);
+ const selected=c['peakReserveMonth'+(d.getMonth()+1)]===true;
+ const reserve=cap(selected?num(c.peakReserveTargetSoc,num(cfg.minSoc,0)+Math.max(0,num(c.peakReserveKwh,0))/capacity*100)
+  :c.sunnyMonthsMinSocEnabled===true?num(c.sunnyMonthsMinSoc,floor):floor,floor,ceiling);
+ const powers=solarDay===0?profile.pv:solarDay===1?profile.tomorrowPv:null;
+ const full=solarDay===0?num(s.forecast,null):solarDay===1?num(s.tomorrowForecast,null):null;
+ const pv=phase.night?full:Array.isArray(powers)?powers.reduce((sum,w,i)=>sum+Math.max(0,(i+1)*STEP_H-Math.max(local,i*STEP_H))*Math.max(0,num(w,0)),0):null;
+ return capacity*(reserve-num(cfg.minSoc,0))/100-Math.max(0,num(pv,0))>.001?reserve:floor;
+}
+// Display-only forward replanning. The original plan remains a labelled
+// snapshot; it is never a cap on future energy or added a second time.
+let socForecastCache=null;
 function projectedSoc(profile){
  const raw=rawStatusObject||{},cfg=raw.settings||{},planner=raw.visualPlanner||{};
  const capKwh=num(s.capacityKwh,null),soc0=num(s.soc,null);
  if(!(capKwh>0)||soc0===null)return null;
- const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,
-  s.forecast,s.remaining,s.tomorrowForecast,profile.daily,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,
-  s.nightTargetTime,s.planningTargetAt,s.planReady,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline]);
+ const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,s.forecast,s.remaining,s.tomorrowForecast,profile,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,s.nightTargetTime,s.planningTargetAt,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline]);
  if(socForecastCache?.signature===signature)return socForecastCache.value;
- const floor=cap(Math.max(num(cfg.minSoc,0),num(cfg.safetySoc,num(s.minSoc,14))),0,100);
- const ceiling=cap(num(s.maxSoc,100),floor,100), floorEnergy=capKwh*floor/100;
- const nowH=profile.nowH,todayStart=dayStartOf(s.timeReferenceAt),goals=forecastGoalTimes(profile);
- const tariffRows=source==='json'?normalizeTimelineRawRows(raw.tariffTimeline,todayStart+nowH*HOUR_MS,48):[];
- const extraGoal=forecastExtendedGoal(goals,profile,tariffRows),horizon=extraGoal??goals.horizon;
- const startMs=todayStart+nowH*HOUR_MS,endMs=todayStart+horizon*HOUR_MS;
- const maxKw=Math.max(0,num(planner.maxTotalChargeW,6000)/1000);
- const dischargeKw=Math.max(0,num(planner.maxTotalDischargeW,2500)/1000);
+ const floor=cap(Math.max(num(cfg.minSoc,0),num(cfg.safetySoc,num(s.minSoc,14))),0,100),ceiling=cap(num(s.maxSoc,100),floor,100);
+ const startMs=num(s.timeReferenceAt,Date.now()),nowH=forecastDisplayHour(startMs),todayStart=dayStartOf(startMs);
+ const tariffRows=source==='json'?normalizeTimelineRawRows(raw.tariffTimeline,startMs,49):[];
+ const goals=forecastGoalTimes(profile),extraGoal=forecastExtendedGoal(goals,profile,tariffRows),horizon=extraGoal??goals.horizon,endMs=forecastAtHour(horizon);
  const goalHours=[goals.firstH,goals.secondH,extraGoal].filter((v,i,a)=>v!==null&&v>nowH&&v<=horizon&&a.indexOf(v)===i).sort((a,b)=>a-b);
- const isMorning=h=>Math.abs(h%24-goals.morning)<.02;
- const phaseTarget=h=>{
-  if(h===goals.firstH&&s.planReady&&num(s.target,null)!==null)return cap(s.target,floor,ceiling);
-  const pv=h<24?num(s.remaining,null):num(s.tomorrowForecast,null);
-  const expected=num(planner.expectedEnergyNeedKwh,profile.daily);
-  const calculated=pv===null||expected===null?floor:floor+Math.max(0,expected-pv)/capKwh*100;
-  return cap(calculated,floor,Math.max(floor,Math.min(ceiling,num(isMorning(h)?s.nightMaxSoc:s.dayMaxSoc,ceiling))));
- };
- let windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({
-  start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),
-  energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),target:num(r.targetSoc,s.target),confirmed:true}));
- if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;
-  windows=[{start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),
-    energyKwh:Math.max(0,num(s.planned,0)),target:num(w.targetSoc,s.target),confirmed:true}];}
+ const maxKw=Math.max(0,num(planner.maxTotalChargeW,6000)/1000),dischargeKw=Math.max(0,num(planner.maxTotalDischargeW,2500)/1000);
+ const dynamic=['dynamic','dynamic_hour','dynamic_quarter'].includes(cfg.contractType),forced=String(planner.forcedMode||'auto');
+ const settings={...(planner.forecastSettings||{}),...cfg,chargeStrategy:planner.chargeStrategy,timezone:planner.forecastSettings?.timezone||'UTC'};
+ for(let m=1;m<=12;m++)settings['peakReserveMonth'+m]=planner.peakReserveMonths?.[m-1]===true;
+ const windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),confirmed:true}));
+ if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;windows.push({start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),energyKwh:Math.max(0,num(s.planned,0)),confirmed:true})}
  windows.sort((a,b)=>a.start-b.start);
- const authoritativeUntil=s.planReady?Math.max(num(s.planningTargetAt,startMs),...windows.map(w=>w.end)):startMs;
+ const datedRows=tariffRows.filter(r=>r.priceKnown).map(r=>({startMs:r.startAt,endMs:r.endAt,price:r.price,className:r.k}));
+ const curve={intervals:datedRows.map(r=>({startAt:r.startMs,endAt:r.endMs,price:r.price,className:r.className}))};
+ const nightPlanner=new forecastRules.BatteryNightPlanner();
  const boundaries=new Set([startMs,endMs]);
- for(let at=(Math.floor(startMs/(STEP_H*HOUR_MS))+1)*STEP_H*HOUR_MS;at<endMs;at+=STEP_H*HOUR_MS)boundaries.add(at);
- for(const r of [...tariffRows,...windows.map(w=>({startAt:w.start,endAt:w.end}))]){
-  if(r.startAt>startMs&&r.startAt<endMs)boundaries.add(r.startAt);
-  if(r.endAt>startMs&&r.endAt<endMs)boundaries.add(r.endAt);
+ for(let at=(Math.floor(startMs/300000)+1)*300000;at<endMs;at+=300000)boundaries.add(at);
+ for(const r of [...tariffRows,...windows.map(w=>({startAt:w.start,endAt:w.end}))])for(const at of [r.startAt,r.endAt])if(at>startMs&&at<endMs)boundaries.add(at);
+ for(const h of goalHours)boundaries.add(forecastAtHour(h));
+ if(cfg.contractType==='fixed')for(let offset=0;offset<=2;offset++)for(const value of [settings.fixedChargeWindowStart||'01:00',settings.fixedChargeWindowEnd||'07:00']){
+  const at=forecastAtHour(offset*24+hourFromClock(value,0));if(at>startMs&&at<endMs)boundaries.add(at);
  }
- for(const h of goalHours)boundaries.add(todayStart+h*HOUR_MS);
- const times=[...boundaries].sort((a,b)=>a-b),segments=[];
- let ri=0,wi=0;
- const dynamic=['dynamic','dynamic_hour','dynamic_quarter'].includes(cfg.contractType);
- const forced=String(planner.forcedMode||'auto');
+ const times=[...boundaries].sort((a,b)=>a-b),pts=[{h:nowH,at:startMs,soc:cap(soc0,0,100)}],predictedWindows=[],deferrals=[];
+ let energy=capKwh*cap(soc0,0,100)/100,totalGrid=0,ri=0,wi=0,previousStrategy=null;
+ const choiceCache=new Map();
  for(let i=1;i<times.length;i++){
-  const a=times[i-1],b=times[i],mid=(a+b)/2,h=(mid-todayStart)/HOUR_MS,dt=(b-a)/HOUR_MS;
+  const a=times[i-1],b=times[i],dt=(b-a)/HOUR_MS,h=forecastDisplayHour((a+b)/2),phase=forecastPhase(a,planner);
   while(ri<tariffRows.length&&tariffRows[ri].endAt<=a)ri++;
   while(wi<windows.length&&windows[wi].end<=a)wi++;
   const row=tariffRows[ri]?.startAt<=a&&tariffRows[ri].endAt>=b?tariffRows[ri]:null;
   const w=windows[wi]?.start<=a&&windows[wi].end>=b?windows[wi]:null;
-  const p=forecastPowerAt(profile,h),pv=profile.daily===null?0:Math.max(0,p.pv-(p.house||0));
-  const shortfall=profile.daily===null?0:Math.max(0,(p.house||0)-p.pv);
-  const policy=source==='demo'?{discharge:true,floor}:forecastTariffPolicy(row,h,profile);
-  const nextGoal=goalHours.find(g=>g*HOUR_MS+todayStart>b-1)??horizon;
-  const night=isMorning(nextGoal);
-  const chargeAllowed=dynamic?row?.k==='cheap'||(row?.k==='normal'&&cfg.dynamicNormalChargeEnabled===true)
-    :cfg.contractType==='fixed'?true:row?.[night?'nightChargeAllowed':'dayChargeAllowed']===true;
-  const localDate=new Date(mid),strategyCfg=planner.chargeStrategy||{};
-  const season=strategyCfg.seasonal?(planner.peakReserveMonths?.[localDate.getMonth()]?'winter':'summer'):'year';
-  const strategy=strategyCfg[season]?.[night?'night':'day']||{};
-  const phaseCap=Math.min(ceiling,num(night?s.nightMaxSoc:s.dayMaxSoc,ceiling),
-    dynamic&&row?.k==='normal'?num(cfg.dynamicNormalChargeMaxSoc,50):100);
-  const pvInputKw=Math.min(maxKw,pv);
-  const gridHeadroom=cfg.peakShaveEnabled===true?Math.max(0,num(cfg.peakLimitW,0)/1000+(p.pv||0)-(p.house||0)):maxKw;
-  const gridKw=Math.min(Math.max(0,maxKw-pvInputKw),gridHeadroom);
-  const confirmed=w?Math.min(gridKw,w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw)*dt*.95:0;
-  segments.push({a,b,h,dt,row,pv:Math.min(maxKw,pv)*dt*.92,
-    loss:policy.discharge&&!w?Math.min(shortfall,dischargeKw)*dt/.93:0,
-    floor:capKwh*cap(num(policy.floor,floor),floor,ceiling)/100,
-    confirmed,confirmedTarget:capKwh*cap(num(w?.target,ceiling),floor,ceiling)/100,
-    eligible:forced==='auto'&&a>=authoritativeUntil&&chargeAllowed&&Boolean(row),
-    price:num(row?.price,0),limit:capKwh*Math.max(floor,phaseCap)/100,
-    capacity:gridKw*dt*.95,strategy,nextGoal,target:capKwh*phaseTarget(nextGoal)/100});
- }
- // A lower price just after a goal can defer the *unneeded* charge. Reverse
- // reserve propagation still protects every intervening expensive interval.
- const targets=new Map();
- for(const h of goalHours){
-  let index=segments.findIndex(x=>x.b>=todayStart+h*HOUR_MS);
-  const before=segments.slice(0,index+1).filter(x=>x.eligible);
-  const best=before.length?Math.min(...before.map(x=>x.price)):Infinity;
-  const later=segments.findIndex((x,i)=>i>index&&x.a<todayStart+(h+6)*HOUR_MS&&x.eligible&&x.price<best);
-  if(dynamic&&later>=0)index=later;
-  if(index>=0)targets.set(index,Math.max(targets.get(index)||floorEnergy,capKwh*phaseTarget(h)/100));
- }
- let required=floorEnergy,nextPrice=Infinity;
- for(let i=segments.length-1;i>=0;i--){
-  const x=segments[i];
-  required=Math.max(required,targets.get(i)||floorEnergy);
-  x.requiredAfter=required;
-  x.nextPrice=nextPrice;
-  if(x.eligible)nextPrice=Math.min(nextPrice,x.price);
-  if(targets.has(i))nextPrice=x.eligible?x.price:Infinity;
-  required=Math.max(floorEnergy,required+x.loss-x.pv-x.confirmed-(x.eligible?x.capacity:0));
- }
- let energy=capKwh*cap(soc0,0,100)/100,totalGrid=0;
- const pts=[{h:nowH,soc:soc0}],predictedWindows=[];
- for(const x of segments){
-  const before=energy;
-  const loss=Math.min(x.loss,Math.max(0,energy-x.floor));
-  energy=Math.min(capKwh*ceiling/100,energy+x.pv-loss);
-  const actual=Math.min(x.confirmed,Math.max(0,x.confirmedTarget-energy));
-  energy+=actual; totalGrid+=actual/.95;
-  let predicted=0;
-  if(x.eligible){
-   let need=Math.max(0,x.requiredAfter-energy);
-   // Buy in this slot when it is cheaper than every remaining eligible slot;
-   // otherwise wait, retaining the reverse-pass bridge reserve.
-   const early=x.strategy.position==='early'&&x.price<=x.nextPrice;
-   const center=x.strategy.position==='center'&&x.h>=(nowH+x.nextGoal)/2&&x.price<=x.nextPrice;
-   if(x.price<x.nextPrice||early||center)need=Math.max(need,x.target-energy);
-   if(x.strategy.mode==='maximum')need=Math.max(need,x.limit-energy);
-   else if(x.strategy.extraPercent>0)need*=1+Math.min(100,x.strategy.extraPercent)/100;
-   predicted=Math.min(x.capacity,need,Math.max(0,x.limit-energy));
-   energy+=predicted; totalGrid+=predicted/.95;
+  const soc=100*energy/capKwh,p=forecastPowerAt(profile,h),hasHouse=profile.daily!==null;
+  const pv=hasHouse?Math.max(0,p.pv-(p.house||0)):0,shortfall=hasHouse?Math.max(0,(p.house||0)-p.pv):0;
+  const pvKw=Math.min(maxKw,pv),pvEnergy=pvKw*dt*.92;
+  const headroom=cfg.peakShaveEnabled===true?Math.max(0,(num(cfg.peakLimitW,0)-num(settings.peakSoftMarginW,0))/1000+(p.pv||0)-(p.house||0)):maxKw;
+  const gridKw=Math.min(Math.max(0,maxKw-pvKw),headroom);
+  const originalTarget=forecastTargetAt(a,phase,profile,cfg,planner,capKwh,floor,ceiling);
+  let target=originalTarget;
+  const deferral=dynamic&&forced==='auto'?forecastRules.planDynamicChargeDeferral({rows:datedRows,now:a,targetAt:phase.targetAt,nextTargetAt:phase.nextTargetAt,
+   targetSoc:target,soc,safetySoc:floor,capacityKwh:capKwh,powerW:gridKw*1000,expectedDailyKwh:num(settings.expectedEnergyNeedKwh,num(planner.expectedEnergyNeedKwh,20)),
+   normalChargeEnabled:cfg.dynamicNormalChargeEnabled===true,normalMaxSoc:num(cfg.dynamicNormalChargeMaxSoc,50)}):null;
+  if(deferral){target=Math.min(target,deferral.preloadTargetSoc);if(!deferrals.length||deferrals.at(-1).deadlineAt!==deferral.deadlineAt)deferrals.push(deferral)}
+  let eligible=false,hours=0,chargeClass=row?.k,nightSnapshot=null;
+  if(dynamic&&phase.night){
+   const night=nightPlanner.evaluate({curve,now:a,startAt:phase.startAt,deadlineAt:phase.targetAt,needKwh:Math.max(0,capKwh*(target-soc)/100),targetSoc:target,powerW:gridKw*1000,
+    cheapHours:num(settings.cheapHours,3),expensiveHours:num(settings.expensiveHours,3),normalEnabled:cfg.dynamicNormalChargeEnabled===true,normalMaxSoc:num(cfg.dynamicNormalChargeMaxSoc,50)});
+   nightSnapshot=night;
+   const policy=forecastRules.nightPolicy(night,a);eligible=Boolean(row&&policy?.eligibleNow);hours=policy?.remainingHours||0;chargeClass=policy?.className;
+  }else{
+   const allowed=r=>cfg.contractType==='tou'?r?.[phase.night?'nightChargeAllowed':'dayChargeAllowed']===true&&!r.avoidGridImport
+    :dynamic?r?.priceKnown===true&&(r.k==='cheap'||r.k==='normal'&&cfg.dynamicNormalChargeEnabled===true)
+    :cfg.contractType==='fixed'?forecastFixedAllowed(r,a,settings):source==='demo';
+   eligible=Boolean(row&&allowed(row));
+   for(const r of tariffRows){
+    const end=dynamic&&row?.k==='cheap'?Math.min(r.endAt,a+12*HOUR_MS):Math.min(r.endAt,phase.targetAt);
+    if(!allowed(r)||dynamic&&r.k!==row?.k)continue;
+    hours+=Math.max(0,end-Math.max(a,r.startAt))/HOUR_MS;
+   }
   }
-  if(predicted>.00001)predictedWindows.push({startAt:x.a,endAt:x.b,energyKwh:predicted/.95,confirmed:false});
-  // Never raise a below-floor SoC by clamping; only incoming energy can do so.
-  energy=Math.max(0,Math.min(capKwh*ceiling/100,energy));
-  pts.push({h:(x.b-todayStart)/HOUR_MS,soc:100*energy/capKwh,charging:actual>0?'ems':predicted>0?'forecast':null});
+  if(cfg.contractType==='fixed')hours=forecastFixedHours(a,phase.targetAt,settings);
+  if(dynamic&&chargeClass==='normal')target=Math.min(target,num(cfg.dynamicNormalChargeMaxSoc,50));
+  const choiceKey=new Date(a).getMonth()+':'+phase.night;
+  if(!choiceCache.has(choiceKey))choiceCache.set(choiceKey,forecastRules.chargeStrategy.select(settings,a,phase.night));
+  const choice=choiceCache.get(choiceKey);
+  let chargePower=eligible&&soc+.25<target?Math.min(gridKw,Math.max(0,capKwh*(target-soc)/100)/Math.max(hours>.05?hours:1,.0001)*(1+choice.extraPercent/100)):0;
+  if(choice.mode==='maximum'&&forced==='auto'){
+   const standardPower=chargePower;
+   const selected=dynamic?curve.intervals:cfg.contractType==='fixed'?forecastFixedBlocks(a,phase.targetAt,settings,tariffRows):tariffRows.filter(r=>r[phase.night?'nightChargeAllowed':'dayChargeAllowed']&&!r.avoidGridImport).map(r=>({startAt:r.startAt,endAt:r.endAt,price:r.price}));
+   previousStrategy=forecastRules.chargeStrategy.build({now:a,startAt:phase.startAt,deadlineAt:phase.targetAt,choice,targetSoc:target,needKwh:Math.max(0,capKwh*(target-soc)/100),gridPowerW:gridKw*1000,
+    requiredHours:gridKw>0?Math.max(0,capKwh*(target-soc)/100)/gridKw*(1+choice.planningMarginPercent/100):Infinity,rows:selected,dynamic,priceKey:curve,contextMs:300000},previousStrategy);
+   const active=previousStrategy?.blocks.some(r=>r.startAt<=a&&r.endAt>a);
+   chargePower=active&&row&&soc+.25<target?gridKw:0;
+   if(choice.position==='center'&&(dynamic||cfg.contractType==='tou')){
+    // The production strategy retains standard spreading when centering has
+    // no demonstrable total-cost advantage. Compare the same usable windows.
+    const reference=dynamic&&phase.night?nightSnapshot?.rows||[]:dynamic?selected.filter(r=>r.className==='cheap'||r.className==='normal'&&cfg.dynamicNormalChargeEnabled===true):selected;
+    let duration=0,cost=0;
+    for(const r of reference){const dt=Math.max(0,Math.min(phase.targetAt,r.endAt)-Math.max(a,r.startAt))/HOUR_MS;duration+=dt;cost+=dt*r.price;}
+    const need=Math.max(0,capKwh*(target-soc)/100);
+    const standardCost=duration>0?cost/duration*need:Infinity;
+    const blockMs=previousStrategy?.blocks.reduce((sum,r)=>sum+r.endAt-r.startAt,0)||0;
+    const centeredCost=blockMs>0?previousStrategy.blocks.reduce((sum,r)=>sum+(r.endAt-r.startAt)/blockMs*r.price*need,0):Infinity;
+    if(!(duration*gridKw>=need-.005&&previousStrategy?.missingKwh<.000001&&centeredCost<standardCost-.000001)){
+     chargePower=standardPower;previousStrategy=null;
+    }
+   }
+  }
+  if(forced==='auto'&&soc<floor){
+   target=floor;
+   chargePower=Math.min(gridKw,Math.max(.25,capKwh*(floor-soc)/100*6));
+  }
+  if(forced!=='auto')chargePower=0;
+  const gridEnergy=Math.min(chargePower*dt*.95,Math.max(0,capKwh*target/100-energy-pvEnergy));
+  const policy=source==='demo'?{discharge:true,floor}:dynamic&&!row?.priceKnown?{discharge:false}:forecastTariffPolicy(row,h,profile,originalTarget);
+  let dischargeFloor=cap(num(policy.floor,floor),floor,ceiling);
+  if(row?.k!=='expensive'&&!row?.avoidGridImport)dischargeFloor=Math.max(dischargeFloor,forecastProtectedReserve(a,phase,profile,cfg,planner,capKwh,floor,ceiling));
+  if(deferral&&row?.k==='normal')dischargeFloor=Math.max(dischargeFloor,deferral.preloadTargetSoc);
+  const loss=gridEnergy>0||!policy.discharge?0:Math.min(Math.min(shortfall,dischargeKw)*dt/.93,Math.max(0,energy-capKwh*dischargeFloor/100));
+  energy=Math.min(capKwh*ceiling/100,Math.max(0,energy+pvEnergy+gridEnergy-loss));totalGrid+=gridEnergy/.95;
+  // Split the recomputed charge into the old snapshot part and the additional
+  // prediction. The old snapshot is never integrated independently.
+  const indicated=w?Math.min(w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw)*dt:0;
+  const additional=Math.max(0,gridEnergy/.95-indicated);
+  if(additional>1e-8)predictedWindows.push({startAt:a,endAt:b,energyKwh:additional,confirmed:false});
+  pts.push({h:forecastDisplayHour(b),at:b,soc:100*energy/capKwh,charging:gridEnergy>0?(additional>0?'forecast':'ems'):null,gridKwh:gridEnergy/.95,lossKwh:loss,pvKwh:pvEnergy,targetSoc:target});
  }
- const lookupSoc=h=>pts.reduce((best,p)=>Math.abs(p.h-h)<Math.abs(best.h-h)?p:best,pts[0]).soc;
- const lines=goalHours.map((h,i)=>({h,soc:lookupSoc(h),estimated:true,
-  emsTarget:i===0&&s.planReady?s.target:null,label:isMorning(h)?'Ochtend (schatting)':'Dag (schatting)'}));
- const value={pts,end:100*energy/capKwh,horizon,goals:lines,extendedFrom:extraGoal===null?null:goals.secondH??goals.firstH,
-  usesActualTariffs:tariffRows.length>0,method:'energiebalans',totalGrid,hasHouse:profile.daily!==null,
-  hasPv:num(s.forecast,null)!==null||num(s.remaining,null)!==null,floorAt:pts.find((p,i)=>i>0&&p.soc<=floor+.15)?.h??null,
-  fromPlan:windows.length>0,windows,predictedWindows};
+ const lookupSoc=h=>pts.reduce((best,p)=>Math.abs(p.at-forecastAtHour(h))<Math.abs(best.at-forecastAtHour(h))?p:best,pts[0]).soc;
+ const value={pts,end:100*energy/capKwh,horizon,goals:goalHours.map((h,i)=>({h,soc:lookupSoc(h),estimated:true,emsTarget:i===0&&s.planReady?s.target:null,label:Math.abs(h%24-goals.morning)<.02?'Ochtend (schatting)':'Dag (schatting)'})),
+  extendedFrom:extraGoal===null?null:goals.secondH??goals.firstH,usesActualTariffs:tariffRows.length>0,method:'toekomstige herplanning',totalGrid,hasHouse:profile.daily!==null,
+  hasPv:num(s.forecast,null)!==null||num(s.remaining,null)!==null,floorAt:pts.find((p,i)=>i>0&&p.soc<=floor+.15)?.h??null,fromPlan:windows.length>0,windows,predictedWindows,deferrals};
  socForecastCache={signature,value};return value;
+}
+function forecastFixedAllowed(row,at,settings){
+ const h=forecastDisplayHour(at)%24,start=hourFromClock(settings.fixedChargeWindowStart,1),end=hourFromClock(settings.fixedChargeWindowEnd,7);
+ return row&&(start===end||(start<end?h>=start&&h<end:h>=start||h<end));
+}
+function forecastFixedBlocks(at,deadline,settings,rows){
+ const first=new Date(at);first.setHours(0,0,0,0);const blocks=[];
+ const start=hourFromClock(settings.fixedChargeWindowStart,1),end=hourFromClock(settings.fixedChargeWindowEnd,7);
+ for(let offset=-1;offset<=2;offset++){
+  const a=new Date(first);a.setDate(a.getDate()+offset);a.setHours(Math.floor(start),Math.round(start%1*60),0,0);
+  const b=new Date(a);if(end<=start)b.setDate(b.getDate()+1);b.setHours(Math.floor(end),Math.round(end%1*60),0,0);
+  for(const row of rows){const begin=Math.max(at,a.getTime(),row.startAt),until=Math.min(deadline,b.getTime(),row.endAt);
+   if(until>begin)blocks.push({startAt:begin,endAt:until,price:row.price});}
+ }
+ return blocks;
+}
+function forecastFixedHours(at,deadline,settings){
+ const first=new Date(at);first.setHours(0,0,0,0);let hours=0;
+ const start=hourFromClock(settings.fixedChargeWindowStart,1),end=hourFromClock(settings.fixedChargeWindowEnd,7);
+ for(let offset=-1;offset<=2;offset++){
+  const a=new Date(first);a.setDate(a.getDate()+offset);a.setHours(Math.floor(start),Math.round(start%1*60),0,0);
+  const b=new Date(a);if(end<=start)b.setDate(b.getDate()+1);b.setHours(Math.floor(end),Math.round(end%1*60),0,0);
+  hours+=Math.max(0,Math.min(deadline,b.getTime())-Math.max(at,a.getTime()))/HOUR_MS;
+ }
+ return hours;
 }
 // Cumulative PV forecast for the *display only*. HomeFlux supplies daily and
 // remaining kWh, not an hourly solar forecast or measured PV-generation curve.

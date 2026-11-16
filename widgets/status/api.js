@@ -15,7 +15,7 @@ function getWidgetTouTimeline(app, settings, now) {
   const signature = widgetTouSignature(settings);
   const saved = widgetTouCache.get(app);
   if (saved && saved.signature === signature && now >= saved.at && now - saved.at < 60_000) return saved.rows;
-  const rows = buildWidgetTouTimeline(settings, now);
+  const rows = buildWidgetTouTimeline(settings, now, 49);
   widgetTouCache.set(app, { signature, at: now, rows });
   return rows;
 }
@@ -219,6 +219,7 @@ module.exports = {
       // Presentation-only planner context, reusing the already-read settings.
       // These fields are intentionally not part of the classic status widget.
       status.visualPlanner = {
+        forecastSettings: Object.fromEntries(["timezone", "expectedEnergyNeedKwh", "peakReserveTargetSoc", "peakReserveKwh", "peakReservePercent", "peakReserveNightEnabled", "sunnyMonthsMinSocEnabled", "sunnyMonthsMinSoc", "cheapHours", "expensiveHours", "peakSoftMarginW", "fixedChargeWindowStart", "fixedChargeWindowEnd", "peakReserveMonth1", "peakReserveMonth2", "peakReserveMonth3", "peakReserveMonth4", "peakReserveMonth5", "peakReserveMonth6", "peakReserveMonth7", "peakReserveMonth8", "peakReserveMonth9", "peakReserveMonth10", "peakReserveMonth11", "peakReserveMonth12"].map(key=>[key,settings[key]])),
         solarTargetTime: String(settings.solarTargetTime || '17:00'),
         nightTargetTime: String(settings.nightTargetTime || '07:00'),
         dayPlanningMaxSoc: Number(settings.dayPlanningMaxSoc ?? settings.maxSoc ?? 100),

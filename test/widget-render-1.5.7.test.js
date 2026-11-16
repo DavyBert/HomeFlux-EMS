@@ -7,11 +7,12 @@ const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'h
 const w=dom.window,doc=w.document;
 const send=data=>w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data}));
 const now=Date.now(),midnight=new Date();midnight.setHours(0,0,0,0);const start=midnight.getTime();
+const deadline=new Date(now);deadline.setHours(deadline.getHours()<7?7:deadline.getHours()<17?17:7,0,0,0);if(deadline.getTime()<=now)deadline.setDate(deadline.getDate()+1);
 const status={avgSoc:72,effectiveCapacityKwh:21.6,targetSoc:78,planningChargeTargetSoc:78,
  decisionText:'Batterij sparen',settings:{contractType:'tou',evCount:1,hvacCount:1,boilerCount:1,minSoc:12,safetySoc:14},
  tariff:{className:'normal',label:'Dag & comfort',price:.3},inputs:{forecastDailyMaxKwh:8.2,forecastRemainingKwh:4.3,forecastTomorrowKwh:4},
  visualPlanner:{solarTargetTime:'17:00',nightTargetTime:'07:00',dayPlanningMaxSoc:90,nightPlanningMaxSoc:95,maxSoc:100,maxTotalChargeW:6000,maxTotalDischargeW:6000},
- energyBudget:{householdDailyKwh:20},planningSummary:{ready:true,targetAt:start+17*3600000,energyNeedKwh:1.2,gridPlannedKwh:.8},
+ energyBudget:{householdDailyKwh:20},planningSummary:{ready:true,targetAt:deadline.getTime(),energyNeedKwh:1.2,gridPlannedKwh:.8},
  nextCharge:{state:'planned',startAt:now+3600000,endAt:now+7200000,powerW:1000,targetSoc:78},
  tariffTimeline:Array.from({length:96},(_,i)=>({startAt:start+i*900000,endAt:start+(i+1)*900000,className:i%3===0?'cheap':i%3===1?'normal':'expensive',label:i%3===0?'Nacht laag':i%3===1?'Dag & comfort':'Hoog',price:.2+i%3*.1,avoidGridImport:i%3===2,nightChargeAllowed:i%3===0,dayChargeAllowed:i%3===1})),
  evs:[{name:'Auto 1',enabled:true,connected:true,outputAllowed:true,outputCurrentA:10,measuredPowerW:2300}],hvacs:[{name:'Keuken',enabled:true,outputMode:'heat',roomTemperatureC:20,setpointC:21}],boiler:{enabled:true,outputOn:true}};
