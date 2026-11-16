@@ -54,7 +54,7 @@ function harness(resultMode){
   setTimeout:(fn,delay)=>{const id=state.nextTimer++;state.timers.set(id,{fn,delay});return id;},
   clearTimeout:id=>state.timers.delete(id),
   encodeURIComponent,JSON,Promise,
-  state,
+  state,visualTranslations:null,
  });
  const script=`
  let visualProfile={name:'medium',...${JSON.stringify(store.defaults().medium)}};

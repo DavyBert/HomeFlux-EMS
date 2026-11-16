@@ -1,0 +1,23 @@
+[
+  ".homeychangelog.json",
+  "README.md",
+  "lib/visual-widget-profiles.js",
+  "locales/de.json",
+  "locales/en.json",
+  "locales/es.json",
+  "locales/fr.json",
+  "locales/nl.json",
+  "settings/index.html",
+  "settings/translations/de.json",
+  "settings/translations/en.json",
+  "settings/translations/es.json",
+  "settings/translations/fr.json",
+  "settings/visual-widget-profiles-ui.js",
+  "test/widget-compact-hours-1.5.9.test.js",
+  "test/widget-render-1.5.7.test.js",
+  "test/widget-translations-central-soc-1.5.9.test.js",
+  "test/widget-wide-scales-pv-reset-1.5.9.test.js",
+  "validation/optional-chart-waf-1.5.9/RAPPORT.md",
+  "widgets/status/public/index.html",
+  "widgets/status/public/visual.html"
+]

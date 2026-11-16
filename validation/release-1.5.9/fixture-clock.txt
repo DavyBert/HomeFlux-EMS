@@ -1,0 +1,5 @@
+Legacy visual-savings-rolling-1.5.4.test.js uses 2026-11-15 in its fixture.
+With Date.now frozen to 2026-11-15T12:00:00+01:00, it passes unchanged on both 1.5.8 and 1.5.9.
+At the actual current date 2026-11-16 it fails on both versions (0 versus 0.55).
+No product or original fixture was modified.
+Historical 30d ledger, original Savings widget and Visual Look API match. fixture=/mnt/data/visual_154_rolling_historical_fixture.json

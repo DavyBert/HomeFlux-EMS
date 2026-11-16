@@ -537,11 +537,23 @@ main.wrap{width:min(100%,466px)}
 .homey-live #energyDayPanel .energy-stat strong b{font-size:.64em}
 .soc-charge-legend{font-size:9px;text-align:right;color:var(--mint);margin:3px 0}
 .soc-charge-legend span{color:var(--amber);margin-left:8px}
+.timeline-hours{position:relative;min-height:14px}
+/* Both swapped WAF fields follow the same threshold color and light-card contrast. */
+.homey-live #wafMetric.waf-value-first #wafSub{color:var(--hf-waf-brand,#6fb5e4);transition:color .35s ease}
+.homey-live.visual-light-cards .widget #wafMetric.waf-value-first #wafSub{color:var(--hf-waf-contrast,#175778)!important}
+/* Optional profile setting; the original axes remain the default. */
+.chart-scale-badges{display:flex;gap:5px;margin:0 0 6px;align-items:stretch}
+.chart-scale-badges[hidden]{display:none}
+.chart-scale-badges button{flex:1;min-width:0;background:transparent;border:1px solid currentColor;border-radius:8px;padding:5px 2px;font:inherit;font-size:9px;line-height:1.35;cursor:pointer}
+.chart-scale-badges button[aria-pressed="true"]{background:rgba(120,180,210,.13)}
+.chart-scale-badges [data-chart-scale="pv"]{color:#ffd16b}
+.chart-scale-badges [data-chart-scale="house"]{color:#66dfff}
+.chart-scale-badges [data-chart-scale="battery"]{color:#6aefbf}
 </style>
 </head>
 <body>
 <main class="wrap">
- <div class="demo-top"><div class="demo-kicker">HOMEFLUX · LIVE ONTWERPDEMO <small>4 EV · 10 HVAC · EMS 1.5.3 · LIVE</small></div><div class="demo-controls"><button class="icon-btn active" id="autoBtn" type="button" title="Start/stop automatische simulatie">Ⅱ Auto</button><button class="icon-btn" id="jsonBtn" type="button" title="Lees een HomeFlux /status JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5"/></svg>JSON</button><button class="icon-btn" id="resetBtn" type="button" title="Herstart de demo">↻</button></div></div>
+ <div class="demo-top"><div class="demo-kicker">HOMEFLUX · LIVE ONTWERPDEMO <small>4 EV · 10 HVAC · EMS 1.5.9 · LIVE</small></div><div class="demo-controls"><button class="icon-btn active" id="autoBtn" type="button" title="Start/stop automatische simulatie">Ⅱ Auto</button><button class="icon-btn" id="jsonBtn" type="button" title="Lees een HomeFlux /status JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5"/></svg>JSON</button><button class="icon-btn" id="resetBtn" type="button" title="Herstart de demo">↻</button></div></div>
  <div class="scenario-title">KIES EEN EMS-SITUATIE · of laat automatisch afspelen</div><nav class="scenario-strip" id="scenarioStrip" aria-label="Demo scenario's"></nav>
  <details class="demo-modules" id="demoModules"><summary>⚙ Test modulaire indeling <span class="demo-modules-hint">Boiler, Peak Guard, EV en HVAC afzonderlijk tonen/verbergen</span></summary>
   <div class="demo-switches" id="demoFeatureButtons" aria-label="Demo modulekeuzes">
@@ -558,9 +570,10 @@ main.wrap{width:min(100%,466px)}
    <div class="section-top"><div class="section-head"><span class="cluster-symbol">◈</span><h2>Kernwaarden</h2></div><span class="section-meta">ACCU · TARIEF · WAF</span></div>
   <div class="metrics" id="metricsGrid"><div class="metric"><div class="metric-head"><svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="5" y="5" width="14" height="17" rx="2"/><path d="M10 2h4m-2 6v11"/></svg> Batterij</div><strong id="socValue">96,8%</strong><small id="socSub">Doel 95%</small><div class="metric-bottom"><div class="metric-fill" id="socFill"></div></div></div><div class="metric tariff-card" id="tariffMetric"><div class="metric-head"><svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 4 16 4 16 0V5M4 11v6c0 4 16 4 16 0v-6"/></svg> Tarief</div><strong id="tariffValue">Dal</strong><small id="priceValue">€ 0,38/kWh</small><div class="metric-bottom"><div class="metric-fill" id="tariffFill"></div></div></div><div class="metric blue" id="wafMetric"><div class="metric-head"><svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M19 4c-10 0-15 3-15 11 0 3 2 5 5 5 9 0 11-10 10-16ZM6 19c3-5 5-7 10-9"/></svg> <span id="wafModeTitle">WAF</span></div><strong id="wafValue">Goed</strong><small id="wafSub">+4,8 kWh reserve</small><div class="metric-bottom"><div class="metric-fill" id="wafFill" style="width:100%;background:#39779b"></div></div></div></div>
   </section>
-  <section class="panel panel-pad timeline-panel" id="tariffSection"><div class="section-top"><div class="section-head"><svg class="symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-12 5h5"/></svg><h2>Planning vandaag</h2></div><span class="section-meta" id="dayType">VAST TARIEF</span></div><div class="timeline-wrap"><div class="timeline" id="tariffTimeline"></div><div class="timeline-hours" id="timelineHours"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div><div class="tariff-legend"><span><i class="legend-dot"></i>Superdal 01–07</span><span><i class="legend-dot dal"></i>Dal</span><span><i class="legend-dot piek"></i>Piek 07–11 / 17–22</span></div><div class="timeline-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Volgend laadvenster</span><strong id="nextCharge">01:00–07:00</strong></div></section>
+  <section class="panel panel-pad timeline-panel" id="tariffSection"><div class="section-top"><div class="section-head"><svg class="symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-12 5h5"/></svg><h2>Planning vandaag</h2></div><span class="section-meta" id="dayType">VAST TARIEF</span></div><div class="timeline-wrap"><div class="timeline" id="tariffTimeline"></div><div class="timeline-hours" id="timelineHours"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>0h</span></div></div><div class="tariff-legend"><span><i class="legend-dot"></i>Superdal 01–07</span><span><i class="legend-dot dal"></i>Dal</span><span><i class="legend-dot piek"></i>Piek 07–11 / 17–22</span></div><div class="timeline-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Volgend laadvenster</span><strong id="nextCharge">01:00–07:00</strong></div></section>
   <section class="panel panel-pad energy-day-panel" id="energyDayPanel">
     <div class="section-top"><div class="section-head"><svg class="symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg><h2>Dagoverzicht energie</h2></div><span class="section-meta" id="chartSource">24 UUR · DEMO</span></div>
+    <div id="chartScaleBadges" class="chart-scale-badges" hidden><button type="button" data-chart-scale="pv" aria-pressed="false">PV <span id="pvChartScale">—</span></button><button type="button" data-chart-scale="house" aria-pressed="false">Huis <span id="houseChartScale">—</span></button><button type="button" data-chart-scale="battery" aria-pressed="false">SoC <span id="socChartScale">0–100%</span></button></div>
     <div class="chart-surface" id="chartSurface"><svg id="energyChart" viewBox="0 0 422 205" aria-label="Energiediagram met cumulatieve PV-prognose in kWh, gemeten huisvermogen in kW en batterij-SoC in procent" role="img"></svg><div class="chart-tip" id="chartTip" hidden></div></div>
     <div class="energy-summary" id="energyLegend" aria-label="Schakel grafiekreeksen aan of uit">
       <div class="energy-stat"><div class="stat-heading"><button type="button" class="chart-toggle house" data-chart-toggle="house" aria-label="Huisverbruiklijn tonen of verbergen" title="Huisverbruiklijn tonen of verbergen" aria-pressed="true"><i></i></button><span id="houseTodayLabel">Verbruik tot nu</span></div><strong id="houseToday">— <b>kWh</b></strong><small id="houseTodayDetail">Gesimuleerde metingen</small></div>
@@ -603,14 +616,15 @@ main.wrap{width:min(100%,466px)}
     <div class="explorer-area" id="infoArea" aria-live="polite"></div>
    </div>
   </details>
-  <div class="widget-footer"><span class="live-line"><i></i><span id="footerLabel">Gesimuleerde EMS-waarden · 1s animatie</span></span><span id="footerVersion">v1.5.4 · live</span></div>
+  <div class="widget-footer"><span class="live-line"><i></i><span id="footerLabel">Gesimuleerde EMS-waarden · 1s animatie</span></span><span id="footerVersion">v1.5.9 · live</span></div>
  </article>
  <p class="under-note"><strong>Tik op een sectietitel of de naam van een kaart om de volledige rij tegelijk in of uit te klappen.</strong> Gebruik de <span class="tip">Savings-periodes</span> en de uitklapbare <span class="tip">EMS-informatiekiezer</span>. Tik op één van de <span class="tip">vier EV’s</span> of <span class="tip">tien HVAC-zones</span> om laadmodus, laadstroom, temperatuur of werkmodus in deze demo te veranderen. <strong>Er worden geen Homey-commando's verstuurd.</strong></p>
 </main>
 <div class="modal-backdrop" id="jsonModal" role="dialog" aria-modal="true" aria-label="HomeFlux status JSON laden"><div class="modal"><h3>HomeFlux EMS-status inladen</h3><p>Plak een <code>/status</code>-snapshot, een <code>/savings</code>-antwoord, EV-categorieën <code>ev_savings</code> (voordeel) en <code>ev_grid</code> (netkosten) of een gecombineerd JSON-object. De zichtbaarheid van Boiler, Peak Guard, EV en HVAC wordt bepaald door EMS-instellingen en per-instantie <code>enabled</code>-velden. De bestaande velden <code>evs[]</code>, <code>hvacs[]</code>, <code>decisionText</code>, <code>planningSummary</code>, <code>energyBudget</code>, <code>nextCharge</code> en <code>inputs</code> worden read-only weergegeven. Een aparte optionele <code>houseHistory</code>-reeks kan gemeten kwartierwaarden toevoegen; zonder die historiek tekenen we geen verzonnen meetcurve. Gebruik bijvoorbeeld <code>{"status":{...},"savings":{"day":{...}},"evSavings":{"day":{"all":{...},"1":{...}}}}</code>. Dit HTML-bestand maakt geen verbinding met Homey en voert geen stuurcommando's uit.</p><textarea id="jsonInput" spellcheck="false" placeholder='{"decisionText":"Batterij sparen","avgSoc":96.8,"evs":[...],"hvacs":[...]}'></textarea><div class="modal-error" id="jsonError" aria-live="polite"></div><div class="modal-row"><button class="action secondary" id="jsonCancel">Annuleren</button><button class="action" id="jsonApply">Status tonen</button></div></div></div>
 <script>
 (()=>{'use strict';
-const $=id=>document.getElementById(id), nl=(n,d=0)=>Number(n).toLocaleString('nl-BE',{minimumFractionDigits:d,maximumFractionDigits:d}), cap=(n,lo,hi)=>Math.min(hi,Math.max(lo,n)), num=(v,d)=>v===null||v===undefined||v===''?d:Number.isFinite(Number(v))?Number(v):d;
+let visualLocale='nl-BE';
+const $=id=>document.getElementById(id), nl=(n,d=0)=>Number(n).toLocaleString(visualLocale,{minimumFractionDigits:d,maximumFractionDigits:d}), cap=(n,lo,hi)=>Math.min(hi,Math.max(lo,n)), num=(v,d)=>v===null||v===undefined||v===''?d:Number.isFinite(Number(v))?Number(v):d;
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons={car:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16 6 8h12l2 8v4h-3v-2H7v2H4zM3 13h18"/><circle cx="7.5" cy="15.5" r="1"/><circle cx="16.5" cy="15.5" r="1"/></svg>',heat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5 0 7-3 7-7 0-4-2-6-4-8 0 4-3 4-3 4 1-5-1-7-4-9 0 5-3 8-3 13 0 4 2 7 7 7Z"/></svg>',cool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M4 6l16 12M20 6 4 18M8 2l4 4 4-4M8 22l4-4 4 4"/></svg>',off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6"/></svg>',sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/></svg>',shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 4v6c0 5-4 9-9 10-5-1-9-5-9-10V6z"/><path d="m8 12 3 3 5-6"/></svg>',battery:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="5" y="5" width="14" height="17" rx="2"/><path d="M10 2h4m-2 6v10"/></svg>'};
 const fixedTariffWindows=[
@@ -715,8 +729,20 @@ function buildRollingTimelineFromRows(rows,startAt){
  return mergeTimelineSegments(result);
 }
 function setTimelineHourLabels(startAt){
- const labels=$('timelineHours'); if(!labels)return;
- labels.innerHTML=Array.from({length:5},(_,index)=>{const date=new Date(startAt+index*6*60*60*1000);return `<span>${clockText(date.getHours()*60+date.getMinutes())}</span>`;}).join('');
+ const labels=$('timelineHours');if(!labels)return;
+ // Calendar clock ticks every six hours, at their real position in the
+ // existing rolling tariff window. Prices and window times are unchanged.
+ const endAt=startAt+24*60*60*1000,marks=[];
+ const date=new Date(startAt);date.setMinutes(0,0,0);
+ date.setHours(Math.ceil(date.getHours()/6)*6);
+ if(date.getTime()<startAt)date.setHours(date.getHours()+6);
+ for(let i=0;i<6&&date.getTime()<=endAt;i++){
+  const left=(date.getTime()-startAt)/(endAt-startAt)*100;
+  const transform=left<3?'none':left>97?'translateX(-100%)':'translateX(-50%)';
+  marks.push(`<span style="position:absolute;left:${left}%;transform:${transform}">${axisHour(date.getHours())}</span>`);
+  date.setHours(date.getHours()+6);
+ }
+ labels.innerHTML=marks.join('');
 }
 function classPriceStats(rows){
  const stats={cheap:{min:Infinity,max:-Infinity},normal:{min:Infinity,max:-Infinity},expensive:{min:Infinity,max:-Infinity}};
@@ -819,16 +845,16 @@ function renderEvs(){
  if(key===lastEvDisplayKey)return;
  lastEvDisplayKey=key;
  let activeEvs=evs.filter(e=>e.enabled!==false);let count=activeEvs.filter(e=>e.status==='laden'&&e.connected).length;let power=activeEvs.reduce((sum,e)=>sum+(evPower(e)||0),0);$('evCount').innerHTML=`<strong>${count}</strong> / ${activeEvs.length} LADEN${power>0?` · ${nl(power,1)} kW`:''}`;
-$('evGrid').innerHTML=evs.slice(0,4).map((e,i)=>({e,i})).filter(({e})=>e.enabled!==false).map(({e,i})=>{let active=e.status==='laden'&&e.connected,pause=e.status==='gepauzeerd';return `<button class="ev-card ${active?'active':''} ${pause?'paused':''} ${selectedEv===i?'selected':''}" data-ev="${i}" type="button" aria-label="EV ${i+1} ${safe(e.name)}, details bekijken"><div class="ev-shine"></div><div class="ev-head"><div class="ev-index">${icons.car} EV ${i+1}</div><div class="ev-state">${safe(labelStatus(e))}</div></div><div class="ev-name">${safe(e.name)}</div><div class="ev-line"><span class="ev-soc">${e.soc==null?'—':nl(e.soc,0)+'%'}</span><span class="ev-meta">doel ${e.target==null?'—':nl(e.target)+'%'}</span></div><div class="ev-progress"><span style="width:${cap(num(e.soc,0),0,100)}%"></span></div><div class="ev-footer"><span>${e.status==='laden'&&e.current?`${nl(e.current)} A · ${evPower(e)==null?'vermogen n.b.':nl(evPower(e),1)+' kW'}`:'Deadline '+safe(e.deadline||'—')}</span><strong>Bekijk</strong></div></button>`}).join('');
-const details=$('evDetail');if(selectedEv<0||evs[selectedEv]?.enabled===false){details.hidden=true;return}const ev=evs[selectedEv];details.hidden=false;details.innerHTML=`<div class="detail-header"><h3>EV ${selectedEv+1} · ${safe(ev.name)}</h3><button class="detail-close" data-close="ev" aria-label="Sluiten">×</button></div><p class="detail-copy">${safe(ev.reason||'Simulatie van EV-laadplanning en prioriteitssturing.')} · Modus: ${safe(ev.mode)}. ${ev.connected?'Voertuig aangesloten.':'Voertuig niet aangesloten.'}</p><div class="detail-stats"><div class="detail-stat">SoC<b>${ev.soc==null?'—':nl(ev.soc,1)+'%'}</b></div><div class="detail-stat">Doel<b>${ev.target==null?'—':nl(ev.target)+'%'}</b></div><div class="detail-stat">Deadline<b>${safe(ev.deadline||'—')}</b></div></div><div class="control-row"><span class="control-label">LAADMODUS · DEMO</span>${['smart','standard','stop'].map(m=>`<button class="control-pill ${ev.mode===m?'chosen':''}" data-evmode="${m}">${{smart:'Slim',standard:'Standaard',stop:'Stop'}[m]}</button>`).join('')}</div><div class="control-row"><span class="control-label">GEWENSTE STROOM · LOKALE DEMO</span><div class="counter"><button data-evamp="-1" aria-label="Laadstroom verlagen">−</button><span>${ev.current} A</span><button data-evamp="1" aria-label="Laadstroom verhogen">+</button></div><span style="font-size:10px;color:#88b9d6">${evPower(ev)==null?'Vermogen niet beschikbaar':nl(evPower(ev),1)+' kW'} · ${ev.phases===3?'3 fasen':ev.phases===1?'1 fase':'fase onbekend'}</span></div><p class="demo-disclaimer">Alle wijzigingen zijn uitsluitend zichtbaar in deze demo.</p>`;}
+$('evGrid').innerHTML=evs.slice(0,4).map((e,i)=>({e,i})).filter(({e})=>e.enabled!==false).map(({e,i})=>{let active=e.status==='laden'&&e.connected,pause=e.status==='gepauzeerd';return `<button class="ev-card ${active?'active':''} ${pause?'paused':''} ${selectedEv===i?'selected':''}" data-ev="${i}" type="button" aria-label="${safe(uiText('EV {0} {1}, details bekijken',i+1,e.name))}"><div class="ev-shine"></div><div class="ev-head"><div class="ev-index">${icons.car} EV ${i+1}</div><div class="ev-state">${safe(labelStatus(e))}</div></div><div class="ev-name">${safe(e.name)}</div><div class="ev-line"><span class="ev-soc">${e.soc==null?'—':nl(e.soc,0)+'%'}</span><span class="ev-meta">doel ${e.target==null?'—':nl(e.target)+'%'}</span></div><div class="ev-progress"><span style="width:${cap(num(e.soc,0),0,100)}%"></span></div><div class="ev-footer"><span>${e.status==='laden'&&e.current?`${nl(e.current)} A · ${evPower(e)==null?'vermogen n.b.':nl(evPower(e),1)+' kW'}`:'Deadline '+safe(e.deadline||'—')}</span><strong>Bekijk</strong></div></button>`}).join('');
+const details=$('evDetail');if(selectedEv<0||evs[selectedEv]?.enabled===false){details.hidden=true;return}const ev=evs[selectedEv];details.hidden=false;details.innerHTML=`<div class="detail-header"><h3>EV ${selectedEv+1} · ${safe(ev.name)}</h3><button class="detail-close" data-close="ev" aria-label="Sluiten">×</button></div><p class="detail-copy">${safe(ev.reason||uiText('Simulatie van EV-laadplanning en prioriteitssturing.'))} · ${uiText('Modus')}: ${safe(ev.mode)}. ${uiText(ev.connected?'Voertuig aangesloten.':'Voertuig niet aangesloten.')}</p><div class="detail-stats"><div class="detail-stat">SoC<b>${ev.soc==null?'—':nl(ev.soc,1)+'%'}</b></div><div class="detail-stat">Doel<b>${ev.target==null?'—':nl(ev.target)+'%'}</b></div><div class="detail-stat">Deadline<b>${safe(ev.deadline||'—')}</b></div></div><div class="control-row"><span class="control-label">LAADMODUS · DEMO</span>${['smart','standard','stop'].map(m=>`<button class="control-pill ${ev.mode===m?'chosen':''}" data-evmode="${m}">${{smart:'Slim',standard:'Standaard',stop:'Stop'}[m]}</button>`).join('')}</div><div class="control-row"><span class="control-label">GEWENSTE STROOM · LOKALE DEMO</span><div class="counter"><button data-evamp="-1" aria-label="Laadstroom verlagen">−</button><span>${ev.current} A</span><button data-evamp="1" aria-label="Laadstroom verhogen">+</button></div><span style="font-size:10px;color:#88b9d6">${evPower(ev)==null?'Vermogen niet beschikbaar':nl(evPower(ev),1)+' kW'} · ${ev.phases===3?'3 fasen':ev.phases===1?'1 fase':'fase onbekend'}</span></div><p class="demo-disclaimer">Alle wijzigingen zijn uitsluitend zichtbaar in deze demo.</p>`;}
 function hvacModeName(h){return !h.enabled?'Niet ingesteld':h.mode==='heat'?'Verwarmen':h.mode==='cool'?'Koelen':'Uit'}
 function renderHvacs(){
  const key=hvacDisplayKey();
  if(key===lastHvacDisplayKey)return;
  lastHvacDisplayKey=key;
  let configured=hvacs.filter(h=>h.enabled!==false);let active=configured.filter(h=>h.mode!=='off').length;$('hvacCount').innerHTML=`<strong>${active}</strong> / ${configured.length} ACTIEF`;
-$('hvacGrid').innerHTML=hvacs.slice(0,10).map((h,i)=>({h,i})).filter(({h})=>h.enabled!==false).map(({h,i})=>`<button type="button" class="hvac-unit ${h.mode!=='off'?'on':''} ${h.mode==='cool'?'cool':''} ${h.essential?'essential':''} ${selectedHvac===i?'selected':''}" data-hvac="${i}" aria-label="HVAC ${i+1}, ${safe(h.name)} details bekijken"><span class="hvac-mode">${icons[h.mode]||icons.off}</span><span class="hvac-info"><div class="hvac-title">${safe(h.name)}</div><div class="hvac-tempo">${h.room==null?'—':nl(h.room,1)}°<span class="to">→</span>${h.set==null?'—':nl(h.set,1)}°</div><div class="hvac-status">${hvacModeName(h)}${h.essential?' · Ess.':''}</div></span></button>`).join('');
-const details=$('hvacDetail');if(selectedHvac<0||hvacs[selectedHvac]?.enabled===false){details.hidden=true;return}let h=hvacs[selectedHvac];details.hidden=false;details.innerHTML=`<div class="detail-header"><h3>HVAC ${selectedHvac+1} · ${safe(h.name)}</h3><button class="detail-close" data-close="hvac" aria-label="Sluiten">×</button></div><p class="detail-copy">${safe(h.reason||'Automatische comfortsturing volgens EMS-prioriteit.')}${h.essential?' · Essentiële zone.':''}</p><div class="detail-stats"><div class="detail-stat">Ruimte<b>${h.room==null?'—':nl(h.room,1)+' °C'}</b></div><div class="detail-stat">Doel<b>${h.set==null?'—':nl(h.set,1)+' °C'}</b></div><div class="detail-stat">Status<b>${safe(hvacModeName(h))}</b></div></div><div class="control-row"><span class="control-label">MODUS · DEMO</span>${['heat','cool','off'].map(m=>`<button class="control-pill ${h.mode===m?'chosen':''}" data-hmode="${m}">${{heat:'Verwarmen',cool:'Koelen',off:'Uit'}[m]}</button>`).join('')}</div><div class="control-row"><span class="control-label">DOELTEMPERATUUR · DEMO</span><div class="counter"><button data-htarget="-0.5" aria-label="Doeltemperatuur verlagen">−</button><span>${nl(h.set,1)} °C</span><button data-htarget="0.5" aria-label="Doeltemperatuur verhogen">+</button></div></div><p class="demo-disclaimer">Geen echte commando's. HomeFlux hanteert eigen regelintervallen en veiligheidsprioriteiten.</p>`;}
+$('hvacGrid').innerHTML=hvacs.slice(0,10).map((h,i)=>({h,i})).filter(({h})=>h.enabled!==false).map(({h,i})=>`<button type="button" class="hvac-unit ${h.mode!=='off'?'on':''} ${h.mode==='cool'?'cool':''} ${h.essential?'essential':''} ${selectedHvac===i?'selected':''}" data-hvac="${i}" aria-label="${safe(uiText('HVAC {0}, {1} details bekijken',i+1,h.name))}"><span class="hvac-mode">${icons[h.mode]||icons.off}</span><span class="hvac-info"><div class="hvac-title">${safe(h.name)}</div><div class="hvac-tempo">${h.room==null?'—':nl(h.room,1)}°<span class="to">→</span>${h.set==null?'—':nl(h.set,1)}°</div><div class="hvac-status">${hvacModeName(h)}${h.essential?' · Ess.':''}</div></span></button>`).join('');
+const details=$('hvacDetail');if(selectedHvac<0||hvacs[selectedHvac]?.enabled===false){details.hidden=true;return}let h=hvacs[selectedHvac];details.hidden=false;details.innerHTML=`<div class="detail-header"><h3>HVAC ${selectedHvac+1} · ${safe(h.name)}</h3><button class="detail-close" data-close="hvac" aria-label="Sluiten">×</button></div><p class="detail-copy">${safe(h.reason||uiText('Automatische comfortsturing volgens EMS-prioriteit.'))}${h.essential?' · '+uiText('Essentiële zone.'):''}</p><div class="detail-stats"><div class="detail-stat">Ruimte<b>${h.room==null?'—':nl(h.room,1)+' °C'}</b></div><div class="detail-stat">Doel<b>${h.set==null?'—':nl(h.set,1)+' °C'}</b></div><div class="detail-stat">Status<b>${safe(hvacModeName(h))}</b></div></div><div class="control-row"><span class="control-label">MODUS · DEMO</span>${['heat','cool','off'].map(m=>`<button class="control-pill ${h.mode===m?'chosen':''}" data-hmode="${m}">${{heat:'Verwarmen',cool:'Koelen',off:'Uit'}[m]}</button>`).join('')}</div><div class="control-row"><span class="control-label">DOELTEMPERATUUR · DEMO</span><div class="counter"><button data-htarget="-0.5" aria-label="Doeltemperatuur verlagen">−</button><span>${nl(h.set,1)} °C</span><button data-htarget="0.5" aria-label="Doeltemperatuur verhogen">+</button></div></div><p class="demo-disclaimer">Geen echte commando's. HomeFlux hanteert eigen regelintervallen en veiligheidsprioriteiten.</p>`;}
 function clockText(minutes){const m=((Math.floor(minutes)%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
 /* Battery curve is a read-only inference from the existing EMS plan: no extra Homey listeners or recalculations. */
 let chartFrameKey='', lastChartData=null;
@@ -855,7 +881,7 @@ function chargeWindowLabel(charge){
   if(status==='waiting')return 'Planning voorbereiden';
   if(status==='no_window'||status==='no_price_data')return 'Geen laadvenster';
   const start=num(charge.startAt,null),end=num(charge.endAt,null);
-  if(start>0&&end>start){const opts={hour:'2-digit',minute:'2-digit'};return `${new Date(start).toLocaleTimeString('nl-BE',opts)}–${new Date(end).toLocaleTimeString('nl-BE',opts)}`;}
+  if(start>0&&end>start){const opts={hour:'2-digit',minute:'2-digit'};return `${new Date(start).toLocaleTimeString(visualLocale,opts)}–${new Date(end).toLocaleTimeString(visualLocale,opts)}`;}
   return status==='active'?'Nu laden':'Volgens planning';
 }
 function readHouseSamples(rows){
@@ -1795,10 +1821,11 @@ function cumulativePvBars(profile,horizon){
  normalizeCompletedDay(24,48,tomorrowTotal,limit>=41);
  let accumulated=0;
  for(const slot of slots){
+  if(slot.hour===24)accumulated=0;
   if(slot.known)accumulated+=slot.energy;
   slot.cumulative=accumulated;
   // A missing forecast must not silently become a zero production claim.
-  slot.visible=slot.known||(slot.hour>=24&&todayKnown);
+  slot.visible=slot.known;
  }
  return slots;
 }
@@ -1808,7 +1835,7 @@ function pvCumulativeAt(slots,h){
  const index=Math.min(slots.length-1,hour);
  const point=slots[index];
  if(!point.visible)return null;
- const previous=index>0?slots[index-1].cumulative:0;
+ const previous=index>0&&index%24!==0?slots[index-1].cumulative:0;
  const portion=cap((h-point.hour)/(point.until-point.hour||1),0,1);
  return previous+(point.cumulative-previous)*portion;
 }
@@ -1824,10 +1851,67 @@ function firstUpcomingSocGoal(goals,nowH){
  }
  return next;
 }
-function renderEnergyDay(){
-  const profile=getProfile(),history=readHistory(profile),prediction=projectedSoc(profile);
+let chartFullWidth=true,chartScaleFocus=null,wafValueFirst=true,chartHourFormat='24h';
+function axisHour(hour,format=chartHourFormat){
+ const minutes=((Math.round(hour*60)%1440)+1440)%1440;
+ const h=Math.floor(minutes/60),m=minutes%60;
+ if(format==='12h')return String(h%12||12)+(m?':'+String(m).padStart(2,'0'):'')+(h<12?'AM':'PM');
+ return String(h)+'h'+(m?String(m).padStart(2,'0'):'');
+}
+// Axis text uses the existing bottom margin; plot/viewport dimensions stay fixed.
+function chartHourLabels(horizon,geometry){
+ const {L,R,W}=geometry,fontSize=14,gap=4,step=horizon<=24?3:6;
+ let hours=[];for(let h=0;h<horizon-.001;h+=step)hours.push(h);
+ hours.push(horizon);
+ const width=text=>Array.from(text).reduce((sum,c)=>sum+(c==='M'?.92:c==='A'||c==='P'?.76:c===':'?.34:.68),0)*fontSize;
+ const place=values=>{
+  const labels=values.map(hour=>{
+   const text=axisHour(hour),size=width(text),tickX=L+hour/horizon*(R-L);
+   return {hour,text,width:size,tickX,left:Math.max(0,Math.min(W-size,tickX-size/2)),fontSize};
+  });
+  for(let i=labels.length-2;i>=0;i--)labels[i].left=Math.min(labels[i].left,labels[i+1].left-gap-labels[i].width);
+  for(let i=0;i<labels.length;i++)labels[i].left=Math.max(0,labels[i].left,i?labels[i-1].left+labels[i-1].width+gap:0);
+  return labels.at(-1).left+labels.at(-1).width<=W+.001?labels:null;
+ };
+ let labels;
+ while(!(labels=place(hours))&&hours.length>2){
+  // Prefer six-hour anchors when AM/PM text cannot fit every three hours.
+  let remove=-1;
+  for(let i=hours.length-2;i>0;i--)if(hours[i]%6!==0){remove=i;break;}
+  if(remove<0)remove=hours.length-2;
+  hours.splice(remove,1);
+ }
+ return labels||place([0,horizon]);
+}
+function chartGeometry(){return chartFullWidth?{...ENERGY_CHART,L:10,R:412}:ENERGY_CHART;}
+function updateChartScaleBadges(){
+ const bar=$('chartScaleBadges');bar.hidden=!chartFullWidth;
+ if(!lastChartData)return;
+ const maximum={pv:lastChartData.pvScaleKwh,house:lastChartData.houseScaleKw,battery:100};
+ const units={pv:'kWh',house:'kW',battery:'%'};
+ for(const button of bar.querySelectorAll('[data-chart-scale]')){
+  const kind=button.dataset.chartScale;
+  button.setAttribute('aria-pressed',String(chartScaleFocus===kind));
+  button.title=uiText('Tik om de schaal in de grafiek te tonen of te verbergen');
+  $(kind==='pv'?'pvChartScale':kind==='house'?'houseChartScale':'socChartScale').textContent='0–'+nl(maximum[kind],kind==='house'?kwTickDigits(maximum[kind]):0)+(kind==='battery'?'':' ')+units[kind];
+ }
+ const group=$('compactChartAxis');if(!group)return;
+ if(!chartFullWidth||!chartScaleFocus){group.innerHTML='';return;}
+ const {R,T,B}=lastChartData.geometry;
+ const color={pv:'#ffd16b',house:'#66dfff',battery:'#6aefbf'}[chartScaleFocus];
+ group.innerHTML=[0,.25,.5,.75,1].map(frac=>{
+  const value=maximum[chartScaleFocus]*frac,kind=chartScaleFocus;
+  const label=nl(value,kind==='battery'?0:kwTickDigits(maximum[kind]))+' '+units[kind];
+  const y=B-frac*(B-T);
+  return `<g><rect x="${R-70}" y="${y-10}" width="69" height="14" rx="3" fill="#10283d" fill-opacity=".85"/><text x="${R-4}" y="${y}" text-anchor="end" fill="${color}" font-size="9">${safe(label)}</text></g>`;
+ }).join('');
+}
+function renderEnergyDay(presentationOnly=false){
+  const profile=presentationOnly&&lastChartData?lastChartData.profile:getProfile();
+  const history=presentationOnly&&lastChartData?lastChartData.history:readHistory(profile);
+  const prediction=presentationOnly&&lastChartData?lastChartData.prediction:projectedSoc(profile);
   const observedSoc=source==='json'?observedSocPoints(s.timeReferenceAt):[];
-  const key=[source,s.id,Math.floor(s.time/2),num(s.soc,null)?.toFixed(1),s.forecast,s.remaining,s.planned,s.target,
+  const key=[chartFullWidth,chartHourFormat,source,s.id,Math.floor(s.time/2),num(s.soc,null)?.toFixed(1),s.forecast,s.remaining,s.planned,s.target,
     s.planningTargetAt,s.batteryTiming?.direction,s.batteryTiming?.hours,s.batteryTiming?.targetSoc,s.batteryTiming?.powerW,
     s.dailyHouseKwh,s.yesterdayHouseKwh,s.capacityKwh,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,s.nightTargetTime,
     s.planPhase,s.tomorrowForecast,rawStatusObject?.tariffTimelineSource,
@@ -1866,8 +1950,9 @@ function renderEnergyDay(){
   $('socAtMidnight').textContent=nextGoal?nl(nextGoal.soc,0)+'%':'—';
   $('socProjectionType').textContent=nextGoal?'Tegen '+futureClock(nextGoal.h):'—';
   $('socAtMidnight').title='Widgetprognose, geen bevestigde laadopdracht';
-  const svg=$('energyChart'),{W,H,L,R,T,B,X_LABEL_Y}=ENERGY_CHART;
-  svg.setAttribute('aria-description','Gele PV-balken zijn cumulatieve kWh-prognoses op basis van het aangeleverde dagtotaal, geen gemeten opbrengst. Historische SoC is uitsluitend uit daadwerkelijk ontvangen widgetstatussen, zonder verzonnen middernachtmeting. Indicatieve SoC-prognose. '+(profile.usesYesterday?'70% historische Savings-dagvraag van gisteren en 30% HomeFlux-vraaginschatting indien beschikbaar. ':'HomeFlux-vraaginschatting indien beschikbaar. ')+(prediction?.usesActualTariffs?'Ontlading volgens de bekende HomeFlux-tariefblokken en ingestelde batterijspaarregels.':'Toekomstig tarief onbekend: geen verzonnen piekuren.')+(prediction?.extendedFrom!==null?' Bij bekende ontlading na het ochtenddoel loopt de lijn indicatief tot het volgende dagdoel; zonder PV-prognose voor morgen wordt die opbrengst niet ingevuld.':''));
+  const geometry=chartGeometry();
+  const svg=$('energyChart'),{W,H,L,R,T,B,X_LABEL_Y}=geometry;
+  svg.setAttribute('aria-description','Gele PV-balken zijn cumulatieve kWh-prognoses op basis van het aangeleverde dagtotaal, geen gemeten opbrengst. Historische SoC gebruikt uitsluitend centrale metingen, zonder verzonnen middernachtmeting. Indicatieve SoC-prognose. '+(profile.usesYesterday?'70% historische Savings-dagvraag van gisteren en 30% HomeFlux-vraaginschatting indien beschikbaar. ':'HomeFlux-vraaginschatting indien beschikbaar. ')+(prediction?.usesActualTariffs?'Ontlading volgens de bekende HomeFlux-tariefblokken en ingestelde batterijspaarregels.':'Toekomstig tarief onbekend: geen verzonnen piekuren.')+(prediction?.extendedFrom!==null?' Bij bekende ontlading na het ochtenddoel loopt de lijn indicatief tot het volgende dagdoel; zonder PV-prognose voor morgen wordt die opbrengst niet ingevuld.':''));
   const endH=prediction?.horizon||24;
   const xf=h=>L+cap(h,0,endH)/endH*(R-L),sc=y=>Math.round(y*100)/100;
   // Yellow columns now show accumulated PV forecast (kWh) since midnight,
@@ -1880,14 +1965,12 @@ function renderEnergyDay(){
   const ys=soc=>B-cap(soc,0,100)/100*(B-T);
   const ticks=[0,0.25,0.5,0.75,1].map(frac=>{
     const y=sc(B-(B-T)*frac);
-    return `<line x1="${L}" x2="${R}" y1="${y}" y2="${y}" stroke="#407998" stroke-opacity="${frac===0?.6:.26}" stroke-dasharray="3 5"/>`+
+    return `<line x1="${L}" x2="${R}" y1="${y}" y2="${y}" stroke="#407998" stroke-opacity="${frac===0?.6:.26}" stroke-dasharray="3 5"/>`+(chartFullWidth?'':
       `<text x="33" y="${y+3.5}" text-anchor="end" fill="#ffd16b" font-size="9" font-weight="700">${nl(pvScaleKwh*frac,frac===0?0:kwTickDigits(pvScaleKwh))}</text>`+
       `<text x="66" y="${y+3.5}" text-anchor="end" fill="#66dfff" font-size="9" font-weight="700">${nl(houseScaleKw*frac,frac===0?0:kwTickDigits(houseScaleKw))}</text>`+
-      `<text x="390" y="${y+3.5}" fill="#66d9b7" font-size="9">${Math.round(frac*100)}%</text>`;
+      `<text x="390" y="${y+3.5}" fill="#66d9b7" font-size="9">${Math.round(frac*100)}%</text>`);
   }).join('');
-  const marks=[0,6,12,18,24,30,36,42,48].filter(h=>h<=endH-1.5);
-  if(!marks.includes(endH))marks.push(endH);
-  const xticks=marks.map(h=>`<line x1="${xf(h)}" x2="${xf(h)}" y1="${T}" y2="${B}" stroke="#3e7398" stroke-opacity=".18" stroke-dasharray="3 4"/><text x="${xf(h)}" y="${X_LABEL_Y}" text-anchor="${h===0?'start':h===endH?'end':'middle'}" fill="#88b2d4" font-size="${h>=24?9:10}" font-weight="700">${h===endH&&h>=24?'M '+clockText(h*60):h>=24?'+'+clockText(h*60):String(h).padStart(2,'0')+':00'}</text>`).join('');
+  const xticks=chartHourLabels(endH,geometry).map(label=>`<line x1="${label.tickX}" x2="${label.tickX}" y1="${T}" y2="${B}" stroke="#3e7398" stroke-opacity=".18" stroke-dasharray="3 4"/><text data-chart-hour="${label.hour}" x="${label.left+label.width/2}" y="${X_LABEL_Y}" text-anchor="middle" fill="#88b2d4" font-size="${label.fontSize}" font-weight="700">${label.text}</text>`).join('');
   // These are cumulative bars. A later bar may only stay level or rise.
   // They are explicitly forecasts, never a claim of actual PV production.
   const bars=pvCumulative.map(slot=>{
@@ -1961,21 +2044,22 @@ function renderEnergyDay(){
     }).join('');
   }else if(num(s.soc,null)!==null){socPoint=`<circle cx="${sc(nowX)}" cy="${sc(ys(s.soc))}" r="5" fill="#3bffc1" stroke="#c4fff0" stroke-width="1.6"/>`}
   const nowMarker=`<line x1="${sc(nowX)}" y1="${T}" x2="${sc(nowX)}" y2="${B}" stroke="#88f6ff" stroke-width="1.5" stroke-dasharray="4 4" opacity=".78"/><rect x="${sc(cap(nowX-15,L,R-30))}" y="12" width="30" height="16" rx="5" fill="#17678a"/><text x="${sc(cap(nowX,L+15,R-15))}" y="23.3" font-size="9" font-weight="800" text-anchor="middle" fill="#ccf6ff">NU</text>`;
-  const chargeStrips=prediction?[...prediction.windows.map(w=>({startAt:w.start,endAt:w.end,confirmed:true})),...prediction.predictedWindows].map(w=>{
+  const chargeStrips=prediction?[...prediction.predictedWindows,...prediction.windows.map(w=>({startAt:w.start,endAt:w.end,confirmed:true}))].map(w=>{
     const left=Math.max(profile.nowH,(w.startAt-dayStartOf(s.timeReferenceAt))/HOUR_MS),right=Math.min(endH,(w.endAt-dayStartOf(s.timeReferenceAt))/HOUR_MS);
     if(right<=left)return '';
     return `<rect x="${xf(left)}" y="${B-4}" width="${Math.max(.5,xf(right)-xf(left))}" height="3" fill="${w.confirmed?'#3af3ad':'#ffc447'}" ${w.confirmed?'':'stroke="#ffc447" stroke-dasharray="2 2" fill-opacity=".25"'}><title>${w.confirmed?'Bestaand EMS-laadplan':'Widgetprognose, geen laadopdracht'} ${futureClock(left)}–${futureClock(right)}</title></rect>`;
   }).join(''):'';
   if($('socChargeLegend'))$('socChargeLegend').hidden=!chargeStrips;
-  svg.innerHTML=`<defs><linearGradient id="pvBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe58f"/><stop offset=".5" stop-color="#ffc447"/><stop offset="1" stop-color="#d68b28"/></linearGradient><linearGradient id="batteryArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2affb3" stop-opacity=".25"/><stop offset="1" stop-color="#07c99a" stop-opacity=".012"/></linearGradient><filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="mintGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g>${ticks}${xticks}</g><text x="4" y="16" fill="#ffd16b" font-size="9" font-weight="800">PV kWh</text><text x="43" y="16" fill="#66dfff" font-size="9" font-weight="800">Huis kW</text><text x="386" y="16" fill="#6aefbf" font-size="9" font-weight="800">SoC</text><g data-layer="pv">${bars}</g><g data-layer="battery">${goalLine}${socArea}${socObserved}${socPath}${socPoint}${chargeStrips}</g><g data-layer="house">${housePaths}${houseMarker}</g>${nowMarker}`;
+  svg.innerHTML=`<defs><linearGradient id="pvBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe58f"/><stop offset=".5" stop-color="#ffc447"/><stop offset="1" stop-color="#d68b28"/></linearGradient><linearGradient id="batteryArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2affb3" stop-opacity=".25"/><stop offset="1" stop-color="#07c99a" stop-opacity=".012"/></linearGradient><filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="mintGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".85" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g>${ticks}${xticks}</g>${chartFullWidth?'':`<text x="4" y="16" fill="#ffd16b" font-size="9" font-weight="800">PV kWh</text><text x="43" y="16" fill="#66dfff" font-size="9" font-weight="800">Huis kW</text><text x="386" y="16" fill="#6aefbf" font-size="9" font-weight="800">SoC</text>`}<g data-layer="pv">${bars}</g><g data-layer="battery">${goalLine}${socArea}${socObserved}${socPath}${socPoint}${chargeStrips}</g><g data-layer="house">${housePaths}${houseMarker}</g>${nowMarker}<g id="compactChartAxis"></g>`;
   applyChartLayers();
-  lastChartData={profile,history,prediction,observedSoc,pvCumulative,pvScaleKwh,houseScaleKw};
+  lastChartData={profile,history,prediction,observedSoc,pvCumulative,pvScaleKwh,houseScaleKw,geometry};
+  updateChartScaleBadges();
 }
 function showEnergyChartPoint(event){
   if(!lastChartData)return;
   const el=$('energyChart'),rect=el.getBoundingClientRect();
   const x=(event.clientX-rect.left)/Math.max(1,rect.width)*422;
-  const {L,R}=ENERGY_CHART;
+  const {L,R}=lastChartData.geometry||chartGeometry();
   if(x<L||x>R){$('chartTip').hidden=true;return;}
   const h=cap((x-L)/(R-L)*(lastChartData.prediction?.horizon||24),0,lastChartData.prediction?.horizon||24);
   const pvSum=pvCumulativeAt(lastChartData.pvCumulative,h);
@@ -1997,6 +2081,11 @@ function showEnergyChartPoint(event){
 }
 function attachChartInteractions(){
   $('energyChart').addEventListener('click',showEnergyChartPoint);
+  $('chartScaleBadges').addEventListener('click',event=>{
+    const button=event.target.closest('[data-chart-scale]');if(!button)return;
+    chartScaleFocus=chartScaleFocus===button.dataset.chartScale?null:button.dataset.chartScale;
+    updateChartScaleBadges();
+  });
   $('chartSurface').addEventListener('mouseleave',()=>{$('chartTip').hidden=true});
 }
 
@@ -2026,14 +2115,14 @@ function visibleSocGoal(){
 let lastHeroIcon=null,lastGuardBarState=null,liveFitLabelChanged=false;
 const LIVE_FIT_LABEL_IDS=new Set(['boilerValue','guardValue','nextCharge','socValue','socSub','tariffValue','priceValue','wafValue','wafSub','wafModeTitle','planCurrentSoc','needTarget','netPlanned','targetSoc']);
 function setVisualText(id,text){
- const el=$(id),value=String(text);
+ const el=$(id),value=source==='json'&&UI_BACKEND_IDS.has(id)?String(text):uiText(text);
  if(el&&el.textContent!==value){
   el.textContent=value;
   if(LIVE_FIT_LABEL_IDS.has(id))liveFitLabelChanged=true;
  }
 }
 function paint(){const day=s.time, guard=Boolean(s.guardActive),isJson=source==='json';updateModuleLayout();if(!isJson)updateTariffBrand({tariff:{className:s.tariff==='Superdal'?'cheap':s.tariff==='Piek'?'expensive':'normal'}});setVisualText('simClock',clockText(day));setVisualText('decision',s.decision);setVisualText('heroFoldDecision',s.decision);setVisualText('reason',s.reason);setVisualText('heroAction',s.action);$('hero').classList.toggle('warning',guard);const heroIcon=guard?icons.shield:s.decision.toLowerCase().includes('pv')||s.decision.toLowerCase().includes('zon')?icons.sun:icons.battery; if(lastHeroIcon!==heroIcon){$('heroSymbol').innerHTML=heroIcon;lastHeroIcon=heroIcon;}
-setVisualText('socValue',s.soc==null?'—':nl(s.soc,1)+'%');const displayGoal=visibleSocGoal();setVisualText('socSub',displayGoal.value===null?'Doel onbekend':(displayGoal.estimated?'Verwacht doel ~':'Doel ')+nl(displayGoal.value,0)+'%');$('socFill').style.width=cap(num(s.soc,0),0,100)+'%';setVisualText('tariffValue',source==='json'?tariffNameForMetric(rawStatusObject):s.tariff||'—');setVisualText('priceValue',s.price==null?'Prijs onbekend':String(rawStatusObject?.settings?.currencySymbol||'€')+' '+nl(s.price,3)+'/kWh');$('tariffFill').style.width=({Superdal:100,Dal:65,Piek:30}[s.tariff]||30)+'%';if(!isJson||!document.body.classList.contains('homey-live')){setVisualText('wafValue',s.waf===null||s.waf===undefined?'—':s.waf>=7?'Uitstekend':s.waf>=1?'Goed':s.waf>=-4?'Nipt':'Aandacht');setVisualText('wafSub',s.waf==null?'Geen actuele WAF-waarde':(s.waf>=0?'+':'')+nl(s.waf,1)+' kWh');$('wafMetric').classList.toggle('danger',s.waf!=null&&s.waf<0);$('wafMetric').classList.toggle('blue',s.waf==null||s.waf>=0);}
+setVisualText('socValue',s.soc==null?'—':nl(s.soc,1)+'%');const displayGoal=visibleSocGoal();setVisualText('socSub',displayGoal.value===null?'Doel onbekend':(displayGoal.estimated?'Verwacht doel ~':'Doel ')+nl(displayGoal.value,0)+'%');$('socFill').style.width=cap(num(s.soc,0),0,100)+'%';setVisualText('tariffValue',source==='json'?(['cheap','normal','expensive'].includes(rawStatusObject?.tariff?.className)?uiText(tariffNameForMetric(rawStatusObject)):tariffNameForMetric(rawStatusObject)):s.tariff||'—');setVisualText('priceValue',s.price==null?'Prijs onbekend':String(rawStatusObject?.settings?.currencySymbol||'€')+' '+nl(s.price,3)+'/kWh');$('tariffFill').style.width=({Superdal:100,Dal:65,Piek:30}[s.tariff]||30)+'%';if(!isJson||!document.body.classList.contains('homey-live')){setVisualText('wafValue',s.waf===null||s.waf===undefined?'—':s.waf>=7?'Uitstekend':s.waf>=1?'Goed':s.waf>=-4?'Nipt':'Aandacht');setVisualText('wafSub',s.waf==null?'Geen actuele WAF-waarde':(s.waf>=0?'+':'')+nl(s.waf,1)+' kWh');$('wafMetric').classList.toggle('danger',s.waf!=null&&s.waf<0);$('wafMetric').classList.toggle('blue',s.waf==null||s.waf>=0);}
 if(!isJson)renderTariffTimelineForMoment(day);setVisualText('nextCharge',s.next);setVisualText('dayType',isJson?String(rawStatusObject?.tariff?.label||'LIVE EMS'):'VAST TARIEF');
 if(!isJson)renderEnergyDay();
 setVisualText('boilerValue',s.boiler);setVisualText('boilerSub',s.boilerReason);setVisualText('guardValue',s.guard);setVisualText('guardSub',s.guardReason);$('guardValue').classList.toggle('amber',guard);const guardBarState=guard?'warn':'ok';if(lastGuardBarState!==guardBarState){$('guardBar').innerHTML=Array.from({length:5},(_,i)=>`<span class="${guard?i<5?'warn':'':i<3?'ok':''}"></span>`).join('');lastGuardBarState=guardBarState;}setVisualText('netPlanned',s.planned==null?'—':nl(s.planned,1)+' kWh');setVisualText('needTarget',s.needed==null?'—':nl(s.needed,1)+' kWh');setVisualText('planCurrentSoc',s.soc==null?'—':nl(s.soc,0)+'%');setVisualText('targetSoc',displayGoal.value===null?'—':(displayGoal.estimated?'~':'')+nl(displayGoal.value,0)+'%');setVisualText('footerLabel',isJson?'EMS-gegevens · read-only':auto?'Live simulatie · geanimeerde gegevens':'Handmatige demo · geen Homey-verbinding');setVisualText('autoBtn',auto?'Ⅱ Auto':'▶ Auto');$('autoBtn').classList.toggle('active',auto);
@@ -2042,8 +2131,8 @@ function custom(){auto=false;source='demo';}
 function attachListeners(){$('scenarioStrip').addEventListener('click',e=>{let b=e.target.closest('[data-index]');if(b)setScenario(Number(b.dataset.index),{keepAuto:false});});$('autoBtn').addEventListener('click',()=>{if(source==='json'){setScenario(0,{keepAuto:true});auto=true}else auto=!auto;secondsInScene=0;paint();});$('resetBtn').addEventListener('click',()=>{auto=true;setScenario(0);});$('jsonBtn').addEventListener('click',()=>{$('jsonError').textContent='';$('jsonModal').classList.add('open');$('jsonInput').focus();});$('jsonCancel').addEventListener('click',()=>$('jsonModal').classList.remove('open'));$('jsonModal').addEventListener('click',e=>{if(e.target===$('jsonModal'))$('jsonModal').classList.remove('open')});document.addEventListener('keydown',e=>{if(e.key==='Escape')$('jsonModal').classList.remove('open')});$('jsonApply').addEventListener('click',importStatus);
 $('evSection').addEventListener('click',e=>{let c=e.target.closest('[data-close]');if(c){selectedEv=-1;renderEvs();return}let b=e.target.closest('[data-ev]');if(b){let i=Number(b.dataset.ev);selectedEv=selectedEv===i?-1:i;selectedHvac=-1;renderEvs();renderHvacs();return}if(selectedEv<0)return;const ev=evs[selectedEv];let mb=e.target.closest('[data-evmode]');if(mb){custom();ev.mode=mb.dataset.evmode;ev.status=ev.mode==='stop'?'gepauzeerd':ev.connected?(ev.mode==='smart'?'laden':'laden'):'afgekoppeld';if(ev.mode!=='stop'&&ev.current===0)ev.current=6;ev.reason='Handmatige wijziging in de lokale demo';paint();return}let ab=e.target.closest('[data-evamp]');if(ab){custom();ev.current=cap(ev.current+Number(ab.dataset.evamp),0,32);ev.status=!ev.connected?'afgekoppeld':ev.current===0?'gepauzeerd':'laden';ev.mode=ev.current>0?'standard':'stop';ev.reason='Laadstroom aangepast in de lokale demo';paint();}});
 $('hvacSection').addEventListener('click',e=>{let c=e.target.closest('[data-close]');if(c){selectedHvac=-1;renderHvacs();return}let b=e.target.closest('[data-hvac]');if(b){let i=Number(b.dataset.hvac);selectedHvac=selectedHvac===i?-1:i;selectedEv=-1;renderEvs();renderHvacs();return}if(selectedHvac<0)return;let h=hvacs[selectedHvac];let mb=e.target.closest('[data-hmode]');if(mb){custom();h.mode=mb.dataset.hmode;h.reason='Modus lokaal aangepast in de demo';paint();return}let tb=e.target.closest('[data-htarget]');if(tb){custom();h.set=cap(Math.round((h.set+Number(tb.dataset.htarget))*2)/2,14,30);h.reason='Doeltemperatuur lokaal aangepast in de demo';paint();}});}
-function readJsonStatus(raw,{reuseHistory=false}={}){if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Verwacht een HomeFlux /status JSON-object.');const data=raw.status&&typeof raw.status==='object'&&!Array.isArray(raw.status)?raw.status:raw;const result=clone(scenarios[0]);const fallbackSoc=Array.isArray(data.inputs?.batterySoc)?data.inputs.batterySoc.map(x=>num(x,null)).filter(x=>x!==null):[];result.soc=num(data.avgSoc,fallbackSoc.length?fallbackSoc.reduce((a,b)=>a+b,0)/fallbackSoc.length:null);result.target=num(data.planningChargeTargetSoc??data.targetSoc, null);result.decision=String(data.decisionText||data.statusText||'EMS actief');result.reason=String(data.decisionReason||data.warningText||'');result.action=data.controlEnabled===false?'Batterijsturing uitgeschakeld':'';result.forecast=num(data.inputs?.forecastDailyMaxKwh,null);result.remaining=num(data.inputs?.forecastRemainingKwh,null);
-let tarif=data.tariff||{};const cls=String(tarif.className||'').toLowerCase();result.tariff=String(tarif.label||tarif.name||(cls==='cheap'?'Goedkoop':cls==='expensive'?'Duur':cls==='normal'?'Normaal':'—'));result.price=num(tarif.price??tarif.value??tarif.currentPrice,null);result.waf=data.energyBudget?.ready===true?num(data.energyBudget?.valueKwh,null):num(data.wafPresentation?.reserveKwh,null);result.planned=num(data.planningSummary?.gridPlannedKwh,null);result.needed=num(data.planningSummary?.energyNeedKwh??data.energyBudget?.batteryGoalNeedKwh,null);result.next=chargeWindowLabel(data.nextCharge);result.guardActive=Boolean(data.override==='peak_shave'||data.action==='peak_shave'||data.phaseGuard?.active||data.phaseGuard?.limited);result.guard=result.guardActive?'INGREEP ACTIEF':'Bewaking actief';result.guardReason=result.guardActive?'Peak Guard of fasebewaking actief':'Geen actieve ingreep gemeld';result.boiler=data.boiler?.outputOn?'Verwarmen':'Stand-by';result.boilerReason=data.boiler?.reason||'Boilerstatus uit EMS';jsonModuleFlags=statusModuleFlags(data);if(num(data.lastControlEvaluationAt,0)>0){const date=new Date(num(data.lastControlEvaluationAt,Date.now()));result.time=date.getHours()*60+date.getMinutes()}else{const date=new Date();result.time=date.getHours()*60+date.getMinutes();}
+function readJsonStatus(raw,{reuseHistory=false}={}){if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('Verwacht een HomeFlux /status JSON-object.');const data=raw.status&&typeof raw.status==='object'&&!Array.isArray(raw.status)?raw.status:raw;const result=clone(scenarios[0]);const fallbackSoc=Array.isArray(data.inputs?.batterySoc)?data.inputs.batterySoc.map(x=>num(x,null)).filter(x=>x!==null):[];result.soc=num(data.avgSoc,fallbackSoc.length?fallbackSoc.reduce((a,b)=>a+b,0)/fallbackSoc.length:null);result.target=num(data.planningChargeTargetSoc??data.targetSoc, null);result.decision=String(data.decisionText||data.statusText||uiText('EMS actief'));result.reason=String(data.decisionReason||data.warningText||'');result.action=data.controlEnabled===false?uiText('Batterijsturing uitgeschakeld'):'';result.forecast=num(data.inputs?.forecastDailyMaxKwh,null);result.remaining=num(data.inputs?.forecastRemainingKwh,null);
+let tarif=data.tariff||{};const cls=String(tarif.className||'').toLowerCase();result.tariff=String(tarif.label||tarif.name||(cls==='cheap'?'Goedkoop':cls==='expensive'?'Duur':cls==='normal'?'Normaal':'—'));result.price=num(tarif.price??tarif.value??tarif.currentPrice,null);result.waf=data.energyBudget?.ready===true?num(data.energyBudget?.valueKwh,null):num(data.wafPresentation?.reserveKwh,null);result.planned=num(data.planningSummary?.gridPlannedKwh,null);result.needed=num(data.planningSummary?.energyNeedKwh??data.energyBudget?.batteryGoalNeedKwh,null);result.next=chargeWindowLabel(data.nextCharge);result.guardActive=Boolean(data.override==='peak_shave'||data.action==='peak_shave'||data.phaseGuard?.active||data.phaseGuard?.limited);result.guard=result.guardActive?'INGREEP ACTIEF':'Bewaking actief';result.guardReason=uiText(result.guardActive?'Peak Guard of fasebewaking actief':'Geen actieve ingreep gemeld');result.boiler=data.boiler?.outputOn?'Verwarmen':'Stand-by';result.boilerReason=data.boiler?.reason||uiText('Boilerstatus uit EMS');jsonModuleFlags=statusModuleFlags(data);if(num(data.lastControlEvaluationAt,0)>0){const date=new Date(num(data.lastControlEvaluationAt,Date.now()));result.time=date.getHours()*60+date.getMinutes()}else{const date=new Date();result.time=date.getHours()*60+date.getMinutes();}
 // Existing EMS /status exposes planningSummary, nextCharge and energyBudget, not the full planning rows.
 result.capacityKwh=num(data.effectiveCapacityKwh,null);
 result.dailyHouseKwh=num(data.energyBudget?.householdDailyKwh,null);result.yesterdayHouseKwh=num(data.visualSavings?.yesterdayHouseDemand?.kwh,null);
@@ -2070,8 +2159,8 @@ result.minSoc=num(data.ordinaryDischargeFloorSoc??data.safetySoc??data.settings?
 result.timeReferenceAt=num(data.lastControlEvaluationAt,null);
 result.forecastSource=String(data.planningSummary?.forecastSource||'');
 result.planReady=data.planningSummary?.ready===true;
-let eArray=Array.isArray(data.evs)?data.evs:[],hArray=Array.isArray(data.hvacs)?data.hvacs:[];let mappedEvs=Array.from({length:4},(_,i)=>{const v=eArray[i];if(!v)return{...baseEvs[i],enabled:false,connected:false,soc:null,status:'afgekoppeld',current:0,name:`EV ${i+1} · niet ingesteld`,target:null,reason:'Geen EV-instantie in deze status-JSON'};let connected=Boolean(v.connected),amps=num(v.outputCurrentA,0),outputAllowed=Boolean(v.outputAllowed),mode=String(v.mode||'smart');return{...baseEvs[i],name:String(v.name||`EV ${i+1}`),enabled:v.enabled!==false,connected,soc:num(v.soc,null),target:num(v.planningTargetSoc??v.centralPlan?.value,null),deadline:String(v.planningTargetTime||v.centralPlan?.time||'—'),mode:mode==='emergency'?'standard':mode==='stop'?'stop':'smart',current:amps,jsonSnapshot:true,reportedPowerW:num(v.measuredPowerW,null),status:v.enabled===false?'afgekoppeld':!connected?'afgekoppeld':outputAllowed&&amps>0?'laden':v.stopHoldRemainingSeconds>0?'gepauzeerd':'gepland',reason:String(v.reason||v.nextOutputReason||'HomeFlux EV-beslissing'),phases:null,voltage:null}});
-let mappedHvacs=Array.from({length:10},(_,i)=>{let v=hArray[i];if(!v)return{...baseHvacs[i],name:`HVAC ${i+1} · niet ingesteld`,enabled:false,mode:'off',room:null,set:null,reason:'Geen HVAC-instantie in deze status-JSON'};const m=String(v.outputMode||v.reportedMode||v.mode||'off').toLowerCase();const power=v.outputPowerOn;return{...baseHvacs[i],name:String(v.name||`HVAC ${i+1}`),enabled:v.enabled!==false,room:num(v.roomTemperatureC,null),set:num(v.outputSetpointC??v.setpointC,null),mode:power===false||m==='off'?'off':/cool|dry/.test(m)?'cool':/heat|auto/.test(m)||power===true?'heat':'off',reason:String(v.reason||'HomeFlux HVAC-beslissing'),essential:Boolean(v.essential)}});
+let eArray=Array.isArray(data.evs)?data.evs:[],hArray=Array.isArray(data.hvacs)?data.hvacs:[];let mappedEvs=Array.from({length:4},(_,i)=>{const v=eArray[i];if(!v)return{...baseEvs[i],enabled:false,connected:false,soc:null,status:'afgekoppeld',current:0,name:`EV ${i+1} · ${uiText('Niet ingesteld')}`,target:null,reason:uiText('Geen EV-instantie in deze status-JSON')};let connected=Boolean(v.connected),amps=num(v.outputCurrentA,0),outputAllowed=Boolean(v.outputAllowed),mode=String(v.mode||'smart');return{...baseEvs[i],name:String(v.name||`EV ${i+1}`),enabled:v.enabled!==false,connected,soc:num(v.soc,null),target:num(v.planningTargetSoc??v.centralPlan?.value,null),deadline:String(v.planningTargetTime||v.centralPlan?.time||'—'),mode:mode==='emergency'?'standard':mode==='stop'?'stop':'smart',current:amps,jsonSnapshot:true,reportedPowerW:num(v.measuredPowerW,null),status:v.enabled===false?'afgekoppeld':!connected?'afgekoppeld':outputAllowed&&amps>0?'laden':v.stopHoldRemainingSeconds>0?'gepauzeerd':'gepland',reason:String(v.reason||v.nextOutputReason||uiText('HomeFlux EV-beslissing')),phases:null,voltage:null}});
+let mappedHvacs=Array.from({length:10},(_,i)=>{let v=hArray[i];if(!v)return{...baseHvacs[i],name:`HVAC ${i+1} · ${uiText('Niet ingesteld')}`,enabled:false,mode:'off',room:null,set:null,reason:uiText('Geen HVAC-instantie in deze status-JSON')};const m=String(v.outputMode||v.reportedMode||v.mode||'off').toLowerCase();const power=v.outputPowerOn;return{...baseHvacs[i],name:String(v.name||`HVAC ${i+1}`),enabled:v.enabled!==false,room:num(v.roomTemperatureC,null),set:num(v.outputSetpointC??v.setpointC,null),mode:power===false||m==='off'?'off':/cool|dry/.test(m)?'cool':/heat|auto/.test(m)||power===true?'heat':'off',reason:String(v.reason||uiText('HomeFlux HVAC-beslissing')),essential:Boolean(v.essential)}});
 return{result,mappedEvs,mappedHvacs};}
 function importStatus(){
  try{
@@ -2324,14 +2413,14 @@ function renderSavings(){
  for(const b of $('savingsPeriods').querySelectorAll('[data-speriod]')){
   const active=b.dataset.speriod===p;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));
  }
- for(let i=1;i<=4;i++){const opt=$('savingsEvSelect').querySelector('option[value="'+i+'"]');if(opt)opt.textContent='EV '+i+' · '+String(evs[i-1]?.name||'Niet ingesteld').slice(0,26);}
+ for(let i=1;i<=4;i++){const opt=$('savingsEvSelect').querySelector('option[value="'+i+'"]');if(opt)opt.textContent='EV '+i+' · '+String(evs[i-1]?.name||uiText('Niet ingesteld')).slice(0,26);}
  if($('savingsEvSelect').value!==savingsEv)$('savingsEvSelect').value=savingsEv;
 }
 function buildDemoStatus(){
  const grid={saving:130,sun:-440,ev:730,peak:825,guard:2650,night:2410}[s.id]??120;
  const pv={saving:1600,sun:4100,ev:2900,peak:0,guard:0,night:0}[s.id]??0;
  const currentHouse=makeDemoLedger('day');
- return {version:'1.5.3 · demo',statusText:'Simulatie · '+s.decision,decisionText:s.decision,decisionReason:s.reason,
+ return {version:'1.5.9 · demo',statusText:'Simulatie · '+s.decision,decisionText:s.decision,decisionReason:s.reason,
   action:s.guardActive?'peak_shave':'auto',inputReady:true,missingInputs:[],degradedInputs:[],controlEnabled:true,canPublishCommands:true,
   avgSoc:s.soc,planningChargeTargetSoc:s.target,ordinaryDischargeFloorSoc:s.minSoc||14,effectiveCapacityKwh:s.capacityKwh,
   batteryTiming:{direction:s.id==='night'||s.id==='sun'?'charge':s.id==='peak'||s.id==='guard'?'discharge':'idle',powerW:s.id==='night'?2700:s.id==='guard'?1400:0,targetSoc:s.target},
@@ -2363,11 +2452,11 @@ function buildDemoStatus(){
   savingsToday:currentHouse.periodSavings,savingsTotal:makeDemoLedger('total').periodSavings};
 }
 const getPath=(v,path)=>path.split('.').reduce((o,k)=>o==null?undefined:o[k],v);
-function timeStamp(v){const n=num(v,null);return n&&n>1e11?new Date(n).toLocaleString('nl-BE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):n===0?'—':v;}
+function timeStamp(v){const n=num(v,null);return n&&n>1e11?new Date(n).toLocaleString(visualLocale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):n===0?'—':v;}
 function formatField(v,u=''){
  if(u==='date')return timeStamp(v);
  if(u==='eu')return formatMoney(v);
- return compactVal(v,u);
+ return typeof v==='boolean'?uiText(compactVal(v,u)):compactVal(v,u);
 }
 function rowSpecs(tab,d){
  const rows=[];const r=(label,path,unit='',wide=false)=>rows.push({label,path,unit,wide});
@@ -2477,12 +2566,12 @@ function displayFieldName(path){
 }
 function renderRawFields(){
  ensureRawFields();
- const q=rawFilter.toLocaleLowerCase('nl-BE').trim();const rows=q?rawFields.filter(e=>e.path.toLocaleLowerCase('nl-BE').includes(q)||String(e.value??'').toLocaleLowerCase('nl-BE').includes(q)):rawFields;
+ const q=rawFilter.toLocaleLowerCase(visualLocale).trim();const rows=q?rawFields.filter(e=>e.path.toLocaleLowerCase(visualLocale).includes(q)||String(e.value??'').toLocaleLowerCase(visualLocale).includes(q)):rawFields;
  const shown=rows.slice(0,80);
  const focus=rawFields.find(e=>e.path===rawSelected);
  $('rawResultMeta').textContent=`${rows.length} van ${rawFields.length} velden · ${shown.length} getoond${rows.length>80?' · verfijn je zoekterm':''}`;
- $('rawResults').innerHTML=shown.map(x=>`<button type="button" class="field-row ${x.path===rawSelected?'selected':''}" data-rawpath="${safe(x.path)}"><span class="field-name">${safe(displayFieldName(x.path))}</span><span class="field-val">${safe(compactVal(x.value).slice(0,35))}</span></button>`).join('')||'<div class="sav-no-data">Geen veld gevonden.</div>';
- $('rawFocus').textContent=focus?`${displayFieldName(focus.path)}: ${typeof focus.value==='object'?JSON.stringify(focus.value,null,2):String(focus.value??'null')}`:'Kies een item voor de volledige waarde.';
+ $('rawResults').innerHTML=shown.map(x=>`<button type="button" class="field-row ${x.path===rawSelected?'selected':''}" data-rawpath="${safe(x.path)}"><span class="field-name">${safe(displayFieldName(x.path))}</span><span class="field-val">${safe((typeof x.value==='boolean'?uiText(compactVal(x.value)):compactVal(x.value)).slice(0,35))}</span></button>`).join('')||'<div class="sav-no-data">Geen veld gevonden.</div>';
+ $('rawFocus').textContent=focus?`${displayFieldName(focus.path)}: ${typeof focus.value==='object'?JSON.stringify(focus.value,null,2):String(focus.value??'null')}`:uiText('Kies een item voor de volledige waarde.');
 }
 function renderExplorer(){
  if(!$('infoExplorer').open)return;
@@ -2580,7 +2669,7 @@ function initConsolidatedDayOverview(){
  quick.after(metrics);
  const chart=$('chartSurface');
  const chartBlock=document.createElement('div');chartBlock.id='dayChartBlock';
- chart.before(chartBlock);chartBlock.append(chart);
+ chart.before(chartBlock);chartBlock.append($('chartScaleBadges'),chart);
  const chargeLegend=document.createElement('div');chargeLegend.id='socChargeLegend';chargeLegend.className='soc-charge-legend';
  chargeLegend.innerHTML='━ EMS-laadplan <span>┄ Widgetprognose</span>';chartBlock.append(chargeLegend);
  const legend=$('energyLegend');
@@ -2671,7 +2760,7 @@ function syncModuleButtons(){
  $('demoModules').hidden=isJson;
  for(const button of $('demoFeatureButtons').querySelectorAll('[data-module-toggle]')){
   const on=Boolean(demoModuleFlags[button.dataset.moduleToggle]);
-  button.setAttribute('aria-pressed',String(on));button.querySelector('span').textContent=on?'aan':'uit';
+  button.setAttribute('aria-pressed',String(on));button.querySelector('span').textContent=uiText(on?'aan':'uit');
  }
 }
 function setAvailability(id,shown){const el=$(id);if(el&&el.hidden===Boolean(shown))el.hidden=!shown;}
@@ -3048,6 +3137,7 @@ function renderConfiguredWaf(status){
  // EXACT same activation conditions as the classic HomeFlux WAF circle.
  const saving=presentation.active===true && !presentation.peakGuardBlocked
    && status.override!=='peak_shave' && status.action!=='peak_shave' && !status.criticalAlert;
+ metric.classList.toggle('waf-value-first',wafValueFirst&&!saving);
  const appearanceKeys=saving
    ? ['wafRoomRedW','wafRoomOrangeW','wafRoomGreenW']
    : ['wafReserveRedKwh','wafReserveOrangeKwh','wafReserveGreenKwh'];
@@ -3061,11 +3151,12 @@ function renderConfiguredWaf(status){
  const modeTitle=$('wafModeTitle');
  if(modeTitle&&modeTitle.textContent!==(saving?'Netruimte':'WAF'))modeTitle.textContent=saving?'Netruimte':'WAF';
  const measured=saving?num(presentation.gridRoomW,null):num(s.waf,null);
- const rendered=saving?(measured===null?'—':measured>=1000?nl(measured/1000,1)+' kW':nl(measured)+' W')
+ let rendered=saving?(measured===null?'—':measured>=1000?nl(measured/1000,1)+' kW':nl(measured)+' W')
    :(measured===null?'—':measured>=bounds[2]?'Uitstekend':measured>=bounds[1]?'Goed':measured>=bounds[0]?'Nipt':'Aandacht');
- if(value.textContent!==rendered)value.textContent=rendered;
- const nextSubtitle=saving?(measured===null?'Netruimte niet beschikbaar':'Netruimte · batterij sparen')
+ let nextSubtitle=saving?(measured===null?'Netruimte niet beschikbaar':'Netruimte · batterij sparen')
    :measured===null?'Geen actuele WAF-waarde':(measured>=0?'+':'')+nl(measured,1)+' kWh';
+ if(!saving&&measured!==null&&wafValueFirst)[rendered,nextSubtitle]=[nextSubtitle,rendered];
+ if(value.textContent!==rendered)value.textContent=rendered;
  if(subtitle.textContent!==nextSubtitle)subtitle.textContent=nextSubtitle;
  metric.classList.remove('danger','blue');
  const cls=measured!==null&&colors?wafTariffClass(measured,bounds):'normal';
@@ -3095,7 +3186,7 @@ function syncNextTariffRow(status, refreshTariffClass=false){
  let row=panel.querySelector('#nextTariffLive');
  if(!row){
   row=document.createElement('div');row.id='nextTariffLive';row.className='timeline-note';row.hidden=true;
-  const labelNode=document.createElement('span');labelNode.textContent='Volgende tariefwisseling';
+  const labelNode=document.createElement('span');labelNode.textContent=uiText('Volgende tariefwisseling');
   row.append(labelNode,document.createElement('strong'));
   panel.appendChild(row);
  }
@@ -3113,7 +3204,7 @@ function syncNextTariffRow(status, refreshTariffClass=false){
   return;
  }
  if(changed){
-  const fmt=new Date(at).toLocaleString('nl-BE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const fmt=new Date(at).toLocaleString(visualLocale,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   const value=label+' · '+fmt;
   const strong=row.querySelector('strong');
   if(strong&&strong.textContent!==value)strong.textContent=value;
@@ -3144,7 +3235,7 @@ function updateLiveLabels(status){
  if(externalLabel)externalLabel.hidden=!delegated;
  $('hero')?.classList.toggle('external-ems-active',delegated);
  setVisualText('footerLabel','HomeFlux EMS · read-only live status');
- setVisualText('footerVersion','v'+String(status.version||'1.5.6')+' · live');
+ setVisualText('footerVersion','v'+String(status.version||'1.5.9')+' · live');
  if($('savingsSourceTag').textContent==='DEMO')$('savingsSourceTag').textContent='HOMEY LIVE';
  $('houseSavingsSubtitle').textContent='Besparing volgens HomeFlux';
  $('evSavingsSubtitle').textContent='PV-laadvoordeel volgens HomeFlux';
@@ -3178,7 +3269,7 @@ function resolveTariffRowsFromStatus(status,startAt){
 function tariffLegendMarkup(rows,dynamic=false){
  const seen=new Set(),labels={cheap:'Goedkoop',normal:'Normaal',expensive:'Duur'};
  return rows.filter(r=>r.k!=='unknown').map(r=>{
-  const label=dynamic?labels[r.k]:r.label;
+  const label=dynamic?uiText(labels[r.k]):r.label;
   if(!label||seen.has(label))return '';seen.add(label);
   return `<span><i class="legend-dot" style="background:${tariffAccentForClass(r.k)}"></i>${safe(label)}</span>`;
  }).join('');
@@ -3193,7 +3284,7 @@ function renderTariffLive(status){
    legend.hidden=false;
    legend.innerHTML=tariffLegendMarkup(rows,true);
   }
-  $('dayType').textContent='DYNAMISCH · '+(String(status.settings?.contractType)==='dynamic_hour'?'UUR':String(status.settings?.contractType)==='dynamic_quarter'?'KWARTIER':'PRIJSCURVE');
+  $('dayType').textContent=uiText('DYNAMISCH · '+(String(status.settings?.contractType)==='dynamic_hour'?'UUR':String(status.settings?.contractType)==='dynamic_quarter'?'KWARTIER':'PRIJSCURVE'));
  }else{
   renderTariffTimelineRows(rows,now);
   if(legend){
@@ -3207,47 +3298,20 @@ function renderTariffLive(status){
  syncNextTariffRow(status,true);
  updateChargingTariffColors(status,true);
 }
-// Light read-only SOC history observed by the already-open Visual Look widget.
-// HomeFlux /status has no historical midnight SOC feed, so never reconstruct
-// missing measurements. Persist a few actual observations per hour locally;
-// if Homey blocks localStorage, the chart still works with RAM-only samples.
-const SOC_OBSERVATIONS_KEY='homeflux-visual-soc-observations-v1';
-let socObservations=[];
-let socObservationsLoaded=false;
-function todaySocObservations(referenceAt){
- const start=dayStartOf(referenceAt);
- const tomorrow=new Date(start);tomorrow.setDate(tomorrow.getDate()+1);
- const end=Math.min(tomorrow.getTime(),referenceAt+60000);
- return socObservations.filter(point=>point.at>=start&&point.at<=end);
-}
-function loadSocObservations(){
- if(socObservationsLoaded)return;
- socObservationsLoaded=true;
- try{
-  const saved=JSON.parse(window.localStorage.getItem(SOC_OBSERVATIONS_KEY)||'[]');
-  if(Array.isArray(saved))socObservations=saved.filter(row=>row&&Number.isFinite(row.at)
-    &&Number.isFinite(row.soc)&&row.soc>=0&&row.soc<=100
-    &&row.at>=Date.now()-2*DAY_MS&&row.at<=Date.now()+60000).slice(-350);
- }catch(_){/* Homey WebView can disallow local storage; RAM data remain valid. */}
-}
-function recordSocObservation(at,soc){
- if(!Number.isFinite(at)||!Number.isFinite(soc)||soc<0||soc>100)return;
- loadSocObservations();
- const dayStart=dayStartOf(at),prior=socObservations.at(-1);
- if(prior&&(prior.at<dayStart||prior.at>at))
-  socObservations=socObservations.filter(p=>p.at>=dayStart&&p.at<=at);
- const last=socObservations.at(-1);
- // One persisted point every five minutes, unless a meaningful quick SoC
- // shift occurred. Never write on every 10-second live status refresh.
- if(last && (at-last.at<60000 || (at-last.at<300000 && Math.abs(last.soc-soc)<1)))return;
- socObservations.push({at:Math.round(at),soc:Math.round(soc*10)/10});
- if(socObservations.length>300)socObservations=socObservations.slice(-300);
- try{window.localStorage.setItem(SOC_OBSERVATIONS_KEY,JSON.stringify(socObservations));}catch(_){/* optional */}
+// Shared, measured SOC history arrives in the existing house-history payload.
+// It is never reconstructed from live status or persisted in the WebView.
+let centralSocObservations=[];
+function readCentralSocHistory(rows){
+ return (Array.isArray(rows)?rows:[]).filter(row=>typeof row?.soc==='number'
+  &&Number.isFinite(row.soc)&&row.soc>=0&&row.soc<=100
+  &&Number.isFinite(row.socAt)&&row.socAt>0).map(row=>({at:row.socAt,soc:row.soc}));
 }
 function observedSocPoints(referenceAt){
- loadSocObservations();
  const start=dayStartOf(referenceAt);
- return todaySocObservations(referenceAt).map(({at,soc})=>({h:(at-start)/HOUR_MS,soc,at}));
+ const tomorrow=new Date(start);tomorrow.setDate(tomorrow.getDate()+1);
+ const end=Math.min(tomorrow.getTime()-1,referenceAt);
+ return centralSocObservations.filter(point=>point.at>=start&&point.at<=end)
+  .map(({at,soc})=>({h:(at-start)/HOUR_MS,soc,at}));
 }
 const LIVE_CALC_INTERVAL_MS=60000;
 let liveCalculationAt=0, liveCalculationInvalidated=false, pendingHouseHistory=null;
@@ -3261,6 +3325,7 @@ function calculateLiveViews(){
  // Mark only after successful rendering; a failed calculation is retried on
  // the next regular status update rather than silently left stale for a minute.
  if(pendingHouseHistory!==null){
+  centralSocObservations=readCentralSocHistory(pendingHouseHistory);
   s.historyRows=readHouseSamples(pendingHouseHistory);
   pendingHouseHistory=null;
  }
@@ -3286,7 +3351,6 @@ function updateLiveStatus(status, history){
   s.time=liveNow.getHours()*60+liveNow.getMinutes();
   s.timeReferenceAt=liveNow.getTime();
   rawStatusObject=status;source='json';auto=false;current=-1;
-  recordSocObservation(liveNow.getTime(),num(s.soc,null));
   // Reliable fallback: /status already includes all historical house periods.
   // Read from the SAME ledger as the original Savings widget, independent of
   // optional /ev-savings calls and the iframe's message timing.
@@ -3453,6 +3517,16 @@ function applyVisualFolded(foldedIds){
 }
 function applyVisualPreferences(data){
  forceTextFit=true;
+ wafValueFirst=data.wafValueFirst!==false;
+ if(rawStatusObject)renderConfiguredWaf(rawStatusObject);
+ const fullWidth=data.dayChartFullWidth!==false;
+ const hourFormat=data.chartHourFormat==='12h'?'12h':'24h';
+ if(fullWidth!==chartFullWidth||hourFormat!==chartHourFormat){
+  chartFullWidth=fullWidth;chartHourFormat=hourFormat;chartScaleFocus=null;
+  if(rawStatusObject)setTimelineHourLabels(Date.now());
+  if(lastChartData){chartFrameKey='';renderEnergyDay(true);}
+  else $('chartScaleBadges').hidden=!chartFullWidth;
+ }
  // Scaled card fonts/layout are purely CSS; changing profile requires no
  // expensive chart recalculation or interaction with the EMS control loop.
  const requested=Number(data.dayInfoScale??100);
@@ -3502,6 +3576,123 @@ function applyVisualPreferences(data){
  }
 }
 function persistVisualLayout(){/* Widget configuration is the only persisted layout; no writes from user folding. */}
+
+// Presentation-only bridge to Homey's widget.visual translations. Uses the
+// same exact/phrase/template translator as settings/display-language.js.
+  function createVisualTranslator(bundle) {
+    const exact = bundle.exact || {};
+    const phrases = Object.entries(bundle.phrases || {}).sort((a, b) => b[0].length - a[0].length);
+    const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const templates = Object.entries(bundle.templates || {}).map(([source, target]) => {
+      const indices = [];
+      const parts = source.split(/(\{\d+\})/g);
+      const pattern = parts.map(part => {
+        const match = /^\{(\d+)\}$/.exec(part);
+        if (!match) return escape(part);
+        indices.push(Number(match[1]));
+        return source === '{0} over {1}' && match[1] === '1' ? '([0-9].*?)' : '(.*?)';
+      }).join('');
+      return { regex: new RegExp('^' + pattern + '$', 's'), target, indices, size: source.replace(/\{\d+\}/g, '').length };
+    }).sort((a, b) => b.size - a.size);
+    const englishExact = new Set(Object.values(exact));
+    const cache = new Map();
+    function core(text, depth = 0) {
+      if (Object.prototype.hasOwnProperty.call(exact, text)) return exact[text];
+      if (englishExact.has(text)) return text;
+      if (depth < 4) {
+        for (const item of templates) {
+          const match = item.regex.exec(text);
+          if (!match) continue;
+          const values = {};
+          item.indices.forEach((index, n) => { values[index] = core(match[n + 1], depth + 1); });
+          return item.target.replace(/\{(\d+)\}/g, (_, n) => values[n] ?? '');
+        }
+      }
+      let out = text;
+      for (const [from, to] of phrases) {
+        if (!from || !out.includes(from)) continue;
+        out = /^[A-Za-z]+$/.test(from)
+          ? out.replace(new RegExp('\\b' + escape(from) + '\\b', 'g'), () => to)
+          : out.split(from).join(to);
+      }
+      if (depth < 4 && out.includes(' · ')) return out.split(' · ').map(part => core(part, depth + 1)).join(' · ');
+      if (depth < 4 && out.includes(', ')) return out.split(', ').map(part => core(part, depth + 1)).join(', ');
+      return out;
+    }
+    return function translate(value) {
+      const raw = String(value ?? '');
+      if (!raw.trim()) return raw;
+      if (cache.has(raw)) return cache.get(raw);
+      const lead = raw.match(/^\s*/)[0], tail = raw.match(/\s*$/)[0];
+      const result = lead + core(raw.trim()) + tail;
+      if (cache.size >= 1024) cache.clear();
+      cache.set(raw, result);
+      return result;
+    };
+  }
+let visualLanguage='nl', translateVisual=value=>String(value??'');
+const UI_BACKEND_IDS=new Set(['decision','heroFoldDecision','reason','heroAction','boilerSub','guardSub','tariffValue','dayType']);
+const UI_PROTECTED='.ev-name,.hvac-title,.detail-header h3,.detail-copy,#savingsEvSelect option:not([value=all]),.val,.field-val,.field-name,#rawFocus,#tariffTimeline,.tariff-legend,#nextTariffLive strong,code,script,style';
+let translatedNodes=new WeakMap(),translatedAttributes=new WeakMap();
+function uiText(value,...args){
+ const text=translateVisual(value);
+ return args.length?text.replace(/\{(\d+)\}/g,(_,index)=>String(args[index]??'')):text;
+}
+function localizeVisualTree(root,force=false){
+ if(!root||visualLanguage==='nl')return;
+ const protectedElement=el=>el.closest(UI_PROTECTED)||(source==='json'&&UI_BACKEND_IDS.has(el.id));
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ let node;
+ while(node=walker.nextNode()){
+  const el=node.parentElement;if(!el||protectedElement(el))continue;
+  const old=translatedNodes.get(node),raw=node.nodeValue;
+  if(!force&&old?.result===raw)continue;
+  const source=old?.result===raw?old.source:raw,result=uiText(source);
+  if(result!==raw)node.nodeValue=result;
+  translatedNodes.set(node,{source,result});
+ }
+ for(const el of [root,...root.querySelectorAll('[title],[aria-label],[aria-description],[placeholder]')]){
+  if(!el.getAttribute||protectedElement(el)||el.matches('[data-ev],[data-hvac]'))continue;
+  let prior=translatedAttributes.get(el);if(!prior){prior={};translatedAttributes.set(el,prior);}
+  for(const attr of ['title','aria-label','aria-description','placeholder']){
+   const raw=el.getAttribute(attr);if(raw===null||(!force&&prior[attr]?.result===raw))continue;
+   const source=prior[attr]?.result===raw?prior[attr].source:raw,result=uiText(source);
+   if(raw!==result)el.setAttribute(attr,result);prior[attr]={source,result};
+  }
+ }
+}
+function applyVisualLanguage(bundle){
+ if(!bundle||!['nl','en','fr','de','es'].includes(bundle.language)||bundle.language===visualLanguage)return;
+ visualLanguage=bundle.language;visualLocale={nl:'nl-BE',en:'en-GB',fr:'fr-FR',de:'de-DE',es:'es-ES'}[visualLanguage];
+ document.documentElement.lang=visualLanguage;
+ translateVisual=createVisualTranslator({...bundle,phrases:bundle.exact});
+ localizeVisualTree(document.body,true);
+}
+function localizedRenderer(render,selectors,revision){
+ return function(...args){const before=revision?.();try{return render.apply(this,args)}finally{
+  if(visualLanguage!=='nl'&&(!revision||before!==revision()))for(const selector of selectors)for(const root of document.querySelectorAll(selector))localizeVisualTree(root);
+ }};
+}
+// Hooks run only when the original renderer runs; there is no observation
+// listener, timer, status request or forecast recalculation for translations.
+renderEnergyDay=localizedRenderer(renderEnergyDay,['#energyDayPanel']);
+showEnergyChartPoint=localizedRenderer(showEnergyChartPoint,['#chartTip']);
+renderEvs=localizedRenderer(renderEvs,['#evSection'],()=>lastEvDisplayKey);
+renderHvacs=localizedRenderer(renderHvacs,['#hvacSection'],()=>lastHvacDisplayKey);
+renderSavings=localizedRenderer(renderSavings,['#savingsSection']);
+renderHouseSavingsSplit=localizedRenderer(renderHouseSavingsSplit,['#houseSavingsSplit']);
+renderExplorer=localizedRenderer(renderExplorer,['#infoArea']);
+renderRawFields=localizedRenderer(renderRawFields,['#rawResultMeta','#rawResults']);
+renderConfiguredWaf=localizedRenderer(renderConfiguredWaf,['#wafMetric']);
+updateLiveLabels=localizedRenderer(updateLiveLabels,['#houseSavingsSubtitle','#evSavingsSubtitle','#savingsFoot','#hvacSection .section-head','#tariffSection h2']);
+updateLiveSavings=localizedRenderer(updateLiveSavings,['#savingsSection']);
+updateLiveSavingsError=localizedRenderer(updateLiveSavingsError,['#savingsSection']);
+updateModuleLayout=localizedRenderer(updateModuleLayout,['#loadCount']);
+renderTariffLive=localizedRenderer(renderTariffLive,['#dayType']);
+applyVisualVisibility=localizedRenderer(applyVisualVisibility,['.layout-controls']);
+applyVisualPreferences=localizedRenderer(applyVisualPreferences,['body']);
+importStatus=localizedRenderer(importStatus,['#jsonError']);
+
 function initLiveWidget(){
  document.body.classList.add('homey-live');
  initConsolidatedDayOverview();
@@ -3512,7 +3703,7 @@ function initLiveWidget(){
  window.addEventListener('message',event=>{
   if(event.source!==window.parent||!event.data||typeof event.data!=='object')return;
   if(event.data.type==='homeflux.visual.appearance'){applyVisualAppearance(event.data.background);applyVisualPanelAppearance(event.data.cardBackground);applyVisualBrightness(event.data.backgroundBrightness,event.data.cardBrightness,event.data.background,event.data.cardBackground,event.data.graphTransparent===true);}
-  if(event.data.type==='homeflux.visual.widgetConfig'){applyTariffPalette(event.data.tariffColors);applyVisualPreferences(event.data);applyWidgetSectionColors(event.data.colors);}
+  if(event.data.type==='homeflux.visual.widgetConfig'){applyVisualLanguage(event.data.translations);applyTariffPalette(event.data.tariffColors);applyVisualPreferences(event.data);applyWidgetSectionColors(event.data.colors);}
   if(event.data.type==='homeflux.visual.recalculate')liveCalculationInvalidated=true;
   if(event.data.type==='homeflux.visual.status')updateLiveStatus(event.data.status,event.data.houseHistory);
   if(event.data.type==='homeflux.visual.waf' && rawStatusObject && event.data.presentation

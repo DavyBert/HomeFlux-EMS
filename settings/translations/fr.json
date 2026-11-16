@@ -5934,7 +5934,14 @@
     "Onvoldoende prijsverschil voor injectie": "Écart de prix insuffisant pour l’injection",
     "Laagste inkoopprijs vandaag niet beschikbaar": "Prix d’achat le plus bas du jour indisponible",
     "Peak Guard-batterijondersteuning bij faseoverbelasting": "Assistance batterie Peak Guard en cas de surcharge de phase",
-    "Bij faseoverbelasting wordt de EV eerst via de bestaande faseregeling teruggeschroefd. Batterijondersteuning volgt pas wanneer de EV-terugregeling door meetgegevens bevestigd is en de fase nog overbelast blijft. De batterij op de betrokken fase krijgt voorrang op een gelijkmatig driefasige batterij. De totale P1-netafname mag hierdoor niet negatief worden.": "En cas de surcharge d’une phase, la régulation de phase existante réduit d’abord la charge du véhicule électrique. L’assistance batterie n’intervient qu’après confirmation de la réduction par les mesures et si la phase reste surchargée. La batterie de la phase concernée est prioritaire sur une batterie répartie sur trois phases. L’importation nette P1 ne doit pas devenir négative."
+    "Bij faseoverbelasting wordt de EV eerst via de bestaande faseregeling teruggeschroefd. Batterijondersteuning volgt pas wanneer de EV-terugregeling door meetgegevens bevestigd is en de fase nog overbelast blijft. De batterij op de betrokken fase krijgt voorrang op een gelijkmatig driefasige batterij. De totale P1-netafname mag hierdoor niet negatief worden.": "En cas de surcharge d’une phase, la régulation de phase existante réduit d’abord la charge du véhicule électrique. L’assistance batterie n’intervient qu’après confirmation de la réduction par les mesures et si la phase reste surchargée. La batterie de la phase concernée est prioritaire sur une batterie répartie sur trois phases. L’importation nette P1 ne doit pas devenir négative.",
+    "Grafiek over volledige breedte met schaalbadges": "Graphique pleine largeur avec échelles",
+    "Toont de schalen boven de grafiek. Tik op een schaalbadge om de schaal binnen de grafiek te tonen; tik nogmaals om deze te verbergen.": "Affiche les échelles au-dessus du graphique. Toucher une échelle pour l’afficher dans le graphique ; toucher à nouveau pour la masquer.",
+    "Tik om de schaal in de grafiek te tonen of te verbergen": "Toucher pour afficher ou masquer l’échelle dans le graphique",
+    "WAF-waarde groot weergeven": "Afficher la valeur WAF en grand",
+    "Tijdnotatie tijdlijn": "Format horaire de la chronologie",
+    "24 uur (0h, 6h, 12h, 18h)": "24 heures (0h, 6h, 12h, 18h)",
+    "AM/PM (12AM, 6AM, 12PM, 6PM)": "AM/PM (12AM, 6AM, 12PM, 6PM)"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "Pour les chargeurs tels que Smappee, HomeFlux envoie stop, smart ou standard. Comme cette interface ne peut pas commander un courant partiel, HomeFlux arrête le chargeur lorsque Peak Guard doit limiter la puissance demandée.",

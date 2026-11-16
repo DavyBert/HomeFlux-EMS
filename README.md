@@ -12,6 +12,33 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.9
+
+**NL** — Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.
+Centrale batterij-SOC-historiek, gedeeld tussen alle widgets.
+Optionele brede grafiek met schaalbadges en WAF-waarde groot in bijpassende kleur (standaard aan). PV-balken beginnen per dag opnieuw; bevestigde EMS-laadstroken blijven zichtbaar boven widgetschattingen.
+Brede grafiek standaard aan na upgrade. Compacte tijdlabels met een vaste kleinere lettergrootte, om de drie uur voor een dagweergave en om de zes uur voor langere tijdlijnen, instelbaar op 24 uur of AM/PM en zonder M bij het eindlabel.
+
+**EN** — Full multilingual support for the new EMS Status widget.
+Central battery SoC history shared by all widgets.
+Optional full-width chart with scale badges and a prominent WAF value in its matching color (enabled by default). PV bars restart each day; confirmed EMS charging strips remain visible above widget estimates.
+Full-width chart enabled after upgrading. Compact labels with a fixed smaller font, every three hours for a daily view and every six hours for longer timelines, with 24-hour or AM/PM format and no M at the final label.
+
+**FR** — Prise en charge multilingue complète du nouveau widget EMS Status.
+Historique central du SoC de la batterie, partagé par tous les widgets.
+Graphique pleine largeur optionnel avec échelles et valeur WAF en grand dans sa couleur correspondante (activée par défaut). Les barres PV repartent chaque jour ; les plages EMS confirmées restent visibles au-dessus des estimations du widget.
+Graphique pleine largeur activé après la mise à jour. Repères compacts avec une police fixe plus petite, toutes les trois heures pour une journée et toutes les six heures pour les périodes plus longues, au format 24 heures ou AM/PM, sans M au dernier repère.
+
+**DE** — Vollständige mehrsprachige Unterstützung für das neue EMS-Status-Widget.
+Zentraler Batterie-SoC-Verlauf, gemeinsam für alle Widgets.
+Optionales Diagramm in voller Breite mit Skalenanzeigen und großem WAF-Wert in passender Farbe (standardmäßig aktiviert). PV-Balken beginnen jeden Tag neu; bestätigte EMS-Ladezeiten bleiben über Widget-Schätzungen sichtbar.
+Diagramm in voller Breite nach dem Upgrade aktiviert. Kompakte Zeitangaben mit fester kleinerer Schriftgröße, alle drei Stunden in der Tagesansicht und alle sechs Stunden bei längeren Zeiträumen, wahlweise 24 Stunden oder AM/PM und ohne M am letzten Zeitwert.
+
+**ES** — Soporte multilingüe completo para el nuevo widget EMS Status.
+Historial central del SoC de la batería, compartido por todos los widgets.
+Gráfico opcional a todo el ancho con escalas y valor WAF destacado con su color correspondiente (activado por defecto). Las barras FV se reinician cada día; las franjas EMS confirmadas permanecen visibles sobre las estimaciones del widget.
+Gráfico a todo el ancho activado tras actualizar. Etiquetas compactas con una fuente fija más pequeña, cada tres horas en la vista diaria y cada seis horas en periodos más largos, en formato de 24 horas o AM/PM y sin M en la etiqueta final.
+
 ## Release notes — 1.5.8
 
 **NL** — De SOC-widgetprognose berekent toekomstige laadbehoefte opnieuw met de voorspelde SOC; een klein actueel laadplan begrenst de voorspelling niet meer.

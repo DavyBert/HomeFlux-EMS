@@ -1262,6 +1262,10 @@
 
     async function onHomeyReady(Homey) {
       const settings = Homey.getSettings() || {};
+      // One Homey translation lookup; the existing configuration message also
+      // supplies the iframe language. No additional request or listener.
+      let visualTranslations=null;
+      try { visualTranslations=JSON.parse(tr(Homey,'widget.visual.catalog','null')); } catch (_) { /* older Homey translation cache */ }
       const visualLook = enabled(settings, 'visualLook', false); // Single widget: Visual on, classic text off.
       const visualView = document.getElementById('visualView');
       // Display profile is fetched ONCE when the widget opens via a dedicated
@@ -1278,7 +1282,7 @@
           : selectedVisualProfile==='medium'
             ? ['evSection','hvacSection','loadSection','infoExplorer']
             : ['infoExplorer'],
-        dayHidden:[],dayTimelineFolded:true,dayInfoScale:100,
+        dayHidden:[],dayTimelineFolded:true,dayInfoScale:100,dayChartFullWidth:true,chartHourFormat:'24h',wafValueFirst:true,
         themes:{dark:{background:null,cardBackground:null,backgroundBrightness:null,cardBrightness:null,graphTransparent:false,tariffColors:{},sections:{}},
           light:{background:null,cardBackground:null,backgroundBrightness:null,cardBrightness:null,graphTransparent:false,tariffColors:{},sections:{}}}};
       let visualProfile=defaultProfile,visualProfileLastFetched=0,visualProfilePending=null;
@@ -1357,8 +1361,8 @@
         sendVisual('homeflux.visual.widgetConfig',{
           order:visualProfile.order,hidden:visualProfile.hidden,folded:visualProfile.folded,
           dayHidden:visualProfile.dayHidden||[],dayTimelineFolded:visualProfile.dayTimelineFolded!==false,
-          dayInfoScale:visualProfile.dayInfoScale??100,
-          colors:theme.sections||{},tariffColors:theme.tariffColors||{},configured:true,
+          dayInfoScale:visualProfile.dayInfoScale??100,dayChartFullWidth:visualProfile.dayChartFullWidth!==false,chartHourFormat:visualProfile.chartHourFormat==='12h'?'12h':'24h',wafValueFirst:visualProfile.wafValueFirst!==false,
+          colors:theme.sections||{},tariffColors:theme.tariffColors||{},configured:true,translations:visualTranslations,
         });
       }
       async function requestPersistedVisualProfile(){
@@ -1431,8 +1435,11 @@
           historyDate = result.date; historyAfter = 0; persistedHouseHistory = []; visualHistoryDirty = true;
         }
         for (const row of result.rows) {
-          const at = Number(row?.at), powerW = Number(row?.powerW);
-          if (!(at > historyAfter) || !Number.isFinite(powerW) || powerW < 0 || powerW > 100000) continue;
+          const at = Number(row?.cursorAt ?? row?.at), powerW = row?.powerW, soc = row?.soc;
+          const houseValid = typeof powerW === 'number' && Number.isFinite(powerW) && powerW >= 0 && powerW <= 100000;
+          const socValid = typeof soc === 'number' && Number.isFinite(soc) && soc >= 0 && soc <= 100
+            && Number.isFinite(row.socAt) && row.socAt > 0;
+          if (!(at > historyAfter) || (!houseValid && !socValid)) continue;
           persistedHouseHistory.push(row); historyAfter = at; visualHistoryDirty = true;
         }
         if (persistedHouseHistory.length > 720) persistedHouseHistory.splice(0,persistedHouseHistory.length-720);
@@ -1489,7 +1496,7 @@
       if (visualLook) {
         document.body.classList.add('visual-look');
         visualView.classList.remove('hidden');
-        visualView.src = 'visual.html?rev=1.5.6-ev-ledger';
+        visualView.src = 'visual.html?rev=1.5.9-fixed14-hours';
       }
       let latestStatus = null;
       let refreshTimer = null, displayTimer = null;

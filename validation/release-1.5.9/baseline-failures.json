@@ -1,0 +1,57 @@
+[
+  {
+    "test": "visual-compact-header-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.8' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-compact-header-1.5.4.test.js:9:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.8',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-look-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.8' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-look-1.5.4.test.js:14:117)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.8',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-look-light-dark-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.8' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-look-light-dark-1.5.4.test.js:11:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.8',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-look-single-status-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.8' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-look-single-status-1.5.4.test.js:11:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.8',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-mobile-transparency-release-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.8' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-mobile-transparency-release-1.5.4.test.js:23:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.8',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-next-tariff-no-flicker-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look 1.5.4: no 10-second tariff flicker, no redundant scans/DOM writes, event and minute updates remain accurate\n"
+  },
+  {
+    "test": "visual-performance-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look optimization: cached price curves + immediate invalidation, EV/HVAC diff, coalesced events, live WAF, 60s calculation\n"
+  },
+  {
+    "test": "visual-profile-startup-recovery-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look: restart persistence, light/dark restore, transient failures, stalled request timeout, no extra recalculation\n"
+  },
+  {
+    "test": "visual-savings-all-history-noev-1.5.4.test.js",
+    "ok": false,
+    "output": "Error: ENOENT: no such file or directory, open '/mnt/data/visual_154_noev_historical_snapshot.json'\n    at Object.writeFileSync (node:fs:2430:20)\n    at /workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-savings-all-history-noev-1.5.4.test.js:56:21\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'open',\n  path: '/mnt/data/visual_154_noev_historical_snapshot.json'\n}\n"
+  },
+  {
+    "test": "visual-savings-rolling-1.5.4.test.js",
+    "ok": false,
+    "output": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n0 !== 0.55\n\n    at /workspace/scratch/3eee578e3241/source159/HomeFlux-EMS/test/visual-savings-rolling-1.5.4.test.js:44:10\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: 0,\n  expected: 0.55,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n"
+  },
+  {
+    "test": "widget-consolidation-1.5.7.test.js",
+    "ok": true,
+    "output": "PASS 1.5.7 API: compact plan revision, cache invalidation, fresh settings and fixed-contract future tariff\nPASS 1.5.7 consolidation: 233 history, forecast, reserve, cache and transport checks\n"
+  }
+]

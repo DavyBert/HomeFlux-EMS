@@ -1,0 +1,82 @@
+[
+  {
+    "test": "widget-compact-hours-1.5.9.test.js",
+    "pass": true,
+    "output": "PASS compact 6-hour labels, midnight/noon, upgrade, saved preference, both axes, DST and unchanged forecast: nl\nPASS compact 6-hour labels, midnight/noon, upgrade, saved preference, both axes, DST and unchanged forecast: en\nPASS compact 6-hour labels, midnight/noon, upgrade, saved preference, both axes, DST and unchanged forecast: fr\nPASS compact 6-hour labels, midnight/noon, upgrade, saved preference, both axes, DST and unchanged forecast: de\nPASS compact 6-hour labels, midnight/noon, upgrade, saved preference, both axes, DST and unchanged forecast: es\n"
+  },
+  {
+    "test": "widget-wide-scales-pv-reset-1.5.9.test.js",
+    "pass": true,
+    "output": "PASS optional axes, badges, overlay, touch coordinates, visibility and unchanged forecast: nl\nPASS optional axes, badges, overlay, touch coordinates, visibility and unchanged forecast: en\nPASS optional axes, badges, overlay, touch coordinates, visibility and unchanged forecast: fr\nPASS optional axes, badges, overlay, touch coordinates, visibility and unchanged forecast: de\nPASS optional axes, badges, overlay, touch coordinates, visibility and unchanged forecast: es\nPASS independent daily PV totals, midnight reset, interpolation and unknown tomorrow\nPASS actual profile editor: migration, checkbox save, persisted flags and default reset\n"
+  },
+  {
+    "test": "widget-translations-central-soc-1.5.9.test.js",
+    "pass": true,
+    "output": "PASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: nl\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: en\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: fr\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: de\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: es\nPASS central five-minute SOC, actual receipt time, no house dependency, no fictitious/stale points, delta cursor, restart, legacy rows, midnight/DST and 720-point limit\nPASS frozen SOC forecast/tariff preprocessing, validated PV display and release versions\n"
+  },
+  {
+    "test": "widget-language-bridge-1.5.9.test.js",
+    "pass": true,
+    "output": "PASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: nl\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: en\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: fr\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: de\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: es\n"
+  },
+  {
+    "test": "widget-consolidation-1.5.7.test.js",
+    "pass": true,
+    "output": "PASS 1.5.7 API: compact plan revision, cache invalidation, fresh settings and fixed-contract future tariff\nPASS 1.5.7 consolidation: 233 history, forecast, reserve, cache and transport checks\n"
+  },
+  {
+    "test": "widget-soc-replanning-1.5.8.test.js",
+    "pass": true,
+    "output": "PASS 120 exact dynamic-deferral comparisons, including 1-cent threshold, gaps, normal limits and capacity; three pure source copies match\nTOU hoog SOC, bestaand plan 0.4 kWh 31: 94.96 vs 94.96 Δ0.00 / 41: 89.98 vs 89.98 Δ0.00 41.7ms\nTOU laag SOC 31: 94.93 vs 94.93 Δ0.00 / 41: 89.99 vs 89.99 Δ0.00 115.1ms\nTOU onvoldoende capaciteit 31: 35.83 vs 35.83 Δ0.00 / 41: 31.75 vs 31.76 Δ0.00 40.0ms\nTOU weekend 17: 89.78 vs 89.78 Δ0.00 / 31: 94.79 vs 94.79 Δ0.00 / 41: 94.79 vs 94.79 Δ0.00 51.1ms\nDynamisch uur, aansluitend goedkoper 7: 35.00 vs 35.00 Δ0.00 / 17: 89.94 vs 89.93 Δ0.01 64.5ms\nDynamisch kwartier, kort duur blok 7: 16.01 vs 16.01 Δ0.00 / 17: 89.92 vs 89.90 Δ0.02 104.3ms\nDynamisch lang duur blok 7: 27.07 vs 27.07 Δ0.00 / 17: 89.92 vs 89.90 Δ0.02 102.6ms\nDynamisch ontbrekende toekomst 7: 94.92 vs 94.92 Δ0.00 / 17: 94.92 vs 94.92 Δ0.00 56.2ms\nZonnige dag 17: 100.00 vs 100.00 Δ0.00 / 31: 62.37 vs 62.37 Δ0.00 / 41: 100.00 vs 100.00 Δ0.00 70.4ms\nOvergang 07 en 17 zonder PV-meting 7: 94.95 vs 94.95 Δ0.00 / 17: 89.99 vs 89.99 Δ0.00 22.8ms\nZomertijd 23 uur 31: 94.98 vs 94.98 Δ0.00 / 41: 94.98 vs 94.98 Δ0.00 46.9ms\nWintertijd 25 uur 31: 94.77 vs 94.77 Δ0.00 / 41: 94.77 vs 94.77 Δ0.00 47.6ms\nVast contract, maximum centrum binnen laadvenster 31: 95.00 vs 96.57 Δ1.57 / 41: 95.00 vs 95.00 Δ0.00 58.4ms\nTOU twee nachttarieven toegestaan 31: 94.95 vs 94.96 Δ0.00 / 41: 89.99 vs 89.99 Δ0.00 89.2ms\nMaximum vroeg 31: 95.00 vs 96.57 Δ1.57 / 41: 90.00 vs 89.86 Δ0.14 43.5ms\nMaximum laatst 31: 95.00 vs 96.57 Δ1.57 / 41: 90.00 vs 89.87 Δ0.13 43.0ms\nMaximum centrum 31: 94.95 vs 94.95 Δ0.00 / 41: 89.99 vs 89.99 Δ0.00 45.8ms\nPeak Guard laadruimte 31: 75.90 vs 75.90 Δ0.00 / 41: 89.97 vs 89.97 Δ0.00 42.8ms\nDynamisch avond, aansluitend goedkoper 17: 30.00 vs 30.00 Δ0.00 / 31: 94.77 vs 94.77 Δ0.00 / 41: 94.77 vs 94.77 Δ0.00 129.0ms\n"
+  },
+  {
+    "test": "visual-widget-profiles-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS visual profiles: separate persisted key, 3 presets, validation, color normalization, no duplicate positions, manifest/API and UI\n"
+  },
+  {
+    "test": "visual-widget-refresh-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS Visual Look refresh: only profile saves notify, generic saves ignored, invalid profile no event, no dashboard tolerated\n"
+  },
+  {
+    "test": "visual-dynamic-timeline-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS Visual Look 1.5.4: cached planner tariff classes per quarter/hour, original prices, no classic overhead, missing curve\n"
+  },
+  {
+    "test": "visual-tou-weekend-timeline-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS Sunday: 03:39-07 Superdal, 07-11 Dal, 11-17 Superdal, 17-01 Dal, 01-03:39 Superdal\nPASS Weekday peak periods and user-defined weekend tariff overrides\nPASS 24 real hours across Europe/Brussels spring DST\nPASS API, classic unchanged, 1min cache and immediate schedule edit invalidation\n"
+  },
+  {
+    "test": "visual-minute-refresh-isolation-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS Visual Look refresh isolation: profile-only save, general/savings/history isolated, 60s live gate\n"
+  },
+  {
+    "test": "visual-performance-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS Visual Look optimization: cached price curves + immediate invalidation, EV/HVAC diff, coalesced events, live WAF, 60s calculation\n"
+  },
+  {
+    "test": "autotune.test.js",
+    "pass": true,
+    "output": "automatic Autotune tests passed\n"
+  },
+  {
+    "test": "settings-translations.test.js",
+    "pass": true,
+    "output": "settings translation bundle tests passed\n"
+  },
+  {
+    "test": "widget-render-1.5.7.test.js",
+    "pass": true,
+    "output": "PASS 1.5.7 production DOM: graph, contract legend escaping, four columns, 16 visibility combinations, EV and HVAC display\n"
+  },
+  {
+    "test": "settings-runtime-audit.test.js",
+    "pass": true,
+    "output": "settings runtime audit passed (938 persisted UI settings)\n"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "test": "widget-compact-hours-1.5.9.test.js",
+    "pass": true,
+    "output": "PASS adaptive 3/6-hour labels, fixed 14-unit font, bounded label positions, midnight/noon, upgrade, preference, DST and unchanged forecast: nl\nPASS adaptive 3/6-hour labels, fixed 14-unit font, bounded label positions, midnight/noon, upgrade, preference, DST and unchanged forecast: en\nPASS adaptive 3/6-hour labels, fixed 14-unit font, bounded label positions, midnight/noon, upgrade, preference, DST and unchanged forecast: fr\nPASS adaptive 3/6-hour labels, fixed 14-unit font, bounded label positions, midnight/noon, upgrade, preference, DST and unchanged forecast: de\nPASS adaptive 3/6-hour labels, fixed 14-unit font, bounded label positions, midnight/noon, upgrade, preference, DST and unchanged forecast: es\n"
+  },
+  {
+    "test": "widget-render-1.5.7.test.js",
+    "pass": true,
+    "output": "PASS 1.5.7 production DOM: graph, contract legend escaping, four columns, 16 visibility combinations, EV and HVAC display\n"
+  },
+  {
+    "test": "widget-translations-central-soc-1.5.9.test.js",
+    "pass": true,
+    "output": "PASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: nl\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: en\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: fr\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: de\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: es\nPASS central five-minute SOC, actual receipt time, no house dependency, no fictitious/stale points, delta cursor, restart, legacy rows, midnight/DST and 720-point limit\nPASS frozen SOC forecast/tariff preprocessing, validated PV display and release versions\n"
+  },
+  {
+    "test": "visual-minute-refresh-isolation-1.5.4.test.js",
+    "pass": true,
+    "output": "PASS Visual Look refresh isolation: profile-only save, general/savings/history isolated, 60s live gate\n"
+  }
+]

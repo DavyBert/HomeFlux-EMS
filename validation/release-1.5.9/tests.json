@@ -1,0 +1,163 @@
+[
+  {
+    "test": "autotune-permissions-1.4.5.test.js",
+    "ok": true,
+    "output": "AutoTune permissions 1.4.5: 11 acceptance cases passed.\n"
+  },
+  {
+    "test": "autotune-planning-1.2.28.test.js",
+    "ok": true,
+    "output": "AutoTune planning 1.2.28: 25 focused evidence/energy/goal/season checks passed.\n"
+  },
+  {
+    "test": "autotune-restart-1.2.33.test.js",
+    "ok": true,
+    "output": "AutoTune restart 1.2.33: 37 checkpoint, restart, calendar/DST, energy and quality checks passed.\n"
+  },
+  {
+    "test": "autotune.test.js",
+    "ok": true,
+    "output": "automatic Autotune tests passed\n"
+  },
+  {
+    "test": "dynamic-charge-deferral-1.5.5.test.js",
+    "ok": true,
+    "output": "PASS Dynamic hourly: future cheaper, no peak\nPASS Dynamic hourly: intermediate expensive period needs preload\nPASS Dynamic hourly: evening goal can defer\nPASS Dynamic hourly: unknown interval forbids postponement\nPASS Dynamic hourly: no cheaper eligible interval\nPASS Dynamic hourly: insufficient future capacity retains target\nPASS Dynamic quarter-hour: future cheaper, no peak\nPASS Dynamic quarter-hour: intermediate expensive period needs preload\nPASS Dynamic quarter-hour: evening goal can defer\nPASS Dynamic quarter-hour: unknown interval forbids postponement\nPASS Dynamic quarter-hour: no cheaper eligible interval\nPASS Dynamic quarter-hour: insufficient future capacity retains target\nPASS Runtime: dynamic target capped during normal price; safety recovers; TOU/fixed and manual unchanged\nPASS Actual published daily classes: hour and quarter are usable without invented calendar slots\nDynamic charge deferral 1.5.5: 14 groups passed\nPASS Slow engine night input and real night planner use only the preloaded reserve\n"
+  },
+  {
+    "test": "dynamic-deferral-app-integration-1.5.5.test.js",
+    "ok": true,
+    "output": "PASS dynamic_hour preload target 25.83 night plan 25.83\nPASS dynamic_quarter preload target 25.83 night plan 25.83\n"
+  },
+  {
+    "test": "visual-compact-header-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.9' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/HomeFlux-EMS-1.5.9/test/visual-compact-header-1.5.4.test.js:9:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.9',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-dynamic-timeline-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look 1.5.4: cached planner tariff classes per quarter/hour, original prices, no classic overhead, missing curve\n"
+  },
+  {
+    "test": "visual-ev-savings-1.5.6.test.js",
+    "ok": true,
+    "output": "PASS The single house/status payload includes all five EV periods and every configured selection\nPASS Disconnected BMW monthly values match the established EV reader and Savings categories\nPASS Multiple EVs have independent values and a correct all-EV total in the same response\nPASS Missing data remains unavailable; a recorded zero and negative costs are preserved\nPASS Classic status skips EV aggregation, the minute cache is reused, and the ledger is read-only\nPASS EV aggregation failure cannot remove independently valid house periods or EMS status\nPASS No configured EV does not trigger extra EV history reads\nVisual EV Savings 1.5.6: 7 groups passed\n"
+  },
+  {
+    "test": "visual-ev-status-transport-1.5.6.test.js",
+    "ok": true,
+    "output": "{\"mode\":\"fixed\",\"values\":{\"houseSavingsValue\":\"\u20ac 355,02\",\"evSavingsValue\":\"\u20ac 3,58\",\"evCostValue\":\"\u20ac 94,41\",\"evSavingsBreakdown\":\"PV naar EV12,8 kWhNet naar EV343,9 kWh\"},\"errors\":[],\"evRequests\":0,\"statusPaths\":[\"/status?visualSavings=1&planRevision=0\"]}\n"
+  },
+  {
+    "test": "visual-house-history-1.5.4.test.js",
+    "ok": true,
+    "output": "Visual House: shared P1+PV observations, time-weighted 5-minute averages, no fabricated PV, saved/restored and endpoint PASS\n"
+  },
+  {
+    "test": "visual-look-1.5.3.test.js",
+    "ok": true,
+    "output": "Visual Look 1.5.3 manifest, presentation and read-only API checks passed.\n"
+  },
+  {
+    "test": "visual-look-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.9' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/HomeFlux-EMS-1.5.9/test/visual-look-1.5.4.test.js:14:117)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.9',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-look-light-dark-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.9' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/HomeFlux-EMS-1.5.9/test/visual-look-light-dark-1.5.4.test.js:11:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.9',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-look-single-status-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.9' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/HomeFlux-EMS-1.5.9/test/visual-look-single-status-1.5.4.test.js:11:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.9',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-minute-refresh-isolation-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look refresh isolation: profile-only save, general/savings/history isolated, 60s live gate\n"
+  },
+  {
+    "test": "visual-mobile-transparency-release-1.5.4.test.js",
+    "ok": false,
+    "output": "node:assert:150\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'1.5.9' !== '1.5.4'\n\n    at Object.<anonymous> (/workspace/scratch/3eee578e3241/HomeFlux-EMS-1.5.9/test/visual-mobile-transparency-release-1.5.4.test.js:23:8)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    at node:internal/main/run_main_module:36:49 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: '1.5.9',\n  expected: '1.5.4',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v22.23.5\n"
+  },
+  {
+    "test": "visual-next-soc-goal-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look: SoC volgend doel follows first upcoming goal and matching projected SoC\n"
+  },
+  {
+    "test": "visual-next-tariff-no-flicker-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look 1.5.4: no 10-second tariff flicker, no redundant scans/DOM writes, event and minute updates remain accurate\n"
+  },
+  {
+    "test": "visual-performance-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look optimization: cached price curves + immediate invalidation, EV/HVAC diff, coalesced events, live WAF, 60s calculation\n"
+  },
+  {
+    "test": "visual-profile-startup-recovery-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look: restart persistence, light/dark restore, transient failures, stalled request timeout, no extra recalculation\n"
+  },
+  {
+    "test": "visual-savings-all-history-noev-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look 1.5.4: all 5 periods via /status, no EV, same historic ledger and costs, classic unaffected, RAM cache\n"
+  },
+  {
+    "test": "visual-savings-rolling-1.5.4.test.js",
+    "ok": true,
+    "output": "Historical 30d ledger, original Savings widget and Visual Look API match. fixture=/mnt/data/visual_154_rolling_historical_fixture.json\n",
+    "fixtureClock": "2026-11-15T12:00:00+01:00"
+  },
+  {
+    "test": "visual-tariff-palette-soc-history-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS tariff palette per profile/theme, coordinated accents, central measured SOC history and first-goal forecast\n"
+  },
+  {
+    "test": "visual-tou-weekend-timeline-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Sunday: 03:39-07 Superdal, 07-11 Dal, 11-17 Superdal, 17-01 Dal, 01-03:39 Superdal\nPASS Weekday peak periods and user-defined weekend tariff overrides\nPASS 24 real hours across Europe/Brussels spring DST\nPASS API, classic unchanged, 1min cache and immediate schedule edit invalidation\n"
+  },
+  {
+    "test": "visual-widget-profiles-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS visual profiles: separate persisted key, 3 presets, validation, color normalization, no duplicate positions, manifest/API and UI\n"
+  },
+  {
+    "test": "visual-widget-refresh-1.5.4.test.js",
+    "ok": true,
+    "output": "PASS Visual Look refresh: only profile saves notify, generic saves ignored, invalid profile no event, no dashboard tolerated\n"
+  },
+  {
+    "test": "widget-consolidation-1.5.7.test.js",
+    "ok": true,
+    "output": "PASS 1.5.7 API: compact plan revision, cache invalidation, fresh settings and fixed-contract future tariff\nPASS 1.5.7 consolidation: 233 history, forecast, reserve, cache and transport checks\n"
+  },
+  {
+    "test": "widget-language-bridge-1.5.9.test.js",
+    "ok": true,
+    "output": "PASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: nl\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: en\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: fr\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: de\nPASS automatic Homey-to-iframe language, SOC-only transport and existing request counts: es\n"
+  },
+  {
+    "test": "widget-render-1.5.7.test.js",
+    "ok": true,
+    "output": "PASS 1.5.7 production DOM: graph, contract legend escaping, four columns, 16 visibility combinations, EV and HVAC display\n"
+  },
+  {
+    "test": "widget-soc-replanning-1.5.8.test.js",
+    "ok": true,
+    "output": "PASS 120 exact dynamic-deferral comparisons, including 1-cent threshold, gaps, normal limits and capacity; three pure source copies match\nTOU hoog SOC, bestaand plan 0.4 kWh 31: 94.96 vs 94.96 \u03940.00 / 41: 89.98 vs 89.98 \u03940.00 78.6ms\nTOU laag SOC 31: 94.93 vs 94.93 \u03940.00 / 41: 89.99 vs 89.99 \u03940.00 76.0ms\nTOU onvoldoende capaciteit 31: 35.83 vs 35.83 \u03940.00 / 41: 31.75 vs 31.76 \u03940.00 68.8ms\nTOU weekend 17: 89.78 vs 89.78 \u03940.00 / 31: 94.79 vs 94.79 \u03940.00 / 41: 94.79 vs 94.79 \u03940.00 69.3ms\nDynamisch uur, aansluitend goedkoper 7: 35.00 vs 35.00 \u03940.00 / 17: 89.94 vs 89.93 \u03940.01 69.0ms\nDynamisch kwartier, kort duur blok 7: 16.01 vs 16.01 \u03940.00 / 17: 89.92 vs 89.90 \u03940.02 268.5ms\nDynamisch lang duur blok 7: 27.07 vs 27.07 \u03940.00 / 17: 89.92 vs 89.90 \u03940.02 112.4ms\nDynamisch ontbrekende toekomst 7: 94.92 vs 94.92 \u03940.00 / 17: 94.92 vs 94.92 \u03940.00 72.9ms\nZonnige dag 17: 100.00 vs 100.00 \u03940.00 / 31: 62.37 vs 62.37 \u03940.00 / 41: 100.00 vs 100.00 \u03940.00 114.3ms\nOvergang 07 en 17 zonder PV-meting 7: 94.95 vs 94.95 \u03940.00 / 17: 89.99 vs 89.99 \u03940.00 28.0ms\nZomertijd 23 uur 31: 94.98 vs 94.98 \u03940.00 / 41: 94.98 vs 94.98 \u03940.00 63.1ms\nWintertijd 25 uur 31: 94.77 vs 94.77 \u03940.00 / 41: 94.77 vs 94.77 \u03940.00 58.6ms\nVast contract, maximum centrum binnen laadvenster 31: 95.00 vs 96.57 \u03941.57 / 41: 95.00 vs 95.00 \u03940.00 70.6ms\nTOU twee nachttarieven toegestaan 31: 94.95 vs 94.96 \u03940.00 / 41: 89.99 vs 89.99 \u03940.00 53.1ms\nMaximum vroeg 31: 95.00 vs 96.57 \u03941.57 / 41: 90.00 vs 89.86 \u03940.14 86.7ms\nMaximum laatst 31: 95.00 vs 96.57 \u03941.57 / 41: 90.00 vs 89.87 \u03940.13 63.2ms\nMaximum centrum 31: 94.95 vs 94.95 \u03940.00 / 41: 89.99 vs 89.99 \u03940.00 63.2ms\nPeak Guard laadruimte 31: 75.90 vs 75.90 \u03940.00 / 41: 89.97 vs 89.97 \u03940.00 69.0ms\nDynamisch avond, aansluitend goedkoper 17: 30.00 vs 30.00 \u03940.00 / 31: 94.77 vs 94.77 \u03940.00 / 41: 94.77 vs 94.77 \u03940.00 159.1ms\n"
+  },
+  {
+    "test": "widget-translations-central-soc-1.5.9.test.js",
+    "ok": true,
+    "output": "PASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: nl\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: en\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: fr\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: de\nPASS widget DOM, labels, details, all 12 Explorer tabs, backend/name preservation, central SOC: es\nPASS central five-minute SOC, actual receipt time, no house dependency, no fictitious/stale points, delta cursor, restart, legacy rows, midnight/DST and 720-point limit\nPASS frozen forecast/tariff preprocessing/PV source hashes and release versions\n"
+  }
+]

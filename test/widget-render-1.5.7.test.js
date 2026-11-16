@@ -3,7 +3,11 @@ const assert=require('node:assert/strict'),fs=require('fs'),path=require('path')
 const {JSDOM,VirtualConsole}=require('jsdom');
 const html=fs.readFileSync(path.join(__dirname,'../widgets/status/public/visual.html'),'utf8'),errors=[];
 const logs=new VirtualConsole();logs.on('jsdomError',e=>{if(e.type!=='css-parsing')errors.push(e.message)});logs.on('error',(...a)=>errors.push(a.join(' ')));
-const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://widget.test/',virtualConsole:logs});
+const RealDate=global.Date;
+const fixtureNow=RealDate.parse('2026-11-16T12:00:00+01:00');
+class FixtureDate extends RealDate{constructor(...args){super(...(args.length?args:[fixtureNow]))}static now(){return fixtureNow}}
+const Date=FixtureDate;
+const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://widget.test/',virtualConsole:logs,beforeParse(window){window.Date=FixtureDate}});
 const w=dom.window,doc=w.document;
 const send=data=>w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data}));
 const now=Date.now(),midnight=new Date();midnight.setHours(0,0,0,0);const start=midnight.getTime();

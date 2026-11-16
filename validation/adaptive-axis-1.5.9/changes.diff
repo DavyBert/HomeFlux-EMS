@@ -1,0 +1,181 @@
+--- previous/.homeychangelog.json
++++ adaptive-axis/.homeychangelog.json
+@@ -1,10 +1,10 @@
+ {
+   "1.5.9": {
+-    "nl": "Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.\nCentrale batterij-SOC-historiek, gedeeld tussen alle widgets.\nOptionele brede grafiek met schaalbadges en WAF-waarde groot in bijpassende kleur (standaard aan). PV-balken beginnen per dag opnieuw; bevestigde EMS-laadstroken blijven zichtbaar boven widgetschattingen.\nBrede grafiek standaard aan na upgrade. Compacte tijdlabels om de zes uur, met keuze tussen 24 uur (0h–23h) en AM/PM; zonder M bij het eindlabel.",
+-    "en": "Full multilingual support for the new EMS Status widget.\nCentral battery SoC history shared by all widgets.\nOptional full-width chart with scale badges and a prominent WAF value in its matching color (enabled by default). PV bars restart each day; confirmed EMS charging strips remain visible above widget estimates.\nFull-width chart enabled after upgrading. Compact labels every six hours, selectable 24-hour (0h–23h) or AM/PM clock, without M at the final label.",
+-    "fr": "Prise en charge multilingue complète du nouveau widget EMS Status.\nHistorique central du SoC de la batterie, partagé par tous les widgets.\nGraphique pleine largeur optionnel avec échelles et valeur WAF en grand dans sa couleur correspondante (activée par défaut). Les barres PV repartent chaque jour ; les plages EMS confirmées restent visibles au-dessus des estimations du widget.\nGraphique pleine largeur activé après la mise à jour. Repères compacts toutes les six heures, au choix sur 24 heures (0h–23h) ou AM/PM, sans M au dernier repère.",
+-    "de": "Vollständige mehrsprachige Unterstützung für das neue EMS-Status-Widget.\nZentraler Batterie-SoC-Verlauf, gemeinsam für alle Widgets.\nOptionales Diagramm in voller Breite mit Skalenanzeigen und großem WAF-Wert in passender Farbe (standardmäßig aktiviert). PV-Balken beginnen jeden Tag neu; bestätigte EMS-Ladezeiten bleiben über Widget-Schätzungen sichtbar.\nDiagramm in voller Breite nach dem Upgrade aktiviert. Kompakte Zeitangaben alle sechs Stunden, wahlweise 24 Stunden (0h–23h) oder AM/PM, ohne M am letzten Zeitwert.",
+-    "es": "Soporte multilingüe completo para el nuevo widget EMS Status.\nHistorial central del SoC de la batería, compartido por todos los widgets.\nGráfico opcional a todo el ancho con escalas y valor WAF destacado con su color correspondiente (activado por defecto). Las barras FV se reinician cada día; las franjas EMS confirmadas permanecen visibles sobre las estimaciones del widget.\nGráfico a todo el ancho activado tras actualizar. Etiquetas compactas cada seis horas, con formato de 24 horas (0h–23h) o AM/PM, sin M en la etiqueta final."
++    "nl": "Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.\nCentrale batterij-SOC-historiek, gedeeld tussen alle widgets.\nOptionele brede grafiek met schaalbadges en WAF-waarde groot in bijpassende kleur (standaard aan). PV-balken beginnen per dag opnieuw; bevestigde EMS-laadstroken blijven zichtbaar boven widgetschattingen.\nBrede grafiek standaard aan na upgrade. Tijdas met grotere, compacte labels om de drie uur voor een dagweergave en om de zes uur voor langere tijdlijnen, instelbaar op 24 uur of AM/PM, zonder M bij het eindlabel.",
++    "en": "Full multilingual support for the new EMS Status widget.\nCentral battery SoC history shared by all widgets.\nOptional full-width chart with scale badges and a prominent WAF value in its matching color (enabled by default). PV bars restart each day; confirmed EMS charging strips remain visible above widget estimates.\nFull-width chart enabled after upgrading. Larger compact labels every three hours for a daily view and every six hours for longer timelines, with 24-hour or AM/PM format and no M at the final label.",
++    "fr": "Prise en charge multilingue complète du nouveau widget EMS Status.\nHistorique central du SoC de la batterie, partagé par tous les widgets.\nGraphique pleine largeur optionnel avec échelles et valeur WAF en grand dans sa couleur correspondante (activée par défaut). Les barres PV repartent chaque jour ; les plages EMS confirmées restent visibles au-dessus des estimations du widget.\nGraphique pleine largeur activé après la mise à jour. Repères compacts agrandis toutes les trois heures pour une journée et toutes les six heures pour les périodes plus longues, au format 24 heures ou AM/PM, sans M au dernier repère.",
++    "de": "Vollständige mehrsprachige Unterstützung für das neue EMS-Status-Widget.\nZentraler Batterie-SoC-Verlauf, gemeinsam für alle Widgets.\nOptionales Diagramm in voller Breite mit Skalenanzeigen und großem WAF-Wert in passender Farbe (standardmäßig aktiviert). PV-Balken beginnen jeden Tag neu; bestätigte EMS-Ladezeiten bleiben über Widget-Schätzungen sichtbar.\nDiagramm in voller Breite nach dem Upgrade aktiviert. Größere kompakte Zeitangaben alle drei Stunden in der Tagesansicht und alle sechs Stunden bei längeren Zeiträumen, wahlweise 24 Stunden oder AM/PM, ohne M am letzten Zeitwert.",
++    "es": "Soporte multilingüe completo para el nuevo widget EMS Status.\nHistorial central del SoC de la batería, compartido por todos los widgets.\nGráfico opcional a todo el ancho con escalas y valor WAF destacado con su color correspondiente (activado por defecto). Las barras FV se reinician cada día; las franjas EMS confirmadas permanecen visibles sobre las estimaciones del widget.\nGráfico a todo el ancho activado tras actualizar. Etiquetas compactas más grandes cada tres horas en la vista diaria y cada seis horas en periodos más largos, con formato de 24 horas o AM/PM, sin M en la etiqueta final."
+   },
+   "1.5.8": {
+     "nl": "De SOC-widgetprognose berekent toekomstige laadbehoefte opnieuw met de voorspelde SOC; een klein actueel laadplan begrenst de voorspelling niet meer.\nDag- en nachtdoelen, beschikbare laadcapaciteit en de bestaande dynamische uitstelvoorwaarden worden in de prognose gevolgd.\nVerbeterde voorspelling rond 07:00/17:00, ontbrekende prijsgegevens en zomer- en wintertijd. De werkelijke EMS-regeling blijft ongewijzigd.",
+--- previous/README.md
++++ adaptive-axis/README.md
+@@ -17,27 +17,27 @@
+ **NL** — Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.
+ Centrale batterij-SOC-historiek, gedeeld tussen alle widgets.
+ Optionele brede grafiek met schaalbadges en WAF-waarde groot in bijpassende kleur (standaard aan). PV-balken beginnen per dag opnieuw; bevestigde EMS-laadstroken blijven zichtbaar boven widgetschattingen.
+-Brede grafiek standaard aan na upgrade. Compacte tijdlabels om de zes uur, met keuze tussen 24 uur (0h–23h) en AM/PM; zonder M bij het eindlabel.
++Brede grafiek standaard aan na upgrade. Tijdas met grotere, compacte labels om de drie uur voor een dagweergave en om de zes uur voor langere tijdlijnen, instelbaar op 24 uur of AM/PM, zonder M bij het eindlabel.
+ 
+ **EN** — Full multilingual support for the new EMS Status widget.
+ Central battery SoC history shared by all widgets.
+ Optional full-width chart with scale badges and a prominent WAF value in its matching color (enabled by default). PV bars restart each day; confirmed EMS charging strips remain visible above widget estimates.
+-Full-width chart enabled after upgrading. Compact labels every six hours, selectable 24-hour (0h–23h) or AM/PM clock, without M at the final label.
++Full-width chart enabled after upgrading. Larger compact labels every three hours for a daily view and every six hours for longer timelines, with 24-hour or AM/PM format and no M at the final label.
+ 
+ **FR** — Prise en charge multilingue complète du nouveau widget EMS Status.
+ Historique central du SoC de la batterie, partagé par tous les widgets.
+ Graphique pleine largeur optionnel avec échelles et valeur WAF en grand dans sa couleur correspondante (activée par défaut). Les barres PV repartent chaque jour ; les plages EMS confirmées restent visibles au-dessus des estimations du widget.
+-Graphique pleine largeur activé après la mise à jour. Repères compacts toutes les six heures, au choix sur 24 heures (0h–23h) ou AM/PM, sans M au dernier repère.
++Graphique pleine largeur activé après la mise à jour. Repères compacts agrandis toutes les trois heures pour une journée et toutes les six heures pour les périodes plus longues, au format 24 heures ou AM/PM, sans M au dernier repère.
+ 
+ **DE** — Vollständige mehrsprachige Unterstützung für das neue EMS-Status-Widget.
+ Zentraler Batterie-SoC-Verlauf, gemeinsam für alle Widgets.
+ Optionales Diagramm in voller Breite mit Skalenanzeigen und großem WAF-Wert in passender Farbe (standardmäßig aktiviert). PV-Balken beginnen jeden Tag neu; bestätigte EMS-Ladezeiten bleiben über Widget-Schätzungen sichtbar.
+-Diagramm in voller Breite nach dem Upgrade aktiviert. Kompakte Zeitangaben alle sechs Stunden, wahlweise 24 Stunden (0h–23h) oder AM/PM, ohne M am letzten Zeitwert.
++Diagramm in voller Breite nach dem Upgrade aktiviert. Größere kompakte Zeitangaben alle drei Stunden in der Tagesansicht und alle sechs Stunden bei längeren Zeiträumen, wahlweise 24 Stunden oder AM/PM, ohne M am letzten Zeitwert.
+ 
+ **ES** — Soporte multilingüe completo para el nuevo widget EMS Status.
+ Historial central del SoC de la batería, compartido por todos los widgets.
+ Gráfico opcional a todo el ancho con escalas y valor WAF destacado con su color correspondiente (activado por defecto). Las barras FV se reinician cada día; las franjas EMS confirmadas permanecen visibles sobre las estimaciones del widget.
+-Gráfico a todo el ancho activado tras actualizar. Etiquetas compactas cada seis horas, con formato de 24 horas (0h–23h) o AM/PM, sin M en la etiqueta final.
++Gráfico a todo el ancho activado tras actualizar. Etiquetas compactas más grandes cada tres horas en la vista diaria y cada seis horas en periodos más largos, con formato de 24 horas o AM/PM, sin M en la etiqueta final.
+ 
+ ## Release notes — 1.5.8
+ 
+--- previous/test/widget-compact-hours-1.5.9.test.js
++++ adaptive-axis/test/widget-compact-hours-1.5.9.test.js
+@@ -11,7 +11,7 @@
+ const fixture=fs.readFileSync(path.join(root,'test/widget-render-1.5.7.test.js'),'utf8');
+ const status=Function(fixture.slice(fixture.indexOf('const now='),fixture.indexOf("send({type:'homeflux.visual.widgetConfig'"))+';return status')();
+ let html=fs.readFileSync(path.join(root,'widgets/status/public/visual.html'),'utf8');
+-html=html.replace('initLiveWidget();',`let calls=0;const original=projectedSoc;projectedSoc=(...args)=>{calls++;return original(...args)};window.clockQa={axisHour,setTimelineHourLabels,state:()=>({data:lastChartData,calls})};initLiveWidget();`);
++html=html.replace('initLiveWidget();',`let calls=0;const original=projectedSoc;projectedSoc=(...args)=>{calls++;return original(...args)};window.clockQa={axisHour,chartHourLabels,setTimelineHourLabels,state:()=>({data:lastChartData,calls})};initLiveWidget();`);
+ for(const lang of ['nl','en','fr','de','es']){
+  const errors=[],logs=new VirtualConsole();logs.on('jsdomError',e=>{if(e.type!=='css-parsing')errors.push(e.message)});
+  const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://widget.test/',virtualConsole:logs});
+@@ -23,7 +23,15 @@
+  const hours=[...d.querySelectorAll('#energyChart [data-chart-hour]')];
+  assert(hours.length>=3&&hours.length<=9);
+  for(const el of hours){assert.match(el.textContent,/^\d{1,2}h(?:\d{2})?$/);assert(!/[M+:]/.test(el.textContent));}
+- for(let i=0;i<hours.length-1;i++)assert.equal(Number(hours[i].dataset.chartHour)%6,0,'regular labels six hours apart');
++ for(let i=0;i<hours.length-1;i++)assert.equal(Number(hours[i].dataset.chartHour)%(initial.data.prediction.horizon<=24?3:6),0,'adaptive regular hour labels');
++ for(const hour of hours)assert.equal(hour.getAttribute('font-size'),'20');
++ for(const format of ['24h','12h'])for(const end of [7,17,24,31,41,48]){
++  send({...config,chartHourFormat:format});const labels=api.chartHourLabels(end,api.state().data.geometry);
++  assert.equal(labels[0].hour,0);assert.equal(labels.at(-1).hour,end);
++  assert(labels.every((label,i)=>label.left>=0&&label.left+label.width<=422.001&&(!i||label.left>=labels[i-1].left+labels[i-1].width+3.99)));
++  assert(labels.slice(0,-1).every(label=>label.hour%(end<=24?3:6)===0));
++ }
++ send({...config,chartHourFormat:'24h'});
+  assert.equal(hours.at(-1).textContent,api.axisHour(initial.data.prediction?.horizon||24));
+  send({...config,chartHourFormat:'12h'});
+  assert.equal(api.state().calls,before,'changing clock format never calls forecast');assert.equal(JSON.stringify(api.state().data.prediction),prediction);
+@@ -36,5 +44,5 @@
+   const left=labels.map(el=>parseFloat(el.style.left));assert(left.every((v,i)=>v>=0&&v<=100&&(!i||v>left[i-1])));
+  }
+  send({...config,chartHourFormat:'24h'});assert([...d.querySelectorAll('#energyChart [data-chart-hour]')].every(el=>!el.textContent.includes(':')));
+- assert.equal(errors.length,0,errors.join('\n'));dom.window.close();console.log('PASS compact 6-hour labels, midnight/noon, upgrade, saved preference, both axes, DST and unchanged forecast: '+lang);
++ assert.equal(errors.length,0,errors.join('\n'));dom.window.close();console.log('PASS adaptive 3/6-hour labels, doubled font, bounded label positions, midnight/noon, upgrade, preference, DST and unchanged forecast: '+lang);
+ }
+--- previous/test/widget-translations-central-soc-1.5.9.test.js
++++ adaptive-axis/test/widget-translations-central-soc-1.5.9.test.js
+@@ -11,6 +11,8 @@
+ Module._load=function(request,parent,main){if(request==='homey')return {App:class{}};if(request==='homey-api')return {HomeyAPI:{}};return old.call(this,request,parent,main)};
+ let App;try{App=require('../app')}finally{Module._load=old}
+ const T=Date.parse('2026-11-16T10:00:00+01:00'),STEP=300000;
++// The app fixtures belong to 16 November; keep their API day query on that date.
++const originalDateNow=Date.now;Date.now=()=>T;
+ const dateKey=at=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));
+ function appAt(at=T){
+  const db=new Map(),writes=[];const app=Object.create(App.prototype);
+@@ -93,6 +95,7 @@
+  send({type:'homeflux.visual.widgetConfig',translations:catalog,order:[],hidden:[],folded:[],dayTimelineFolded:false,dayInfoScale:100,configured:true});
+  return {dom,send,catalog,errors};
+ }
++Date.now=originalDateNow;
+ const now=Date.now(),start=new Date();start.setHours(0,0,0,0);
+ const status={version:'1.5.9',avgSoc:70,decisionText:'BACKEND STATUS',decisionReason:'BACKEND REASON',
+  effectiveCapacityKwh:21.6,planningChargeTargetSoc:80,controlEnabled:true,
+@@ -156,7 +159,7 @@
+ // SOC forecast and tariff preprocessing remain frozen to 1.5.8.
+ // PV display hash includes the authorized per-day reset and scale UI.
+ const {createHash}=require("node:crypto");
+-for(const [start,end,expected] of [["let normalizedTariffCache=null;", "function buildRollingTimelineFromRows(", "9c06353606a08ab0fde8d3ec8a6753b07839f0603cad02b79f131173a913894f"], ["function readHouseSamples(", "// Cumulative PV forecast", "f1198d560417ba193f8853ee6be68c0c4a8c47f5cc57807a6e842a59bf5fe8a4"], ["// Cumulative PV forecast", "function renderEnergyDay(", "4f5721535a687b4a8c60c06903ef73c9d79897f96e3279ddc2df83aa8f3c95fd"]]){
++for(const [start,end,expected] of [["let normalizedTariffCache=null;", "function buildRollingTimelineFromRows(", "9c06353606a08ab0fde8d3ec8a6753b07839f0603cad02b79f131173a913894f"], ["function readHouseSamples(", "// Cumulative PV forecast", "f1198d560417ba193f8853ee6be68c0c4a8c47f5cc57807a6e842a59bf5fe8a4"], ["// Cumulative PV forecast", "function renderEnergyDay(", "e05bc62fa5f2b842cdc697c4e7878da211dd00b43387ef2b55a8fe1380ccd9c6"]]){
+  const at=html.indexOf(start);assert(at>=0);const region=html.slice(at,html.indexOf(end,at+start.length));
+  assert.equal(createHash("sha256").update(region).digest("hex"),expected,start+" must match the validated source");
+ }
+--- previous/validation/compact-hours-1.5.9/RAPPORT.md
++++ adaptive-axis/validation/compact-hours-1.5.9/RAPPORT.md
+@@ -1,3 +1,5 @@
++> Historisch verslag. De nieuwste 3/6-uursverdeling en grotere uurtekst staan in `validation/adaptive-axis-1.5.9/RAPPORT.md`.
++
+ # HomeFlux EMS 1.5.9 — rustige tijdlabels en brede grafiek standaard aan
+ 
+ Gebaseerd op de laatst opgeleverde 1.5.9 ZIP, SHA-256 `c44fdf80bdd1d2b970f20fcf1ec2769cb9a89e1db4b87c496ffb4437be8517c2`. Versie blijft 1.5.9.
+--- previous/widgets/status/public/index.html
++++ adaptive-axis/widgets/status/public/index.html
+@@ -1496,7 +1496,7 @@
+       if (visualLook) {
+         document.body.classList.add('visual-look');
+         visualView.classList.remove('hidden');
+-        visualView.src = 'visual.html?rev=1.5.9-compact-hours';
++        visualView.src = 'visual.html?rev=1.5.9-adaptive-hours';
+       }
+       let latestStatus = null;
+       let refreshTimer = null, displayTimer = null;
+--- previous/widgets/status/public/visual.html
++++ adaptive-axis/widgets/status/public/visual.html
+@@ -1858,6 +1858,31 @@
+  if(format==='12h')return String(h%12||12)+(m?':'+String(m).padStart(2,'0'):'')+(h<12?'AM':'PM');
+  return String(h)+'h'+(m?String(m).padStart(2,'0'):'');
+ }
++// Axis text uses the existing bottom margin; plot/viewport dimensions stay fixed.
++function chartHourLabels(horizon,geometry){
++ const {L,R,W}=geometry,fontSize=20,gap=4,step=horizon<=24?3:6;
++ let hours=[];for(let h=0;h<horizon-.001;h+=step)hours.push(h);
++ hours.push(horizon);
++ const width=text=>Array.from(text).reduce((sum,c)=>sum+(c==='M'?.92:c==='A'||c==='P'?.76:c===':'?.34:.68),0)*fontSize;
++ const place=values=>{
++  const labels=values.map(hour=>{
++   const text=axisHour(hour),size=width(text),tickX=L+hour/horizon*(R-L);
++   return {hour,text,width:size,tickX,left:Math.max(0,Math.min(W-size,tickX-size/2)),fontSize};
++  });
++  for(let i=labels.length-2;i>=0;i--)labels[i].left=Math.min(labels[i].left,labels[i+1].left-gap-labels[i].width);
++  for(let i=0;i<labels.length;i++)labels[i].left=Math.max(0,labels[i].left,i?labels[i-1].left+labels[i-1].width+gap:0);
++  return labels.at(-1).left+labels.at(-1).width<=W+.001?labels:null;
++ };
++ let labels;
++ while(!(labels=place(hours))&&hours.length>2){
++  // Prefer six-hour anchors when AM/PM text cannot fit every three hours.
++  let remove=-1;
++  for(let i=hours.length-2;i>0;i--)if(hours[i]%6!==0){remove=i;break;}
++  if(remove<0)remove=hours.length-2;
++  hours.splice(remove,1);
++ }
++ return labels||place([0,horizon]);
++}
+ function chartGeometry(){return chartFullWidth?{...ENERGY_CHART,L:10,R:412}:ENERGY_CHART;}
+ function updateChartScaleBadges(){
+  const bar=$('chartScaleBadges');bar.hidden=!chartFullWidth;
+@@ -1945,10 +1970,7 @@
+       `<text x="66" y="${y+3.5}" text-anchor="end" fill="#66dfff" font-size="9" font-weight="700">${nl(houseScaleKw*frac,frac===0?0:kwTickDigits(houseScaleKw))}</text>`+
+       `<text x="390" y="${y+3.5}" fill="#66d9b7" font-size="9">${Math.round(frac*100)}%</text>`);
+   }).join('');
+-  const labelGap=Math.max(1.5,42*endH/(R-L));
+-  const marks=[0,6,12,18,24,30,36,42,48].filter(h=>h<=endH-labelGap);
+-  if(!marks.includes(endH))marks.push(endH);
+-  const xticks=marks.map(h=>`<line x1="${xf(h)}" x2="${xf(h)}" y1="${T}" y2="${B}" stroke="#3e7398" stroke-opacity=".18" stroke-dasharray="3 4"/><text data-chart-hour="${h}" x="${xf(h)}" y="${X_LABEL_Y}" text-anchor="${h===0?'start':h===endH?'end':'middle'}" fill="#88b2d4" font-size="10" font-weight="700">${axisHour(h)}</text>`).join('');
++  const xticks=chartHourLabels(endH,geometry).map(label=>`<line x1="${label.tickX}" x2="${label.tickX}" y1="${T}" y2="${B}" stroke="#3e7398" stroke-opacity=".18" stroke-dasharray="3 4"/><text data-chart-hour="${label.hour}" x="${label.left+label.width/2}" y="${X_LABEL_Y}" text-anchor="middle" fill="#88b2d4" font-size="${label.fontSize}" font-weight="700">${label.text}</text>`).join('');
+   // These are cumulative bars. A later bar may only stay level or rise.
+   // They are explicitly forecasts, never a claim of actual PV production.
+   const bars=pvCumulative.map(slot=>{

@@ -29,7 +29,7 @@ function node(tag){
 }
 const panel=node('section'),charge=node('section');
 const ctx={
- Date:FakeDate,Number,String,Array,Boolean,console,
+ Date:FakeDate,Number,String,Array,Boolean,console,uiText:value=>String(value),visualLocale:'nl-BE',
  document:{createElement:node},
  $:id=>id==='tariffSection'?panel:id==='dayChargePlan'?charge:null,
 };

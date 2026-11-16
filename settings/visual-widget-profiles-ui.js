@@ -120,6 +120,10 @@ window.HomeFluxVisualWidgetProfiles = (() => {
         ...data.folded.filter(id=>['houseSavingsSplit','evSavingsSplit'].includes(id))];
       data.dayHidden=Array.from(document.querySelectorAll('#vwDayItems [data-vw-day-item]'))
         .filter(item=>!item.checked).map(item=>item.dataset.vwDayItem);
+      data.wafValueFirst=Boolean($('vwWafValueFirst')?.checked);
+      data.chartDisplayVersion=1;
+      data.chartHourFormat=$('vwChartHourFormat')?.value==='12h'?'12h':'24h';
+      data.dayChartFullWidth=Boolean($('vwDayChartFullWidth')?.checked);
       data.dayTimelineFolded=Boolean($('vwDayTimelineFolded')?.checked);
       data.dayInfoScale=Number($('vwDayInfoScale')?.value)||100;
       data.themes={dark:{background:null,cardBackground:null,backgroundBrightness:null,cardBrightness:null,graphTransparent:false,tariffColors:{cheap:null,normal:null,expensive:null},sections:{}},
@@ -207,6 +211,9 @@ window.HomeFluxVisualWidgetProfiles = (() => {
         }
         group.append(checks);day.append(group);
       }
+      $('vwWafValueFirst').checked=profile.wafValueFirst!==false;
+      $('vwDayChartFullWidth').checked=profile.dayChartFullWidth!==false;
+      $('vwChartHourFormat').value=profile.chartHourFormat==='12h'?'12h':'24h';
       $('vwDayTimelineFolded').checked=profile.dayTimelineFolded!==false;
       $('vwDayInfoScale').value=String(profile.dayInfoScale??100);
       $('vwDayScaleValue').textContent=$('vwDayInfoScale').value+'%';
@@ -284,7 +291,7 @@ window.HomeFluxVisualWidgetProfiles = (() => {
     });
     $('panel-ems-widget').addEventListener('change',event=>{
       const root=event.target.closest('[data-vw-color-scope]');
-      if(!root){ if(event.target.matches('[data-vw-show],[data-vw-fold],[data-vw-day-item],#vwDayTimelineFolded'))setState('Weergave aangepast · nog niet opgeslagen'); return; }
+      if(!root){ if(event.target.matches('[data-vw-show],[data-vw-fold],[data-vw-day-item],#vwDayTimelineFolded,#vwDayChartFullWidth,#vwWafValueFirst,#vwChartHourFormat'))setState('Weergave aangepast · nog niet opgeslagen'); return; }
       const preset=root.querySelector('[data-vw-control="preset"]');
       const hex=root.querySelector('[data-vw-control="hex"]');
       const picker=root.querySelector('[data-vw-control="picker"]');

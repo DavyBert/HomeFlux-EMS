@@ -1,0 +1,30 @@
+{
+  "filename": "HomeFlux-EMS-v1.5.8-SOC-Forecast-Replanning.zip",
+  "sha256": "0e6e3c3931f82b34c118c537d20114eb31df8c9fdf7da23bd51d3c7cb82d1f47",
+  "verifiedFiles": 784,
+  "changedFiles": [
+    ".homeychangelog.json",
+    ".homeycompose/app.json",
+    "README.md",
+    "app.js",
+    "app.json",
+    "lib/visual-house-history.js",
+    "locales/de.json",
+    "locales/en.json",
+    "locales/es.json",
+    "locales/fr.json",
+    "locales/nl.json",
+    "package-lock.json",
+    "package.json",
+    "test/visual-minute-refresh-isolation-1.5.4.test.js",
+    "test/visual-next-tariff-no-flicker-1.5.4.test.js",
+    "test/visual-performance-1.5.4.test.js",
+    "test/visual-profile-startup-recovery-1.5.4.test.js",
+    "test/visual-tariff-palette-soc-history-1.5.4.test.js",
+    "test/widget-language-bridge-1.5.9.test.js",
+    "test/widget-translations-central-soc-1.5.9.test.js",
+    "widgets/status/public/index.html",
+    "widgets/status/public/visual.html"
+  ],
+  "removedFiles": []
+}

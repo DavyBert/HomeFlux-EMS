@@ -968,11 +968,15 @@ class HomeFluxEmsApp extends Homey.App {
     // Read-only chart samples share the existing Savings persistence key.
     // Never infer a missing history or restore samples from another date.
     if (storedToday.date === todayKey && Array.isArray(rawStoredToday?.houseLoadHistory)) {
+      const { validHouse, validSoc } = require('./lib/visual-house-history');
       storedToday.houseLoadHistory = rawStoredToday.houseLoadHistory.filter(row => Array.isArray(row)
-        && Number.isFinite(Number(row[0])) && Number.isFinite(Number(row[1]))
-        && Number(row[1]) >= 0 && Number(row[1]) <= 100000).slice(-720)
-        .map(row => row.length >= 4 ? [Number(row[0]), Number(row[1]), Number(row[2]), Number(row[3])]
-          : [Math.round(Number(row[0])), Math.round(Number(row[1]))]);
+        && Number.isFinite(row[0]) && (validHouse(row) || validSoc(row))).slice(-720)
+        .map(row => {
+          const copy = row.slice(0, 7);
+          if (!validHouse(copy) || this.getSavingsDateKey(copy[0]) !== todayKey) copy[1] = null;
+          if (!validSoc(copy) || this.getSavingsDateKey(copy[5]) !== todayKey) { copy[4] = null; copy[5] = null; }
+          return copy;
+        }).filter(row => validHouse(row) || validSoc(row));
     }
     let rolloverSavingsAdjustment = 0;
     if (storedToday.date && storedToday.date !== todayKey) {
@@ -1203,12 +1207,32 @@ class HomeFluxEmsApp extends Homey.App {
       && (pv === 0 || (this.inputUpdatedAt?.pv > 0 && now - this.inputUpdatedAt.pv <= 300000));
     const power = fresh ? this.evSessionDetection?.physicalSiteLoadW : null;
     this.visualHouseSampler ||= require('./lib/visual-house-history').createSampler();
-    const rows = this.visualHouseSampler.sample(now, power);
+    const { validHouse, validSoc, historyCursor } = require('./lib/visual-house-history');
+    const rows = this.visualHouseSampler.sample(now, power, () => {
+      if (!Array.isArray(this.state.batterySoc) || !this.inputSeen?.batterySoc?.some(Boolean)) return null;
+      const settings = this.getSettings(), count = this.getBatteryCount(settings);
+      if (!count) return null;
+      let socAt = 0;
+      for (let index = 0; index < count; index += 1) {
+        const value = this.state.batterySoc?.[index], at = this.inputUpdatedAt?.batterySoc?.[index];
+        if (!this.inputSeen?.batterySoc?.[index] || typeof value !== 'number' || !Number.isFinite(value)
+          || value < 0 || value > 100 || !(at > 0) || at > now || now - at > 300000) return null;
+        socAt = Math.max(socAt, at);
+      }
+      return { soc: this.getAverageBatterySoc(settings), at: socAt };
+    });
     for (const row of rows) {
       // Savings' existing day rollover has already run on this P1 input.
-      if (this.savings?.today?.date !== this.getSavingsDateKey(row[0])) continue;
+      const date = this.savings?.today?.date;
+      if (!date) continue;
+      // At midnight the house interval can belong to yesterday while the SOC
+      // receipt belongs to today. Retain only the independently valid source.
+      if (this.getSavingsDateKey(row[0]) !== date) row[1] = null;
+      if (validSoc(row) && this.getSavingsDateKey(row[5]) !== date) { row[4] = null; row[5] = null; }
+      if (!validHouse(row) && !validSoc(row)) continue;
+      if (!validHouse(row)) { row[0] = row[6]; row[2] = null; row[3] = null; }
       const history = this.savings.today.houseLoadHistory ||= [];
-      if (!history.length || history[history.length - 1][0] < row[0]) history.push(row);
+      if (!history.length || historyCursor(history[history.length - 1]) < historyCursor(row)) history.push(row);
       if (history.length > 720) history.splice(0, history.length - 720);
     }
   }
@@ -1219,10 +1243,13 @@ class HomeFluxEmsApp extends Homey.App {
     const rows = today?.date === date && Array.isArray(today.houseLoadHistory) ? today.houseLoadHistory : [];
     // Binary search: ordinary status requests neither scan nor copy the day.
     const cursor = knownDate === date ? Math.max(0, Number(after) || 0) : 0;
+    const { validHouse, validSoc, historyCursor } = require('./lib/visual-house-history');
     let lo = 0, hi = rows.length;
-    while (lo < hi) { const mid = (lo + hi) >>> 1; if (Number(rows[mid][0]) <= cursor) lo = mid + 1; else hi = mid; }
-    return { date, rows: rows.slice(lo).map(row => ({ at: Number(row[0]), powerW: Number(row[1]),
-      ...(row.length >= 4 ? { endAt: Number(row[2]), coveredMs: Number(row[3]) } : {}) })),
+    while (lo < hi) { const mid = (lo + hi) >>> 1; if (historyCursor(rows[mid]) <= cursor) lo = mid + 1; else hi = mid; }
+    return { date, rows: rows.slice(lo).map(row => ({ at: row[0],
+      ...(row.length >= 7 ? { cursorAt: historyCursor(row) } : {}),
+      ...(validHouse(row) ? { powerW: row[1], ...(row.length >= 4 ? { endAt: row[2], coveredMs: row[3] } : {}) } : {}),
+      ...(validSoc(row) ? { soc: row[4], socAt: row[5] } : {}) })),
       source: 'shared_physical_site_load', intervalSeconds: 300 };
   }
 

@@ -1,0 +1,179 @@
+{
+  "node": "v22.23.5",
+  "appMethods": 519,
+  "unchangedAppMethods": 516,
+  "changedAppMethods": [
+    "restoreSavingsState",
+    "recordVisualHouseLoadSample",
+    "getVisualHouseLoadHistory"
+  ],
+  "unchangedLibraryModules": 51,
+  "libraryModules": 52,
+  "unchangedLibraryNames": [
+    "active-injection.js",
+    "autotune-learning.js",
+    "autotune-planning.js",
+    "battery-night-planner.js",
+    "battery-response-test.js",
+    "charge-strategy.js",
+    "compact-diagnostics.js",
+    "configured-flow-cards.js",
+    "display-language.js",
+    "dynamic-charge-deferral.js",
+    "ems-engine.js",
+    "ems-status-tags.js",
+    "ev-battery-policy.js",
+    "ev-dashboard-config.js",
+    "ev-dashboard.js",
+    "ev-deadline-planner.js",
+    "ev-energy-breakdown.js",
+    "ev-house-reference.js",
+    "ev-output-policy.js",
+    "ev-phase-guard.js",
+    "ev-plan-options.js",
+    "ev-plan-resources.js",
+    "ev-session-continuity.js",
+    "ev-session.js",
+    "external-prices.js",
+    "flexible-loads.js",
+    "flow-language.js",
+    "flow-output-keepalive.js",
+    "flow-slot-cards.js",
+    "homey-energy.js",
+    "hvac-coordination.js",
+    "hvac-learning.js",
+    "hvac-periodic.js",
+    "hvac-permanent.js",
+    "hvac-presentation.js",
+    "injection-economics.js",
+    "input-monitor.js",
+    "input-warnings.js",
+    "p1-trace-monitor.js",
+    "phase-detection.js",
+    "phase-guard.js",
+    "price-formula.js",
+    "price-normalization.js",
+    "price-source-names.js",
+    "savings-flow.js",
+    "savings-history.js",
+    "savings.js",
+    "visual-widget-profiles.js",
+    "waf-presentation.js",
+    "widget-energy-budget.js",
+    "widget-tou-timeline.js"
+  ],
+  "originalHouseIntegratorSha256": "7826f8142253ff6b24a0ab7ec787949f431a5cb4b2519edb01d53a7bd2d3895f",
+  "houseIntegratorIdentical": true,
+  "statusApiIdentical": true,
+  "schedulingAndWrites": {
+    "app.js": {
+      "setInterval(": [
+        6,
+        6
+      ],
+      "setTimeout(": [
+        22,
+        22
+      ],
+      "addEventListener(": [
+        0,
+        0
+      ],
+      "registerRunListener(": [
+        47,
+        47
+      ],
+      ".settings.set(": [
+        10,
+        10
+      ],
+      "Homey.api(": [
+        0,
+        0
+      ]
+    },
+    "widgets/status/public/index.html": {
+      "setInterval(": [
+        2,
+        2
+      ],
+      "setTimeout(": [
+        4,
+        4
+      ],
+      "addEventListener(": [
+        8,
+        8
+      ],
+      "registerRunListener(": [
+        0,
+        0
+      ],
+      ".settings.set(": [
+        0,
+        0
+      ],
+      "Homey.api(": [
+        6,
+        6
+      ]
+    },
+    "widgets/status/public/visual.html": {
+      "setInterval(": [
+        0,
+        0
+      ],
+      "setTimeout(": [
+        0,
+        0
+      ],
+      "addEventListener(": [
+        31,
+        31
+      ],
+      "registerRunListener(": [
+        0,
+        0
+      ],
+      ".settings.set(": [
+        0,
+        0
+      ],
+      "Homey.api(": [
+        0,
+        0
+      ]
+    },
+    "lib/visual-house-history.js": {
+      "setInterval(": [
+        0,
+        0
+      ],
+      "setTimeout(": [
+        0,
+        0
+      ],
+      "addEventListener(": [
+        0,
+        0
+      ],
+      "registerRunListener(": [
+        0,
+        0
+      ],
+      ".settings.set(": [
+        0,
+        0
+      ],
+      "Homey.api(": [
+        0,
+        0
+      ]
+    }
+  },
+  "syntax": {
+    "javascript": 365,
+    "inlineScripts": 5,
+    "json": 333
+  }
+}

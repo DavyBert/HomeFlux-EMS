@@ -1,0 +1,112 @@
+[
+  {
+    "file": ".homeychangelog.json",
+    "baseSha256": "026b599ebe2bee51c20b2fc39913934536cf465fe39fb9c8499f9a453e68fa2d",
+    "sha256": "3bdc7f9dcf019fb645e0d35efc0c96bd682510314c6148066d0db1bcfed71d78"
+  },
+  {
+    "file": ".homeycompose/app.json",
+    "baseSha256": "7c2fc62934927a62ae8a9863c51fcf42168771e9a6206aec8b9e8a72ef3a4abf",
+    "sha256": "5a0109c562a843af3355e44ce294ce01d2012b2db5ebe7a848662930d5f7bedc"
+  },
+  {
+    "file": "README.md",
+    "baseSha256": "b6ef0d133950829285d7bef88dfdcd7c7585b531e622e65a44f95047b0cbd007",
+    "sha256": "177695fafd13a5b1b20ff7f6efc700dadc447d0a9be9cf6048a52de11ed279ba"
+  },
+  {
+    "file": "app.js",
+    "baseSha256": "fe92a249e5df3282e9966ccb706d75300a3a127e2a2812cf37bd5b9dc93a9501",
+    "sha256": "675ae791cb2cb399e6d4487e5b3098e97ea0cece220c504cf5adb096eb737b25"
+  },
+  {
+    "file": "app.json",
+    "baseSha256": "a2fc59e37e27c753625122b741aff0ed0708d879b46cbb5d5db47c413a4db151",
+    "sha256": "6119cee53a76bc02269107c666bb2591537a179be30fc13dd11b3a2eaa54d928"
+  },
+  {
+    "file": "lib/visual-house-history.js",
+    "baseSha256": "7035273ff37ea764f129f94ba20840ba2caef1bce81e1d0ce8fd971aca0cc35e",
+    "sha256": "b7eb57fa8c7f3e1e0a95b903334bb6c6bcf1d79ffb6531682a4b9d9430df5cbe"
+  },
+  {
+    "file": "locales/de.json",
+    "baseSha256": "8c09e05569808f4864883ac04bac337c3e429a6735cf6c4df9681b3d849c6e8f",
+    "sha256": "8149d0eeef0b930551fae5dea874ba3a8cae124b055f4b02308018bb9b0cfe7d"
+  },
+  {
+    "file": "locales/en.json",
+    "baseSha256": "094c8bb64ae7994896a09747a961934c6e0b64bc7d98edf6c2822e9def8180f9",
+    "sha256": "fad0f866785a5b20d925621dc365bddf7d8f5a19dd1eb08ec57ad1c7915c9739"
+  },
+  {
+    "file": "locales/es.json",
+    "baseSha256": "89019c06ce12f112adb9282753d8c122aee06c78989c6096d0f3c70799c5f00b",
+    "sha256": "8ce9e5c40ab12a812c9db2ae26087fc3d8d7acfd37484ee41058d123dc7b44f4"
+  },
+  {
+    "file": "locales/fr.json",
+    "baseSha256": "0b84e44f940d189ef543e2a296452ba8f12de65153af093786a8ce519c87610d",
+    "sha256": "6cacecdca8c2d0e948c80b7cf3f7ddd8ce2205d6df7e2f3a75d97503e106f14f"
+  },
+  {
+    "file": "locales/nl.json",
+    "baseSha256": "8fc617e2279bd9811e2adf9d1bb2c5e8dcc5d457ac61da7ba94b32690dfb9214",
+    "sha256": "9e04c2038a0ea2b4183f7d8c197ee7ee40d2e53e73a02bcc18b0d28dea303d04"
+  },
+  {
+    "file": "package-lock.json",
+    "baseSha256": "317f8690810f2cf638bf64a711028bb976c0d5b12ae0a6d383c68502279d6393",
+    "sha256": "3d117aa51d4f1944b7fa0e716702eb71fc1edbefe6c29b7abbb8397a24bdb874"
+  },
+  {
+    "file": "package.json",
+    "baseSha256": "6971909e08a5181d3d756e7685f1bcbdd61cb7eda85ae5711b0b6ad3e1e086fd",
+    "sha256": "c89761b7ce9c468af0b071710fbadef1ff0c5bf0559315e393eeed7214b3a622"
+  },
+  {
+    "file": "test/visual-minute-refresh-isolation-1.5.4.test.js",
+    "baseSha256": "bf0685bc0c64dabe5210338a91277fbdb414279b6cb4994486c32feb7fc500d7",
+    "sha256": "b751b67326af54883a67f8e1a53ed7b8216ae5e136865c02c7fa986100e89ff4"
+  },
+  {
+    "file": "test/visual-next-tariff-no-flicker-1.5.4.test.js",
+    "baseSha256": "424f0b2b5eb415731c62218afada394cad46d986354168989ce312308fec2641",
+    "sha256": "91bdcdc0617e390c99ffcdf41fab53f282e10f6758d006cdba769d96666cfa72"
+  },
+  {
+    "file": "test/visual-performance-1.5.4.test.js",
+    "baseSha256": "141805217235080c1a350c75e881bba0dd4bd288dbdd97528a7072a585309a2d",
+    "sha256": "619fa12c20a7ab0d56177d1b3b9120121dfe33b4a16d9845d9939932eb5df190"
+  },
+  {
+    "file": "test/visual-profile-startup-recovery-1.5.4.test.js",
+    "baseSha256": "79d133b6b5c2339508c503d1886931af2a2db5b74df68a535311ee753b7ed792",
+    "sha256": "1eda1e2b6bc0a25a146c277d4914935aa85a6c3eb571bd27868259175b3f3868"
+  },
+  {
+    "file": "test/visual-tariff-palette-soc-history-1.5.4.test.js",
+    "baseSha256": "62fb40a7c51dd6f3eec6977b5f34911355626b7aef2960f60e8bdac7220d768e",
+    "sha256": "399227558fd9b754781c7e5afa707af1f27ce3307d0a68aa1425afc61d15fed4"
+  },
+  {
+    "file": "test/widget-language-bridge-1.5.9.test.js",
+    "baseSha256": null,
+    "sha256": "2794bd26082fd859713fc78f1c6e7780ceb295cbf26d586eb7b93e6006ccddd2"
+  },
+  {
+    "file": "test/widget-translations-central-soc-1.5.9.test.js",
+    "baseSha256": null,
+    "sha256": "6d7e8bda3577d2ec1a7e76308daf2bf235a91f6ac6fa85f2a67f3e127f21f505"
+  },
+  {
+    "file": "widgets/status/public/index.html",
+    "baseSha256": "e92cbd9705c0ed57dc0965033feb6143ef6a5e35a42a93da47fa9181c90d62b4",
+    "sha256": "4840c6afb2d9270f0d6f3abf3d4b9bbc7ceaea7e98e8ffa4a6e0078ebc6e9760"
+  },
+  {
+    "file": "widgets/status/public/visual.html",
+    "baseSha256": "bcaac11a0fd47aadf90b15702c54c0aa0b59613cb618ecadc5323a5cae66b448",
+    "sha256": "7c689e5a8a750766bebdd7cfd4c00bfa2f2206df8d5802e6be2f5a726bad352c"
+  }
+]

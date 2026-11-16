@@ -2399,7 +2399,14 @@
     "Onvoldoende prijsverschil voor injectie": "Insufficient price difference for export",
     "Laagste inkoopprijs vandaag niet beschikbaar": "Lowest import price today unavailable",
     "Peak Guard-batterijondersteuning bij faseoverbelasting": "Peak Guard battery assistance during phase overload",
-    "Bij faseoverbelasting wordt de EV eerst via de bestaande faseregeling teruggeschroefd. Batterijondersteuning volgt pas wanneer de EV-terugregeling door meetgegevens bevestigd is en de fase nog overbelast blijft. De batterij op de betrokken fase krijgt voorrang op een gelijkmatig driefasige batterij. De totale P1-netafname mag hierdoor niet negatief worden.": "During a phase overload, the existing phase controller first reduces EV charging. Battery assistance is considered only after measured EV feedback confirms the reduction and the phase remains overloaded. A battery on the affected phase has priority over an evenly balanced three-phase battery. Total P1 grid import must not become negative."
+    "Bij faseoverbelasting wordt de EV eerst via de bestaande faseregeling teruggeschroefd. Batterijondersteuning volgt pas wanneer de EV-terugregeling door meetgegevens bevestigd is en de fase nog overbelast blijft. De batterij op de betrokken fase krijgt voorrang op een gelijkmatig driefasige batterij. De totale P1-netafname mag hierdoor niet negatief worden.": "During a phase overload, the existing phase controller first reduces EV charging. Battery assistance is considered only after measured EV feedback confirms the reduction and the phase remains overloaded. A battery on the affected phase has priority over an evenly balanced three-phase battery. Total P1 grid import must not become negative.",
+    "Grafiek over volledige breedte met schaalbadges": "Full-width chart with scale badges",
+    "Toont de schalen boven de grafiek. Tik op een schaalbadge om de schaal binnen de grafiek te tonen; tik nogmaals om deze te verbergen.": "Shows scales above the chart. Tap a scale badge to show its scale inside the chart; tap again to hide it.",
+    "Tik om de schaal in de grafiek te tonen of te verbergen": "Tap to show or hide the scale inside the chart",
+    "WAF-waarde groot weergeven": "Show WAF value prominently",
+    "Tijdnotatie tijdlijn": "Timeline clock format",
+    "24 uur (0h, 6h, 12h, 18h)": "24-hour (0h, 6h, 12h, 18h)",
+    "AM/PM (12AM, 6AM, 12PM, 6PM)": "AM/PM (12AM, 6AM, 12PM, 6PM)"
   },
   "phrases": {
     "Voor laadpalen zoals Smappee. HomeFlux stuurt stop, smart of standard. Omdat zo geen deelstroom kan worden opgelegd, stopt HomeFlux de lader wanneer Peak Guard het gevraagde vermogen moet begrenzen.": "For chargers such as Smappee, HomeFlux sends stop, smart or standard. Because this interface cannot command a partial current, HomeFlux stops the charger when Peak Guard needs to limit the requested power.",

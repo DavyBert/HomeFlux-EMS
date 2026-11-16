@@ -34,35 +34,26 @@ assert(visual.includes('--hf-next-tariff-accent'));
 assert(visual.includes('function tariffShadeColor(kind, price, stats)'));
 assert(visual.includes('visualMix(base,ratio>'));
 
-// Evaluate exactly the lightweight SOC history routine with a fake, persistent
-// browser storage. No extra EMS status request or scheduler is needed.
+// The chart now consumes the central, measured SOC feed, never localStorage.
 function between(text,start,end){
  const a=text.indexOf(start),b=text.indexOf(end,a+start.length);
  assert(a>=0&&b>a);return text.slice(a,b);
 }
-const code=between(visual,"const SOC_OBSERVATIONS_KEY=",'const LIVE_CALC_INTERVAL_MS=60000;');
-const data=new Map();
-const localStorage={getItem:key=>data.get(key)||null,setItem:(key,val)=>data.set(key,val)};
-const DAY_MS=86400000,HOUR_MS=3600000;
-const today=Date.now();
+const code=between(visual,'let centralSocObservations=[];','const LIVE_CALC_INTERVAL_MS=60000;');
+const HOUR_MS=3600000;
 const dayStartOf=at=>{const d=new Date(at);d.setHours(0,0,0,0);return d.getTime()};
-const at=dayStartOf(today)+10*HOUR_MS;
-// Test at today's timestamp even when a suite runs around midnight.
-const context=vm.createContext({window:{localStorage},Date,Number,Math,Array,JSON,DAY_MS,HOUR_MS,dayStartOf});
-function start(ctx){vm.runInContext(code+'\nthis.history={recordSocObservation,todaySocObservations,observedSocPoints};',ctx);return ctx.history;}
-const observed=start(context);
-observed.recordSocObservation(at,63.5);
-observed.recordSocObservation(at+10000,63.8); // 10-sec live tick is ignored
-observed.recordSocObservation(at+305000,64.5);
-assert.equal(observed.todaySocObservations(at+310000).length,2);
-assert.equal(observed.observedSocPoints(at+310000)[0].soc,63.5);
-assert.equal(JSON.parse(data.get('homeflux-visual-soc-observations-v1')).length,2);
-observed.recordSocObservation(at+350000,300); // invalid never saved
-assert.equal(JSON.parse(data.get('homeflux-visual-soc-observations-v1')).length,2);
-const restarted=start(vm.createContext({window:{localStorage},Date,Number,Math,Array,JSON,DAY_MS,HOUR_MS,dayStartOf}));
-assert.equal(restarted.observedSocPoints(at+310000).length,2,'real observed SOC restored after widget reload');
+const at=dayStartOf(Date.now())+10*HOUR_MS;
+const context=vm.createContext({Date,Number,Math,Array,JSON,HOUR_MS,dayStartOf});
+const observed=vm.runInContext(code+'\n({load:rows=>{centralSocObservations=readCentralSocHistory(rows)},points:observedSocPoints})',context);
+observed.load([{soc:63.5,socAt:at},{soc:64.5,socAt:at+305000},{soc:300,socAt:at+350000},{soc:null,socAt:at+360000}]);
+assert.equal(observed.points(at+310000).length,2);
+assert.equal(observed.points(at+310000)[0].soc,63.5);
+assert.equal(observed.points(at+310000)[1].at,at+305000);
+assert.equal(observed.points(at-HOUR_MS).length,0,'no future observation is shown as history');
+assert.equal(observed.points(dayStartOf(at)+24*HOUR_MS+3600000).length,0,'no previous-day mixture');
+assert(!visual.includes('localStorage'),'central SOC has one storage source');
 assert(visual.includes('h,soc:lookupSoc(h),estimated:true'), 'first goal shown from actual predicted curve');
 assert(visual.includes('socObserved'), 'observed history is rendered separately');
 assert(visual.includes('START ${clockText(first.h*60)}'), 'first real reading is visibly labeled');
 assert(!visual.includes('soc0+(plannerGoal-soc0)*progress')||visual.includes('firstSoc=atFirst'));
-console.log('PASS tariff palette per profile/theme, coordinated accents, authentic SOC history, persistence and first-goal forecast');
+console.log('PASS tariff palette per profile/theme, coordinated accents, central measured SOC history and first-goal forecast');

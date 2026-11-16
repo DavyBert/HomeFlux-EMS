@@ -56,6 +56,7 @@ function between(s,start,end){
  const calcCtx={
   Date:{now:()=>clock},source:'json',rawStatusObject:{},
   s:{historyRows:[]},chartFrameKey:'',readHouseSamples:rows=>rows,
+  centralSocObservations:[],readCentralSocHistory:rows=>rows.filter(row=>Number.isFinite(row.soc)),
   renderEnergyDay:()=>seen.push('chart'),renderExtras:()=>seen.push('savings'),
   renderTariffLive:()=>seen.push('tariffs'),
  };

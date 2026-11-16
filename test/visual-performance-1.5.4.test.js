@@ -64,7 +64,7 @@ function snippet(text,begin,end){
   $:name=>nodes[name],num:(v,d)=>Number.isFinite(Number(v))?Number(v):d,
   nl:(value,precision=0)=>Number(value).toFixed(precision),
   cap:(v,min,max)=>Math.min(max,Math.max(min,v)),safe:v=>String(v),
-  console,
+  console,uiText:(text,...args)=>String(text).replace(/\{(\d+)\}/g,(_,i)=>String(args[i]??'')),
  };
  const renderer=vm.runInNewContext(cardSource+'\n({ev:renderEvs,hvac:renderHvacs})',ctx);
  renderer.ev();renderer.hvac();
