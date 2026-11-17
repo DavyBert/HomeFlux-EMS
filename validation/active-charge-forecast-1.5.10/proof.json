@@ -1,0 +1,25 @@
+{
+  "source": "HomeFlux-EMS-v1.5.10-Forced-Charge-SOC-Forecast-Fix.zip",
+  "sourceSha256": "8f0b97b966646147f6989ba5ccfd2c4e9152560a478a1b475c5bbe32f247cf0c",
+  "version": "1.5.10",
+  "node": "22.23.5",
+  "changed": [
+    ".homeychangelog.json",
+    "README.md",
+    "test/widget-translations-central-soc-1.5.9.test.js",
+    "widgets/status/api.js",
+    "widgets/status/public/index.html",
+    "widgets/status/public/visual.html"
+  ],
+  "added": [
+    "test/widget-active-charge-integration-1.5.10.test.js",
+    "test/widget-active-charge-forecast-1.5.10.test.js"
+  ],
+  "unchangedExistingFiles": 827,
+  "engineAppDriversSettingsLocalesByteIdentical": true,
+  "originalForecastCurvesAndGoalsExactlyIdentical": 19,
+  "newSimulations": 9,
+  "newMaximumGoalDeviationPp": 1.4071862969600488,
+  "noNewTimersListenersPollingOrSettingsWrites": true,
+  "physicalHomeyTestPerformed": false
+}

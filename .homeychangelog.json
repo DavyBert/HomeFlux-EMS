@@ -1,4 +1,11 @@
 {
+  "1.5.10": {
+    "nl": "De SOC-prognose van de EMS Status-widget volgt het actieve EMS-laadplan correct tijdens normaal, maximaal en geforceerd laden en berekent daarna het verdere verloop volgens de tariefregels.",
+    "en": "The EMS Status widget SoC forecast correctly follows the active EMS charging plan during standard, maximum-power and forced charging, then projects the subsequent course according to the tariff rules.",
+    "fr": "La prévision du SoC du widget EMS Status suit correctement le plan EMS actif pendant la charge standard, à puissance maximale et forcée, puis calcule la suite selon les règles tarifaires.",
+    "de": "Die SoC-Prognose des EMS-Status-Widgets folgt beim normalen, maximalen und erzwungenen Laden korrekt dem aktiven EMS-Ladeplan und berechnet den weiteren Verlauf anhand der Tarifregeln.",
+    "es": "La previsión del SoC del widget EMS Status sigue correctamente el plan EMS activo durante la carga normal, a potencia máxima y forzada, y calcula después su evolución según las reglas tarifarias."
+  },
   "1.5.9": {
     "nl": "Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.\nCentrale batterij-SOC-historiek, gedeeld tussen alle widgets.\nOptionele brede grafiek met schaalbadges en WAF-waarde groot in bijpassende kleur (standaard aan). PV-balken beginnen per dag opnieuw; bevestigde EMS-laadstroken blijven zichtbaar boven widgetschattingen.\nBrede grafiek standaard aan na upgrade. Compacte tijdlabels met een vaste kleinere lettergrootte, om de drie uur voor een dagweergave en om de zes uur voor langere tijdlijnen, instelbaar op 24 uur of AM/PM en zonder M bij het eindlabel.",
     "en": "Full multilingual support for the new EMS Status widget.\nCentral battery SoC history shared by all widgets.\nOptional full-width chart with scale badges and a prominent WAF value in its matching color (enabled by default). PV bars restart each day; confirmed EMS charging strips remain visible above widget estimates.\nFull-width chart enabled after upgrading. Compact labels with a fixed smaller font, every three hours for a daily view and every six hours for longer timelines, with 24-hour or AM/PM format and no M at the final label.",

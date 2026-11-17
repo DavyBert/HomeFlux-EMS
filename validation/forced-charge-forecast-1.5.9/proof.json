@@ -1,0 +1,18 @@
+{
+  "source": "HomeFlux-EMS-v1.5.9-Visual-Translations-Central-SOC.zip",
+  "sourceSha256": "e216c0a06ace98de2052079e217a5a8b48d539d9384a238930bf52324ca0fcc4",
+  "node": "22.23.5",
+  "changed": [
+    "test/widget-translations-central-soc-1.5.9.test.js",
+    "widgets/status/public/visual.html"
+  ],
+  "added": [
+    "test/widget-forced-charge-integration-1.5.9.test.js",
+    "test/widget-forced-charge-forecast-1.5.9.test.js"
+  ],
+  "unchangedCount": 824,
+  "appHash": "675ae791cb2cb399e6d4487e5b3098e97ea0cece220c504cf5adb096eb737b25",
+  "allEngineLibsDriversSettingsLocalesIdentical": true,
+  "version": "1.5.9",
+  "originalAutomaticForecastsExactlyEqual": 19
+}

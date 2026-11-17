@@ -12,6 +12,18 @@ Use the ⓘ icons in Settings for explanations. Existing and deprecated Flow car
 
 [Configuration and Flow cards](https://github.com/DavyBert/HomeFlux-EMS/discussions/3)
 
+## Release notes — 1.5.10
+
+**NL** — De SOC-prognose van de EMS Status-widget volgt het actieve EMS-laadplan correct tijdens normaal, maximaal en geforceerd laden en berekent daarna het verdere verloop volgens de tariefregels.
+
+**EN** — The EMS Status widget SoC forecast correctly follows the active EMS charging plan during standard, maximum-power and forced charging, then projects the subsequent course according to the tariff rules.
+
+**FR** — La prévision du SoC du widget EMS Status suit correctement le plan EMS actif pendant la charge standard, à puissance maximale et forcée, puis calcule la suite selon les règles tarifaires.
+
+**DE** — Die SoC-Prognose des EMS-Status-Widgets folgt beim normalen, maximalen und erzwungenen Laden korrekt dem aktiven EMS-Ladeplan und berechnet den weiteren Verlauf anhand der Tarifregeln.
+
+**ES** — La previsión del SoC del widget EMS Status sigue correctamente el plan EMS activo durante la carga normal, a potencia máxima y forzada, y calcula después su evolución según las reglas tarifarias.
+
 ## Release notes — 1.5.9
 
 **NL** — Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.

@@ -553,7 +553,7 @@ main.wrap{width:min(100%,466px)}
 </head>
 <body>
 <main class="wrap">
- <div class="demo-top"><div class="demo-kicker">HOMEFLUX · LIVE ONTWERPDEMO <small>4 EV · 10 HVAC · EMS 1.5.9 · LIVE</small></div><div class="demo-controls"><button class="icon-btn active" id="autoBtn" type="button" title="Start/stop automatische simulatie">Ⅱ Auto</button><button class="icon-btn" id="jsonBtn" type="button" title="Lees een HomeFlux /status JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5"/></svg>JSON</button><button class="icon-btn" id="resetBtn" type="button" title="Herstart de demo">↻</button></div></div>
+ <div class="demo-top"><div class="demo-kicker">HOMEFLUX · LIVE ONTWERPDEMO <small>4 EV · 10 HVAC · EMS 1.5.10 · LIVE</small></div><div class="demo-controls"><button class="icon-btn active" id="autoBtn" type="button" title="Start/stop automatische simulatie">Ⅱ Auto</button><button class="icon-btn" id="jsonBtn" type="button" title="Lees een HomeFlux /status JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5"/></svg>JSON</button><button class="icon-btn" id="resetBtn" type="button" title="Herstart de demo">↻</button></div></div>
  <div class="scenario-title">KIES EEN EMS-SITUATIE · of laat automatisch afspelen</div><nav class="scenario-strip" id="scenarioStrip" aria-label="Demo scenario's"></nav>
  <details class="demo-modules" id="demoModules"><summary>⚙ Test modulaire indeling <span class="demo-modules-hint">Boiler, Peak Guard, EV en HVAC afzonderlijk tonen/verbergen</span></summary>
   <div class="demo-switches" id="demoFeatureButtons" aria-label="Demo modulekeuzes">
@@ -616,7 +616,7 @@ main.wrap{width:min(100%,466px)}
     <div class="explorer-area" id="infoArea" aria-live="polite"></div>
    </div>
   </details>
-  <div class="widget-footer"><span class="live-line"><i></i><span id="footerLabel">Gesimuleerde EMS-waarden · 1s animatie</span></span><span id="footerVersion">v1.5.9 · live</span></div>
+  <div class="widget-footer"><span class="live-line"><i></i><span id="footerLabel">Gesimuleerde EMS-waarden · 1s animatie</span></span><span id="footerVersion">v1.5.10 · live</span></div>
  </article>
  <p class="under-note"><strong>Tik op een sectietitel of de naam van een kaart om de volledige rij tegelijk in of uit te klappen.</strong> Gebruik de <span class="tip">Savings-periodes</span> en de uitklapbare <span class="tip">EMS-informatiekiezer</span>. Tik op één van de <span class="tip">vier EV’s</span> of <span class="tip">tien HVAC-zones</span> om laadmodus, laadstroom, temperatuur of werkmodus in deze demo te veranderen. <strong>Er worden geen Homey-commando's verstuurd.</strong></p>
 </main>
@@ -938,7 +938,7 @@ function getProfile(){
   // EnergyBudget.householdDailyKwh is HomeFlux's historical estimate for future household load.
   // It is NOT a measurement series and must never be drawn as past measured data.
   const historicalDaily=num(s.yesterdayHouseKwh,null);
-  const emsDaily=num(s.dailyHouseKwh,null);
+  const emsDaily=num(s.dailyHouseKwh,num(rawStatusObject?.visualPlanner?.expectedEnergyNeedKwh,null));
   // Yesterday's closed Savings ledger is a *whole-day* consumption proxy.
   // Blend with HomeFlux's regular household estimate to avoid copying an
   // anomalous day as an exact 15-minute load shape. Never draw as measured.
@@ -1035,11 +1035,18 @@ function futureClock(h){
 // remains responsible for real actions, overrides and safety/phase constraints.
 // This uses the selected 15/60-minute or TOU intervals; it never fabricates a
 // future tariff when a selected source has not provided that interval.
-function forecastTariffPolicy(row, hour, profile, phaseTarget=s.target){
+function forecastModeAt(at){
+  const raw=rawStatusObject||{},mode=String(raw.visualPlanner?.forcedMode||raw.forcedMode||'auto');
+  const resumeAt=num(raw.forcedModeResumeAt,0);
+  // Only the EMS's published automatic-resume boundary ends a forced charge.
+  // Reaching maximum SoC stops charging; it does not itself select Auto.
+  return mode==='manual_charge'&&raw.settings?.overrideResumeOnTariffChange===true&&resumeAt>0&&at>=resumeAt?'auto':mode;
+}
+function forecastTariffPolicy(row, hour, profile, phaseTarget=s.target,forcedMode=null){
   if(!row||!['cheap','normal','expensive'].includes(row.k))return {discharge:false};
   const raw=rawStatusObject||{}, cfg=raw.settings||{},planner=raw.visualPlanner||{};
   const kind=String(cfg.contractType||'');
-  const forced=String(planner.forcedMode||'auto');
+  const forced=forcedMode??forecastModeAt(forecastAtHour(hour));
   if(source==='json'&&forced!=='auto'){
     if(forced==='avoid_import'||forced==='self_consumption')return {discharge:true,floor:0};
     return {discharge:false};
@@ -1633,28 +1640,57 @@ function forecastProtectedReserve(at,phase,profile,cfg,planner,capacity,floor,ce
 // Display-only forward replanning. The original plan remains a labelled
 // snapshot; it is never a cap on future energy or added a second time.
 let socForecastCache=null;
+function forecastTariffRows(raw,startMs){
+ const rows=normalizeTimelineRawRows(raw.tariffTimeline,startMs,49),policies=raw.visualPlanner?.tariffPolicies;
+ if(!Array.isArray(policies)||!policies.length)return rows;
+ const keys=['avoidGridImport','nightChargeAllowed','dayChargeAllowed','lowForecastBatterySave','lowForecastDischargeToTarget','highForecastBatterySave','highForecastDischargeToTarget'];
+ let index=0;
+ return rows.map(row=>{
+  if(keys.every(key=>row[key]!==null))return row;
+  while(index<policies.length&&policies[index].endAt<=row.startAt)index++;
+  const policy=policies[index];
+  if(!policy||policy.startAt>row.startAt||policy.endAt<row.endAt||policy.className!==row.k
+   ||row.rateId!==null&&policy.rateId!==row.rateId)return row;
+  const copy={...row};
+  for(const key of keys)if(copy[key]===null&&typeof policy[key]==='boolean')copy[key]=policy[key];
+  return copy;
+ });
+}
 function projectedSoc(profile){
  const raw=rawStatusObject||{},cfg=raw.settings||{},planner=raw.visualPlanner||{};
  const capKwh=num(s.capacityKwh,null),soc0=num(s.soc,null);
  if(!(capKwh>0)||soc0===null)return null;
- const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,s.forecast,s.remaining,s.tomorrowForecast,profile,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,s.nightTargetTime,s.planningTargetAt,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline]);
+ const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,s.forecast,s.remaining,s.tomorrowForecast,profile,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,s.nightTargetTime,s.planningTargetAt,s.planReady,s.planPhase,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline,raw.forcedMode,raw.forcedModeResumeAt,raw.baseMode,raw.action,raw.controlEnabled,raw.decisionOutputPending,raw.batteryCommandPauseActive,raw.hybridEms?.delegated,raw.ordinaryDischargeFloorSoc,raw.safetySocRecoveryActive]);
  if(socForecastCache?.signature===signature)return socForecastCache.value;
  const floor=cap(Math.max(num(cfg.minSoc,0),num(cfg.safetySoc,num(s.minSoc,14))),0,100),ceiling=cap(num(s.maxSoc,100),floor,100);
  const startMs=num(s.timeReferenceAt,Date.now()),nowH=forecastDisplayHour(startMs),todayStart=dayStartOf(startMs);
- const tariffRows=source==='json'?normalizeTimelineRawRows(raw.tariffTimeline,startMs,49):[];
+ const tariffRows=source==='json'?forecastTariffRows(raw,startMs):[];
  const goals=forecastGoalTimes(profile),extraGoal=forecastExtendedGoal(goals,profile,tariffRows),horizon=extraGoal??goals.horizon,endMs=forecastAtHour(horizon);
  const goalHours=[goals.firstH,goals.secondH,extraGoal].filter((v,i,a)=>v!==null&&v>nowH&&v<=horizon&&a.indexOf(v)===i).sort((a,b)=>a-b);
  const maxKw=Math.max(0,num(planner.maxTotalChargeW,6000)/1000),dischargeKw=Math.max(0,num(planner.maxTotalDischargeW,2500)/1000);
- const dynamic=['dynamic','dynamic_hour','dynamic_quarter'].includes(cfg.contractType),forced=String(planner.forcedMode||'auto');
+ const dynamic=['dynamic','dynamic_hour','dynamic_quarter'].includes(cfg.contractType);
  const settings={...(planner.forecastSettings||{}),...cfg,chargeStrategy:planner.chargeStrategy,timezone:planner.forecastSettings?.timezone||'UTC'};
  for(let m=1;m<=12;m++)settings['peakReserveMonth'+m]=planner.peakReserveMonths?.[m-1]===true;
- const windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),confirmed:true}));
- if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;windows.push({start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),energyKwh:Math.max(0,num(s.planned,0)),confirmed:true})}
+ const windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),targetSoc:num(r.targetSoc,null),confirmed:true}));
+ if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;windows.push({start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),energyKwh:Math.max(0,num(s.planned,0)),targetSoc:num(w.targetSoc,null),confirmed:true})}
  windows.sort((a,b)=>a.start-b.start);
+ // Follow only a currently active grid-charge decision, never an idle/stale
+ // snapshot or a PV-only command. The official target anchors this phase;
+ // later phases continue to replan from their own predicted SoC.
+ const activeWindow=source==='json'&&forecastModeAt(startMs)==='auto'&&s.planReady
+  &&s.planningTargetAt>startMs&&raw.baseMode==='charge'
+  &&['grid_charge','grid_and_pv_charge'].includes(raw.action)&&raw.controlEnabled!==false
+  &&!raw.decisionOutputPending&&!raw.batteryCommandPauseActive&&!raw.hybridEms?.delegated&&!raw.safetySocRecoveryActive
+  ?windows.find(w=>w.start<=startMs&&w.end>startMs&&w.powerKw>0):null;
+ const activeTarget=activeWindow?cap(num(s.target,activeWindow.targetSoc??floor),floor,ceiling):null;
+ const currentTariff=tariffRows.find(row=>row.startAt<=startMs&&row.endAt>startMs);
+ const protectionUntil=activeWindow?Math.min(s.planningTargetAt,currentTariff?.endAt??activeWindow.end):0;
  const datedRows=tariffRows.filter(r=>r.priceKnown).map(r=>({startMs:r.startAt,endMs:r.endAt,price:r.price,className:r.k}));
  const curve={intervals:datedRows.map(r=>({startAt:r.startMs,endAt:r.endMs,price:r.price,className:r.className}))};
  const nightPlanner=new forecastRules.BatteryNightPlanner();
  const boundaries=new Set([startMs,endMs]);
+ const resumeAt=num(raw.forcedModeResumeAt,0);
+ if(forecastModeAt(startMs)==='manual_charge'&&forecastModeAt(resumeAt)==='auto'&&resumeAt>startMs&&resumeAt<endMs)boundaries.add(resumeAt);
  for(let at=(Math.floor(startMs/300000)+1)*300000;at<endMs;at+=300000)boundaries.add(at);
  for(const r of [...tariffRows,...windows.map(w=>({startAt:w.start,endAt:w.end}))])for(const at of [r.startAt,r.endAt])if(at>startMs&&at<endMs)boundaries.add(at);
  for(const h of goalHours)boundaries.add(forecastAtHour(h));
@@ -1665,7 +1701,7 @@ function projectedSoc(profile){
  let energy=capKwh*cap(soc0,0,100)/100,totalGrid=0,ri=0,wi=0,previousStrategy=null;
  const choiceCache=new Map();
  for(let i=1;i<times.length;i++){
-  const a=times[i-1],b=times[i],dt=(b-a)/HOUR_MS,h=forecastDisplayHour((a+b)/2),phase=forecastPhase(a,planner);
+  const a=times[i-1],b=times[i],dt=(b-a)/HOUR_MS,h=forecastDisplayHour((a+b)/2),phase=forecastPhase(a,planner),forced=forecastModeAt(a);
   while(ri<tariffRows.length&&tariffRows[ri].endAt<=a)ri++;
   while(wi<windows.length&&windows[wi].end<=a)wi++;
   const row=tariffRows[ri]?.startAt<=a&&tariffRows[ri].endAt>=b?tariffRows[ri]:null;
@@ -1675,7 +1711,8 @@ function projectedSoc(profile){
   const pvKw=Math.min(maxKw,pv),pvEnergy=pvKw*dt*.92;
   const headroom=cfg.peakShaveEnabled===true?Math.max(0,(num(cfg.peakLimitW,0)-num(settings.peakSoftMarginW,0))/1000+(p.pv||0)-(p.house||0)):maxKw;
   const gridKw=Math.min(Math.max(0,maxKw-pvKw),headroom);
-  const originalTarget=forecastTargetAt(a,phase,profile,cfg,planner,capKwh,floor,ceiling);
+  const activePhase=activeWindow&&a<s.planningTargetAt&&phase.targetAt===s.planningTargetAt;
+  const originalTarget=activePhase?activeTarget:forecastTargetAt(a,phase,profile,cfg,planner,capKwh,floor,ceiling);
   let target=originalTarget;
   const deferral=dynamic&&forced==='auto'?forecastRules.planDynamicChargeDeferral({rows:datedRows,now:a,targetAt:phase.targetAt,nextTargetAt:phase.nextTargetAt,
    targetSoc:target,soc,safetySoc:floor,capacityKwh:capKwh,powerW:gridKw*1000,expectedDailyKwh:num(settings.expectedEnergyNeedKwh,num(planner.expectedEnergyNeedKwh,20)),
@@ -1730,17 +1767,36 @@ function projectedSoc(profile){
    target=floor;
    chargePower=Math.min(gridKw,Math.max(.25,capKwh*(floor-soc)/100*6));
   }
-  if(forced!=='auto')chargePower=0;
+  if(forced==='manual_charge'){
+   // Read-only override forecast: PV and grid share the existing battery limit.
+   // Do not extrapolate today's battery command or count its PV a second time.
+   target=ceiling;chargePower=gridKw;
+  }else if(forced!=='auto')chargePower=0;
+  const snapshotAllowed=Boolean(activePhase&&(cfg.contractType==='tou'?(!row||row[phase.night?'nightChargeAllowed':'dayChargeAllowed']!==false&&!row.avoidGridImport)
+   :dynamic?row?.priceKnown===true&&(row.k==='cheap'||row.k==='normal'&&cfg.dynamicNormalChargeEnabled===true)
+   :cfg.contractType==='fixed'?forecastFixedAllowed(row,a,settings):false));
+  if(activePhase&&forced==='auto'&&w===activeWindow&&snapshotAllowed){
+   // Replace the synthetic rate; do not add the cached plan's full kWh again.
+   // Remaining room to the official target, PV and Peak Guard still cap it.
+   target=Math.min(target,activeTarget,dynamic&&chargeClass==='normal'?num(cfg.dynamicNormalChargeMaxSoc,50):ceiling);
+   chargePower=Math.min(gridKw,activeWindow.powerKw);
+  }
   const gridEnergy=Math.min(chargePower*dt*.95,Math.max(0,capKwh*target/100-energy-pvEnergy));
-  const policy=source==='demo'?{discharge:true,floor}:dynamic&&!row?.priceKnown?{discharge:false}:forecastTariffPolicy(row,h,profile,originalTarget);
+  // The fixed-contract engine stays in its maximum-charge strategy while
+  // awaiting a usable block and an unreached target. It does not discharge
+  // as ordinary self-consumption during that wait.
+  const awaitingFixedCharge=cfg.contractType==='fixed'&&forced==='auto'&&choice.mode==='maximum'
+   &&soc+.25<target&&previousStrategy&&!previousStrategy.blocks.some(block=>block.startAt<=a&&block.endAt>a);
+  const policy=source==='demo'?{discharge:true,floor}:awaitingFixedCharge||dynamic&&!row?.priceKnown?{discharge:false}:forecastTariffPolicy(row,h,profile,originalTarget,forced);
   let dischargeFloor=cap(num(policy.floor,floor),floor,ceiling);
+  if(activePhase&&snapshotAllowed&&a<protectionUntil)dischargeFloor=Math.max(dischargeFloor,cap(num(raw.ordinaryDischargeFloorSoc,floor),floor,ceiling));
   if(row?.k!=='expensive'&&!row?.avoidGridImport)dischargeFloor=Math.max(dischargeFloor,forecastProtectedReserve(a,phase,profile,cfg,planner,capKwh,floor,ceiling));
   if(deferral&&row?.k==='normal')dischargeFloor=Math.max(dischargeFloor,deferral.preloadTargetSoc);
   const loss=gridEnergy>0||!policy.discharge?0:Math.min(Math.min(shortfall,dischargeKw)*dt/.93,Math.max(0,energy-capKwh*dischargeFloor/100));
   energy=Math.min(capKwh*ceiling/100,Math.max(0,energy+pvEnergy+gridEnergy-loss));totalGrid+=gridEnergy/.95;
   // Split the recomputed charge into the old snapshot part and the additional
   // prediction. The old snapshot is never integrated independently.
-  const indicated=w?Math.min(w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw)*dt:0;
+  const indicated=w?(activePhase&&w===activeWindow?w.powerKw:Math.min(w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw))*dt:0;
   const additional=Math.max(0,gridEnergy/.95-indicated);
   if(additional>1e-8)predictedWindows.push({startAt:a,endAt:b,energyKwh:additional,confirmed:false});
   pts.push({h:forecastDisplayHour(b),at:b,soc:100*energy/capKwh,charging:gridEnergy>0?(additional>0?'forecast':'ems'):null,gridKwh:gridEnergy/.95,lossKwh:loss,pvKwh:pvEnergy,targetSoc:target});
@@ -2420,7 +2476,7 @@ function buildDemoStatus(){
  const grid={saving:130,sun:-440,ev:730,peak:825,guard:2650,night:2410}[s.id]??120;
  const pv={saving:1600,sun:4100,ev:2900,peak:0,guard:0,night:0}[s.id]??0;
  const currentHouse=makeDemoLedger('day');
- return {version:'1.5.9 · demo',statusText:'Simulatie · '+s.decision,decisionText:s.decision,decisionReason:s.reason,
+ return {version:'1.5.10 · demo',statusText:'Simulatie · '+s.decision,decisionText:s.decision,decisionReason:s.reason,
   action:s.guardActive?'peak_shave':'auto',inputReady:true,missingInputs:[],degradedInputs:[],controlEnabled:true,canPublishCommands:true,
   avgSoc:s.soc,planningChargeTargetSoc:s.target,ordinaryDischargeFloorSoc:s.minSoc||14,effectiveCapacityKwh:s.capacityKwh,
   batteryTiming:{direction:s.id==='night'||s.id==='sun'?'charge':s.id==='peak'||s.id==='guard'?'discharge':'idle',powerW:s.id==='night'?2700:s.id==='guard'?1400:0,targetSoc:s.target},
@@ -3235,7 +3291,7 @@ function updateLiveLabels(status){
  if(externalLabel)externalLabel.hidden=!delegated;
  $('hero')?.classList.toggle('external-ems-active',delegated);
  setVisualText('footerLabel','HomeFlux EMS · read-only live status');
- setVisualText('footerVersion','v'+String(status.version||'1.5.9')+' · live');
+ setVisualText('footerVersion','v'+String(status.version||'1.5.10')+' · live');
  if($('savingsSourceTag').textContent==='DEMO')$('savingsSourceTag').textContent='HOMEY LIVE';
  $('houseSavingsSubtitle').textContent='Besparing volgens HomeFlux';
  $('evSavingsSubtitle').textContent='PV-laadvoordeel volgens HomeFlux';

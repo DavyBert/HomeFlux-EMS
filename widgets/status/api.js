@@ -16,7 +16,17 @@ function getWidgetTouTimeline(app, settings, now) {
   const saved = widgetTouCache.get(app);
   if (saved && saved.signature === signature && now >= saved.at && now - saved.at < 60_000) return saved.rows;
   const rows = buildWidgetTouTimeline(settings, now, 49);
-  widgetTouCache.set(app, { signature, at: now, rows });
+  // Keep the exact resolved permissions in the existing minute cache as well.
+  // Forecast context must not depend on optional display-row properties.
+  const policies = rows.map(row => ({ startAt: row.startAt, endAt: row.endAt,
+    rateId: row.rateId, className: row.className,
+    avoidGridImport: row.avoidGridImport,
+    nightChargeAllowed: row.nightChargeAllowed, dayChargeAllowed: row.dayChargeAllowed,
+    lowForecastBatterySave: row.lowForecastBatterySave,
+    lowForecastDischargeToTarget: row.lowForecastDischargeToTarget,
+    highForecastBatterySave: row.highForecastBatterySave,
+    highForecastDischargeToTarget: row.highForecastDischargeToTarget }));
+  widgetTouCache.set(app, { signature, at: now, rows, policies });
   return rows;
 }
 
@@ -253,6 +263,7 @@ module.exports = {
         // tariff also supplies every upcoming transition. A hard-coded
         // weekday/weekend schedule would be incorrect for user customizations.
         status.tariffTimeline = getWidgetTouTimeline(app, settings, now);
+        status.visualPlanner.tariffPolicies = widgetTouCache.get(app).policies;
         status.tariffTimelineSource = 'configured-tou';
       } catch (error) {
         status.tariffTimeline = [];

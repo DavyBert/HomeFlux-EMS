@@ -1,0 +1,205 @@
+--- original/.homeychangelog.json
++++ patched/.homeychangelog.json
+@@ -1,10 +1,10 @@
+ {
+   "1.5.10": {
+-    "nl": "De SOC-prognose van de EMS Status-widget blijft correct doorrekenen tijdens geforceerd laden en volgt daarna de bestaande terugkeer naar Auto.",
+-    "en": "The EMS Status widget SoC forecast now continues correctly during forced charging and follows the existing return to Auto afterwards.",
+-    "fr": "La prévision du SoC du widget EMS Status reste correcte pendant la charge forcée et suit ensuite le retour existant au mode Auto.",
+-    "de": "Die SoC-Prognose des EMS-Status-Widgets rechnet beim erzwungenen Laden korrekt weiter und berücksichtigt anschließend die bestehende Rückkehr zu Auto.",
+-    "es": "La previsión del SoC del widget EMS Status sigue calculándose correctamente durante la carga forzada y después respeta el retorno existente al modo Auto."
++    "nl": "De SOC-prognose van de EMS Status-widget volgt het actieve EMS-laadplan correct tijdens normaal, maximaal en geforceerd laden en berekent daarna het verdere verloop volgens de tariefregels.",
++    "en": "The EMS Status widget SoC forecast correctly follows the active EMS charging plan during standard, maximum-power and forced charging, then projects the subsequent course according to the tariff rules.",
++    "fr": "La prévision du SoC du widget EMS Status suit correctement le plan EMS actif pendant la charge standard, à puissance maximale et forcée, puis calcule la suite selon les règles tarifaires.",
++    "de": "Die SoC-Prognose des EMS-Status-Widgets folgt beim normalen, maximalen und erzwungenen Laden korrekt dem aktiven EMS-Ladeplan und berechnet den weiteren Verlauf anhand der Tarifregeln.",
++    "es": "La previsión del SoC del widget EMS Status sigue correctamente el plan EMS activo durante la carga normal, a potencia máxima y forzada, y calcula después su evolución según las reglas tarifarias."
+   },
+   "1.5.9": {
+     "nl": "Volledige meertalige ondersteuning voor de nieuwe EMS Status-widget.\nCentrale batterij-SOC-historiek, gedeeld tussen alle widgets.\nOptionele brede grafiek met schaalbadges en WAF-waarde groot in bijpassende kleur (standaard aan). PV-balken beginnen per dag opnieuw; bevestigde EMS-laadstroken blijven zichtbaar boven widgetschattingen.\nBrede grafiek standaard aan na upgrade. Compacte tijdlabels met een vaste kleinere lettergrootte, om de drie uur voor een dagweergave en om de zes uur voor langere tijdlijnen, instelbaar op 24 uur of AM/PM en zonder M bij het eindlabel.",
+--- original/README.md
++++ patched/README.md
+@@ -14,15 +14,15 @@
+ 
+ ## Release notes — 1.5.10
+ 
+-**NL** — De SOC-prognose van de EMS Status-widget blijft correct doorrekenen tijdens geforceerd laden en volgt daarna de bestaande terugkeer naar Auto.
+-
+-**EN** — The EMS Status widget SoC forecast now continues correctly during forced charging and follows the existing return to Auto afterwards.
+-
+-**FR** — La prévision du SoC du widget EMS Status reste correcte pendant la charge forcée et suit ensuite le retour existant au mode Auto.
+-
+-**DE** — Die SoC-Prognose des EMS-Status-Widgets rechnet beim erzwungenen Laden korrekt weiter und berücksichtigt anschließend die bestehende Rückkehr zu Auto.
+-
+-**ES** — La previsión del SoC del widget EMS Status sigue calculándose correctamente durante la carga forzada y después respeta el retorno existente al modo Auto.
++**NL** — De SOC-prognose van de EMS Status-widget volgt het actieve EMS-laadplan correct tijdens normaal, maximaal en geforceerd laden en berekent daarna het verdere verloop volgens de tariefregels.
++
++**EN** — The EMS Status widget SoC forecast correctly follows the active EMS charging plan during standard, maximum-power and forced charging, then projects the subsequent course according to the tariff rules.
++
++**FR** — La prévision du SoC du widget EMS Status suit correctement le plan EMS actif pendant la charge standard, à puissance maximale et forcée, puis calcule la suite selon les règles tarifaires.
++
++**DE** — Die SoC-Prognose des EMS-Status-Widgets folgt beim normalen, maximalen und erzwungenen Laden korrekt dem aktiven EMS-Ladeplan und berechnet den weiteren Verlauf anhand der Tarifregeln.
++
++**ES** — La previsión del SoC del widget EMS Status sigue correctamente el plan EMS activo durante la carga normal, a potencia máxima y forzada, y calcula después su evolución según las reglas tarifarias.
+ 
+ ## Release notes — 1.5.9
+ 
+--- original/test/widget-translations-central-soc-1.5.9.test.js
++++ patched/test/widget-translations-central-soc-1.5.9.test.js
+@@ -157,11 +157,12 @@
+ console.log('PASS central five-minute SOC, actual receipt time, no house dependency, no fictitious/stale points, delta cursor, restart, legacy rows, midnight/DST and 720-point limit');
+ 
+ // Tariff preprocessing remains frozen. The forecast hash includes the
+-// authorized forced-charge presentation fix, covered by the engine comparisons
+-// in widget-forced-charge-forecast-1.5.9.test.js.
++// authorized active/forced-charge presentation fixes, covered by the engine
++// comparisons in widget-active-charge-forecast-1.5.10.test.js and
++// widget-forced-charge-forecast-1.5.9.test.js.
+ // PV display hash includes the authorized per-day reset and scale UI.
+ const {createHash}=require("node:crypto");
+-for(const [start,end,expected] of [["let normalizedTariffCache=null;", "function buildRollingTimelineFromRows(", "9c06353606a08ab0fde8d3ec8a6753b07839f0603cad02b79f131173a913894f"], ["function readHouseSamples(", "// Cumulative PV forecast", "b1ade88f06f7b216839ef6e9b18c3c62e0ebd913406d9c851dd60b647f2d05f3"], ["// Cumulative PV forecast", "function renderEnergyDay(", "656d37ff0f103a9768e23ea287b9739086f0b16fedd6fcb8f8ef0a985c61ff8b"]]){
++for(const [start,end,expected] of [["let normalizedTariffCache=null;", "function buildRollingTimelineFromRows(", "9c06353606a08ab0fde8d3ec8a6753b07839f0603cad02b79f131173a913894f"], ["function readHouseSamples(", "// Cumulative PV forecast", "5e3712d0fb9a4afe95bcd985724525324b5c2568e7369ec8d9bd80bc383ff582"], ["// Cumulative PV forecast", "function renderEnergyDay(", "656d37ff0f103a9768e23ea287b9739086f0b16fedd6fcb8f8ef0a985c61ff8b"]]){
+  const at=html.indexOf(start);assert(at>=0);const region=html.slice(at,html.indexOf(end,at+start.length));
+  assert.equal(createHash("sha256").update(region).digest("hex"),expected,start+" must match the validated source");
+ }
+--- original/widgets/status/api.js
++++ patched/widgets/status/api.js
+@@ -16,7 +16,17 @@
+   const saved = widgetTouCache.get(app);
+   if (saved && saved.signature === signature && now >= saved.at && now - saved.at < 60_000) return saved.rows;
+   const rows = buildWidgetTouTimeline(settings, now, 49);
+-  widgetTouCache.set(app, { signature, at: now, rows });
++  // Keep the exact resolved permissions in the existing minute cache as well.
++  // Forecast context must not depend on optional display-row properties.
++  const policies = rows.map(row => ({ startAt: row.startAt, endAt: row.endAt,
++    rateId: row.rateId, className: row.className,
++    avoidGridImport: row.avoidGridImport,
++    nightChargeAllowed: row.nightChargeAllowed, dayChargeAllowed: row.dayChargeAllowed,
++    lowForecastBatterySave: row.lowForecastBatterySave,
++    lowForecastDischargeToTarget: row.lowForecastDischargeToTarget,
++    highForecastBatterySave: row.highForecastBatterySave,
++    highForecastDischargeToTarget: row.highForecastDischargeToTarget }));
++  widgetTouCache.set(app, { signature, at: now, rows, policies });
+   return rows;
+ }
+ 
+@@ -253,6 +263,7 @@
+         // tariff also supplies every upcoming transition. A hard-coded
+         // weekday/weekend schedule would be incorrect for user customizations.
+         status.tariffTimeline = getWidgetTouTimeline(app, settings, now);
++        status.visualPlanner.tariffPolicies = widgetTouCache.get(app).policies;
+         status.tariffTimelineSource = 'configured-tou';
+       } catch (error) {
+         status.tariffTimeline = [];
+--- original/widgets/status/public/index.html
++++ patched/widgets/status/public/index.html
+@@ -1496,7 +1496,7 @@
+       if (visualLook) {
+         document.body.classList.add('visual-look');
+         visualView.classList.remove('hidden');
+-        visualView.src = 'visual.html?rev=1.5.10-forced-soc';
++        visualView.src = 'visual.html?rev=1.5.10-active-plan';
+       }
+       let latestStatus = null;
+       let refreshTimer = null, displayTimer = null;
+--- original/widgets/status/public/visual.html
++++ patched/widgets/status/public/visual.html
+@@ -1640,24 +1640,51 @@
+ // Display-only forward replanning. The original plan remains a labelled
+ // snapshot; it is never a cap on future energy or added a second time.
+ let socForecastCache=null;
++function forecastTariffRows(raw,startMs){
++ const rows=normalizeTimelineRawRows(raw.tariffTimeline,startMs,49),policies=raw.visualPlanner?.tariffPolicies;
++ if(!Array.isArray(policies)||!policies.length)return rows;
++ const keys=['avoidGridImport','nightChargeAllowed','dayChargeAllowed','lowForecastBatterySave','lowForecastDischargeToTarget','highForecastBatterySave','highForecastDischargeToTarget'];
++ let index=0;
++ return rows.map(row=>{
++  if(keys.every(key=>row[key]!==null))return row;
++  while(index<policies.length&&policies[index].endAt<=row.startAt)index++;
++  const policy=policies[index];
++  if(!policy||policy.startAt>row.startAt||policy.endAt<row.endAt||policy.className!==row.k
++   ||row.rateId!==null&&policy.rateId!==row.rateId)return row;
++  const copy={...row};
++  for(const key of keys)if(copy[key]===null&&typeof policy[key]==='boolean')copy[key]=policy[key];
++  return copy;
++ });
++}
+ function projectedSoc(profile){
+  const raw=rawStatusObject||{},cfg=raw.settings||{},planner=raw.visualPlanner||{};
+  const capKwh=num(s.capacityKwh,null),soc0=num(s.soc,null);
+  if(!(capKwh>0)||soc0===null)return null;
+- const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,s.forecast,s.remaining,s.tomorrowForecast,profile,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,s.nightTargetTime,s.planningTargetAt,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline,raw.forcedMode,raw.forcedModeResumeAt]);
++ const signature=JSON.stringify([source,Math.floor(s.timeReferenceAt/60000),s.soc,s.target,s.capacityKwh,s.forecast,s.remaining,s.tomorrowForecast,profile,s.dayMaxSoc,s.nightMaxSoc,s.dayTargetTime,s.nightTargetTime,s.planningTargetAt,s.planReady,s.planPhase,s.planRows,s.nextChargeDetail,cfg,planner,raw.tariffTimeline,raw.forcedMode,raw.forcedModeResumeAt,raw.baseMode,raw.action,raw.controlEnabled,raw.decisionOutputPending,raw.batteryCommandPauseActive,raw.hybridEms?.delegated,raw.ordinaryDischargeFloorSoc,raw.safetySocRecoveryActive]);
+  if(socForecastCache?.signature===signature)return socForecastCache.value;
+  const floor=cap(Math.max(num(cfg.minSoc,0),num(cfg.safetySoc,num(s.minSoc,14))),0,100),ceiling=cap(num(s.maxSoc,100),floor,100);
+  const startMs=num(s.timeReferenceAt,Date.now()),nowH=forecastDisplayHour(startMs),todayStart=dayStartOf(startMs);
+- const tariffRows=source==='json'?normalizeTimelineRawRows(raw.tariffTimeline,startMs,49):[];
++ const tariffRows=source==='json'?forecastTariffRows(raw,startMs):[];
+  const goals=forecastGoalTimes(profile),extraGoal=forecastExtendedGoal(goals,profile,tariffRows),horizon=extraGoal??goals.horizon,endMs=forecastAtHour(horizon);
+  const goalHours=[goals.firstH,goals.secondH,extraGoal].filter((v,i,a)=>v!==null&&v>nowH&&v<=horizon&&a.indexOf(v)===i).sort((a,b)=>a-b);
+  const maxKw=Math.max(0,num(planner.maxTotalChargeW,6000)/1000),dischargeKw=Math.max(0,num(planner.maxTotalDischargeW,2500)/1000);
+  const dynamic=['dynamic','dynamic_hour','dynamic_quarter'].includes(cfg.contractType);
+  const settings={...(planner.forecastSettings||{}),...cfg,chargeStrategy:planner.chargeStrategy,timezone:planner.forecastSettings?.timezone||'UTC'};
+  for(let m=1;m<=12;m++)settings['peakReserveMonth'+m]=planner.peakReserveMonths?.[m-1]===true;
+- const windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),confirmed:true}));
+- if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;windows.push({start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),energyKwh:Math.max(0,num(s.planned,0)),confirmed:true})}
++ const windows=(s.planRows||[]).filter(r=>r?.plannedNetCharge!==false&&r.endAt>startMs).map(r=>({start:Number(r.startAt),end:Number(r.endAt),powerKw:Math.max(0,num(r.plannedChargeW,0)/1000),energyKwh:Math.max(0,num(r.plannedEnergyKwh,0)),targetSoc:num(r.targetSoc,null),confirmed:true}));
++ if(!windows.length&&s.nextChargeDetail?.endAt>startMs){const w=s.nextChargeDetail;windows.push({start:Number(w.startAt),end:Number(w.endAt),powerKw:Math.max(0,num(w.powerW,0)/1000),energyKwh:Math.max(0,num(s.planned,0)),targetSoc:num(w.targetSoc,null),confirmed:true})}
+  windows.sort((a,b)=>a.start-b.start);
++ // Follow only a currently active grid-charge decision, never an idle/stale
++ // snapshot or a PV-only command. The official target anchors this phase;
++ // later phases continue to replan from their own predicted SoC.
++ const activeWindow=source==='json'&&forecastModeAt(startMs)==='auto'&&s.planReady
++  &&s.planningTargetAt>startMs&&raw.baseMode==='charge'
++  &&['grid_charge','grid_and_pv_charge'].includes(raw.action)&&raw.controlEnabled!==false
++  &&!raw.decisionOutputPending&&!raw.batteryCommandPauseActive&&!raw.hybridEms?.delegated&&!raw.safetySocRecoveryActive
++  ?windows.find(w=>w.start<=startMs&&w.end>startMs&&w.powerKw>0):null;
++ const activeTarget=activeWindow?cap(num(s.target,activeWindow.targetSoc??floor),floor,ceiling):null;
++ const currentTariff=tariffRows.find(row=>row.startAt<=startMs&&row.endAt>startMs);
++ const protectionUntil=activeWindow?Math.min(s.planningTargetAt,currentTariff?.endAt??activeWindow.end):0;
+  const datedRows=tariffRows.filter(r=>r.priceKnown).map(r=>({startMs:r.startAt,endMs:r.endAt,price:r.price,className:r.k}));
+  const curve={intervals:datedRows.map(r=>({startAt:r.startMs,endAt:r.endMs,price:r.price,className:r.className}))};
+  const nightPlanner=new forecastRules.BatteryNightPlanner();
+@@ -1684,7 +1711,8 @@
+   const pvKw=Math.min(maxKw,pv),pvEnergy=pvKw*dt*.92;
+   const headroom=cfg.peakShaveEnabled===true?Math.max(0,(num(cfg.peakLimitW,0)-num(settings.peakSoftMarginW,0))/1000+(p.pv||0)-(p.house||0)):maxKw;
+   const gridKw=Math.min(Math.max(0,maxKw-pvKw),headroom);
+-  const originalTarget=forecastTargetAt(a,phase,profile,cfg,planner,capKwh,floor,ceiling);
++  const activePhase=activeWindow&&a<s.planningTargetAt&&phase.targetAt===s.planningTargetAt;
++  const originalTarget=activePhase?activeTarget:forecastTargetAt(a,phase,profile,cfg,planner,capKwh,floor,ceiling);
+   let target=originalTarget;
+   const deferral=dynamic&&forced==='auto'?forecastRules.planDynamicChargeDeferral({rows:datedRows,now:a,targetAt:phase.targetAt,nextTargetAt:phase.nextTargetAt,
+    targetSoc:target,soc,safetySoc:floor,capacityKwh:capKwh,powerW:gridKw*1000,expectedDailyKwh:num(settings.expectedEnergyNeedKwh,num(planner.expectedEnergyNeedKwh,20)),
+@@ -1744,16 +1772,31 @@
+    // Do not extrapolate today's battery command or count its PV a second time.
+    target=ceiling;chargePower=gridKw;
+   }else if(forced!=='auto')chargePower=0;
++  const snapshotAllowed=Boolean(activePhase&&(cfg.contractType==='tou'?(!row||row[phase.night?'nightChargeAllowed':'dayChargeAllowed']!==false&&!row.avoidGridImport)
++   :dynamic?row?.priceKnown===true&&(row.k==='cheap'||row.k==='normal'&&cfg.dynamicNormalChargeEnabled===true)
++   :cfg.contractType==='fixed'?forecastFixedAllowed(row,a,settings):false));
++  if(activePhase&&forced==='auto'&&w===activeWindow&&snapshotAllowed){
++   // Replace the synthetic rate; do not add the cached plan's full kWh again.
++   // Remaining room to the official target, PV and Peak Guard still cap it.
++   target=Math.min(target,activeTarget,dynamic&&chargeClass==='normal'?num(cfg.dynamicNormalChargeMaxSoc,50):ceiling);
++   chargePower=Math.min(gridKw,activeWindow.powerKw);
++  }
+   const gridEnergy=Math.min(chargePower*dt*.95,Math.max(0,capKwh*target/100-energy-pvEnergy));
+-  const policy=source==='demo'?{discharge:true,floor}:dynamic&&!row?.priceKnown?{discharge:false}:forecastTariffPolicy(row,h,profile,originalTarget,forced);
++  // The fixed-contract engine stays in its maximum-charge strategy while
++  // awaiting a usable block and an unreached target. It does not discharge
++  // as ordinary self-consumption during that wait.
++  const awaitingFixedCharge=cfg.contractType==='fixed'&&forced==='auto'&&choice.mode==='maximum'
++   &&soc+.25<target&&previousStrategy&&!previousStrategy.blocks.some(block=>block.startAt<=a&&block.endAt>a);
++  const policy=source==='demo'?{discharge:true,floor}:awaitingFixedCharge||dynamic&&!row?.priceKnown?{discharge:false}:forecastTariffPolicy(row,h,profile,originalTarget,forced);
+   let dischargeFloor=cap(num(policy.floor,floor),floor,ceiling);
++  if(activePhase&&snapshotAllowed&&a<protectionUntil)dischargeFloor=Math.max(dischargeFloor,cap(num(raw.ordinaryDischargeFloorSoc,floor),floor,ceiling));
+   if(row?.k!=='expensive'&&!row?.avoidGridImport)dischargeFloor=Math.max(dischargeFloor,forecastProtectedReserve(a,phase,profile,cfg,planner,capKwh,floor,ceiling));
+   if(deferral&&row?.k==='normal')dischargeFloor=Math.max(dischargeFloor,deferral.preloadTargetSoc);
+   const loss=gridEnergy>0||!policy.discharge?0:Math.min(Math.min(shortfall,dischargeKw)*dt/.93,Math.max(0,energy-capKwh*dischargeFloor/100));
+   energy=Math.min(capKwh*ceiling/100,Math.max(0,energy+pvEnergy+gridEnergy-loss));totalGrid+=gridEnergy/.95;
+   // Split the recomputed charge into the old snapshot part and the additional
+   // prediction. The old snapshot is never integrated independently.
+-  const indicated=w?Math.min(w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw)*dt:0;
++  const indicated=w?(activePhase&&w===activeWindow?w.powerKw:Math.min(w.powerKw,w.energyKwh>0?w.energyKwh/((w.end-w.start)/HOUR_MS):w.powerKw))*dt:0;
+   const additional=Math.max(0,gridEnergy/.95-indicated);
+   if(additional>1e-8)predictedWindows.push({startAt:a,endAt:b,energyKwh:additional,confirmed:false});
+   pts.push({h:forecastDisplayHour(b),at:b,soc:100*energy/capKwh,charging:gridEnergy>0?(additional>0?'forecast':'ems'):null,gridKwh:gridEnergy/.95,lossKwh:loss,pvKwh:pvEnergy,targetSoc:target});

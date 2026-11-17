@@ -97,7 +97,7 @@ function domFor(language){
 }
 Date.now=originalDateNow;
 const now=Date.now(),start=new Date();start.setHours(0,0,0,0);
-const status={version:'1.5.9',avgSoc:70,decisionText:'BACKEND STATUS',decisionReason:'BACKEND REASON',
+const status={version:'1.5.10',avgSoc:70,decisionText:'BACKEND STATUS',decisionReason:'BACKEND REASON',
  effectiveCapacityKwh:21.6,planningChargeTargetSoc:80,controlEnabled:true,
  settings:{contractType:'dynamic_quarter',batteryCount:2,evCount:1,hvacCount:1,boilerCount:1,minSoc:12,safetySoc:14},
  inputs:{gridPowerW:800,pvPowerW:200,forecastDailyMaxKwh:8,forecastRemainingKwh:3,batterySoc:[60,80]},
@@ -156,12 +156,15 @@ for(const language of Object.keys(expected)){
 assert(centralResults.every(value=>value===centralResults[0]),'separate widgets and languages use identical measured SOC');
 console.log('PASS central five-minute SOC, actual receipt time, no house dependency, no fictitious/stale points, delta cursor, restart, legacy rows, midnight/DST and 720-point limit');
 
-// SOC forecast and tariff preprocessing remain frozen to 1.5.8.
+// Tariff preprocessing remains frozen. The forecast hash includes the
+// authorized active/forced-charge presentation fixes, covered by the engine
+// comparisons in widget-active-charge-forecast-1.5.10.test.js and
+// widget-forced-charge-forecast-1.5.9.test.js.
 // PV display hash includes the authorized per-day reset and scale UI.
 const {createHash}=require("node:crypto");
-for(const [start,end,expected] of [["let normalizedTariffCache=null;", "function buildRollingTimelineFromRows(", "9c06353606a08ab0fde8d3ec8a6753b07839f0603cad02b79f131173a913894f"], ["function readHouseSamples(", "// Cumulative PV forecast", "f1198d560417ba193f8853ee6be68c0c4a8c47f5cc57807a6e842a59bf5fe8a4"], ["// Cumulative PV forecast", "function renderEnergyDay(", "656d37ff0f103a9768e23ea287b9739086f0b16fedd6fcb8f8ef0a985c61ff8b"]]){
+for(const [start,end,expected] of [["let normalizedTariffCache=null;", "function buildRollingTimelineFromRows(", "9c06353606a08ab0fde8d3ec8a6753b07839f0603cad02b79f131173a913894f"], ["function readHouseSamples(", "// Cumulative PV forecast", "5e3712d0fb9a4afe95bcd985724525324b5c2568e7369ec8d9bd80bc383ff582"], ["// Cumulative PV forecast", "function renderEnergyDay(", "656d37ff0f103a9768e23ea287b9739086f0b16fedd6fcb8f8ef0a985c61ff8b"]]){
  const at=html.indexOf(start);assert(at>=0);const region=html.slice(at,html.indexOf(end,at+start.length));
  assert.equal(createHash("sha256").update(region).digest("hex"),expected,start+" must match the validated source");
 }
-for(const name of ["app.json",".homeycompose/app.json","package.json","package-lock.json"])assert.equal(JSON.parse(fs.readFileSync(path.join(root,name))).version,"1.5.9");
-console.log("PASS frozen SOC forecast/tariff preprocessing, validated PV display and release versions");
+for(const name of ["app.json",".homeycompose/app.json","package.json","package-lock.json"])assert.equal(JSON.parse(fs.readFileSync(path.join(root,name))).version,"1.5.10");
+console.log("PASS validated forced-charge forecast, frozen tariff preprocessing, PV display and release versions");
