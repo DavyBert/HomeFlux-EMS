@@ -553,7 +553,7 @@ main.wrap{width:min(100%,466px)}
 </head>
 <body>
 <main class="wrap">
- <div class="demo-top"><div class="demo-kicker">HOMEFLUX · LIVE ONTWERPDEMO <small>4 EV · 10 HVAC · EMS 1.5.10 · LIVE</small></div><div class="demo-controls"><button class="icon-btn active" id="autoBtn" type="button" title="Start/stop automatische simulatie">Ⅱ Auto</button><button class="icon-btn" id="jsonBtn" type="button" title="Lees een HomeFlux /status JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5"/></svg>JSON</button><button class="icon-btn" id="resetBtn" type="button" title="Herstart de demo">↻</button></div></div>
+ <div class="demo-top"><div class="demo-kicker">HOMEFLUX · LIVE ONTWERPDEMO <small>4 EV · 10 HVAC · EMS 1.5.11 · LIVE</small></div><div class="demo-controls"><button class="icon-btn active" id="autoBtn" type="button" title="Start/stop automatische simulatie">Ⅱ Auto</button><button class="icon-btn" id="jsonBtn" type="button" title="Lees een HomeFlux /status JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5"/></svg>JSON</button><button class="icon-btn" id="resetBtn" type="button" title="Herstart de demo">↻</button></div></div>
  <div class="scenario-title">KIES EEN EMS-SITUATIE · of laat automatisch afspelen</div><nav class="scenario-strip" id="scenarioStrip" aria-label="Demo scenario's"></nav>
  <details class="demo-modules" id="demoModules"><summary>⚙ Test modulaire indeling <span class="demo-modules-hint">Boiler, Peak Guard, EV en HVAC afzonderlijk tonen/verbergen</span></summary>
   <div class="demo-switches" id="demoFeatureButtons" aria-label="Demo modulekeuzes">
@@ -616,7 +616,7 @@ main.wrap{width:min(100%,466px)}
     <div class="explorer-area" id="infoArea" aria-live="polite"></div>
    </div>
   </details>
-  <div class="widget-footer"><span class="live-line"><i></i><span id="footerLabel">Gesimuleerde EMS-waarden · 1s animatie</span></span><span id="footerVersion">v1.5.10 · live</span></div>
+  <div class="widget-footer"><span class="live-line"><i></i><span id="footerLabel">Gesimuleerde EMS-waarden · 1s animatie</span></span><span id="footerVersion">v1.5.11 · live</span></div>
  </article>
  <p class="under-note"><strong>Tik op een sectietitel of de naam van een kaart om de volledige rij tegelijk in of uit te klappen.</strong> Gebruik de <span class="tip">Savings-periodes</span> en de uitklapbare <span class="tip">EMS-informatiekiezer</span>. Tik op één van de <span class="tip">vier EV’s</span> of <span class="tip">tien HVAC-zones</span> om laadmodus, laadstroom, temperatuur of werkmodus in deze demo te veranderen. <strong>Er worden geen Homey-commando's verstuurd.</strong></p>
 </main>
@@ -2476,7 +2476,7 @@ function buildDemoStatus(){
  const grid={saving:130,sun:-440,ev:730,peak:825,guard:2650,night:2410}[s.id]??120;
  const pv={saving:1600,sun:4100,ev:2900,peak:0,guard:0,night:0}[s.id]??0;
  const currentHouse=makeDemoLedger('day');
- return {version:'1.5.10 · demo',statusText:'Simulatie · '+s.decision,decisionText:s.decision,decisionReason:s.reason,
+ return {version:'1.5.11 · demo',statusText:'Simulatie · '+s.decision,decisionText:s.decision,decisionReason:s.reason,
   action:s.guardActive?'peak_shave':'auto',inputReady:true,missingInputs:[],degradedInputs:[],controlEnabled:true,canPublishCommands:true,
   avgSoc:s.soc,planningChargeTargetSoc:s.target,ordinaryDischargeFloorSoc:s.minSoc||14,effectiveCapacityKwh:s.capacityKwh,
   batteryTiming:{direction:s.id==='night'||s.id==='sun'?'charge':s.id==='peak'||s.id==='guard'?'discharge':'idle',powerW:s.id==='night'?2700:s.id==='guard'?1400:0,targetSoc:s.target},
@@ -3291,7 +3291,7 @@ function updateLiveLabels(status){
  if(externalLabel)externalLabel.hidden=!delegated;
  $('hero')?.classList.toggle('external-ems-active',delegated);
  setVisualText('footerLabel','HomeFlux EMS · read-only live status');
- setVisualText('footerVersion','v'+String(status.version||'1.5.10')+' · live');
+ setVisualText('footerVersion','v'+String(status.version||'1.5.11')+' · live');
  if($('savingsSourceTag').textContent==='DEMO')$('savingsSourceTag').textContent='HOMEY LIVE';
  $('houseSavingsSubtitle').textContent='Besparing volgens HomeFlux';
  $('evSavingsSubtitle').textContent='PV-laadvoordeel volgens HomeFlux';
@@ -3397,7 +3397,16 @@ function calculateLiveViews(){
 function updateLiveStatus(status, history){
  if(!status||typeof status!=='object'||Array.isArray(status))return;
  try{
-  if(Array.isArray(history))pendingHouseHistory=history;
+  if(Array.isArray(history)){
+   pendingHouseHistory=history;
+   // A delayed initial history delivered via the regular /status fallback
+   // must draw immediately when no measured house curve is displayed yet.
+   // Later incremental history still obeys the existing one-minute gate.
+   if(!initialHouseHistoryRendered && !s.historyRows?.length
+    && history.some(row=>typeof row?.powerW==='number' && Number.isFinite(row.powerW) && row.powerW>=0)){
+    initialHouseHistoryRendered=true;liveCalculationInvalidated=true;
+   }
+  }
   if(!status.visualSocPlan&&rawStatusObject?.visualSocPlan)status.visualSocPlan=rawStatusObject.visualSocPlan;
   const mapped=readJsonStatus({status},{reuseHistory:true});
   s=mapped.result;evs=mapped.mappedEvs;hvacs=mapped.mappedHvacs;

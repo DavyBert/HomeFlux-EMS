@@ -1,4 +1,11 @@
 {
+  "1.5.11": {
+    "nl": "De EMS Status-widget herstelt het huisverbruik automatisch wanneer de historiek bij het openen niet reageert. De meetcurve verschijnt onmiddellijk zodra de gegevens beschikbaar zijn.",
+    "en": "The EMS Status widget automatically recovers house consumption history when the initial load stalls. The measured consumption curve appears as soon as the data becomes available.",
+    "fr": "Le widget EMS Status récupère automatiquement l’historique de consommation du foyer si son chargement initial se bloque. La courbe mesurée apparaît dès que les données sont disponibles.",
+    "de": "Das EMS-Status-Widget stellt den Hausverbrauchsverlauf automatisch wieder her, wenn das erste Laden hängen bleibt. Die gemessene Verbrauchskurve erscheint, sobald die Daten verfügbar sind.",
+    "es": "El widget EMS Status recupera automáticamente el historial de consumo de la vivienda si la carga inicial se bloquea. La curva de consumo medido aparece en cuanto los datos están disponibles."
+  },
   "1.5.10": {
     "nl": "De SOC-prognose van de EMS Status-widget volgt het actieve EMS-laadplan correct tijdens normaal, maximaal en geforceerd laden en berekent daarna het verdere verloop volgens de tariefregels.",
     "en": "The EMS Status widget SoC forecast correctly follows the active EMS charging plan during standard, maximum-power and forced charging, then projects the subsequent course according to the tariff rules.",

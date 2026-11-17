@@ -1425,7 +1425,7 @@
       let resolveFirstVisualHeight = null;
       const firstVisualHeight = visualLook ? new Promise(resolve => { resolveFirstVisualHeight = resolve; }) : null;
       let persistedHouseHistory = [], historyDate = '', historyAfter = 0;
-      let houseHistoryStarted = false, houseHistoryDone = false, houseHistoryPending = false;
+      let houseHistoryStarted = false, houseHistoryDone = false, houseHistoryPending = false, houseHistoryStartedAt = 0;
       let visualHistoryCached = null, visualHistoryDirty = false, latestVisualPlan = null;
       function mergeHouseHistory(result) {
         if (!result || !Array.isArray(result.rows) || typeof result.date !== 'string') return;
@@ -1453,7 +1453,7 @@
       }
       async function refreshHouseHistory() {
         if (!visualLook || houseHistoryStarted) return;
-        houseHistoryStarted = true; houseHistoryPending = true;
+        houseHistoryStarted = true; houseHistoryPending = true; houseHistoryStartedAt = Date.now();
         try {
           const result = await Homey.api('GET','/house-load-history',{});
           mergeHouseHistory(result);
@@ -1496,7 +1496,7 @@
       if (visualLook) {
         document.body.classList.add('visual-look');
         visualView.classList.remove('hidden');
-        visualView.src = 'visual.html?rev=1.5.10-active-plan';
+        visualView.src = 'visual.html?rev=1.5.11-house-history-recovery';
       }
       let latestStatus = null;
       let refreshTimer = null, displayTimer = null;
@@ -1736,13 +1736,22 @@
         const requestedAt=Date.now();
         lastStatusStartedAt=requestedAt;
         try {
+          // If the initial standalone history request stalls, recover on the
+          // existing 10s /status cycle. No extra request, timer or P1 work.
+          const recoverHouseHistory = houseHistoryPending && !houseHistoryDone
+            && requestedAt - houseHistoryStartedAt >= 15000;
           const visualQuery = visualLook ? '/status?visualSavings=1&planRevision='+encodeURIComponent(latestVisualPlan?.revision || 0)
-            +(houseHistoryDone ? '&historyDate='+encodeURIComponent(historyDate)+'&historyAfter='+historyAfter : '') : '/status';
+            +((houseHistoryDone || recoverHouseHistory) ? '&historyDate='+encodeURIComponent(historyDate)+'&historyAfter='+historyAfter : '') : '/status';
           const status = await Homey.api('GET', visualQuery, {});
           lastStatusSuccessStartedAt=requestedAt;
           if (visualLook) {
             if (status?.visualSocPlan) latestVisualPlan = status.visualSocPlan;
-            if (status?.visualHouseHistory) mergeHouseHistory(status.visualHouseHistory);
+            if (status?.visualHouseHistory) {
+              mergeHouseHistory(status.visualHouseHistory);
+              // The regular status response successfully replaced a stalled
+              // initial request; subsequent status replies stay incremental.
+              houseHistoryDone = true;
+            }
           }
           latestStatus = status || {};
           if (visualLook && latestVisualPlan) latestStatus.visualSocPlan = latestVisualPlan;
